@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta  content="text/html; charset=UTF-8"  http-equiv="content-type">
+    <title>Me,Scala and seqfs</title>
+  </head>
+  <body>
+    <h1>Me, Scala and seqfs</h1>
+    <p>Arsenii Chebotarov - ac2epsilon@gmail.com - Nizhyn 2016</p>
+    <h3>Kicking up</h3>
+    <p>What is going on here? Well, my name is Arsenii Chebotarov, I'm software
+      engineer from Nizhyn, Ukraine (actually not such a thing, as software
+      engineering here, but this is another story). I'm on my way from Java to
+      Scala and beyond to Clojure. And as I can see we need some display of
+      power. Both, me and Scala, we need some proof of our ability to work
+      together. So, this project have evaluation as primary intention. And, as
+      given problem are quite spherical, this project is what I will show in a
+      case somebody ask me to show something in Scala. </p>
+    <h3>Subject and Efficiency</h3>
+    <p> What I going to code is: networked distributed synthetic file system
+      seqfs. Trendy thing will implementing low level message driven interface
+      with higher level tools. Which, in turn, are me, Java, Scala and
+      (probably) Clojure. I am not sure of Clojure, but to make such transition
+      possible I going to model everything in sort of Lisp-ish sequences, rather
+      than usual objects. Some one can say this is less technically efficient.
+      However we will treat efficiency as shorter code, which inherently is less
+      error prone. After all we will write pretty file system, not byte crushing
+      NFS competitor. <br>
+    </p>
+    <h3>Immutability, Laziness and.. what Beans?</h3>
+    <p>So, I take best source code, which is 9P implementation of Styx protocol
+      [1]. What is good with 9P is a way, you can just 9mount it on any modern
+      Linux kernel, like Mint or Ubuntu. It's easy and works out of the box. </p>
+    <p>Then I looked into some newer ideas [2]. Finally I grab JStyx
+      implementation [3], because it's close to Scala, so we can think of Java
+      code as 100% and 0% Scala. Then we migrate some code, then some again and
+      finally we stop in some point, while we never leave JVM by itself either.
+    </p>
+    <p>I will not really criticize JStyx, as on time of writing (2006) it's
+      quite modern and progressive (Apache Mina etc). However I going to change
+      lot of things. First thing I dislike is Bean-ismics, used to encapsulate
+      messages. Main idea not just avoid boilerplate, but messages actually are
+      Scala vals, not vars. We get massage on wire, and put it on wire, once it
+      was created. Not to say I'd like to be "more functional" or such, but
+      messages ARE vals anyway. If you see any reason to mutate incoming or out
+      coming message - think twice, you must to be wrong. <br>
+    </p>
+    <p>Second idea of laziness follows out of question, how many times we read
+      incoming message. One can say we're not limited on this. Sure not, but
+      truth is in fact we read values only once. And, as we form val, not var,
+      we also write message object only once. Defacto JStyx never ever used
+      Bean-ish setters! </p>
+    <p>So, it looks like quite acceptable not hold getter-ed values at all. Just
+      pars on the place. And just pack out coming on the place. No change, no
+      new read, no repack, nothing like this. If (in rarest case) we will need
+      (no way) really repack, we will create new message. I believe it will in 1
+      promile of cases. </p>
+    <h3>Off-topics: Sorry mamma, Wireshark ate your baby. </h3>
+    <p>One not so valuable piece of code, I wish to remove from JStyx, is
+      everything related to debugging. There are some "goodPrettyPrint()"
+      methods, which primary targeted to debugging. Two reasons are for this: 1.
+      JStyx just works after 9mount. So actually no big need for debugging. 2.
+      What is more important, where is such a powerful thing, Wireshark, with
+      great support of 9P protocol (actually it works with any protocol, based
+      on imperative Lua rules). So I can not be better then thou, and will rely
+      on Wireshark in debugging process. </p>
+    <p>From the other side I will use ScalaTest thoroughly, in not recommended
+      way, i.e. I will use different style treats in one project. Just to see
+      and show how this works. </p>
+    <p><br>
+    </p>
+    <p>[1] Eric Van Hensbergen, Ron Minnich. Using 9P2000 under Linux.</p>
+    <p>[2] Anant Narayanan. A New Network File Protocol.
+      http://proness.kix.in/misc/%CF%80p-v2.pdf</p>
+    <p>[3] http://www.resc.rdg.ac.uk/jstyx/</p>
+  </body>
+</html>
