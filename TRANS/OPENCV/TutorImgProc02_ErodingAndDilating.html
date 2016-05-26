@@ -1,0 +1,532 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Ерозія та розповсюдження. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="eroding-and-dilating" class="section"> <span id="morphology-1"></span>
+              <h1>Ерозія та розповсюдження<a title="Permalink to this headline"
+                  href="#eroding-and-dilating" class="headerlink"><br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Ціль<a title="Permalink to this headline" href="#goal" class="headerlink"><br />
+                  </a></h2>
+                <p>В цьому туторіалі ми навчимось наступному:</p>
+                <ul class="simple">
+                  <li>Застосовувати дві дуже загальні морфологічні оператора:
+                    розповсюдження та ерозію. Для ціх цілей ми використаємо такі
+                    функії OpenCV:
+                    <ul>
+                      <li><a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=erode#erode"
+                          class="reference external">erode</a></li>
+                      <li><a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=dilate#dilate"
+                          class="reference external">dilate</a></li>
+                    </ul>
+                  </li>
+                </ul>
+              </div>
+              <div id="cool-theory" class="section">
+                <h2>Крута теорія<a title="Permalink to this headline" href="#cool-theory"
+                    class="headerlink"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пяснення нижче належить до книжки <strong>Learning
+                      OpenCV</strong> від Bradski та Kaehler.</p>
+                </div>
+                <div id="morphological-operations" class="section">
+                  <h3>Морфологічні операції<a title="Permalink to this headline"
+                      href="#morphological-operations" class="headerlink"><br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Коротко: Набір операцій, що обробляють
+                        зображення на основі фігур. Морфологічні операції
+                        накладають <em>струкрурний елемент </em>на вхідне
+                        зображення, та генерують вихідне зображення.</p>
+                    </li>
+                    <li>
+                      <p class="first">Найбільшо базові морфологічні операції:
+                        ерозія та розповсюдження. Вони мають шароке поле
+                        застосувань:</p>
+                      <ul class="simple">
+                        <li>Видалення шуму</li>
+                        <li>Ізоляція індівідуальних елементів та поєднання
+                          розрізнених елементів в зображення.</li>
+                        <li>Пошук гуль та дірок інтенсивності на зображенні</li>
+                      </ul>
+                    </li>
+                    <li>
+                      <p class="first">Ми коротко пояснимо розповсюдження та
+                        ерозію, використовуючи наступне зображення в якості
+                        приклада:</p>
+                      <img src="TutImgProc02-1.png" alt="" /><img src="../../../../_images/Morphology_1_Tutorial_Theory_Original_Image.png"
+                        class="align-center" alt="Original image" /> </li>
+                  </ul>
+                  <div id="dilation" class="section">
+                    <h4>Розповсюдження<a title="Permalink to this headline" href="#dilation"
+                        class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li>
+                        <p class="first">Ці операції складають зі згортання
+                          зображення за допомогою деякого ядра, що може мати
+                          любу форму, звичайно квадрат або коло.</p>
+                      </li>
+                      <li>
+                        <p class="first">Ядро має визначену <em>крапку
+                            прив'язки</em>, що звичайно знаходиться в центі
+                          ядра.</p>
+                      </li>
+                      <li>
+                        <p class="first">По мірі просування ядра по зображенню
+                          ми обчислюємо максимальне значення пікселів, що
+                          перекриваються ядром, та замінюємо піксель зображення
+                          в точці прив'язки на це максимальне значення. Як ви
+                          можете здогадатись, це операція максимізації призведе
+                          до "розростання" світних регіонів (звідки походить
+                          назва <em>розповсюдження</em>). В якості приклада
+                          подивіться на зображення нижче. Додавання розлирення
+                          ми отримаємо таке:</p>
+                        <img src="../../../../_images/Morphology_1_Tutorial_Theory_Dilation.png"
+                          class="align-center" alt="Dilation result - Theory example" /><img
+                          src="TutImgProc02-2.png" alt="" />Тло (яскраве)
+                        розповсюджується кругом темних регіонів літери.</li>
+                    </ul>
+                  </div>
+                  <div id="erosion" class="section">
+                    <h4>Ерозія<a title="Permalink to this headline" href="#erosion"
+                        class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li>
+                        <p class="first">Ця операція є сестрою розповсюдженя. Що
+                          вона робить, це обчислює локальний мінімум по області
+                          ядра.</p>
+                      </li>
+                      <li>
+                        <p class="first">По мірі просівання ядра по зображенню,
+                          ми обчислюємо мінімальне значення пікселя, що
+                          перекривається ядром, та замінюємо піксель зображення
+                          в крапці прив'язки на це мінімальне значення.</p>
+                      </li>
+                      <li>
+                        <p class="first">Аналогічно з прикладом розповсюдження,
+                          ми можемо застосувати оператор ерозії до оригінального
+                          зображення. Ви можете бачити на результаті нижче, що
+                          світлі області зображення (тло), стають тоншими, тоді
+                          як темні зони (літера) стають більшими.</p>
+                        <img src="TutImgProc02-3.png" alt="" /><img src="../../../../_images/Morphology_1_Tutorial_Theory_Erosion.png"
+                          class="align-center" alt="Erosion result - Theory example" />
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div id="code" class="section">
+                <h2>Код<a title="Permalink to this headline" href="#code" class="headerlink">
+                    <br />
+                  </a></h2>
+                <pre><span class="cp">#include "opencv2/imgproc/imgproc.hpp"</span>
+<span class="cp">#include "opencv2/highgui/highgui.hpp"</span>
+<span class="cp">#include "highgui.h"</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="c1">/// Глобальні змінні</span>
+<span class="n">Mat</span> <span class="n">src</span><span class="p">,</span> <span
+class="n">erosion_dst</span><span class="p">,</span> <span class="n">dilation_dst</span><span
+class="p">;</span>
+
+<span class="kt">int</span> <span class="n">erosion_elem</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">erosion_size</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">dilation_elem</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">dilation_size</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_elem</span> <span
+class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_kernel_size</span> <span
+class="o">=</span> <span class="mi">21</span><span class="p">;</span>
+
+<span class="cm">/** Заголовки функцій */</span>
+<span class="kt">void</span> <span class="nf">Erosion</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">);</span>
+<span class="kt">void</span> <span class="nf">Dilation</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">);</span>
+
+<span class="cm">/** @функція main */</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+<span class="p">{</span>
+  <span class="c1">/// Завантаження зображення</span>
+  <span class="n">src</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span
+class="p">]</span> <span class="p">);</span>
+
+  <span class="k">if</span><span class="p">(</span> <span class="o">!</span><span
+class="n">src</span><span class="p">.</span><span class="n">data</span> <span class="p">)</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+
+  <span class="c1">/// Створюємо вікна </span>
+  <span class="n">namedWindow</span><span class="p">(</span> <span class="s">"Erosion Demo"</span><span
+class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span class="p">);</span>
+  <span class="n">namedWindow</span><span class="p">(</span> <span class="s">"Dilation Demo"</span><span
+class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span class="p">);</span>
+  <span class="n">cvMoveWindow</span><span class="p">(</span> <span class="s">"Dilation Demo"</span><span
+class="p">,</span> <span class="n">src</span><span class="p">.</span><span class="n">cols</span><span
+class="p">,</span> <span class="mi">0</span> <span class="p">);</span>
+
+  <span class="c1">/// Створюємо елементи керування для ерозії</span>
+  <span class="n">createTrackbar</span><span class="p">(</span> <span class="s">"Element:</span><span
+class="se">\n</span><span class="s"> 0: Rect </span><span class="se">\n</span><span
+class="s"> 1: Cross </span><span class="se">\n</span><span class="s"> 2: Ellipse"</span><span
+class="p">,</span> <span class="s">"Erosion Demo"</span><span class="p">,</span>
+                  <span class="o">&amp;</span><span class="n">erosion_elem</span><span
+class="p">,</span> <span class="n">max_elem</span><span class="p">,</span>
+                  <span class="n">Erosion</span> <span class="p">);</span>
+
+  <span class="n">createTrackbar</span><span class="p">(</span> <span class="s">"Kernel size:</span><span
+class="se">\n</span><span class="s"> 2n +1"</span><span class="p">,</span> <span
+class="s">"Erosion Demo"</span><span class="p">,</span>
+                  <span class="o">&amp;</span><span class="n">erosion_size</span><span
+class="p">,</span> <span class="n">max_kernel_size</span><span class="p">,</span>
+                  <span class="n">Erosion</span> <span class="p">);</span>
+
+  <span class="c1">/// Створюємо елементи керування для розповсюдження</span>
+  <span class="n">createTrackbar</span><span class="p">(</span> <span class="s">"Element:</span><span
+class="se">\n</span><span class="s"> 0: Rect </span><span class="se">\n</span><span
+class="s"> 1: Cross </span><span class="se">\n</span><span class="s"> 2: Ellipse"</span><span
+class="p">,</span> <span class="s">"Dilation Demo"</span><span class="p">,</span>
+                  <span class="o">&amp;</span><span class="n">dilation_elem</span><span
+class="p">,</span> <span class="n">max_elem</span><span class="p">,</span>
+                  <span class="n">Dilation</span> <span class="p">);</span>
+
+  <span class="n">createTrackbar</span><span class="p">(</span> <span class="s">"Kernel size:</span><span
+class="se">\n</span><span class="s"> 2n +1"</span><span class="p">,</span> <span
+class="s">"Dilation Demo"</span><span class="p">,</span>
+                  <span class="o">&amp;</span><span class="n">dilation_size</span><span
+class="p">,</span> <span class="n">max_kernel_size</span><span class="p">,</span>
+                  <span class="n">Dilation</span> <span class="p">);</span>
+
+  <span class="c1">/// Починаємо без фільтрації</span>
+  <span class="n">Erosion</span><span class="p">(</span> <span class="mi">0</span><span
+class="p">,</span> <span class="mi">0</span> <span class="p">);</span>
+  <span class="n">Dilation</span><span class="p">(</span> <span class="mi">0</span><span
+class="p">,</span> <span class="mi">0</span> <span class="p">);</span>
+
+  <span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span
+class="p">);</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">Erosion</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">erosion_type</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span> <span class="n">erosion_elem</span> <span
+class="o">==</span> <span class="mi">0</span> <span class="p">){</span> <span class="n">erosion_type</span> <span
+class="o">=</span> <span class="n">MORPH_RECT</span><span class="p">;</span> <span
+class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">erosion_elem</span> <span class="o">==</span> <span class="mi">1</span> <span
+class="p">){</span> <span class="n">erosion_type</span> <span class="o">=</span> <span
+class="n">MORPH_CROSS</span><span class="p">;</span> <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">erosion_elem</span> <span class="o">==</span> <span class="mi">2</span><span
+class="p">)</span> <span class="p">{</span> <span class="n">erosion_type</span> <span
+class="o">=</span> <span class="n">MORPH_ELLIPSE</span><span class="p">;</span> <span
+class="p">}</span>
+
+  <span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span
+class="n">getStructuringElement</span><span class="p">(</span> <span class="n">erosion_type</span><span
+class="p">,</span>
+                                       <span class="n">Size</span><span class="p">(</span> <span
+class="mi">2</span><span class="o">*</span><span class="n">erosion_size</span> <span
+class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">erosion_size</span><span class="o">+</span><span
+class="mi">1</span> <span class="p">),</span>
+                                       <span class="n">Point</span><span class="p">(</span> <span
+class="n">erosion_size</span><span class="p">,</span> <span class="n">erosion_size</span> <span
+class="p">)</span> <span class="p">);</span>
+
+  <span class="n">erode</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">erosion_dst</span><span class="p">,</span> <span
+class="n">element</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="s">"Erosion Demo"</span><span
+class="p">,</span> <span class="n">erosion_dst</span> <span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">Dilation</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">dilation_type</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span> <span class="n">dilation_elem</span> <span
+class="o">==</span> <span class="mi">0</span> <span class="p">){</span> <span class="n">dilation_type</span> <span
+class="o">=</span> <span class="n">MORPH_RECT</span><span class="p">;</span> <span
+class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">dilation_elem</span> <span class="o">==</span> <span class="mi">1</span> <span
+class="p">){</span> <span class="n">dilation_type</span> <span class="o">=</span> <span
+class="n">MORPH_CROSS</span><span class="p">;</span> <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">dilation_elem</span> <span class="o">==</span> <span class="mi">2</span><span
+class="p">)</span> <span class="p">{</span> <span class="n">dilation_type</span> <span
+class="o">=</span> <span class="n">MORPH_ELLIPSE</span><span class="p">;</span> <span
+class="p">}</span>
+
+  <span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span
+class="n">getStructuringElement</span><span class="p">(</span> <span class="n">dilation_type</span><span
+class="p">,</span>
+                                       <span class="n">Size</span><span class="p">(</span> <span
+class="mi">2</span><span class="o">*</span><span class="n">dilation_size</span> <span
+class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">dilation_size</span><span class="o">+</span><span
+class="mi">1</span> <span class="p">),</span>
+                                       <span class="n">Point</span><span class="p">(</span> <span
+class="n">dilation_size</span><span class="p">,</span> <span class="n">dilation_size</span> <span
+class="p">)</span> <span class="p">);</span>
+  <span class="n">dilate</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">dilation_dst</span><span class="p">,</span> <span
+class="n">element</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="s">"Dilation Demo"</span><span
+class="p">,</span> <span class="n">dilation_dst</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre>
+                <div class="highlight-cpp"> </div>
+              </div>
+              <div id="explanation" class="section">
+                <h2>Пояснення<a title="Permalink to this headline" href="#explanation"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Більшість з показаного вже відоме вам (якщо
+                      ви не впевнені, будь ласка посилайтесь до попередніх
+                      розділів). Давайте перевіримо головну структуру програми:</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li>Завантажуємо зображення (може бути BGR або відтінків
+                          сірого)</li>
+                        <li>Створюємо два вікна для кожного з ефектів</li>
+                        <li>Створюємо набір з двох Trackbar для кожної операції:
+                          <ul>
+                            <li>Перший “Element” повертає або <strong>erosion_elem</strong>
+                              або <strong>dilation_elem</strong></li>
+                            <li>Другий “Kernel size” повертає <strong>erosion_size</strong>
+                              або <strong>dilation_size</strong> для
+                              відповідної операції.</li>
+                          </ul>
+                        </li>
+                        <li>Кожного разу, коли ми рухаємо слайдер, викликається
+                          користувацька функція <strong>Erosion</strong> або <strong>Dilation</strong>,
+                          що змінюватимуть вихідне зображення відповідно з
+                          поточними значеннями.</li>
+                      </ul>
+                    </div>
+                    <p>Проаналізуємо ці дві функції:</p>
+                  </li>
+                  <li>
+                    <p class="first"><strong>erosion:</strong></p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">void</span> <span class="nf">Erosion</span><span
+class="p">(</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">erosion_type</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span> <span class="n">erosion_elem</span> <span
+class="o">==</span> <span class="mi">0</span> <span class="p">){</span> <span class="n">erosion_type</span> <span
+class="o">=</span> <span class="n">MORPH_RECT</span><span class="p">;</span> <span
+class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">erosion_elem</span> <span class="o">==</span> <span class="mi">1</span> <span
+class="p">){</span> <span class="n">erosion_type</span> <span class="o">=</span> <span
+class="n">MORPH_CROSS</span><span class="p">;</span> <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">erosion_elem</span> <span class="o">==</span> <span class="mi">2</span><span
+class="p">)</span> <span class="p">{</span> <span class="n">erosion_type</span> <span
+class="o">=</span> <span class="n">MORPH_ELLIPSE</span><span class="p">;</span> <span
+class="p">}</span>
+
+  <span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span
+class="n">getStructuringElement</span><span class="p">(</span> <span class="n">erosion_type</span><span
+class="p">,</span>
+                                       <span class="n">Size</span><span class="p">(</span> <span
+class="mi">2</span><span class="o">*</span><span class="n">erosion_size</span> <span
+class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">erosion_size</span><span class="o">+</span><span
+class="mi">1</span> <span class="p">),</span>
+                                       <span class="n">Point</span><span class="p">(</span> <span
+class="n">erosion_size</span><span class="p">,</span> <span class="n">erosion_size</span> <span
+class="p">)</span> <span class="p">);</span>
+  <span class="n">erode</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">erosion_dst</span><span class="p">,</span> <span
+class="n">element</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="s">"Erosion Demo"</span><span
+class="p">,</span> <span class="n">erosion_dst</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+                    </div>
+                    <ul>
+                      <li>
+                        <p class="first">Фукнція виконує операцію <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=erode#erode"
+                            class="reference external">erode</a>. Як ви можете
+                          бачити, вона має три аргументи:</p>
+                        <ul>
+                          <li>
+                            <p class="first"><em>src</em>: Початкове зображення</p>
+                          </li>
+                          <li>
+                            <p class="first"><em>erosion_dst</em>: Вихідне
+                              зображення</p>
+                          </li>
+                          <li>
+                            <p class="first"><em>element</em>: Це ядро, що ми
+                              застосовуємо для виконання операції. Якщо ми не
+                              задаємо його, це будепроста матриця. Інакше ми
+                              можемо задати форму. Для цього ми використовуємо
+                              функцію  <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=getstructuringelement#getstructuringelement"
+                                class="reference external">getStructuringElement</a>:</p>
+                            <blockquote>
+                              <div>
+                                <div class="highlight-cpp">
+                                  <div class="highlight">
+                                    <pre><span class="n">Mat</span> <span class="n">element</span> <span
+class="o">=</span> <span class="n">getStructuringElement</span><span class="p">(</span> <span
+class="n">erosion_type</span><span class="p">,</span>
+                                     <span class="n">Size</span><span class="p">(</span> <span
+class="mi">2</span><span class="o">*</span><span class="n">erosion_size</span> <span
+class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">erosion_size</span><span class="o">+</span><span
+class="mi">1</span> <span class="p">),</span>
+                                     <span class="n">Point</span><span class="p">(</span> <span
+class="n">erosion_size</span><span class="p">,</span> <span class="n">erosion_size</span> <span
+class="p">)</span> <span class="p">);</span>
+</pre></div>
+                                </div>
+                              </div>
+                            </blockquote>
+                            <p>Ми можемо обрати любу з трьох фігур для нашого
+                              ядра:</p>
+                            <div class="enumeratevisibleitemswithsquare container">
+                              <ul class="simple">
+                                <li>Rectangular box: MORPH_RECT</li>
+                                <li>Cross: MORPH_CROSS</li>
+                                <li>Ellipse: MORPH_ELLIPSE</li>
+                              </ul>
+                            </div>
+                            <p>Потім ми встановлюємо розмір ядра та точку
+                              прив'язки. Якщо не вказано, це буде центр.</p>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <p class="first">Це все. Ми готові для виконання нашої
+                          операції</p>
+                      </li>
+                    </ul>
+                    <div class="admonition note">
+                      <p class="first admonition-title">Зауваження</p>
+                      <p class="last">Додатково, є інший параметр, що дозволяє
+                        нам виконати декілька ерозій (ітерацій) за один раз. Ми
+                        не використовуємо тут, прочитати про це можна в
+                        довіднику. </p>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>dilation:</strong></p>
+                  </li>
+                </ol>
+                <p>Кож наведений нижче, він повністю подібний до <strong>erosion</strong>.
+                  Тут ми також маємо опцію визначити ядро, точку прив'язки та
+                  оператор, що буде використовуватись. </p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="kt">void</span> <span class="nf">Dilation</span><span
+class="p">(</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">dilation_type</span><span class="p">;</span>
+  <span class="k">if</span><span class="p">(</span> <span class="n">dilation_elem</span> <span
+class="o">==</span> <span class="mi">0</span> <span class="p">){</span> <span class="n">dilation_type</span> <span
+class="o">=</span> <span class="n">MORPH_RECT</span><span class="p">;</span> <span
+class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">dilation_elem</span> <span class="o">==</span> <span class="mi">1</span> <span
+class="p">){</span> <span class="n">dilation_type</span> <span class="o">=</span> <span
+class="n">MORPH_CROSS</span><span class="p">;</span> <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="n">dilation_elem</span> <span class="o">==</span> <span class="mi">2</span><span
+class="p">)</span> <span class="p">{</span> <span class="n">dilation_type</span> <span
+class="o">=</span> <span class="n">MORPH_ELLIPSE</span><span class="p">;</span> <span
+class="p">}</span>
+
+  <span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span
+class="n">getStructuringElement</span><span class="p">(</span> <span class="n">dilation_type</span><span
+class="p">,</span>
+                                       <span class="n">Size</span><span class="p">(</span> <span
+class="mi">2</span><span class="o">*</span><span class="n">dilation_size</span> <span
+class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">dilation_size</span><span class="o">+</span><span
+class="mi">1</span> <span class="p">),</span>
+                                       <span class="n">Point</span><span class="p">(</span> <span
+class="n">dilation_size</span><span class="p">,</span> <span class="n">dilation_size</span> <span
+class="p">)</span> <span class="p">);</span>
+  <span class="n">dilate</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">dilation_dst</span><span class="p">,</span> <span
+class="n">element</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="s">"Dilation Demo"</span><span
+class="p">,</span> <span class="n">dilation_dst</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+              </div>
+              <div id="results" class="section">
+                <h2>Результат<a title="Permalink to this headline" href="#results"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ul>
+                  <li>
+                    <p class="first">Скомпілюйте код, та виконайте з зображенням
+                      в якості аргументу. Наприклад, ми використали це
+                      зображення:</p>
+                    <pre><img src="file:///home/TRANS/OPENCV/TutImgProc02-Res1.jpeg"
+alt="" /></pre>
+                    <img src="../../../../_images/Morphology_1_Tutorial_Original_Image.jpg"
+                      class="align-center" alt="Original image" />
+                    <p>Нижче навдені результати. Зміна покажчиків одночасно
+                      змінюватиме зображення. Спробуйте це! Ви можете навіть
+                      спробувати додати третій Trackbar для контроля за
+                      кількістю ітерацій. </p>
+                  </li>
+                </ul>
+                <img src="TutImgProc02-Res2.jpeg" alt="" /> </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

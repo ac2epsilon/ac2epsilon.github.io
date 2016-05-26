@@ -1,0 +1,316 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html>
+  <head>
+    <meta content="text/html; charset=windows-1251" http-equiv="content-type">
+    <title>Rendering Model – SVG 1.1 (Second Edition)</title>
+    <meta name="generator" content="LibreOffice 4.3.4.1 (Windows)">
+    <meta name="created" content="00:00:00">
+    <meta name="changed" content="2015-01-05T02:11:18.912000000">
+    <meta name="created" content="00:00:00">
+    <meta name="changed" content="2015-01-05T01:13:09.957000000">
+    <!-- Scalable Vector Graphics (SVG) 1.1 (Second Edition)
+  Chapter 3: Rendering Model
+  $Id: render.html,v 1.1 2011/08/10 03:35:31 schepers Exp $
+  Note: This document is generated from ../master/render.html.  Run "make" from ../master/ to regenerate it.
+ -->
+    <style type="text/css">
+		p { color: #000000; font-family: sans-serif }
+		h1 { background: #ffffff; font-variant: normal; color: #005a9c; font-family: sans-serif; font-style: normal; font-weight: normal; text-align: left }
+		h2 { background: #ffffff; font-variant: normal; color: #005a9c; font-family: sans-serif; font-style: normal; font-weight: normal; text-align: left }
+		h3 { background: #ffffff; font-variant: normal; color: #005a9c; font-family: sans-serif; font-style: normal; font-weight: normal; text-align: left }
+	</style>
+  </head>
+  <body dir="ltr" style="border: medium none ; padding: 0cm; background: rgb(255, 255, 255) none repeat scroll 0%; -moz-background-clip: -moz-initial; -moz-background-origin: -moz-initial; -moz-background-inline-policy: -moz-initial;"
+    bgcolor="#ffffff" lang="ru-RU" text="#000000">
+    <address><sub>Переклад українською - <a href="mailto:ac2epsilon@gmail.com">Чеботарьов
+          Арсеній</a> - Ніжин 2015</sub></address>
+    <p>SVG 1.1 (<span lang="uk-UA">Друга редакція</span>) – 16
+      <span lang="uk-UA">Серпня </span>2011<a href="Overview.html"><span lang="uk-UA">Нагору</span></a>
+      &#8901; <a href="expanded-toc.html"><span lang="en-US">Зм</span><span lang="uk-UA">іст</span></a>
+      &#8901; <a href="concepts.html"><span lang="uk-UA">Попередній</span></a>
+      &#8901; <a href="types.html"><span lang="uk-UA">Наступний</span></a> &#8901;
+      <a href="eltindex.html"><span lang="uk-UA">Елементи</span></a> &#8901;
+      <a href="attindex.html"><span lang="uk-UA">Атрибути</span></a> &#8901;
+      <a href="propidx.html"><span lang="uk-UA">Властивості</span></a></p>
+    <h1>3 <span lang="uk-UA">Модель малювання</span></h1>
+    <h2 lang="uk-UA">Зміст</h2>
+    <ul>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#Introduction"><span lang="uk-UA">3.1
+              Вступ</span></a> </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#PaintersModel"><span lang="uk-UA">3.2
+              Модель </span><span lang="uk-UA">малярів</span></a> </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#RenderingOrder"><span lang="uk-UA">3.3
+              Порядок малювання</span></a> </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#Grouping"><span lang="uk-UA">3.4
+              Як малюються групи</span></a> </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#Elements"><span lang="uk-UA">3.5
+              Як малюються елементи</span></a> </p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#TypesOfGraphicsElements"><span
+              lang="uk-UA">3.6 Типи графічних елементів</span></a></p>
+        <ul>
+          <li>
+            <p style="margin-bottom: 0cm;"><a href="#PaintingShapesAndText"><span
+                  lang="uk-UA">3.6.1 Малювання фігур та тексту</span></a> </p>
+          </li>
+          <li>
+            <p style="margin-bottom: 0cm;"><a href="#PaintingRasterImages"><span
+                  lang="uk-UA">3.6.2 Малювання растрових зображень</span></a></p>
+          </li>
+        </ul>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#FilteringPaintRegions"><span lang="uk-UA">3.7
+              Фільтрація намальованих регіонів</span></a></p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="#ClippingMaskingObjectOpacity"><span
+              lang="uk-UA">3.8 Відсікання, маскування та прозорість об'єктів</span></a></p>
+      </li>
+      <li>
+        <p><a href="#ParentCompositing"><span lang="uk-UA">3.9 Композиція з
+              батьками</span></a></p>
+      </li>
+    </ul>
+    <h2><a name="Introduction"></a>3.1 <span lang="uk-UA">Вступ</span></h2>
+    <p><span lang="uk-UA">Очікується, що реалізації </span>SVG <span lang="uk-UA">будуть
+поводити
+        себе таким чином, що виглядатиме що вони реалізують модель
+        малювання (або відображення), відповідно до того, що описано в цій
+        главі. Реальна реалізація не повинна реалізовувати модель саме таким
+        чином, але результат на кожному з пристроїв, має відповідати тому, що
+        пояснює ця модель. </span>
+    </p>
+    <p><span lang="uk-UA">Додаток <a href="conform.html">вимоги на
+          сумісність</a></span> <span lang="uk-UA">описує протяжність, до якої
+        реальна реалізація може відхилятися від цього опису. На практиці
+        реальна реалізація буде відхилятися трохи, завдяки обмеженням
+        вихідного пристрою (наприклад, може підтримуватись тільки обмежена
+        кількість кольорів), та завдяки практичним обмеженням в реалізації
+        точної математичної моделі (наприклад, для реалістичної потужності
+        криві апроксимуються прямими лініями, апроксимація має бути лише
+        достатньо точною, щоб співпасти з вимогами</span> <span lang="uk-UA">на
+        сумісність). </span>
+    </p>
+    <h2><a name="PaintersModel"></a>3.2 <span lang="uk-UA">Модель </span><span
+        lang="uk-UA">малярів</span></h2>
+    <p>SVG <span lang="uk-UA">використовує «модель </span><span lang="uk-UA">малярів</span><span
+        lang="uk-UA">»</span>
+      <span lang="uk-UA">при малюванні. <a href="intro.html#TermPaint">Малювання</a></span>
+      <span lang="uk-UA">застосовується в послідовних операціях на
+        вихідному пристрої, таким чином, наче кожна з операцій малює на
+        деякій області вихідного пристрою. Коли область перекриває попередньо
+        зафарбовану область, нова фарба частково або повністю закриває стару.
+        Коли фарба не повністю суцільна, результат на вихідному пристрої
+        визначається (математичним) правилом для поєднання, що пояснено в
+      </span><a href="masking.html#SimpleAlphaBlending"><span lang="ru-RU">Альфа
+        </span><span lang="uk-UA">змішування</span></a><span lang="uk-UA">.</span></p>
+    <h2><a name="RenderingOrder"></a>3.3 <span lang="uk-UA">Порядок
+        малювання</span></h2>
+    <p><span lang="uk-UA">Елементи в фрагменті документу </span>SVG <span lang="uk-UA">мають
+неявний
+        порядок малювання, що вказує, які елементи з фрагменту
+        документу SVG будуть “намальовані” першими. Наступні
+        елементи малюються зверху попередньо намальованих елементів</span>.</p>
+    <h2><a name="Grouping"></a>3.4 <span lang="uk-UA">Як малюються групи</span></h2>
+    <p><span lang="uk-UA">Елементи групування, такі як елемент </span><a href="struct.html#GElement">‘g’</a>
+      (<span lang="uk-UA">дивіться <a href="intro.html#TermContainerElement">контейнерні
+          елементи</a></span>) <span lang="uk-UA">мають ефект створення
+        тимчасового окремого полотна, ініціалізованого прозорим чорним, на
+        якому малюються дитячі елементи. По закінченню групи, застосовуються
+        любі <a href="#FilteringPaintRegions">ефекти фільтрів</a>, задані для
+        групи, щоб створити модифіковане тимчасове полотно. Модифіковане
+        тимчасове полотно компонується в фоновому режимі, приймаючи до уваги
+        встановлені на рівні групи <a href="masking.html#Masking">маскування</a></span>
+      <span lang="uk-UA">та <a href="masking.html#OpacityProperty">прозорість</a></span>.</p>
+    <h2><a name="Elements"></a>3.5 <span lang="uk-UA">Як малюються
+        елементи</span></h2>
+    <p><span lang="uk-UA">Окремі <a href="intro.html#TermGraphicsElement">графічні
+          елементи</a></span> <span lang="uk-UA">малюються так, ніби кожний
+        графічний елемент належав до окремої групи: таким чином ефект такий,
+        ніби окремі тимчасові полотна біли створені ля кожного графічного
+        елемента. Елемент спочатку малюється на тимчасовому полотні (дивіться
+        <a href="#PaintingShapesAndText">Малювання фігур та таксту</a></span>
+      <span lang="uk-UA">та <a href="#PaintingRasterImages">Малювання
+          растрових зображень</a> нижче</span>). <span lang="uk-UA">Тоді
+        застосовуються любі <a href="#FilteringPaintRegions">ефекти фільтрів</a>,
+        задані для графічного елементу, що створити модифіковане тимчасове
+        полотно. Модифіковане тимчасове полотно після цього компонується в
+        фоновому режимі, приймаючи до уваги встановлені для цього елементу
+        <a href="#ClippingMaskingObjectOpacity">відсічення</a><a href="#ClippingMaskingObjectOpacity">,
+          маскування</a></span><a href="#ClippingMaskingObjectOpacity"> <span lang="uk-UA">та
+прозорість
+          об'єкту</span></a>.</p>
+    <h2><a name="TypesOfGraphicsElements"></a>3.6 <span lang="uk-UA">Типи
+        графічних елементів</span></h2>
+    <p>SVG <span lang="uk-UA">підтримує три фундаментальні типи <a href="intro.html#TermGraphicsElement">графічних
+          елементів</a>, що можуть бути намальовані на полотні</span>:</p>
+    <ul>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="intro.html#TermShape"><span lang="uk-UA">Фігури</span></a>,
+          <span lang="uk-UA">які представляють деякі комбінації прямих ліній та
+            кривих</span></p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;" lang="uk-UA">Текст, що представляє деяку
+          комбінацію символьних гліфів</p>
+      </li>
+      <li>
+        <p><span lang="uk-UA">Растрові зображення, що репрезентують масив
+            значень, що задають колір малювання та прозорість </span>(<span lang="uk-UA">також
+            відому як </span><span lang="uk-UA"><i>альфа канал</i></span>) <span
+            lang="uk-UA">в послідовностях точок на прямокутній решітці</span>.
+          (SVG <span lang="uk-UA">вимагає підтримки вказаних растрових форматів
+            згідно <a href="conform.html">вимогам на сумісність</a></span>)</p>
+      </li>
+    </ul>
+    <h3><a name="PaintingShapesAndText"></a>3.6.1 <span lang="uk-UA">Малювання
+        фігур та тексту</span></h3>
+    <p><span lang="uk-UA">Фігури та текст можуть бути <a href="intro.html#TermFill">заповненими</a></span>
+      (<span lang="uk-UA">тобто застосовується малювання з середини фігури</span>)
+      <span lang="uk-UA">та <a href="intro.html#TermStroke">обведеними</a></span>
+      (<span lang="uk-UA">коли відбувається малювання вздовж контуру
+        фігури</span>). <span lang="uk-UA">Операція нанесення контуру
+        центрована по контуру об'єкта, таким чином, ефективно половина
+        малювання випадає на внутрішній простір, та половина відбувається
+        ззовні фігури. </span>
+    </p>
+    <p><span lang="uk-UA">Для деяких типів фігур в любому з кутів можуть
+        бути намальовані <a href="painting.html#Markers">символи маркування</a></span>
+      (<span lang="uk-UA">що самі по собі можуть складатися з довільної
+        комбінації фігур, тексту та зображень</span>). <span lang="uk-UA">Кожен
+        символ маркування малюється так, якщо б його графічний вміст був
+        розширений в дереві </span>SVG <span lang="uk-UA">документу прямо
+        після об'єкта фігури, що використовує цей символ маркування.
+        Графічний вміст символу маркування малюється з використанням тих же
+        методів, що й графічних елементів. Символи маркування не можуть бути
+        застосованими до тексту.</span></p>
+    <p><span lang="uk-UA">Заповнення малюється першим, потім контур, та
+        потім символи маркування. Символи маркування малюються в порядку
+        впродовж контуру фігури, з початку фігури до кінця фігури.</span></p>
+    <p><span lang="uk-UA">Кожне заповнення та операція нанесення контуру
+        мають власні налаштування прозорості; таким чином ви можете заповнити
+        та/або обвести фігуру за допомогою напівпрозорого суцільного кольору,
+        з різною прозорістю для операцій заповнення та обведення</span>.</p>
+    <p><span lang="uk-UA">Операції заповнення та обведення повністю
+        незалежні операції малювання; таким чином, якщо ви одночасно
+        заповнюєте та обводите фігуру, половина контуру буде намальована
+        зверху на частині заповнення</span>.</p>
+    <p>SVG <span lang="uk-UA">підтримує наступні вбудовані типи
+        малювання, що можуть бути застосовані для операцій заповнення та
+        обведення</span>:</p>
+    <ul>
+      <li>
+        <p style="margin-bottom: 0cm;"><a href="color.html#ColorIntroduction"><span
+              lang="uk-UA">Суцільний колір</span></a></p>
+      </li>
+      <li>
+        <p style="margin-bottom: 0cm;"><span lang="uk-UA"><a href="pservers.html#Gradients">Градієнти</a>
+          </span>(<span lang="uk-UA">лінійний та радіальний</span>)</p>
+      </li>
+      <li>
+        <p><a href="pservers.html#Patterns"><span lang="uk-UA">Шаблони</span></a></p>
+      </li>
+    </ul>
+    <h3><a name="PaintingRasterImages"></a>3.6.2 <span lang="uk-UA">Малювання
+        растрових зображень</span></h3>
+    <p><span lang="uk-UA">Коли малюється растрове зображення, оригінальні
+        вибірки повторно вибираються, з використанням стандартних алгоритмів,
+        для продукування вибірок в позиціях, що потребують вихідні пристрої.
+        Вимога повторної вибірки обговорюється в <a href="conform.html">вимогах
+          на сумісність</a></span>.</p>
+    <h2><a name="FilteringPaintRegions"></a>3.7 <span lang="uk-UA">Фільтрація
+        регіонів </span><span lang="uk-UA">малювання</span></h2>
+    <p>SVG <span lang="uk-UA">дозволяє, щоб будь-які операції малювання
+        були відфільтровані</span>. (<span lang="uk-UA">Дивіться</span>
+      <a href="filters.html"><span lang="uk-UA">Ефекти фільтрів</span></a>).</p>
+    <p><span lang="uk-UA">В цьому випадку результат має виглядати так,
+        наче операції малювання були застосовані до проміжного полотна,
+        ініціалізованого прозорим чорним, з розміром, що визначається
+        правилами, в <a href="filters.html">Ефектах фільтрування</a>, коли
+        фільтрування відбувається за процесом, визначеним в <a href="filters.html">Ефекти
+          фільтрування</a></span>.</p>
+    <h2><a name="ClippingMaskingObjectOpacity"></a>3.8 <span lang="uk-UA">Відсікання,
+маскування
+        та прозорість </span><span lang="uk-UA">об’єктів</span></h2>
+    <p>SVG <span lang="uk-UA">дозволяє любій операції малювання бути
+        обмеженою до частини регіону вихідного пристрою, з застосуванням
+        відсікання або маскування. Це описано в <a href="masking.html">Відсікання,
+маскування
+          та композиція</a></span>.</p>
+    <p><span lang="uk-UA">Відсікання використовує шлях для визначення
+        регіону на вихідному пристрої, до якого буде застосовано малювання</span>.
+      <span lang="uk-UA">Люба операція малювання, що виконується в зоні дії
+        відсікання, повинна бути намальована так, щоб тільки ті частини
+        пристрою, що підпадають під регіон відсічення, будуть задіяні в
+        малюванні. Шлях відсічення може розглядатись так, якби маска мала
+        чорні пікселі за лаштунками шляху відсічення з альфа значенням нуль,
+        та з пікселями зсередини були білими зі значенням альфа одиниця.
+        “Зсередини” визначається за такими же правилами, що
+        використовуються для визначення внутрішньої сторони шляху на малюнку.
+        Шлях відсічення зазвичай згладжено на пристроях з низькою
+        розподільною спроможністю (дивіться </span><a href="painting.html#ShapeRenderingProperty">‘<span
+          lang="uk-UA">shape-rendering’</span></a><span lang="uk-UA">)</span>.
+      <span lang="uk-UA">Відсікання описано в <a href="masking.html#ClippingPaths">Шляхи
+          відсікання</a></span>.</p>
+    <p><span lang="uk-UA">Маскування використовує свічення кольору та
+        альфа канал в обраному </span>SVG <span lang="uk-UA">елементі для
+        визначення додаткового набору альфа значень, що перемножуються з
+        альфа значеннями, що вже присутні в графіці, до якої застосовується
+        маскування. Маскування описується в <a href="masking.html#Masking">Маскування</a></span>.</p>
+    <p><span lang="uk-UA">Додаткова операція маскування може також бути
+        заданою з використанням глобальної прозорості до набору операцій
+        малювання. В цьому випадку маска є невизначеною, з білим кольором та
+        альфа каналом наданого значення прозорості. </span>(<span lang="uk-UA">Дивіться
+властивість
+        </span><a href="masking.html#OpacityProperty">‘opacity’</a>).</p>
+    <p><span lang="uk-UA">В усіх випадках реалізація </span>SVG <span lang="uk-UA">має
+поводитись
+        так, якби всі малювання та фільтри спершу були виконані на
+        проміжних полотнах, що були ініціалізовані прозорим чорним. Після
+        цього альфа значення на проміжних полотнах перемножуються неявними
+        альфа значеннями з шляху відсікання, альфа значеннями з маски, та
+        альфа значеннями з властивості </span><a href="masking.html#OpacityProperty">‘opacity’</a>.
+      <span lang="uk-UA">Утворені полотна компонуються в фоновому режимі з
+        використанням <a href="masking.html#SimpleAlphaBlending">простого
+          альфа змішування</a></span>. <span lang="uk-UA">Таким чином, якщо
+        область на вихідному пристрої зафарбована з груповою прозорістю </span>50%
+      <span lang="uk-UA">з використанням прозорої червоної фарби, після
+        чого прозорою зеленою фарбою, результат буде таким, ніби вона була
+        пофарбована лише тільки </span>50% <span lang="uk-UA">прозорою
+        зеленою фарбою</span>. <span lang="uk-UA">Це відбувається тому, що
+        прозора зелена фарба повністю перекриває червону фарбу на проміжному
+        полотні, перед тим, як проміжне як ціле малюється на вихідному
+        пристрої</span>.</p>
+    <h2><a name="ParentCompositing"></a>3.9 <span lang="uk-UA">Композиція
+        з батьками</span></h2>
+    <p><span lang="uk-UA">Фрагменти документу </span>SVG <span lang="uk-UA">можуть
+бути
+        напівпрозорими. В багатьох оточеннях (як от веб переглядачі)
+        фрагмент документу </span>SVG <span lang="uk-UA">має остаточній крок
+        композиції, коли документ як ціле прозоро змішується з фоновим
+        полотном</span>.</p>
+    <p style="margin-bottom: 0cm;">SVG 1.1 (<span lang="uk-UA">Друга
+        редакція</span>) – 16 <span lang="uk-UA">Серпня</span>
+      2011<a href="Overview.html"><span lang="uk-UA">Нагору</span></a> &#8901;
+      <a href="expanded-toc.html"><span lang="uk-UA">Зміст</span></a> &#8901;
+      <a href="concepts.html"><span lang="uk-UA">Попередній</span></a> &#8901;
+      <a href="types.html"><span lang="uk-UA">Наступний</span></a> &#8901;
+      <a href="eltindex.html"><span lang="uk-UA">Елементи</span></a> &#8901;
+      <a href="attindex.html"><span lang="uk-UA">Атрибути</span></a> &#8901;
+      <a href="propidx.html"><span lang="uk-UA">Властивості</span></a></p>
+    <p style="margin-bottom: 0cm;">
+      <script src="style/expanders.js"></script><br>
+    </p>
+  </body>
+</html>

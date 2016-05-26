@@ -1,0 +1,564 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Випадковий генератор та текст. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div class="section" id="random-generator-and-text-with-opencv"> <span
+                id="drawing-2"></span>
+              <h1>Випадковий генератор та текст<a class="headerlink" href="#random-generator-and-text-with-opencv"
+                  title="Permalink to this headline"><br />
+                </a></h1>
+              <div class="section" id="goals">
+                <h2>Ціль<a class="headerlink" href="#goals" title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>В цій інструкцї ви навчитесь, як: </p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Використовувати клас <em>Генератора випадкових чисел</em>
+                      (<a class="reference external" href="http://docs.opencv.org/modules/core/doc/operations_on_arrays.html?highlight=rng#rng">RNG</a>),
+                      та як отримати випадкові числа з рівномірним
+                      розподіленням.</li>
+                    <li>Відображувати текст у вікні OpenCV використовуючи функцію <a
+                        class="reference external" href="http://docs.opencv.org/modules/core/doc/drawing_functions.html#puttext">putText</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="section" id="code">
+                <h2>Код<a class="headerlink" href="#code" title="Permalink to this headline">
+                    <br />
+                  </a></h2>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>На попередньому занятті (Базове малювання) ми намалювали
+                      декілька геометричних фігур, задаючи як вхідний параметр
+                      координати (в формі <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#point">Point</a>),
+                      колір, товщину, etc. Ви могли занотувати, що ми надавали
+                      цім значенням специфічні аргументи. </li>
+                    <li>На цьому занятті ми хочемо використовувати <em>випадкові</em>
+                      значення для параметрів малювання. Також ми маємо намір
+                      вкрити наше зображення великою кількістю геометричних
+                      фігур. Оскільки ми будемо генерувати іх на основі випадковостей,
+                      цей процес буде автоматизований та виконуватись за
+                      допомогою <em>циклів</em>. </li>
+                    <li>Цей код є в папці прикладів OpenCV. Також ви можете
+                      отримати його <a class="reference external" href="http://code.opencv.org/projects/opencv/repository/revisions/master/raw/samples/cpp/tutorial_code/core/Matrix/Drawing_2.cpp">тут</a>.
+                      (<em>насправді буде найкраще, якщо ви відновите код прямо
+                        по самому тексту, додаючи непрописані речі, такі, як
+                        декларації змінних, файли заголовків, тощо. Ефект від такого
+                        навчання буде значно кращим. прим.перекл.</em>)</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="section" id="explanation">
+                <h2>Пояснення<a class="headerlink" href="#explanation" title="Permalink to this headline"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Давайте почнемо з нашої функції <em>main</em>.
+                      Ми бачимо, що перша річ, що ми робимо - це створюємо
+                      генератор випадкових чисел, <em>Random Number Generator</em>
+                      (RNG):</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">RNG</span> <span class="nf">rng</span><span
+class="p">(</span> <span class="mh">0xFFFFFFFF</span> <span class="p">);</span>
+</pre></div>
+                    </div>
+                    <p>RNG реалізує генератор випадкових чисел. В цьому
+                      прикладі <em>rng</em> є елементом RNG, ініціалізований
+                      значенням <em>0xFFFFFFFF</em></p>
+                  </li>
+                  <li>
+                    <p class="first">Потім ми створили матрицю, ініціалізовану <em>нулями</em>
+                      (що означає, що це виглядатиме як чорний прямокутник),
+                      задаючи висоту, ширину та тип (<em>загально прийнятно брати
+                        640 пікселів ширини, та 480 висоти, що буде гарно
+                        виглядати на більшості моніторів. прим. перекл.</em>):</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="c1">/// Ініціалізуємо матрицю, заповнену нулями</span>
+<span class="n">Mat</span> <span class="n">image</span> <span class="o">=</span> <span
+class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span> <span
+class="n">window_height</span><span class="p">,</span> <span class="n">window_width</span><span
+class="p">,</span> <span class="n">CV_8UC3</span> <span class="p">);</span>
+
+<span class="c1">/// відображати її на протязі DELAY мс</span>
+<span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">image</span> <span class="p">);</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first">Тоді ми переходимо до малювання шалених
+                      речей. Після того, як ви подивитесь в код, ви побачите, що
+                      він загалом поділений на вісім розділів, що визначені як окремі
+                      функції:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="c1">/// Тепер намалюємо декілька ліній</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Drawing_Random_Lines</span><span
+class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span><span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// трохи прямокутників</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Drawing_Random_Rectangles</span><span
+class="p">(</span><span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span><span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// еліпси</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Drawing_Random_Ellipses</span><span
+class="p">(</span> <span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span> <span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// полігони</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Drawing_Random_Polylines</span><span
+class="p">(</span> <span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span> <span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// зафарбовані полігони</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Drawing_Random_Filled_Polygons</span><span
+class="p">(</span> <span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span> <span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// кола</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Drawing_Random_Circles</span><span
+class="p">(</span> <span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span> <span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// текст в випадкових позиціях</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Displaying_Random_Text</span><span
+class="p">(</span> <span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span> <span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="k">return</span> <span
+class="mi">0</span><span class="p">;</span>
+
+<span class="c1">/// та нарешті дещо велике</span>
+<span class="n">c</span> <span class="o">=</span> <span class="n">Displaying_Big_End</span><span
+class="p">(</span> <span class="n">image</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">rng</span> <span class="p">);</span>
+</pre></div>
+                    </div>
+                    <p>Всі ці функції слідують одному шаблону, так що ми
+                      проаналізуємо тільки деякі з них, оскільки це
+                      стосуватиметься і інших. (<em>Насправді код трохи нудний,
+                        раджу видаліти змінну с, та пов'язані з цім перевірки</em></p>
+                    <pre><span class="k">if</span><span class="p">(</span> <span
+class="n">c</span> <span class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span></pre>
+                    <p><em><em>Скористайтеся з можливості С++ ігнорувати
+                          результат функції, тому можете не модифікувати кожну з
+                          функцій малювання. </em>Тоді поведінка зміниться на
+                        краще: коли користувач натискає клавішу, програма
+                        перериває малювання поточної фігури, та переходить до
+                        наступної. Таким чином можна задати досить довгі
+                        послідовності з багатьох тисяч елементів, але за
+                        бажанням користувача переривати малювання, та загалом
+                        повністю ознайомитись з прикладом за декілька секунд.
+                        прим. перекл.</em>)</p>
+                  </li>
+                  <li>
+                    <p class="first">Подивимость на функцію <strong>Drawing_Random_Lines</strong>:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">int</span> <span class="nf">Drawing_Random_Lines</span><span
+class="p">(</span> <span class="n">Mat</span> <span class="n">image</span><span
+class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">RNG</span> <span class="n">rng</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">lineType</span> <span class="o">=</span> <span
+class="mi">8</span><span class="p">;</span>
+  <span class="n">Point</span> <span class="n">pt1</span><span class="p">,</span> <span
+class="n">pt2</span><span class="p">;</span>
+
+  <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">NUMBER</span><span
+class="p">;</span> <span class="n">i</span><span class="o">++</span> <span class="p">)</span>
+  <span class="p">{</span>
+   <span class="n">pt1</span><span class="p">.</span><span class="n">x</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span> <span class="n">x_1</span><span class="p">,</span> <span class="n">x_2</span> <span
+class="p">);</span>
+   <span class="n">pt1</span><span class="p">.</span><span class="n">y</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span> <span class="n">y_1</span><span class="p">,</span> <span class="n">y_2</span> <span
+class="p">);</span>
+   <span class="n">pt2</span><span class="p">.</span><span class="n">x</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span> <span class="n">x_1</span><span class="p">,</span> <span class="n">x_2</span> <span
+class="p">);</span>
+   <span class="n">pt2</span><span class="p">.</span><span class="n">y</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span> <span class="n">y_1</span><span class="p">,</span> <span class="n">y_2</span> <span
+class="p">);</span>
+
+   <span class="n">line</span><span class="p">(</span> <span class="n">image</span><span
+class="p">,</span> <span class="n">pt1</span><span class="p">,</span> <span class="n">pt2</span><span
+class="p">,</span> <span class="n">randomColor</span><span class="p">(</span><span
+class="n">rng</span><span class="p">),</span> <span class="n">rng</span><span class="p">.</span><span
+class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span
+class="mi">10</span><span class="p">),</span> <span class="mi">8</span> <span class="p">);</span>
+   <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">image</span> <span class="p">);</span>
+   <span class="k">if</span><span class="p">(</span> <span class="n">waitKey</span><span
+class="p">(</span> <span class="n">DELAY</span> <span class="p">)</span> <span class="o">&gt;=</span> <span
+class="mi">0</span> <span class="p">)</span>
+   <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Ми бачимо наступне:</p>
+                    <ul>
+                      <li>
+                        <p class="first">Цикл <em>for</em> буде повторюватись <strong>NUMBER</strong>
+                          разів. Оскільки функція <a class="reference external"
+                            href="http://docs.opencv.org/modules/core/doc/drawing_functions.html#line">line</a>
+                          всередині циклу, це означає, що буде згенеровано <strong>NUMBER</strong>
+                          ліній.</p>
+                      </li>
+                      <li>
+                        <p class="first">Лінії обмежені в прямокутнику <em>pt1</em>
+                          та <em>pt2</em>. Для<em>pt1</em> ми бачимо це:</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">pt1</span><span class="p">.</span><span
+class="n">x</span> <span class="o">=</span> <span class="n">rng</span><span class="p">.</span><span
+class="n">uniform</span><span class="p">(</span> <span class="n">x_1</span><span
+class="p">,</span> <span class="n">x_2</span> <span class="p">);</span>
+<span class="n">pt1</span><span class="p">.</span><span class="n">y</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span> <span class="n">y_1</span><span class="p">,</span> <span class="n">y_2</span> <span
+class="p">);</span>
+</pre></div>
+                        </div>
+                        <ul>
+                          <li>
+                            <p class="first">Ми знаємо, що <strong>rng</strong>
+                              є об'єктом <em>генератора випадкових чисел</em>.
+                              В коді вище ми викликаємо <strong>rng.uniform(a,b)</strong>.
+                              Це генерує нормально розподілені випадкові числа в
+                              диапазоні між значеннями <strong>a</strong> та <strong>b</strong>
+                              (включаючи <strong>a</strong>, виключаючи <strong>b</strong>).</p>
+                          </li>
+                          <li>
+                            <p class="first">З приклада виде ми виводимо, що <em>pt1</em>
+                              та <em>pt2</em> будуть випадковими значеннями,
+                              так що розміщення ліній буде майже
+                              непередбачуване, даючи гарний візуальний ефект (результат
+                              можна бачити наприкінці).</p>
+                          </li>
+                          <li>
+                            <p class="first">Подальше достеження показує, що в аргументах <a
+                                class="reference external" href="http://docs.opencv.org/modules/core/doc/drawing_functions.html#line">line</a>
+                              ми вводимо колір наступним чином:</p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">randomColor</span><span class="p">(</span><span
+class="n">rng</span><span class="p">)</span>
+</pre></div>
+                            </div>
+                            <p>Ось реалізація цієї функції:</p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="k">static</span> <span class="n">Scalar</span> <span
+class="nf">randomColor</span><span class="p">(</span> <span class="n">RNG</span><span
+class="o">&amp;</span> <span class="n">rng</span> <span class="p">)</span>
+  <span class="p">{</span>
+  <span class="kt">int</span> <span class="n">icolor</span> <span class="o">=</span> <span
+class="p">(</span><span class="kt">unsigned</span><span class="p">)</span> <span
+class="n">rng</span><span class="p">;</span>
+  <span class="k">return</span> <span class="n">Scalar</span><span class="p">(</span> <span
+class="n">icolor</span><span class="o">&amp;</span><span class="mi">255</span><span
+class="p">,</span> <span class="p">(</span><span class="n">icolor</span><span class="o">&gt;&gt;</span><span
+class="mi">8</span><span class="p">)</span><span class="o">&amp;</span><span class="mi">255</span><span
+class="p">,</span> <span class="p">(</span><span class="n">icolor</span><span class="o">&gt;&gt;</span><span
+class="mi">16</span><span class="p">)</span><span class="o">&amp;</span><span class="mi">255</span> <span
+class="p">);</span>
+  <span class="p">}</span>
+</pre></div>
+                            </div>
+                            <p>Як ми можемо бачити, вона повертає <em>Scalar</em>
+                              з трьома випадковими значеннями, що
+                              використовуються як <em>R</em>, <em>G</em> та <em>B</em>
+                              параметри для кольору лінії. Таким чином колір
+                              також буде випадковим.</p>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                  <li>
+                    <p class="first">Пояснення вище застосовується для фукнцій,
+                      що генерують кола, еліпси, полігони, тощо. Параметри, такі
+                      як <em>центр</em> або <em>верхівки</em> також
+                      генеруються випадково.</p>
+                  </li>
+                  <li>
+                    <p class="first">Перед закінченням ми також подивимость на функції <em>Display_Random_Text</em>
+                      та <em>Displaying_Big_End</em>,
+                      оскільки вони мають декулька цікавих особливостей:</p>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Display_Random_Text:</strong></p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">int</span> <span class="nf">Displaying_Random_Text</span><span
+class="p">(</span> <span class="n">Mat</span> <span class="n">image</span><span
+class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">RNG</span> <span class="n">rng</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">lineType</span> <span class="o">=</span> <span
+class="mi">8</span><span class="p">;</span>
+
+  <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">NUMBER</span><span
+class="p">;</span> <span class="n">i</span><span class="o">++</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">Point</span> <span class="n">org</span><span class="p">;</span>
+    <span class="n">org</span><span class="p">.</span><span class="n">x</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span><span class="n">x_1</span><span class="p">,</span> <span class="n">x_2</span><span
+class="p">);</span>
+    <span class="n">org</span><span class="p">.</span><span class="n">y</span> <span
+class="o">=</span> <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span><span class="n">y_1</span><span class="p">,</span> <span class="n">y_2</span><span
+class="p">);</span>
+
+    <span class="n">putText</span><span class="p">(</span> <span class="n">image</span><span
+class="p">,</span> <span class="s">"Testing text rendering"</span><span class="p">,</span> <span
+class="n">org</span><span class="p">,</span> <span class="n">rng</span><span class="p">.</span><span
+class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span
+class="mi">8</span><span class="p">),</span>
+             <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span
+class="p">)</span><span class="o">*</span><span class="mf">0.05</span><span class="o">+</span><span
+class="mf">0.1</span><span class="p">,</span> <span class="n">randomColor</span><span
+class="p">(</span><span class="n">rng</span><span class="p">),</span> <span class="n">rng</span><span
+class="p">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span
+class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">lineType</span><span
+class="p">);</span>
+
+    <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">image</span> <span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span> <span class="n">waitKey</span><span
+class="p">(</span><span class="n">DELAY</span><span class="p">)</span> <span class="o">&gt;=</span> <span
+class="mi">0</span> <span class="p">)</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Все виглядає знайомим, окрім виразу:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">putText</span><span class="p">(</span> <span
+class="n">image</span><span class="p">,</span> <span class="s">"Testing text rendering"</span><span
+class="p">,</span> <span class="n">org</span><span class="p">,</span> <span class="n">rng</span><span
+class="p">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">0</span><span
+class="p">,</span><span class="mi">8</span><span class="p">),</span>
+         <span class="n">rng</span><span class="p">.</span><span class="n">uniform</span><span
+class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span
+class="p">)</span><span class="o">*</span><span class="mf">0.05</span><span class="o">+</span><span
+class="mf">0.1</span><span class="p">,</span> <span class="n">randomColor</span><span
+class="p">(</span><span class="n">rng</span><span class="p">),</span> <span class="n">rng</span><span
+class="p">.</span><span class="n">uniform</span><span class="p">(</span><span class="mi">1</span><span
+class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">lineType</span><span
+class="p">);</span>
+</pre></div>
+                    </div>
+                    <p>Що робить функція <a class="reference external" href="http://docs.opencv.org/modules/core/doc/drawing_functions.html#puttext">putText</a>?
+                      В нашому прикладі:</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li>Малює текст <strong>“Testing text rendering”</strong>
+                          на <strong>image</strong></li>
+                        <li>Верхній лівий кут тексту буде розташований в Point <strong>org</strong></li>
+                        <li>Тип шрифту буде випадковим в певному диапазоні.</li>
+                        <li>Маштам шрифту задається виразом<strong>rng.uniform(0,
+                            100)x0.05 + 0.1</strong>.</li>
+                        <li>Колір тексту є випадковим (задається <strong>randomColor(rng)</strong>)</li>
+                        <li>Товщина тексту в диапазоні від 1 та 10, що задано як
+                          <strong>rng.uniform(1,10)</strong></li>
+                      </ul>
+                    </div>
+                    <p>Як результат ми отримаємо (аналогічно з іншими функціями)
+                      <strong>NUMBER</strong> текстових рядків поверху
+                      зображення, в випадкових місцях.</p>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Displaying_Big_End</strong></p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">int</span> <span class="nf">Displaying_Big_End</span><span
+class="p">(</span> <span class="n">Mat</span> <span class="n">image</span><span
+class="p">,</span> <span class="kt">char</span><span class="o">*</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">RNG</span> <span class="n">rng</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="n">Size</span> <span class="n">textsize</span> <span class="o">=</span> <span
+class="n">getTextSize</span><span class="p">(</span><span class="s">"OpenCV forever!"</span><span
+class="p">,</span> <span class="n">CV_FONT_HERSHEY_COMPLEX</span><span class="p">,</span> <span
+class="mi">3</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span
+class="mi">0</span><span class="p">);</span>
+  <span class="n">Point</span> <span class="n">org</span><span class="p">((</span><span
+class="n">window_width</span> <span class="o">-</span> <span class="n">textsize</span><span
+class="p">.</span><span class="n">width</span><span class="p">)</span><span class="o">/</span><span
+class="mi">2</span><span class="p">,</span> <span class="p">(</span><span class="n">window_height</span> <span
+class="o">-</span> <span class="n">textsize</span><span class="p">.</span><span
+class="n">height</span><span class="p">)</span><span class="o">/</span><span class="mi">2</span><span
+class="p">);</span>
+  <span class="kt">int</span> <span class="n">lineType</span> <span class="o">=</span> <span
+class="mi">8</span><span class="p">;</span>
+
+  <span class="n">Mat</span> <span class="n">image2</span><span class="p">;</span>
+
+  <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="mi">255</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">+=</span> <span class="mi">2</span> <span
+class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">image2</span> <span class="o">=</span> <span class="n">image</span> <span
+class="o">-</span> <span class="n">Scalar</span><span class="o">::</span><span class="n">all</span><span
+class="p">(</span><span class="n">i</span><span class="p">);</span>
+    <span class="n">putText</span><span class="p">(</span> <span class="n">image2</span><span
+class="p">,</span> <span class="s">"OpenCV forever!"</span><span class="p">,</span> <span
+class="n">org</span><span class="p">,</span> <span class="n">CV_FONT_HERSHEY_COMPLEX</span><span
+class="p">,</span> <span class="mi">3</span><span class="p">,</span>
+           <span class="n">Scalar</span><span class="p">(</span><span class="n">i</span><span
+class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="mi">255</span><span
+class="p">),</span> <span class="mi">5</span><span class="p">,</span> <span class="n">lineType</span> <span
+class="p">);</span>
+
+    <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">image2</span> <span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span> <span class="n">waitKey</span><span
+class="p">(</span><span class="n">DELAY</span><span class="p">)</span> <span class="o">&gt;=</span> <span
+class="mi">0</span> <span class="p">)</span>
+      <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+  <span class="p">}</span>
+
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Окрім функції <strong>getTextSize</strong> (що отримує
+                      розмір тексту аргумента), в тексті циклу можна помітити
+                      нову операцію:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">image2</span> <span class="o">=</span> <span
+class="n">image</span> <span class="o">-</span> <span class="n">Scalar</span><span
+class="o">::</span><span class="n">all</span><span class="p">(</span><span class="n">i</span><span
+class="p">)</span>
+</pre></div>
+                    </div>
+                    <p>Таким чином <strong>image2</strong> є різницею <strong>image</strong>
+                      та <strong>Scalar::all(i)</strong>. Фактично, те що
+                      відбувається, це кожний піксель <strong>image2</strong>
+                      буде результатом віднімання кожного пікселя <strong>image</strong>
+                      мінус значення <strong>i</strong> (пам'ятайте, що кожний
+                      піксель представлений декількома значеннями, такими як R,
+                      G та B, так що кожний з них буде модифіковано). </p>
+                  </li>
+                </ol>
+                <blockquote>
+                  <div>Також пам'ятайте, що операція віднімання завжди виконує
+                    внутрішньо операцію підсвітки, що означає, що отриманий результат
+                    буде завжди в дозволеному диапазоні (не буде від'ємним, та в
+                    диапазоні 0 та 255, в нашому випадку).</div>
+                </blockquote>
+              </div>
+              <div class="section" id="result">
+                <h2>Результат<a class="headerlink" href="#result" title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Як ви тільки що бачили в розділі Код, програма буде
+                  послідовно виконувати різні фукнції малювання, що будуть
+                  продукувати наступне:</p>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Спочатку <em>NUMBER</em> ліній з'явиться
+                      на екрані, так, як можна бачити на цьому скриншоті:</p>
+                    <img src="Random1.jpg" alt="Rundom Results 1" /><img alt="Drawing Tutorial 2 - Final Result 0"
+                      class="align-center" src="../../../../_images/Drawing_2_Tutorial_Result_0.jpg" />
+                  </li>
+                  <li>
+                    <p class="first">Потім з'являться інші фігури, на цей раз <em>прямокутники</em>.</p>
+                  </li>
+                  <li>
+                    <p class="first">Далі еліпси, кожний в випадковій позиції,
+                      випадкового розміра та випадкової довжини дуги:</p>
+                    <img src="Random2.jpg" alt="Rundom Results 2" /><img alt="Drawing Tutorial 2 - Final Result 2"
+                      class="align-center" src="../../../../_images/Drawing_2_Tutorial_Result_2.jpg" />
+                  </li>
+                  <li>
+                    <p class="first">Тепер полігони з сегментами, знову в
+                      випадковому порядку.</p>
+                    <img src="Random3.jpg" alt="Rundom Results 3" /><img alt="Drawing Tutorial 2 - Final Result 3"
+                      class="align-center" src="../../../../_images/Drawing_2_Tutorial_Result_3.jpg" />
+                  </li>
+                  <li>
+                    <p class="first">За ними послідують заповнені полігони (в
+                      цьому прикладі - трикутники).</p>
+                  </li>
+                  <li>
+                    <p class="first">Остання фігура - кола!</p>
+                    <img src="Random4.jpg" alt="Rundom Results 4" /><img alt="Drawing Tutorial 2 - Final Result 5"
+                      class="align-center" src="../../../../_images/Drawing_2_Tutorial_Result_5.jpg" />
+                  </li>
+                  <li>
+                    <p class="first">Наприкінці з'явиться текст <em>“Testing
+                        Text Rendering”</em> з різними шрифтами, розмірами,
+                      кольорами та в випадкових позиціях.</p>
+                  </li>
+                  <li>
+                    <p class="first">І великий завершальний аккорд (що також є
+                      великою правдою):</p>
+                    <img src="Random5.jpg" alt="Rundom Results 5" /><img alt="Drawing Tutorial 2 - Final Result 7"
+                      class="align-center" src="../../../../_images/Drawing_2_Tutorial_Result_7.jpg" />
+                  </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

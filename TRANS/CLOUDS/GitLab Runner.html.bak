@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta  content="text/html; charset=UTF-8"  http-equiv="content-type">
+    <title>GitLab Runner</title>
+  </head>
+  <body>
+    <p>
+      <meta  http-equiv="content-type"  content="text/html; charset=utf-8">
+    </p>
+    <address> Переклад українською - <a  href="mailto:ac2epsilon@gmail.com">Арсеній
+        Чеботарьов</a> - Ніжин 2016</address>
+    <div  class="image-title image-title-small"  style="box-sizing: border-box; color: rgb(51, 51, 51); font-family: 'Source Sans Pro', sans-serif; font-size: 14px; font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: 20px; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 1; word-spacing: 0px; -webkit-text-stroke-width: 0px;">
+      <div  class="color-bg"  style="box-sizing: border-box; position: relative; display: block; padding: 40px; margin-top: 0px; color: rgb(255, 255, 255); font-weight: 600; font-size: 55px; text-align: center; height: auto; background: linear-gradient(-225deg, rgba(85, 68, 136, 0.8) 0%, rgba(72, 135, 197, 0.921569) 100%);">
+        <h1  style="box-sizing: border-box; font-size: 55px; margin: 0px; font-family: inherit; font-weight: 400; line-height: 1; color: rgb(255, 255, 255);">Встановлення
+          GitLab Runner для безперервної інтеграції</h1>
+      </div>
+    </div>
+    <div  class="container full-post"  style="box-sizing: border-box; margin-right: auto; margin-left: auto; padding-left: 15px; padding-right: 15px; width: 970px; color: rgb(51, 51, 51); font-family: 'Source Sans Pro', sans-serif; font-size: 14px; font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: 20px; orphans: auto; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 1; word-spacing: 0px; -webkit-text-stroke-width: 0px; background: rgb(255, 255, 255);">
+      <div  class="blog-entry"  style="box-sizing: border-box; margin-right: auto; margin-left: auto; max-width: 760px; word-wrap: break-word;">
+        <h4  class="date"  style="box-sizing: border-box; font-family: inherit; font-weight: 300; line-height: 1.1; color: rgb(153, 153, 153); margin-top: 10px; margin-bottom: 10px; font-size: 16px; margin-left: 4px; padding-bottom: 10px;">
+          <div  class="author"  style="box-sizing: border-box; display: inline; font-weight: 600;"><a
+               href="https://www.twitter.com/ahmetkizilay"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 600; font-size: 16px; line-height: normal; background-color: transparent;">Ahmet
+              Kizilay<span  class="Apple-converted-space">&nbsp;</span></a></div>
+          Mar 1, 2016</h4>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Існує
+          багато базованих на хмарах провайдерів безперервної інтеграції (continuous
+          integration, CI), та більшість з них щедро пропонує безкоштовні плани
+          для проектів з відкритим кодом. Хоча це гарно для спільноти
+          відкритиого коду, платні плани можуть стати дещо закоштовними для
+          малих стартапів, що схиляються до утримування їх коди приватним. В
+          такій екосистемі GitLab Inc. стоїть окремо, як жидедайна опція з
+          необмеженими приватними репозитаріями та GitLab Runner, безкоштовним
+          та відкритим інструментом для автоматизації тестування та побудови
+          проектів, таким чином даючи розробникам свободу експериментувати з
+          різними підходами до побудови оптимального конвеєра для ваших цілей.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Ця
+          інструкція продемонструє, як розпочати з потоком CI з
+          використанням&nbsp;<span  class="Apple-converted-space"></span><a  href="https://gitlab.com/gitlab-org/gitlab-ci-multi-runner"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">GitLab
+            Runner</a>. Спочатку ми встановимо простий проект на NodeJS,
+          розташований на Gitlab.com, щоб прогнати тести на машині побудови,
+          зпровадженій GitLab Inc.
+          Потім ми встановимо та сконфігуруємо наш власний runner на приватному
+          сервері. Нарешті, ми перейдемо до добрих практик для прискорення час
+          побудови, по мірі зростання проекту. В кінці цієї інструкції ви
+          зможете комфортно будувати ваші CI рішення, налаштовувати його під
+          себе для ваших існуючих проектів. Цей пост буде корисний для
+          менеджерів проектів, що шукають CI рішення, та розробників, що бажають
+          створювати ріхомі тестами та стійки софтверні проекти.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Введення
+          в простий проект</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Перед
+          тим, як ми почнемо з GitLab Runner, давайте коротко переглянемо цей
+          простий <span  class="Apple-converted-space"></span><a  href="https://gitlab.com/gitlab-examples/nodejs/"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">проект
+            NodeJS</a><span  class="Apple-converted-space">, з яким ми буде
+            робити на протязі цього гайда</span>. Наш проект містить два
+          незалежні модуля, що ми бажаємо протестувати. Один модуль містить
+          деякі утілітні методи для асинхронних операцій. Інший модуль реалізує
+          просту огортку коло бази даних PostgreSQL, для вставляння та отримання
+          записів. Дякуючи останньому модулю для виконання тестів нам буде треба
+          екземпляр&nbsp; бази даних в нашому оточенні тестування.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Після
+          запуску тестової бази даних ми можемо виконати тести локально, та
+          побачити, що всі тести проходять.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">DB_USER=[db-username] \
+BD_PASS=[db-password] \
+DB_HOST=[db-host:db-port] \
+node ./specs/start.js
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Ви
+          можете вільно дослідити&nbsp;<span  class="Apple-converted-space"></span><a
+             href="https://gitlab.com/gitlab-examples/nodejs/tree/master"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">джерельний
+            код</a><span  class="Apple-converted-space"> </span>проекту, якщо
+          маєте бажання.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Починаємо
+          з GitLab Runner</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">GitLab
+          Runner перемикається кожного разу, коли робиться push до центрального
+          пепозитарію, якщо присутній файл&nbsp;<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code><span
+             class="Apple-converted-space"> </span>(коли явно не вказано, що
+          цього робити не траба). Цей файл уточнює, як налаштуватя оточення
+          побудови, та які команди треба виконати для побудови, тестування, та
+          розгортання нашого проекту в послідовності завдань, що можуть бути
+          розпаралелені. В цій інструкції ми будемо використовувати GitLab
+          Runner вбудований виконавець <span  class="Apple-converted-space"></span><strong
+             style="box-sizing: border-box; font-weight: bold;">docker</strong><span
+             class="Apple-converted-space">, щоб налаштувати оточення побудови</span>.
+          Цей виконавець проведить потужну абстракцію, що використовує Docker в
+          фоні, щоб завантажити наше застосування, та виконувати тести в
+          контейнері. На додаток, цей виконавець зручно починає любі залежні
+          сервіси (такі як бази даних) перед виконанням завдань, та пов'язує
+          контейнери, щоб вони комунікували один з одним.&nbsp;</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Створення
+          файла<span  class="Apple-converted-space"> </span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 27px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code></h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Ми
+          будемо додавати наш файл <span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code><span
+             class="Apple-converted-space"> </span>до кореневого каталогу
+          нашого проекта.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">image: node:4.2.2
+
+services:
+  - postgres:9.5.0
+
+all_tests:
+  script:
+   - npm install
+   - node ./specs/start.js
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Тепер
+          перейдемо до частин нашого файла.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Перший
+          рядок вказує базовий образ, до якого будуть використовуватись тести.
+          Оскільки ми тестуємо застосування NodeJS, наш базавий образ буде
+          останньою версією NodeJS.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Розділ&nbsp;<span
+             class="Apple-converted-space"></span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">services</code><span
+             class="Apple-converted-space"> - це місце, де перелічені зовнішні
+            залежності</span>. В наших тестах нам треба база даних PostgreSQL,
+          так що ми додаємо образ для цієї бази даних. Тут може бути вкзаний любий
+          образ Docker, такий як<span  class="Apple-converted-space"> </span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">mysql</code><span
+             class="Apple-converted-space"> для баз даних</span> MySQL. База
+          даних буде починати з параметрами користувача по замовчанню перез
+          запуском тестів, та вона буде доступна під ім'ям вузла&nbsp;<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">postgres</code><span
+             class="Apple-converted-space"> на порту </span>PostgreSQL по
+          замовчанню, 5432.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Якщо
+          нам треба використати любі інші параметри, ніж по замовчанню, ми
+          можемо додати їх в тег<code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">variables</code>.
+          Значення під цім тегом передані до всіх сервісів під час ініціалізації.
+          Як зазначено в<span  class="Apple-converted-space"> </span><a  href="http://doc.gitlab.com/ce/ci/services/postgres.html"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">документації</a>
+          PostgreSQL, наступні налаштування будуть переписувати користувача та
+          пароль до бази даних:</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">image: node:4.2.2
+
+variables:
+  POSTGRES_USER: testuser
+  POSTGRES_PASSWORD: testpass
+
+services:
+  - postgres:9.5.0
+
+all_tests:
+  script:
+   - npm install
+   - node ./specs/start.js
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Зауважте,
+          що ці тестові дані є внутрішньми для нашого проекту, так що є OK
+          просто дадати їх до файлу<code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code>.
+          Однак вам слідує реєструвати любі зовнішні змінні конфігурації, такі
+          як ключі API, на сторінці<span  class="Apple-converted-space"> </span><strong
+             style="box-sizing: border-box; font-weight: bold;">Secure Variables</strong>
+          (<strong  style="box-sizing: border-box; font-weight: bold;">Settings
+            -&gt; Variables</strong>), та посилатись на них тут за ім'ям.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">В
+          фінальній секції ми визначаєте завдання, назване<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">all_tests</code>,
+          що містить команду, що виконує наші тести. В суб-секції&nbsp;<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">script</code>
+          ми просто додаємо наші команди для встановлення залежностей та запуску
+          тестів.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Щоб
+          бути надобережними, ми можемо перевірити lint наш yml file на<span  class="Apple-converted-space">
+          </span><a  href="https://gitlab.com/ci/lint"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">GitLab
+            CI Lint page</a><span  class="Apple-converted-space">, щоб
+            подивитись порушення в кроках побудови, та перевірити, що ми не
+            допустили опечатку</span>.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Використання
+          загальних виконавців</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">GitLab
+          Inc. провадить декілька серверів за допомогою встановленого GitLab
+          Runner. На сторінці<span  class="Apple-converted-space"> </span><strong
+             style="box-sizing: border-box; font-weight: bold;">Runners</strong><span
+             class="Apple-converted-space"> </span>(<strong  style="box-sizing: border-box; font-weight: bold;">Settings
+            -&gt; Runners</strong>), ми можемо бачити список доступних наразі
+          виконавців. Ми можемо бачити, що Shared Runners завжди доступні, так
+          що ми можемо безпосередньо поставити в чергу нашу першу побудову,
+          просто поклавши наш файл <code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code><span
+             class="Apple-converted-space"> в репозитарій</span>. Ми можемо
+          відсліджувати прогрес нашої побудови на сторінці<span  class="Apple-converted-space">
+          </span><a  href="https://gitlab.com/gitlab-examples/nodejs/builds"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">Builds</a>.
+          Коли наша побудова починаєтсья, ми можемо бачити, що вона завершується
+          успіхом через декілька хвилин.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Встановлення
+          специфічного виконавця</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Хоча
+          ці Shared Runners чудові для отримання відчуття, як почати робити з
+          CI, тепер ми будемо інсталювати GitLab Runner на приватний сервер, щоб
+          виконувати ексклюзивно для нашого проекту. Ми будемо використовувати
+          точно те ж програмне забезпечення <a  href="https://gitlab.com/gitlab-org/gitlab-ci-multi-runner"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">з
+            відкритим кодом</a><span  class="Apple-converted-space">, що
+            використовує&nbsp; </span>GitLab.com для своїх Shared Runners, так
+          що ми будемо мати додаткову вигоду оптимізацію та безпеку наших
+          побудов для специфічного проекту.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Ми
+          будемо потребувати екземпляр сервера, де ми будемо встановлювати
+          GitLab Runner. GitLab Runner може бути встановлений на<span  class="Apple-converted-space">
+          </span><a  href="https://gitlab.com/gitlab-org/gitlab-ci-multi-runner/blob/master/docs/install/linux-repository.md"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">Linux</a>,<span
+             class="Apple-converted-space">&nbsp;</span><a  href="https://gitlab.com/gitlab-org/gitlab-ci-multi-runner/blob/master/docs/install/osx.md"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">OSX</a><span
+             class="Apple-converted-space"> та</span><span  class="Apple-converted-space">
+          </span><a  href="https://gitlab.com/gitlab-org/gitlab-ci-multi-runner/blob/master/docs/install/windows.md"
+             style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">Windows</a>.
+          Для нашого простого проекту буде достатньо малого сервера з 1 GB RAM.
+          На додаток, оскільки ми будемо виконувати все це в Docker, нам також
+          знадобиться встановлений<span  class="Apple-converted-space"> </span><a
+             href="https://docs.docker.com/engine/installation/"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">Docker
+            Engine</a>.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Під
+          час встановлення ми будемо реєструвати нового виконавця за допомогою
+          наступної команди:</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">gitlab-ci-multi-runner register
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Реєстрація
+          буде проводити нас через декілька кроків щоб сконфігурувати нашого
+          виконавця.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">Running in system-mode.                            
+
+Please enter the gitlab-ci coordinator URL (e.g. https://gitlab.com/ci):
+https://gitlab.com/ci
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Оскільки
+          наш проект міститься на Gitlab.com, ми будемо використовувати координатор
+          по замовчанню gitlab-ci
+          URL.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">Please enter the gitlab-ci token for this runner:
+[your private gitlab-ci token]
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">На
+          сторінці&nbsp;<span  class="Apple-converted-space"></span><strong  style="box-sizing: border-box; font-weight: bold;">Runners</strong>
+          (<strong  style="box-sizing: border-box; font-weight: bold;">Settings
+            -&gt; Runners</strong>), ми будемо копіювати приватний токен
+          gitlab-ci для нашого проекту, та вставимо його сюда.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">Please enter the gitlab-ci description for this runner:
+[ubuntu-2gb-nyc3-01]: new-docker-executor
+Please enter the gitlab-ci tags for this runner (comma separated):
+docker
+Registering runner... succeeded                     runner=8tB1zBiU
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Є
+          гарною практикою надавати описое ім'я та теги до виконувачів, щоб
+          запам'ятати, та потім посилатись на них. Ми додамо тег&nbsp;<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">docker</code><span
+             class="Apple-converted-space"> до цього виконувача, оскільки ми
+            можемо виконувати любий </span>образ Docker та сервіси разом з ним.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">Please enter the executor: virtualbox, ssh, shell, parallels, docker, docker-ssh:
+docker
+Please enter the default Docker image (eg. ruby:2.1):
+node:4.2.2
+Runner registered successfully. Feel free to start it, but if it's running already the config should be automatically reloaded!
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Зауважте,
+          що є декілька достпних опцій. В цій точці, ми використовуємо
+          виконавець<span  class="Apple-converted-space"></span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">docker</code>.
+          Запам'ятайте з файла&nbsp;<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code>,
+          наш базовий образ вже встановлений в node:4.2.2. Зауважте, що по
+          замовчанню образ Docker , вказаний тут, буде використовуватись, тільки
+          якщо файл<span  class="Apple-converted-space"> </span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code><span
+             class="Apple-converted-space"> не містить декларації образу</span>.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Специфічні
+          виконавці мають перевагу над Shared Runners. Наш проект не буде
+          використовувати Shared Runners, доки доступний специфічний виконувач.
+          Якщо бажаєте, ми можемо відключити Shared Runners на сторінці&nbsp;<span
+             class="Apple-converted-space"> </span><strong  style="box-sizing: border-box; font-weight: bold;">Runners</strong>
+          (<strong  style="box-sizing: border-box; font-weight: bold;">Settings
+            -&gt; Runners</strong>), через переключення кнопки Shared Runners.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Нарешті,
+          ми вже готові перейти на нову побудову. Ми повинні бачити нову
+          побудову, що виконується з нашим власним виконувачем, на приватному
+          сервері.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Підключення
+          кешу</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Тепер,
+          коли ми маємо функціональний конвеєр CI, давайте поговоримо, як
+          зробити його швидшим та більш ефективним.</p>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Щоб
+          почати, ми можемо виключити надлишкове завантаження бібліотек
+          залежностей, кешуючи та відновлюючі залежності між побудовами. Для
+          проектів NodeJS, залежні бібліотеки встановлюються в папку з назвою<span
+             class="Apple-converted-space"> </span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">node_modules</code>.
+          Ми повинні вказати цей каталог як кешований в файлі<span  class="Apple-converted-space">
+          </span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">.gitlab-ci.yml</code>:</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">image: node:4.2.2
+
+cache:
+  paths:
+  - node_modules/
+
+services:
+  - postgres:9.5.0
+
+all_tests:
+  script:
+   - npm install
+   - node ./specs/start.js
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Після
+          успішної побудови ви повинні побачити, що папка&nbsp;<span  class="Apple-converted-space"></span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">node_modules</code><span
+             class="Apple-converted-space"> </span>архівується в кінці побудови,
+          та повертається на початку побудови. Доки наші файли залежності зостаються
+          незмінними, бібліотеки не будуть завантажуватись, та наш загальний час
+          побудови буде значно зменшений.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Додавання
+          конкурентності</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Інша
+          модифікація, що ми можемо додати для прискорення процеса побудови, є
+          паралелізація тестів. В нашому проекті ми можемо розділяти тести на два
+          завдання. Один для тестів баз даних, та інший для тестів асинхронних
+          модулів. Більше того, ми можемо обмежити сервіс PostgreSQL, щоб він
+          робив тільки для завдання нашої бази даних, оскільки ми не потребуємо
+          бази даних для модуля async.</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">image: node:4.2.2
+
+cache:
+  paths:
+  - node_modules/
+
+test_async:
+  script:
+   - npm install
+   - node ./specs/start.js ./specs/async.spec.js
+
+test_db:
+  services:
+    - postgres:9.5.0
+  script:
+   - npm install
+   - node ./specs/start.js ./specs/db-postgres.spec.js
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">Зауважте,
+          що ми все ще потребуємо ввести конкурентність в процес побудови. Щоб
+          зробити це, ми можемо або створити новий сервер, та зареєструвати
+          виконувач для нашого проекту, або збільшити рівень конкурентності для
+          існуючого виконувача. We will go with the latter and edit the<span  class="Apple-converted-space">&nbsp;</span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">concurrent</code><span
+             class="Apple-converted-space">&nbsp;</span>setting on the first
+          line of our<span  class="Apple-converted-space">&nbsp;</span><code  style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">config.toml</code><span
+             class="Apple-converted-space">&nbsp;</span>file in the server. If
+          you installed GitLab Runner as the root user with the deb or rpm
+          packages, the config file will be in<span  class="Apple-converted-space">&nbsp;</span><code
+             style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 16.2px; padding: 2px 4px; color: rgb(199, 37, 78); border-radius: 4px; background-color: rgb(249, 242, 244);">/etc/gitlab-runner/config.toml</code><span
+             class="Apple-converted-space">&nbsp;</span>by default:</p>
+        <pre  class="highlight plaintext"  style="box-sizing: border-box; overflow: auto; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: 13px; display: block; padding: 9.5px; margin: 0px 0px 20px; line-height: 1.42857; word-break: break-all; word-wrap: break-word; color: rgb(51, 51, 51); border: 1px solid rgb(204, 204, 204); border-radius: 4px; background-color: rgb(248, 248, 248);"><code
+ style="box-sizing: border-box; font-family: Menlo, Monaco, Consolas, 'Courier New', monospace; font-size: inherit; padding: 0px; color: inherit; border-radius: 0px; white-space: pre-wrap; word-wrap: normal; background-color: transparent;">concurrent = 2
+</code></pre>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">After
+          triggering a new build, we can see two jobs running at the same time.</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">Conclusion</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;">In
+          this tutorial, we set up automated testing with GitLab Runner for a
+          NodeJS project to get started with continuous integration on
+          Gitlab.com. For more information on the GitLab Runner and GitLab CI
+          platform, check out the<span  class="Apple-converted-space">&nbsp;</span><a
+             href="http://doc.gitlab.com/ce/ci/"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">documentation</a>.
+          Happy coding!</p>
+        <h3  style="box-sizing: border-box; font-family: inherit; font-weight: 200; line-height: 1.1; color: rgb(68, 68, 68); margin-top: 0px; margin-bottom: 10px; font-size: 30px;">About
+          Guest Author: Ahmet Kizilay</h3>
+        <p  style="box-sizing: border-box; margin: 0px 0px 24px; font-size: 18px; color: rgb(68, 68, 68); line-height: 2.9rem;"><a
+             href="https://about.me/ahmetkizilay"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">Ahmet
+            Kizilay</a><span  class="Apple-converted-space">&nbsp;</span>is a
+          software developer living in Istanbul. He is currently working as a
+          full-stack developer at<span  class="Apple-converted-space">&nbsp;</span><a
+             href="https://graphcommons.com/"  style="box-sizing: border-box; color: rgb(85, 172, 238); text-decoration: none; font-weight: 400; font-size: 18px; line-height: 2.9rem; background-color: transparent;">Graph
+            Commons</a>.</p>
+      </div>
+    </div>
+  </body>
+</html>

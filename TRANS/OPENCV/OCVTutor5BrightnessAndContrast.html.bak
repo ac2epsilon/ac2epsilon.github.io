@@ -1,0 +1,389 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Зміна контрасту та яскравості зображення. Перекладено українською:
+      Арсеній Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="related"><br />
+    </div>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div class="section" id="changing-the-contrast-and-brightness-of-an-image">
+              <span id="basic-linear-transform"></span>
+              <h1>Зміна контрасту та яскравості зображення<a class="headerlink"
+                  href="#changing-the-contrast-and-brightness-of-an-image" title="Permalink to this headline">
+                  <br />
+                </a></h1>
+              <div class="section" id="goal">
+                <h2>Ціль<a class="headerlink" href="#goal" title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>В цій інструкції ми навчимость наступному:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Отримувати доступ до значень пікселів</li>
+                    <li>Ініціалізувати матрицю нулями</li>
+                    <li>Вивчимо, що робить <a class="reference external" href="http://docs.opencv.org/modules/core/doc/utility_and_system_functions_and_macros.html?highlight=saturate_cast#saturate-cast">saturate_cast</a>
+                      , та чому вона корисна</li>
+                    <li>Отримаємо трохи цікавої інформації щодо трансформації
+                      пікселівtransformations</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="section" id="theory">
+                <h2>Теорія<a class="headerlink" href="#theory" title="Permalink to this headline"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пояснення нижче належить до книги <a class="reference external"
+                      href="http://szeliski.org/Book/">Computer Vision:
+                      Algorithms and Applications</a> автора Richard Szeliski</p>
+                </div>
+                <div class="section" id="image-processing">
+                  <h3>Обробка зображень<a class="headerlink" href="#image-processing"
+                      title="Permalink to this headline"><br />
+                    </a></h3>
+                  <div class="enumeratevisibleitemswithsquare container">
+                    <ul class="simple">
+                      <li>Головний оператор обробки зображень є функцією, що
+                        бере одне або більше вхідних зображень, та продукує
+                        вихідне зображення.</li>
+                      <li>Трансформації зображень можуть розглядатись як:
+                        <ul>
+                          <li>Операції з крапками (трансформація пікселів)</li>
+                          <li>Сусідні операції (побудовані на площинах)</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="section" id="pixel-transforms">
+                    <h4>Піксельні трансформації<a class="headerlink" href="#pixel-transforms"
+                        title="Permalink to this headline"><br />
+                      </a></h4>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li>Коли використовується цей тип трансформацій обробки
+                          зображень, значення кожного вихідного пікселя залежить
+                          тільки від відповідного вхідного значення пікселя
+                          (плюс, потенційно, від деяких глобально накопичених
+                          інформаціх або параметрів).</li>
+                        <li>Прикладами таких операцій є <em>налаштування
+                            яскравості та контрасту, а </em>також корекція та
+                          трансформація кольору.</li>
+                      </ul>
+                    </div>
+                    <div class="section" id="brightness-and-contrast-adjustments">
+                      <h5>Налаштування яскравості та контрасту<a class="headerlink"
+                          href="#brightness-and-contrast-adjustments" title="Permalink to this headline"><br />
+                        </a></h5>
+                      <div class="enumeratevisibleitemswithsquare container">
+                        <ul>
+                          <li>
+                            <p>Дві загальні дії це <em>множення та додавання
+                                константи</em><img src="../../../../_images/math/1cf35d5ecefb47335d30f1f88986e249a78c64b3.png"
+                                alt="g(x) = \alpha f(x) + \beta" />: <img src="britnessAndContrast1.png"
+                                alt="B&amp;C" /></p>
+                            <div class="math"> </div>
+                          </li>
+                          <li>
+                            <p class="first">Параметри часто називають <em>підсилення
+                                та зсув</em>; іноді про ці параметри кажуть, що
+                              ці параметри контролюють <em>контраст та
+                                яскравість </em>відповідно.</p>
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="section" id="code">
+                <h2>Код<a class="headerlink" href="#code" title="Permalink to this headline"><br />
+                  </a></h2>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Наступний код виконує ці операції:</li>
+                  </ul>
+                </div>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="cp">#include &lt;cv.h&gt;</span>
+<span class="cp">#include &lt;highgui.h&gt;</span>
+<span class="cp">#include &lt;iostream&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="kt">double</span> <span class="n">alpha</span><span class="p">;</span> <span
+class="cm">/**&lt; простий контроль контрастом */</span>
+<span class="kt">int</span> <span class="n">beta</span><span class="p">;</span>  <span
+class="cm">/**&lt; простий контроль яскравістю */</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+<span class="p">{</span>
+ <span class="c1">/// Читати зображення, надане користувачем</span>
+ <span class="n">Mat</span> <span class="n">image</span> <span class="o">=</span> <span
+class="n">imread</span><span class="p">(</span> <span class="n">argv</span><span
+class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">);</span>
+ <span class="n">Mat</span> <span class="n">new_image</span> <span class="o">=</span> <span
+class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span> <span
+class="n">image</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span> <span
+class="n">image</span><span class="p">.</span><span class="n">type</span><span class="p">()</span> <span
+class="p">);</span>
+
+ <span class="c1">/// інійіалізація зображень</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">" Базова лінійна трансформація "</span><span
+class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span
+class="n">endl</span><span class="p">;</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">"-------------------------"</span><span
+class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span
+class="n">endl</span><span class="p">;</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">"* Введіть значення альфа [1.0-3.0]: "</span><span
+class="p">;</span><span class="n">std</span><span class="o">::</span><span class="n">cin</span><span
+class="o">&gt;&gt;</span><span class="n">alpha</span><span class="p">;</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">"* Введіть значення бета [0-100]: "</span><span
+class="p">;</span> <span class="n">std</span><span class="o">::</span><span class="n">cin</span><span
+class="o">&gt;&gt;</span><span class="n">beta</span><span class="p">;</span>
+
+ <span class="c1">/// Робимо операцію new_image(i,j) = alpha*image(i,j) + beta</span>
+ <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">y</span> <span class="o">&lt;</span> <span class="n">image</span><span
+class="p">.</span><span class="n">rows</span><span class="p">;</span> <span class="n">y</span><span
+class="o">++</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="k">for</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span
+class="p">;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">image</span><span
+class="p">.</span><span class="n">cols</span><span class="p">;</span> <span class="n">x</span><span
+class="o">++</span> <span class="p">)</span>
+         <span class="p">{</span> <span class="k">for</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span
+class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="mi">3</span><span
+class="p">;</span> <span class="n">c</span><span class="o">++</span> <span class="p">)</span>
+              <span class="p">{</span>
+      <span class="n">new_image</span><span class="p">.</span><span class="n">at</span><span
+class="o">&lt;</span><span class="n">Vec3b</span><span class="o">&gt;</span><span
+class="p">(</span><span class="n">y</span><span class="p">,</span><span class="n">x</span><span
+class="p">)[</span><span class="n">c</span><span class="p">]</span> <span class="o">=</span>
+         <span class="n">saturate_cast</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span> <span class="n">alpha</span><span
+class="o">*</span><span class="p">(</span> <span class="n">image</span><span class="p">.</span><span
+class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span
+class="n">x</span><span class="p">)[</span><span class="n">c</span><span class="p">]</span> <span
+class="p">)</span> <span class="o">+</span> <span class="n">beta</span> <span class="p">);</span>
+             <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="p">}</span>
+
+ <span class="c1">/// створюємо вікна</span>
+ <span class="n">namedWindow</span><span class="p">(</span><span class="s">"Original Image"</span><span
+class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+ <span class="n">namedWindow</span><span class="p">(</span><span class="s">"New Image"</span><span
+class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+
+ <span class="c1">/// відображуємо зображення до та після</span>
+ <span class="n">imshow</span><span class="p">(</span><span class="s">"Original Image"</span><span
+class="p">,</span> <span class="n">image</span><span class="p">);</span>
+ <span class="n">imshow</span><span class="p">(</span><span class="s">"New Image"</span><span
+class="p">,</span> <span class="n">new_image</span><span class="p">);</span>
+
+ <span class="c1">/// чекаємо, коли користувач закриє застосунок</span>
+ <span class="n">waitKey</span><span class="p">();</span>
+ <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+              </div>
+              <div class="section" id="explanation">
+                <h2>Пояснення<a class="headerlink" href="#explanation" title="Permalink to this headline"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Ми починаємо зі створення параметрів, щоб
+                      зберігти параемтри пеертворення, що введені користувачем:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">double</span> <span class="n">alpha</span><span
+class="p">;</span>
+<span class="kt">int</span> <span class="n">beta</span><span class="p">;</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first">Ми завантажуємо зображення з використанням <a
+                        class="reference external" href="http://docs.opencv.org/modules/highgui/doc/reading_and_writing_images_and_video.html?highlight=imread#imread">imread</a>
+                      , та зберігаємо його в об'єкті Mat:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">Mat</span> <span class="n">image</span> <span
+class="o">=</span> <span class="n">imread</span><span class="p">(</span> <span class="n">argv</span><span
+class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">);</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first">Тепер, оскільки ми будемо робити деякі
+                      перетворення з зображенням, ми створюємо новий об'єкт Mat
+                      для зберігання нової версії. Також ми бажаємо зберігти
+                      наступні властивості:</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li>Початкові значення пікселів встановлені в нуль</li>
+                        <li>Той же розмір та тип, що і у початкового зображення</li>
+                      </ul>
+                    </div>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">Mat</span> <span class="n">new_image</span> <span
+class="o">=</span> <span class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span
+class="p">(</span> <span class="n">image</span><span class="p">.</span><span class="n">size</span><span
+class="p">(),</span> <span class="n">image</span><span class="p">.</span><span class="n">type</span><span
+class="p">()</span> <span class="p">);</span>
+</pre></div>
+                    </div>
+                    <p>Ми бачимо, що  <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html?highlight=zeros#mat-zeros">Mat::zeros</a>
+                      повертає ініціалізатор в стилі Matlab, базуючись на <em>image.size()</em>
+                      та <em>image.type()</em></p>
+                  </li>
+                  <li>
+                    <p class="first">Тепер, щоб виконати операцію, ми будемо
+                      отримувати доступ до кожного пікселя. Оскільки ми робимо з
+                      зображеннями RGB, ми будем омати три значення на один
+                      піксель (R, G та B), так що ми також будемо отримувати
+                      доступ до них окремо. Ось цей фрагмент коду:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="k">for</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">y</span> <span class="o">=</span> <span class="mi">0</span><span
+class="p">;</span> <span class="n">y</span> <span class="o">&lt;</span> <span class="n">image</span><span
+class="p">.</span><span class="n">rows</span><span class="p">;</span> <span class="n">y</span><span
+class="o">++</span> <span class="p">)</span>
+   <span class="p">{</span> <span class="k">for</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">x</span> <span class="o">=</span> <span class="mi">0</span><span
+class="p">;</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">image</span><span
+class="p">.</span><span class="n">cols</span><span class="p">;</span> <span class="n">x</span><span
+class="o">++</span> <span class="p">)</span>
+        <span class="p">{</span> <span class="k">for</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span class="mi">0</span><span
+class="p">;</span> <span class="n">c</span> <span class="o">&lt;</span> <span class="mi">3</span><span
+class="p">;</span> <span class="n">c</span><span class="o">++</span> <span class="p">)</span>
+             <span class="p">{</span> <span class="n">new_image</span><span class="p">.</span><span
+class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span
+class="n">x</span><span class="p">)[</span><span class="n">c</span><span class="p">]</span> <span
+class="o">=</span>
+                         <span class="n">saturate_cast</span><span class="o">&lt;</span><span
+class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span> <span
+class="n">alpha</span><span class="o">*</span><span class="p">(</span> <span class="n">image</span><span
+class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span class="n">Vec3b</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">y</span><span class="p">,</span><span
+class="n">x</span><span class="p">)[</span><span class="n">c</span><span class="p">]</span> <span
+class="p">)</span> <span class="o">+</span> <span class="n">beta</span> <span class="p">);</span> <span
+class="p">}</span>
+   <span class="p">}</span>
+   <span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Зауважте наступне:</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li>Щоб отримати доступ до кожного пікселя в зображенні,
+                          ми використовуємо цей синтаксис: <em>image.at&lt;Vec3b&gt;(y,x)[c]</em>
+                          , де <em>y</em> це рядок, <em>x</em> це стовпчик, та
+                          <em>c</em> це суб-стовбчик, або індекс прошарку, або
+                          колір R, G або B (0, 1 або 2).</li>
+                        <li>Оскільки операція може отримати значення, що не є
+                          цілими (коли параметри з плаваючою крапкою), ми
+                          використовуємо <a class="reference external" href="http://docs.opencv.org/modules/core/doc/utility_and_system_functions_and_macros.html?highlight=saturate_cast#saturate-cast">saturate_cast</a>
+                          щоб впевнитись, що значення прийнятні.</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first">Нарешті, ми створюємо вікна та відображуємо
+                      зображення, в звичайний спосіб.</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">namedWindow</span><span class="p">(</span><span
+class="s">"Original Image"</span><span class="p">,</span> <span class="mi">1</span><span
+class="p">);</span>
+<span class="n">namedWindow</span><span class="p">(</span><span class="s">"New Image"</span><span
+class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+
+<span class="n">imshow</span><span class="p">(</span><span class="s">"Original Image"</span><span
+class="p">,</span> <span class="n">image</span><span class="p">);</span>
+<span class="n">imshow</span><span class="p">(</span><span class="s">"New Image"</span><span
+class="p">,</span> <span class="n">new_image</span><span class="p">);</span>
+
+<span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span
+class="p">);</span>
+</pre></div>
+                    </div>
+                  </li>
+                </ol>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p>Замість використовування циклів <strong>for</strong> для
+                    доступу до пікселів ми можемо просто надати команду:</p>
+                  <div class="highlight-cpp">
+                    <div class="highlight">
+                      <pre><span class="n">image</span><span class="p">.</span><span
+class="n">convertTo</span><span class="p">(</span><span class="n">new_image</span><span
+class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span
+class="n">alpha</span><span class="p">,</span> <span class="n">beta</span><span
+class="p">);</span>
+</pre></div>
+                  </div>
+                  <p class="last">де <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-convertto">convertTo</a>
+                    насправді ефективно пиконує <em>new_image = a*image + beta</em>.
+                    Однак ми бажали показати вам, як отримувати доступ до
+                    кожного пікселя. В жодному разі, обоє методи дають той самий
+                    результат, але convertTo більш оптимізована, та робить
+                    значно швидше.</p>
+                </div>
+              </div>
+              <div class="section" id="result">
+                <h2>Результат<a class="headerlink" href="#result" title="Permalink to this headline"><br />
+                  </a></h2>
+                <ul>
+                  <li>
+                    <p class="first">Виконайте код, та введіть такі параметри</p>
+                    <div class="highlight-bash">
+                      <div class="highlight">
+                        <pre><span class="nv">$ </span>./BasicLinearTransforms lena.jpg
+Basic Linear Transforms
+-------------------------
+* Enter the alpha value <span class="o">[</span>1.0-3.0<span class="o">]</span>: 2.2
+* Enter the beta value <span class="o">[</span>0-100<span class="o">]</span>: 50
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first">Ми отримали це:</p>
+                  </li>
+                </ul>
+                <img alt="Basic Linear Transform - Final Result" class="align-center"
+                  src="../../../../_images/Basic_Linear_Transform_Tutorial_Result_0.jpg" /><img
+                  src="linear_transform_result.jpg" alt="Linear Transform Result" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,717 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Mat - базовий контейнер зображень. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div class="section" id="mat-the-basic-image-container"> <span id="matthebasicimagecontainer"></span>
+              <h1>Mat - Базовий контейнер зображень</h1>
+              <div class="section" id="goal">
+                <h2>Ціль<a class="headerlink" href="#goal" title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Ми маємо декілька шляхів захоплення цифрового зображення в
+                  реальному світі: цифрові камери, сканери, комп'ютерна
+                  томографія, та магнітно-резонансні зображення, щоб навести
+                  декілька з них. В кожному випадку ми (люди) бачимо зображення.
+                  Однак по тому, як ми передаємо це на наші цифрові пристрої,
+                  те, що ми записуємо, є цифровими значеннями, для кожної крапки
+                  зображення. </p>
+                <img alt="A matrix of the mirror of a car" class="align-center"
+                  src="../../../../_images/MatBasicImageForComputer.jpg" />
+                <p>Наприклад, в деякому зображенні ви можете бачити, що дзеркало
+                  машини є нічим іншим, ніж матрицею, що містить всі значення
+                  інтенсивності піксельних крапок. Як ми отримуємо та зберігаємо
+                  значення пікселів може варіюватись, відповідно до наших
+                  потреб, але в кінці кінців всі зображення в комп'ютері можуть
+                  бути зведені до цифрових матриць та іншої інформації, що
+                  описує саме зображеня. <em>OpenCV</em> є бібліотекою
+                  комп'ютерного бечення, чие головне призначення є обробка та
+                  маніпуляція інформацією. Таким чином, першою річчю, з чим вам
+                  треба ознайомитись - це те, як OpenCV зберігає та обробляє
+                  зображення.</p>
+              </div>
+              <div class="section" id="mat">
+                <h2><em>Mat</em><a class="headerlink" href="#mat" title="Permalink to this headline">
+                    <br />
+                  </a></h2>
+                <p>OpenCV з'явився у 2001. В ті дні бібліотека була побудована
+                  як інтерфес до <em>C</em>, та для зберігання в пам'яті як
+                  структуру C за назвою <em>IplImage</em>. Це те, що ви
+                  побачите в більшості старих інструкцій та навчальних
+                  матріалів. Проблема з цим полягає в тому, що це викладає всі
+                  недоліки мови C. Найбільші турботи привносить ручне керування
+                  пам'ятю. Воно побудоване на припущенні, що користувач
+                  відповідальний за турботи щодо розміщення та вивільнення
+                  пам'яті. Хоча це не є проблемою для меньших програм, коли ваш
+                  код зростає, може стати складним обробляти все це, ніж
+                  вирішувати цілі вашої розробки. </p>
+                <p>На щастя з'явився C++, та привніс концепцію класів, що робить
+                  простішим для користувачів зробтити керування пам'яттю
+                  автоматичним (більш або менш). Гарні новини в тому, що C++
+                  повністю сумісним з C, так що проблеми сумісності не виникають
+                  від цієї зміни. Таким чином, OpenCV 2.0 вводить новий
+                  інтерфейс до C++, що пропонує новий шлях робити речі, що
+                  означає, що вам не треба борсатись з керуванням пам'яттю,
+                  роблячи ваш код більш змістовним (меньше пишучи, досягаючи
+                  більшого). Головний недолік інтерфейсу C++ в тому, що багато
+                  вбудованих систем розробки на часі підтримуються тільки C.
+                  Таким чином, тільки якщо ви не націлені на вбудовані системи,
+                  немає жодного сенсу використовувати <em>старі </em>методи
+                  (або якщо ви мазохіст, та шукаєте пригод).</p>
+                <p>Перша річ, що ви маєте знати щодо <em>Mat</em> , це те, що
+                  вам більше не треба вручну розміщувати та вивільняти її, коли
+                  вона вам більше не потрібна. Хоча робити це все ще можливо,
+                  більшість функцій OpenCV буде розміщувать власні дані
+                  автоматично. Як гарний бонус, якщо ви передаєте вже існуючий
+                  об'єкт <em>Mat</em>, що вже розмістив простір для матриці,
+                  вона буде використана знову. Іншими словами, ми завжди
+                  використовуємо стільки пам'яті для завдання, скільки воно
+                  потребує.</p>
+                <p><em>Mat</em> взагалі є клас, що має дві частини даних:
+                  заголовок матриці (що містить інформацію, таку як розмір
+                  матриці, метод для зберігання, адерса, за якою матриця
+                  зберігається, та таке інше) та вказівник на матрицю, що
+                  містить значення пікселів (приймаючи до уваги всі розмірності
+                  в залежності від методу, що обраний для зберігання). Розмір
+                  заголовку матриці є сталим, однак розмір самої матриці може
+                  варіюватись від зображення до зображення, та звичайно більший
+                  з коефіцієнтом збільшення. </p>
+                <p>OpenCV є бібліотекою обробки зображень. Вона містить велику
+                  колекцію функцій обробки зображень. Щоб вирішити
+                  обчислювальний виклик, більшість часу ви будете
+                  використовувати різні функції бібліотеки. Тому надання
+                  зображень до функцій є загальною практикою. Нам треба не
+                  забувати, що ми розмовляємо про алгоритми обробки зображень,
+                  що мають тенденцію бути важкими до обчислення. Остання річ, що
+                  ми бажаємо зробити, це ще зменшити швидкість ваших програм,
+                  роблячі непотрібні копіювання потенційно <em>великих </em>зображень.</p>
+                <p>Щоб подолати це OpenCV використовує систему підрахунку
+                  посилань. Ідея в тому, що кожний об'єкт <em>Mat</em> має
+                  власний заголовок, однак матриця може бути розділеною між
+                  двома екземплярами, що мають посилання на ту ж адресу. Більше
+                  того, операція копіювання <strong>буде копіювати тільки
+                    заголовок</strong> та вказівник на на велику матрицю, але не
+                  самі дані.</p>
+                <div class="highlight-cpp">
+                  <table class="highlighttable">
+                    <tbody>
+                      <tr>
+                        <td class="linenos">
+                          <div class="linenodiv">
+                            <pre>1
+2
+3
+4
+5
+6</pre>
+                          </div>
+                        </td>
+                        <td class="code">
+                          <div class="highlight">
+                            <pre><span class="n">Mat</span> <span class="n">A</span><span
+class="p">,</span> <span class="n">C</span><span class="p">;</span>                                 <span
+class="c1">// створює заголовки</span>
+<span class="n">A</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span><span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span
+class="p">],</span> <span class="n">CV_LOAD_IMAGE_COLOR</span><span class="p">);</span> <span
+class="c1">// розміщення матриці</span>
+
+<span class="n">Mat</span> <span class="nf">B</span><span class="p">(</span><span
+class="n">A</span><span class="p">);</span>                                 <span
+class="c1">// використання конструктора копіювання</span>
+
+<span class="n">C</span> <span class="o">=</span> <span class="n">A</span><span
+class="p">;</span>                                    <span class="c1">// присвоєння</span>
+</pre></div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>Всі вищезгадані об'єкти, загалом, вказують на ту ж матрицю в
+                  пам'яті. Їхні заголовки відрізняються, однак роблячи
+                  модифікацію кожниї з них буде також впливати на кожну іншу. На
+                  практиці різні об'єкти тільки надают різні методи доступу до
+                  тих же підлеглих даних. Однак вони мають різні заголовки.
+                  Насправді цікаве полягає в тому, що ви можете створити
+                  заголовок, що посилається тільки на частину цілих даних.
+                  Наприклад, щоб створити область зацікавленості (region of
+                  interest, <em>ROI</em>) в зображенні, ви тільки створюєте
+                  новий заголовок з новими межами:</p>
+                <div class="highlight-cpp">
+                  <table class="highlighttable">
+                    <tbody>
+                      <tr>
+                        <td class="linenos">
+                          <div class="linenodiv">
+                            <pre>1
+2</pre>
+                          </div>
+                        </td>
+                        <td class="code">
+                          <div class="highlight">
+                            <pre><span class="n">Mat</span> <span class="nf">D</span> <span
+class="p">(</span><span class="n">A</span><span class="p">,</span> <span class="n">Rect</span><span
+class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span
+class="p">,</span> <span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span
+class="p">)</span> <span class="p">);</span> <span class="c1">// використовуємо прямокутник</span>
+<span class="n">Mat</span> <span class="n">E</span> <span class="o">=</span> <span
+class="n">A</span><span class="p">(</span><span class="n">Range</span><span class="o">::</span><span
+class="n">all</span><span class="p">(),</span> <span class="n">Range</span><span
+class="p">(</span><span class="mi">1</span><span class="p">,</span><span class="mi">3</span><span
+class="p">));</span> <span class="c1">// використовуємо диапазони</span>
+</pre></div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>Тепер ви можете запитати, якщо матриця може по собі належати
+                  до багатьох об'єктів <em>Mat</em>, хто буде відповідати за
+                  очищення, коли вона більше не потрібна. Коротша відповідь:
+                  останній об'єкт, що використовував її. Це обробляється за
+                  допомогою механізму підрахунку посилань. Корли хтось копіює
+                  заголовок об'єкту <em>Mat</em>, лічильник матриці збільшується
+                  на одиницю. Коли заголовок очищується, цей лічильник
+                  зменьшується. Коли лічильник дорівнює нулю, матриця також
+                  вивільняється. Іноді ви побажаєте також скопіювати саму
+                  матрицю, тому OpenCV провадить функції <a class="reference external"
+                    href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-clone">clone()</a>
+                  та <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-copyto">copyTo()</a>.</p>
+                <div class="highlight-cpp">
+                  <table class="highlighttable">
+                    <tbody>
+                      <tr>
+                        <td class="linenos">
+                          <div class="linenodiv">
+                            <pre>1
+2
+3</pre>
+                          </div>
+                        </td>
+                        <td class="code">
+                          <div class="highlight">
+                            <pre><span class="n">Mat</span> <span class="n">F</span> <span
+class="o">=</span> <span class="n">A</span><span class="p">.</span><span class="n">clone</span><span
+class="p">();</span>
+<span class="n">Mat</span> <span class="n">G</span><span class="p">;</span>
+<span class="n">A</span><span class="p">.</span><span class="n">copyTo</span><span
+class="p">(</span><span class="n">G</span><span class="p">);</span>
+</pre></div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <p>Тепер модифікація <em>F</em> або <em>G</em> не буде впливати
+                  на матрицю, на яку вказує заголовок <em>Mat</em>. Що вам треба
+                  пам'ятати з усього цього:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Розміщення вихідних зображнь для функцій OpenCV є
+                      автоматичним (коли не вказане інше).</li>
+                    <li>Вам не потрібно думати про керування пам'яттю при
+                      використанні інтерфейса OpenCV.</li>
+                    <li>Оператор присвоювання та конструктор копіювання
+                      копіюються тільки заголовок.</li>
+                    <li>Підлегла матриця зображення може бути скопійована з
+                      використанням функцій <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-clone">clone()</a>
+                      та <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-copyto">copyTo()</a>.</li>
+                  </ul>
+                </div>
+              </div>
+              <div class="section" id="storing-methods">
+                <h2><em>Зберігаючі </em>методи<a class="headerlink" href="#storing-methods"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Це щодо того, як зберігати значення пікселів. Ви можете
+                  обрати кольоровий простір та тип даних, що використовується.
+                  Простір кольорів (або кольоровий простір) посилається на те,
+                  як ми комбінуємо компоненти кольору, щоб отримати потрібний
+                  колір. Простішим варіантом є відтінки сірого, де ми керуємо
+                  сумішшу двох кольорів, чорного та білого. Їх комбінація
+                  дозволяє нам створити багато відтінків сірого. </p>
+                <p>Для <em>кольорових </em>зображень ми маємо значно більшу
+                  кількість методів, з яких можемо обирати. Кожний з них
+                  розбиває колір на три або чотири базові компоненти, та ми
+                  можем овикористовувати їх комбінацію, щоб створити власні
+                  кольори. Найбільш популярним є простір RGB, здебільшого
+                  завдяки тому, що таким чином наше око будує кольори. Він
+                  базується на червоному, зеленому та синьому. Щоб закодувати
+                  прозорість, колір часом має четвертий компонент альфа(A).</p>
+                <p>Тим не менш є інші кольорові системи, кожна з яких має власні
+                  переваги:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>RGB є найбільш загальною, оскільки наше око використовує
+                      дещо подібне, на наші дисплейні системи також компонують
+                      кольори з використанням цього простору.</li>
+                    <li>HSV та HLS розкладають колір на відтінок (hue),
+                      насиченість (saturation) та значення або свічення
+                      (value/luminance), що є більш природним шляхом для нас
+                      описувати колір. Ви можете, наприклад, відкинути компонент
+                      значення, що зробить ваш алгоритм менш чутливим для умов
+                      освітлення вхідного зображення. </li>
+                    <li>YCrCb використовується в популярному форматі зображень
+                      JPEG.</li>
+                    <li>CIE L*a*b* є постійно юніформним кольоровим простором,
+                      що буває в нагоді, якщо вам треба обчислити <em>відстань</em>
+                      одного кольору від іншого.</li>
+                  </ul>
+                </div>
+                <p>Кожна з компонент кольору має власний диапазон. Це приводить
+                  нас до використованих типів даних: як ми зберігаємо дані про
+                  колір залежить від того, як він може поводитись. Найменьший
+                  тип це <em>char</em>, що означає один байт з 8 біт. Він може
+                  бути беззнаковим (і таким чином приймати значення від 0 до
+                  255) або знаковим (значення від -127 до +127). В випадку з
+                  трьох компонент (як RGB) це вже дає 16 мільйонів можливих
+                  кольорів. Ми можемо тримати навібть більший контроль,
+                  викорисовуючи типи даних float (4 байт = 32 біт) або double (8
+                  байт = 64 біт) для кожного компонента. Ожнако пам'ятайте, що
+                  збільшуючи розмір компонентів, також збільшується розмір всієї
+                  картинки в пам'яті.</p>
+              </div>
+              <div class="section" id="creating-a-mat-object-explicitly">
+                <h2>Явне створення об'єкту <em>Mat</em><a class="headerlink" href="#creating-a-mat-object-explicitly"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>В <a class="reference internal" href="../../introduction/load_save_image/load_save_image.html#load-save-image"><em>Завантаження,
+                      модифікація та збереження зображення</em></a> ми вже
+                  вивчили, як писати матрицю в файл зображення, використовуючи
+                  метод <a class="reference external" href="http://docs.opencv.org/modules/highgui/doc/reading_and_writing_images_and_video.html#imwrite">imwrite()</a>.
+                  Однак, для цілей налаштування, значно зручніше бачити справжні
+                  значення. Ви можете зробити це, використовуючи оператор
+                  &lt;&lt; для <em>Mat</em>. Зважайте на те, що він робить
+                  тільки для двовимірних матриць. </p>
+                <p>Хоча <em>Mat</em> робить насправді добре як контейнер для
+                  зображень, він також є загальним класом для матриць. Такими
+                  чином, можливо створити та маніпулювати багатомірними
+                  матрицями. Ви можете створити об'єкт Mat багатьма шляхами:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul>
+                    <li>
+                      <p class="first"><a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-mat">Mat()</a>
+                        конструктор</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">Mat</span> <span class="nf">M</span><span
+class="p">(</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span
+class="p">,</span> <span class="n">CV_8UC3</span><span class="p">,</span> <span
+class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span
+class="mi">0</span><span class="p">,</span><span class="mi">255</span><span class="p">));</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"M = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span> <span class="o">&lt;&lt;</span> <span class="n">M</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                    </li>
+                  </ul>
+                  <blockquote>
+                    <div><img alt="Demo image of the matrix output" class="align-center"
+                        src="../../../../_images/MatBasicContainerOut1.png" />
+                      <p>Для двовимірних та багатовимірних зображень ми зпершу
+                        визначаємо їх розмір вздовж рядків та стовпчиків.</p>
+                      <p>Тоді нам треба задати тип даних, що ви будемо
+                        використовувати для зберігання елементів, та число
+                        каналів на одну піксельну крапку. Щоб зробити це ми
+                        маємо помножити визначення, побудовані згідно наступнії
+                        домовленості:</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre><span class="n">CV_</span><span class="p">[число біт на одне</span><span
+class="p">][</span><span class="n">Signed</span> (знакове чи беззакове) <span class="n">Unsigned</span><span
+class="p">][префікс типу</span><span class="p">]</span><span class="n">C</span><span
+class="p">[</span><span class="n">число каналів</span><span class="p">]</span>
+</pre></div>
+                      </div>
+                      <p>Наприклад, <em>CV_8UC3</em> означає, що ми
+                        використовуємо беззнаковий тип char довжиною 8 біт та
+                        кожний піксель має три таких елементи, що формують три
+                        канали. Вони (<em>такі константи типів</em>)
+                        передвизначені до чотирьох каналів. <a class="reference external"
+                          href="http://docs.opencv.org/modules/core/doc/basic_structures.html#scalar">Scalar</a>
+                        є чотириканальним вектором типу short. Задайте це, і ви
+                        можете ініціалізувати всі крапки матриці власни
+                        значенням. Якщо вам треба більше, ви можете створити тип
+                        за допомогою макро, встановлюючи число каналів як
+                        показане нижче.</p>
+                    </div>
+                  </blockquote>
+                  <ul>
+                    <li>
+                      <p class="first">Використовуйте масиви C/C++ та
+                        ініціалізуйте через конструктор</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="kt">int</span> <span class="n">sz</span><span
+class="p">[</span><span class="mi">3</span><span class="p">]</span> <span class="o">=</span> <span
+class="p">{</span><span class="mi">2</span><span class="p">,</span><span class="mi">2</span><span
+class="p">,</span><span class="mi">2</span><span class="p">};</span>
+    <span class="n">Mat</span> <span class="nf">L</span><span class="p">(</span><span
+class="mi">3</span><span class="p">,</span><span class="n">sz</span><span class="p">,</span> <span
+class="n">CV_8UC</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span
+class="n">Scalar</span><span class="o">::</span><span class="n">all</span><span
+class="p">(</span><span class="mi">0</span><span class="p">));</span>
+</pre></div>
+                      </div>
+                      <p>Цей приклад показує, як створити матрицю з більше ніж
+                        одним виміром. Задайте число вимірів, потім передайте
+                        вказівник, що має розмір по кожному виміру, та решта
+                        залишається такою ж.</p>
+                    </li>
+                    <li>
+                      <p class="first">Створіть заголовок для вже існуючого
+                        заголовку IplImage:</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre><span class="n">IplImage</span><span class="o">*</span> <span
+class="n">img</span> <span class="o">=</span> <span class="n">cvLoadImage</span><span
+class="p">(</span><span class="s">"greatwave.png"</span><span class="p">,</span> <span
+class="mi">1</span><span class="p">);</span>
+<span class="n">Mat</span> <span class="nf">mtx</span><span class="p">(</span><span
+class="n">img</span><span class="p">);</span> <span class="c1">// перетворення IplImage* -&gt; Mat</span>
+</pre></div>
+                      </div>
+                    </li>
+                    <li>
+                      <p class="first"><a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-create">Create()</a>
+                        функція:</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">M</span><span class="p">.</span><span
+class="n">create</span><span class="p">(</span><span class="mi">4</span><span class="p">,</span><span
+class="mi">4</span><span class="p">,</span> <span class="n">CV_8UC</span><span class="p">(</span><span
+class="mi">2</span><span class="p">));</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"M = "</span><span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span>  <span class="o">&lt;&lt;</span> <span class="n">M</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                    </li>
+                  </ul>
+                  <blockquote>
+                    <div><img alt="Demo image of the matrix output" class="align-center"
+                        src="../../../../_images/MatBasicContainerOut2.png" />
+                      <p>Ви не можете ініціалізувати матрицю значеннями,
+                        викристовуючи цей конструктор. Вона буде тільки
+                        реалокоувати пам'ять матриці, якщо новий розмір не
+                        поміститься в старому. </p>
+                    </div>
+                  </blockquote>
+                  <ul>
+                    <li>
+                      <p class="first">MATLAB ініціалізатори: <a class="reference external"
+                          href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-zeros">zeros()</a>,
+                        <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-ones">ones()</a>,
+                        <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-eye">eye()</a>.
+                        Задавайте розмір та тип даних:</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">Mat</span> <span class="n">E</span> <span
+class="o">=</span> <span class="n">Mat</span><span class="o">::</span><span class="n">eye</span><span
+class="p">(</span><span class="mi">4</span><span class="p">,</span> <span class="mi">4</span><span
+class="p">,</span> <span class="n">CV_64F</span><span class="p">);</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"E = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span> <span class="o">&lt;&lt;</span> <span class="n">E</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+
+    <span class="n">Mat</span> <span class="n">O</span> <span class="o">=</span> <span
+class="n">Mat</span><span class="o">::</span><span class="n">ones</span><span class="p">(</span><span
+class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span
+class="n">CV_32F</span><span class="p">);</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"O = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span> <span class="o">&lt;&lt;</span> <span class="n">O</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+
+    <span class="n">Mat</span> <span class="n">Z</span> <span class="o">=</span> <span
+class="n">Mat</span><span class="o">::</span><span class="n">zeros</span><span class="p">(</span><span
+class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span> <span
+class="n">CV_8UC1</span><span class="p">);</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Z = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span> <span class="o">&lt;&lt;</span> <span class="n">Z</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                    </li>
+                  </ul>
+                  <blockquote>
+                    <div><img alt="Demo image of the matrix output" class="align-center"
+                        src="../../../../_images/MatBasicContainerOut3.png" /> </div>
+                  </blockquote>
+                  <ul>
+                    <li>
+                      <p class="first">Для малих матриць використовуйте
+                        ініціалізатори з роздільною комою:</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">Mat</span> <span class="n">C</span> <span
+class="o">=</span> <span class="p">(</span><span class="n">Mat_</span><span class="o">&lt;</span><span
+class="kt">double</span><span class="o">&gt;</span><span class="p">(</span><span
+class="mi">3</span><span class="p">,</span><span class="mi">3</span><span class="p">)</span> <span
+class="o">&lt;&lt;</span> <span class="mi">0</span><span class="p">,</span> <span
+class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span
+class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span
+class="mi">5</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">);</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"C = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span> <span class="o">&lt;&lt;</span> <span class="n">C</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                    </li>
+                  </ul>
+                  <blockquote>
+                    <div><img alt="Demo image of the matrix output" class="align-center"
+                        src="../../../../_images/MatBasicContainerOut6.png" /> </div>
+                  </blockquote>
+                  <ul>
+                    <li>
+                      <p class="first">Створіть новий заголовок для існуючої <em>Mat</em>
+                        та потім виконайте  <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-clone">clone()</a>
+                        або <a class="reference external" href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-copyto">copyTo()</a>.</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">Mat</span> <span class="n">RowClone</span> <span
+class="o">=</span> <span class="n">C</span><span class="p">.</span><span class="n">row</span><span
+class="p">(</span><span class="mi">1</span><span class="p">).</span><span class="n">clone</span><span
+class="p">();</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"RowClone = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="s">" "</span> <span class="o">&lt;&lt;</span> <span class="n">RowClone</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Demo image of the matrix output" class="align-center"
+                        src="../../../../_images/MatBasicContainerOut7.png" /> </li>
+                  </ul>
+                </div>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p>Ви можете заповнити матрицю випадковими значеннями,
+                    використовуючи функцію <a class="reference external" href="http://docs.opencv.org/modules/core/doc/operations_on_arrays.html#randu">randu()</a>.
+                    Вам треба надати нижнє та вище значення для випадкового
+                    значення:</p>
+                  <div class="last highlight-cpp">
+                    <div class="highlight">
+                      <pre>    <span class="n">Mat</span> <span class="n">R</span> <span
+class="o">=</span> <span class="n">Mat</span><span class="p">(</span><span class="mi">3</span><span
+class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">CV_8UC3</span><span
+class="p">);</span>
+    <span class="n">randu</span><span class="p">(</span><span class="n">R</span><span
+class="p">,</span> <span class="n">Scalar</span><span class="o">::</span><span class="n">all</span><span
+class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">Scalar</span><span
+class="o">::</span><span class="n">all</span><span class="p">(</span><span class="mi">255</span><span
+class="p">));</span>
+</pre></div>
+                  </div>
+                </div>
+              </div>
+              <div class="section" id="output-formatting">
+                <h2>Форматування виводу<a class="headerlink" href="#output-formatting"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>В попередніх прикладах ви бачили опції форматування по
+                  замовчанню. OpenCV, однак, дозволяє вам форматувати вивід
+                  матриць:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul>
+                    <li>
+                      <p class="first">По замовчанню</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span
+class="s">"R (default) = "</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span>        <span class="n">R</span>           <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span
+class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut8.png" />
+                    </li>
+                    <li>
+                      <p class="first">Python</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span
+class="s">"R (python)  = "</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">format</span><span class="p">(</span><span
+class="n">R</span><span class="p">,</span><span class="s">"python"</span><span class="p">)</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut16.png" />
+                    </li>
+                    <li>
+                      <p class="first">Значення, розділені комами (CSV)</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span
+class="s">"R (csv)     = "</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">format</span><span class="p">(</span><span
+class="n">R</span><span class="p">,</span><span class="s">"csv"</span>   <span class="p">)</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut10.png" />
+                    </li>
+                    <li>
+                      <p class="first">Numpy</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span
+class="s">"R (numpy)   = "</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">format</span><span class="p">(</span><span
+class="n">R</span><span class="p">,</span><span class="s">"numpy"</span> <span class="p">)</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut9.png" />
+                    </li>
+                    <li>
+                      <p class="first">C</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span
+class="s">"R (c)       = "</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">format</span><span class="p">(</span><span
+class="n">R</span><span class="p">,</span><span class="s">"C"</span>     <span class="p">)</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut11.png" />
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="section" id="output-of-other-common-items">
+                <h2>Вивід інших загальних елементів<a class="headerlink" href="#output-of-other-common-items"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Ініш загальні структури даних OpenCV також можна вивести за
+                  допомогою оператора &lt;&lt;:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul>
+                    <li>
+                      <p class="first">2D крапка</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">Point2f</span> <span class="nf">P</span><span
+class="p">(</span><span class="mi">5</span><span class="p">,</span> <span class="mi">1</span><span
+class="p">);</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Крапка (2D) = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">P</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span
+class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut12.png" />
+                    </li>
+                    <li>
+                      <p class="first">3D крапка</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">Point3f</span> <span class="nf">P3f</span><span
+class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span
+class="p">,</span> <span class="mi">7</span><span class="p">);</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Крапка (3D) = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">P3f</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span
+class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut13.png" />
+                    </li>
+                    <li>
+                      <p class="first">std::vector через cv::Mat</p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">vector</span><span class="o">&lt;</span><span
+class="kt">float</span><span class="o">&gt;</span> <span class="n">v</span><span
+class="p">;</span>
+    <span class="n">v</span><span class="p">.</span><span class="n">push_back</span><span
+class="p">(</span> <span class="p">(</span><span class="kt">float</span><span class="p">)</span><span
+class="n">CV_PI</span><span class="p">);</span>   <span class="n">v</span><span
+class="p">.</span><span class="n">push_back</span><span class="p">(</span><span
+class="mi">2</span><span class="p">);</span>    <span class="n">v</span><span class="p">.</span><span
+class="n">push_back</span><span class="p">(</span><span class="mf">3.01f</span><span
+class="p">);</span>
+
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Вектор значень з плаваючою крапкою Mat = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">Mat</span><span class="p">(</span><span
+class="n">v</span><span class="p">)</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span
+class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut14.png" />
+                    </li>
+                    <li>
+                      <p class="first">std::vector вектор крапок </p>
+                      <div class="highlight-cpp">
+                        <div class="highlight">
+                          <pre>    <span class="n">vector</span><span class="o">&lt;</span><span
+class="n">Point2f</span><span class="o">&gt;</span> <span class="n">vPoints</span><span
+class="p">(</span><span class="mi">20</span><span class="p">);</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">size_t</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">vPoints</span><span
+class="p">.</span><span class="n">size</span><span class="p">();</span> <span class="o">++</span><span
+class="n">i</span><span class="p">)</span>
+        <span class="n">vPoints</span><span class="p">[</span><span class="n">i</span><span
+class="p">]</span> <span class="o">=</span> <span class="n">Point2f</span><span
+class="p">((</span><span class="kt">float</span><span class="p">)(</span><span class="n">i</span> <span
+class="o">*</span> <span class="mi">5</span><span class="p">),</span> <span class="p">(</span><span
+class="kt">float</span><span class="p">)(</span><span class="n">i</span> <span class="o">%</span> <span
+class="mi">7</span><span class="p">));</span>
+
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Вектор 2D крапок = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">vPoints</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span
+class="p">;</span>
+</pre></div>
+                      </div>
+                      <img alt="Default Output" class="align-center" src="../../../../_images/MatBasicContainerOut15.png" />
+                    </li>
+                  </ul>
+                </div>
+                <p>Більшість прикладів тут були вставлені в малий консольний
+                  застосунок. Ви можеже завантажити його з розділу core
+                  прикладів cpp.</p>
+                <p><br />
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

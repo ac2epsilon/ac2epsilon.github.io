@@ -1,0 +1,625 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html><html lang="en">
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>Qt D-Bus </title>
+  </head>
+  <body>
+    <h1 class="title">Qt D-Bus</h1>
+    <br>
+    <a name="toc">Зміст</a>
+    <div class="main">
+      <div class="main-rounded">
+        <div class="content">
+          <div class="line">
+            <div class="content mainContent">
+              <div class="sidebar">
+                <div class="toc">
+                  <ul>
+                    <li class="level1"><a href="#introduction">Вступ</a></li>
+                    <li class="level1"><a href="#the-buses">Шини</a></li>
+                    <li class="level1"><a href="#concepts">Концепції</a></li>
+                    <li class="level2"><a href="#messages">Повідомлення</a></li>
+                    <li class="level2"><a href="#service-names">Іменування
+                        сервісів</a></li>
+                    <li class="level2"><a href="#object-paths">Шляхи об'єктів</a></li>
+                    <li class="level2"><a href="#interfaces">Інтерфейси</a></li>
+                    <li class="level2"><a href="#cheat-sheet">Підказки</a></li>
+                    <li class="level1"><a href="#debugging">Налагодження</a></li>
+                    <li class="level1"><span style="color: #0000ee;"><span style="text-decoration: underline;"><a
+                            href="#adapters">Використання адаптерів Qt D-Bus</a></span></span></li>
+                    <li class="level1"><span style=" color: #0000ee;"><span style=" text-decoration: underline;"><a
+                            href="#declSlots">Декларування слотів в D-Bus
+                            адаптерах</a></span></span></li>
+                    <li class="level1"><a href="#declSignal"><span style="  color: #0000ee;"><span
+                            style="  text-decoration: underline;">Декларування
+                            сигналів в D-Bus адаптерах</span></span></a></li>
+                    <li class="level1"><span style="   color: #0000ee;"><span style="   text-decoration: underline;"><a
+                            href="#types">Система типів Qt D-Bus </a><br>
+                        </span></span></li>
+                    <li class="level1"><a href="#further-reading">Подальше
+                        читання</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="context"> <span class="subtitle"></span>
+                <div class="descr">
+                  <h2 id="introduction">Вступ</h2>
+                  <p>D-Bus є механізмом міжпроцесової (Inter-Process
+                    Communication, IPC) та віддаленої взаємодії (Remote
+                    Procedure Calling, RPC), від початку розробленим для Linux,
+                    щоб замінити існуючі та конкуруючі рішення IPC одним
+                    уніфікованим протоколом. Він також був розроблений, щоб
+                    дозволити комунікацію між процесами рівня системи (такими,
+                    як сервіси друку та драйверів), та звичайними процесами
+                    користувача.</p>
+                  <p>Він використовує швидкий, двоїчний протокол передачі
+                    повідомлень, що підходить для комунікації на одній і тій машині,
+                    завдяки низьким затримкам та низькому навантаженню. Його
+                    специфікація наразі визначається проктом&nbsp;<code>freedesktop.org</code>,
+                    та доступна для всіх бажаючих.</p>
+                  <p>Комунікація, загалом, відбувається через централізоване
+                    серверне застосування, що називається <em>шина</em> (англ.
+                    <em>bus</em>, звідки і назва), але також можливі і прямі
+                    комунікації між застосунками. Коли ідеться про комунікацію
+                    по шині, застосунки можуть запитувати, які застосункі та
+                    сервіси доступні, а також активузівати їх на замовлення.</p>
+                  <a name="the-buses"></a>
+                  <h2 id="the-buses">Шини</h2>
+                  <p>Шини D-Bus використовуються тоді, коли бажано організувати
+                    передачу багато-з-багатьмами. Щоб досягти цього запускається
+                    центральний сервер, до того, як застосунки змуожуться під'єднатися
+                    до шини: цей сервер відповідальний за відстежування
+                    застосунків, що під'єднані, та для відрного надсилання
+                    повідомлень від джерела до пункту призначення.</p>
+                  <p>на додаток, D-Bus визначає добре відомі шини, що
+                    називаються системною шиною та сесійною шиною. Ці шини є
+                    особливими в тому сенсі, що пони мають добре визначену
+                    сментику: деякі сервіси визначені навмисне для застосування
+                    з однією або обома міма шинами.&nbsp;</p>
+                  <p>Наприклад, застосунок, що бажає отримати перелік фізичних
+                    пристроїв, під'єднаних до комп'ютера, вірогідно будуть
+                    комунікувати з сервісом, доступним на системній шині, тоді
+                    як сервіс, що відкриватиме переглядач по замовчанню буде
+                    вірогідно знайдений на на сесійній шині.&nbsp;</p>
+                  <p>На системній шині ви можете розраховувати натрапити на
+                    обмеження, до якї сервіси кожний застосунок може надавати.
+                    Таким чином ви можете бути впевненими, що якщо деякий сервіс
+                    присутній, він надається довіреним застосунком.&nbsp;</p>
+                  <a name="concepts"></a>
+                  <h2 id="concepts">Концепції</h2>
+                  <a name="messages"></a>
+                  <h3>Повідомлення</h3>
+                  <p>На низькому рівні застосунки комунікуються через D-Bus,
+                    надсилаючи повідомлення одне одному. Повідомлення потрібні
+                    для віддалених викликів процедур, так само, як і для
+                    відповідей та помилок, асоційованих з ними. Коли
+                    використовуються на шині, повідомлення мають ціль
+                    призначення, що означає, що вони надсилаються тільки
+                    зацікавленим сторонам, що виключає "пробки" через
+                    стовпотворіння або широковіщення.</p>
+                  <p>Існує спеціальний тип повідомлень, що називаються
+                    "сигнальними повідомленнями" (концепція, що базується на
+                    механізмі <a href="exceptionsafety.html#signals-and-slots">Сигналів
+                      та Слотів</a> Qt), однак не мають визначеного пункту
+                    призначення. Оскільки їхнє призначення використовуватись в
+                    контексті один-до-багатьох, сигнальні повідомлення
+                    розроблені для роботи через механізм <em>добровільної
+                      підписки</em> (<em>opt-in</em>).</p>
+                  <p>Модуль Qt D-Bus повністю огортає низькорівневі концепції
+                    повідомлень в простіші, об'єктно-орієнтовані підходи,
+                    знайомі Qt розробникам. В більшості випадків розробник не
+                    має турбуватися щодо надсилання та отримання повідомлень.</p>
+                  <a name="service-names"></a>
+                  <h3>Імена сервісів</h3>
+                  <p>Коли іде комунікація через шину, застосунки отримують так
+                    зване "ім'я сервісу": це те, як застосунок обирає, як
+                    представляти себе для інших на тій же шині. Імена сервісів
+                    надаються демоном шини D-Bus, та використовуються для надсилання
+                    від одного застосунку до іншого. Аналогічна концепція до
+                    імен сервісів є IP адреси та імен вузлів: комп'ютер звичайно
+                    має одну&nbsp;IP адресу, та може мати одне або більше імен,
+                    асоційованих з ним, відповідно до сервісів, що він провадить
+                    у мережі.</p>
+                  <p>З іншого боку, якщо шина не використовується, імена
+                    сервісів також не використовуються. Якщо ми знов порівняємо
+                    це з мережею, це нагадає нам мережу один-до-одного: оскільки
+                    оба кінці відомі, немає потреби використовувати імена, щоб
+                    знайти IP адресу.</p>
+                  <p>Формат імен сервісів в D-Bus фактично дуже подібний до імен
+                    хостів: він є розділена крапками послідовність літер та
+                    цифр. Загальна практика навіть називати імена сервісів
+                    згідно імен доменів компанії, що вводить даний сервіс.&nbsp;</p>
+                  <p>Наприклад, сервіс D-Bus, визначений <code>freedesktop.org</code>,
+                    може бути знайдений на шині під назвою сервісу org<span class="operator">.</span>freedesktop<span
+                      class="operator">.</span>DBus</p>
+                  <a name="object-paths"></a>
+                  <h3>Шляхи об'єктів</h3>
+                  <p>Подібно до хостів в мережі, застосунки провадять специфічні
+                    сервіси для інших, експортуючи об'єкти. Ці об'єкти
+                    организовані ієрархічно, подібно до ієрархії класів, що
+                    походить від&nbsp;<a href="qobject.html">QObject</a>. одна
+                    відмінність, однак, полігає в тому, що немає концепції
+                    "кореневого об'єкту", коли всі об'єкти мають одного батька.
+                  </p>
+                  <p>Якщо ми продовжимо аналогію з веб сервісами, шляхи об'єктів
+                    відповідають частині шляху в URL. Подібно до них, шляхи
+                    об'єктів в D-Bus формуються, копіюючи шляхи до файлів в
+                    файловій системі: вони є розділені косими мітки, кожна
+                    складається з літер, цифр та знаку підкреслення ("_"). Вони
+                    повинні завжди починатись з косої, та не повинні не неї
+                    закінчуватись.&nbsp;</p>
+                  <a name="interfaces"></a>
+                  <h3>Інтерфейси</h3>
+                  <p>Інтерфейси подібні до абстрактних класів C++ або ключового
+                    слова Java <code>interface</code>, та визначають "контракт",
+                    що встановлюється між викликаючим та отримувачем. Тобто вони
+                    містять імена методів, сигнали та властивості, що доступні,
+                    так само як і описують поведінку, що очікується від кожної
+                    сторони після встановлення комунікації.</p>
+                  <p>Qt використовує подібний мехінізм у власній&nbsp;<a href="plugins-howto.html">Системі
+                      додатків (плагінів</a>): базові класи в C++ асоційовані з
+                    унікальним ідентифікатором за допомогою макро&nbsp;<a href="qtplugin.html#Q_DECLARE_INTERFACE">Q_DECLARE_INTERFACE</a>().</p>
+                  <p>Імена інтерфейсів D-Bus є, фактично, схемою іменування,
+                    подібною до того, що рекомендує система плагінів Qt:
+                    ідентифікатор звичайно конструюється з імені домену тієї
+                    сутності, що визначає цей інтерфейс.</p>
+                  <a name="cheat-sheet"></a>
+                  <h3>Підказки</h3>
+                  <p>Щоб спростити запам'ятовування форматів іменування, та їх
+                    призначень, використовуйте наступну таблицю з підказками:</p>
+                  <div class="table">
+                    <table class="generic" width="90%">
+                      <thead>
+                        <tr class="qt-style">
+                          <th>Концепція D-Bus</th>
+                          <th>Аналогія</th>
+                          <th>Формат імені</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr class="odd" valign="top">
+                          <td>Ім'я сервісу</td>
+                          <td>Мережеві імена хостів</td>
+                          <td>Розділене крапками</td>
+                        </tr>
+                        <tr class="even" valign="top">
+                          <td>Шляї об'єкту</td>
+                          <td>Компонент шлаху в URL</td>
+                          <td>Розділене косими рисками</td>
+                        </tr>
+                        <tr class="odd" valign="top">
+                          <td>Інтерфейс</td>
+                          <td>Ідентифікатор плагіна</td>
+                          <td>Розділене крапками</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <a name="debugging"></a>
+                  <h2 id="debugging">Налаштування</h2>
+                  <p>При налагодженні застосунків, що використовують D-Bus,
+                    буває підчас корисним подивитись інформацію щодо повідомлень,
+                    що надсилаються по шині кожним з застосунків.</p>
+                  <p>Ця можливість може бути включеною для кожного застосунку
+                    окремо, встановлюючи змінну оточення <code>QDBUS_DEBUG</code>
+                    перед виконанням кожного застосунку. Наприклад, ми можемо
+                    включити налагодження тільки для машини в прикладі&nbsp;<a href="qtdbus-remotecontrolledcar-example.html">D-Bus
+                      Remote Controlled Car</a> , виконуючи контролер та машину
+                    наступним чином:</p>
+                  <pre class="cpp">examples<span class="operator">/</span>dbus<span
+class="operator">/</span>remotecontrolledcar<span class="operator">/</span>controller<span
+class="operator">/</span>controller <span class="operator">&amp;</span>
+QDBUS_DEBUG<span class="operator">=</span><span class="number">1</span> examples<span
+class="operator">/</span>dbus<span class="operator">/</span>remotecontrolledcar<span
+class="operator">/</span>car<span class="operator">/</span>car <span class="operator">&amp;</span></pre>
+                  <p>Інформація щодо повідомлень буде записана на консоль, з
+                    якої було запущений застосунок.</p>
+                  <h1 class="title"><a id="#adapters" name="#adapters"></a>Використання
+                    адаптерів Qt D-Bus</h1>
+                  Адаптери є особливими класами, що під'єднані до кожного
+                  похідного від <a href="file:///home/TRANS/QT/qobject.html">QObject</a>
+                  класу, та провадять інтерфейс до зовнішнього світу через
+                  D-Bus. Адаптери призначені бути легковажними класами, чиє
+                  головне призначення переправляти виклики, можливо перевіряючи
+                  або конвертуючи ввод з зовнішнього світу, та таким чином
+                  захищаючи справжній об'єкт.
+                  <p>На відміну від множинної наслідування, адаптори можуть бути
+                    додані в любий час та до любого об'єкту (але не видалені),
+                    що дозволяє більшу гнучкість при експорті існуючих класів.
+                    Інша перевага адаптерів у впровадженні подібної, але не
+                    ідентичної функціональності в методах з тим же ім'ям в
+                    різних інтерфейсах, випадок, що може бути досить загальним
+                    при додаванні нової версії стандартного інтерфейсу до
+                    об'єкта.</p>
+                  <p>Щоб застосувати адаптер треба створити клас, що
+                    наслідує&nbsp;<a href="file:///home/TRANS/QT/qdbusabstractadaptor.html">QDBusAbstractAdaptor</a>.
+                    Оскільки це стандартний клас, що походить від <a href="file:///home/TRANS/QT/qobject.html">QObject</a>,
+                    макро&nbsp;<a href="file:///home/TRANS/QT/qobject.html#Q_OBJECT">Q_OBJECT</a>
+                    мусить з'явитись в декларації, та первинний файл мусить бути
+                    обробленим за допомогою інструменту&nbsp;<a href="file:///home/TRANS/QT/moc.html">moc</a>.
+                    Клас мусить також містити одне входження&nbsp;<a href="file:///home/TRANS/QT/qobject.html#Q_CLASSINFO">Q_CLASSINFO</a>
+                    з іменем <code>"D-Bus Interface"</code>, декларуючи, який
+                    інтерфейс він експортує. Підтримується тільки одне входження
+                    на один клас. </p>
+                  <p>Любий публічний слот в класі буде доступний через шину
+                    зверху метода типу MethodCall. (Дивіться <a href="file:///home/TRANS/QT/qdbusdeclaringslots.html">Декларування
+                      слотів в адапторах D-Bus</a> для додаткової інформації).
+                    Сигнали в класі будуть автоматично перенаправлені через
+                    D-Bus. Однак не всі типи дозволені в списках параметрів
+                    сигналів та слотів: дивіться <a href="#types">Система типів
+                      Qt D-Bus</a> для додаткової інформації.</p>
+                  <p>Також, кожна властивість, задекларована з&nbsp;<a href="file:///home/TRANS/QT/qobject.html#Q_PROPERTY">Q_PROPERTY</a>
+                    буде автоматично поширена через інтерфейс Properties на
+                    D-Bus. Оскільки система властивостей <a href="file:///home/TRANS/QT/qobject.html">QObject</a>
+                    не дозволяє властивості, що не можна прочитати, неможливо
+                    задекларувати властивість тільки для запису за допомогою
+                    адаптерів.&nbsp;</p>
+                  <h1 class="title"><a id="#declSlots" name="#declSlots"></a>Декларування
+                    слотів в адапторах D-Bus</h1>
+                  <span class="subtitle"></span>
+                  <div class="descr">
+                    <p>Слоти в адапторах D-Bus декларуються як звичайні,
+                      публічні слоти, але їхні параметри повинні слідувати
+                      деяким правилам (дивіться <a href="#types">Система типів
+                        Qt D-Bus</a> для додаткової інформації). Слоти, чиї
+                      параметри не слідують цім правилам, або не є публічними,
+                      не будуть доступні через D-Bus.</p>
+                    <p>Слоти можуть ати один параметр типу&nbsp;<code>const
+                        QDBusMessage &amp;</code>,
+                      який має з'являтись в кінці списку параметрів, перед
+                      любими вихідними параметрами. Цей параметр, якщо присутній,
+                      буде ініціалізований копією повідомлення, що наразі
+                      обробляється, що дозволяє отримати інформацію щодо
+                      викликаючого, таку, як його ім'я з'єднання.</p>
+                    <p>Слоти можуть бути трьох типів:</p>
+                    <ol class="1">
+                      <li>Асинхронні</li>
+                      <li>Тільки вхідні</li>
+                      <li>Вхідні-та-вихідні</li>
+                    </ol>
+                    <a name="asynchronous-slots"></a>
+                    <h2 id="asynchronous-slots">Асинхронні слоти</h2>
+                    <p>Асинхронні слоти - це такі, що звичайно не повертають
+                      відповідь. З цієї причини вони не можуть приймати жодних
+                      вихідних параметрів. В більшості випадків під час
+                      виконання першого рядка слоту викликаюча фукнція вже продовжує
+                      роботу.</p>
+                    <p>Однак слот не повинен покладатись на цю поведінку.
+                      Проблеми планування та передачі повідомлень можуть змінити
+                      порядок, в якому слот буде виконуватись. Код, що має
+                      синхронізуватись з викликаючим, повинен провадити свої
+                      власні методи синхронізації.</p>
+                    <p>Асинхронні слоти помічені ключовим словом&nbsp;<a href="file:///home/TRANS/QT/qdbusabstractadaptor.html#Q_NOREPLY">Q_NOREPLY</a>
+                      в сигнатурі методу, перед типов <code>void</code> та
+                      ім'ям слоту. (Дивіться слот <code>quit()</code> в <a href="file:///home/TRANS/QT/qdbusadaptorexample.html">Прикладі
+                        D-Bus адаптора</a>).</p>
+                    <a name="input-only-slots"></a>
+                    <h2 id="input-only-slots">Вхідні слоти</h2>
+                    <p>Вхідні слоти є звичайними слотами, що приймають параметри,
+                      передані по значенню або як стале посилання. Однак, на
+                      відміну від асинхронних слотів, викликаючий звичайно
+                      очікує завершення перед відновленням роботи. Таким чином,
+                      не-асинхронні слоти не повинні блокувати, або повинні
+                      вказувати в документації, що це може відбутись.</p>
+                    <p>Тільки вхідні слоти не мають власного маркування в
+                      сигнатурі, за винятком того, що вони сприймають тільки
+                      параметри, передані по значенню або як сталі посилання.
+                      Додатково, слоти можуть приймати параметр <a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a>
+                      в якості останнього параметру, що може використовуватись
+                      для виконання додаткового аналізу повідомлення, що
+                      викликало метод. </p>
+                    <a name="input-and-output-slots"></a>
+                    <h2 id="input-and-output-slots">Вхідні-та-вихідні слоти</h2>
+                    <p>Як і вхідні слоти, вхідні-та-вихідні слоти будуть
+                      викликати очікування відповіді з боку викликаючого. Однак
+                      на відміну від тільки вхідних слотів, ці можуть у
+                      відповідь надсилати дані. Слоти, що виводять дані, можуть
+                      містити вихідні параметри зі змінними посиланнями, та
+                      також можуть повертати значення. Однак вихідні параметри
+                      повинні бути тільки в кінуі списку аргументів, та не
+                      можуть перемішуватись зі вхідними параметрами. Додатково
+                      аргумент&nbsp;<a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a>
+                      може з'являтись між вхідними та вихідними аргументами.</p>
+                    <a name="automatic-replies"></a>
+                    <h2 id="automatic-replies">Автоматичні відповіді</h2>
+                    <p>Відповіді методу генеруються автоматично з вмісту
+                      вихідних параметрів (якщо такі є) реалізацією Qt D-Bus.
+                      Слоти не повинні хвилюватися щодо конструювання
+                      відповідних об'єктів <a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a>
+                      та надсилання їх через з'єднання.</p>
+                    <p>Однак можливість робити це також залишається. Якщо слот
+                      бачить потребу подіслати особливу відповідь або сповістити
+                      про помилку, він може це зробити через&nbsp;<a href="file:///home/TRANS/QT/qdbusmessage.html#createReply">QDBusMessage::createReply</a>()
+                      або <a href="file:///home/TRANS/QT/qdbusmessage.html#createErrorReply">QDBusMessage::createErrorReply</a>()
+                      на параметрі <a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a>,
+                      та надіслати його через <a href="file:///home/TRANS/QT/qdbusconnection.html#send">QDBusConnection::send</a>().
+                      Реалізація Qt D-Bus не буде генерувати жодної відповіді,
+                      якщо слот це вже зробив.</p>
+                    <p><b>Попередження:</b> Коли викликаючий розміщує виклик
+                      методу та очікує на відповідь, він чекає тільки обмежений
+                      проміжок часу. Слоти, що забиратимуть великий час для
+                      завершення, мають зробити цей факт ясним в документації,
+                      так щоб викликаючі могли встановити більший таймаут.</p>
+                    <a name="delayed-replies"></a>
+                    <h2 id="delayed-replies">Відкладені відповіді</h2>
+                    <p>При деяких обставинах виклканий слот може бути
+                      неспроможний безпосередньо обробити відповідь. Це
+                      загальний випадок, коли запит включає дисковиі або
+                      мережеві операції, що можуть блокуватись.</p>
+                    <p>Я цьому випадку слот повинен повернути керування до
+                      головного циклу застосунку для запобігання заморожування
+                      користувацького інтерфейсу, та поновити процес пізніше.
+                      Щоб досягти цього він повинен використовувати додатковий
+                      параметр&nbsp;<code>QDBusMessage</code> в кінці вхідних
+                      параметрів, та зробити запит на відкладену відповідь.</p>
+                    <p>Ми робимо це, записуючи слот, що зберігає дані запиту в
+                      постійній структурі, індикуючи до викликаючого з
+                      використанням&nbsp;<a href="file:///home/TRANS/QT/qdbusmessage.html#setDelayedReply">QDBusMessage::setDelayedReply(true)</a>,
+                      що відповідь надійде пізніше.</p>
+                    <pre class="cpp"><span class="keyword">struct</span> RequestData
+{
+    <span class="type"><a href="file:///home/TRANS/QT/qstring.html">QString</a></span> request;
+    <span class="type"><a href="file:///home/TRANS/QT/qstring.html">QString</a></span> processedData;
+    <span class="type"><a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a></span> reply;
+};
+
+<span class="type"><a href="file:///home/TRANS/QT/qstring.html">QString</a></span> processRequest(<span
+class="keyword">const</span> <span class="type"><a href="file:///home/TRANS/QT/qstring.html">QString</a></span> <span
+class="operator">&amp;</span>request<span class="operator">,</span> <span class="keyword">const</span> <span
+class="type"><a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a></span> <span
+class="operator">&amp;</span>message)
+{
+    RequestData <span class="operator">*</span>data <span class="operator">=</span> <span
+class="keyword">new</span> RequestData;
+    data<span class="operator">-</span><span class="operator">&gt;</span>request <span
+class="operator">=</span> request;
+    message<span class="operator">.</span>setDelayedReply(<span class="keyword">true</span>);
+    data<span class="operator">-</span><span class="operator">&gt;</span>reply <span
+class="operator">=</span> message<span class="operator">.</span>createReply();
+    <span class="type"><a href="file:///home/TRANS/QT/qdbusconnection.html">QDBusConnection</a></span><span
+class="operator">::</span>sessionBus()<span class="operator">.</span>send(data<span
+class="operator">-</span><span class="operator">&gt;</span>reply);
+
+    appendRequest(data);
+    <span class="keyword">return</span> <span class="type"><a href="file:///home/TRANS/QT/qstring.html">QString</a></span>();
+}</pre>
+                    <p>Використання <a href="file:///home/TRANS/QT/qdbusconnection.html#send">QDBusConnection::sessionBus().send</a>(data-&gt;reply)
+потрібне
+                      для явного інформування викликаючого, що відповідь буде
+                      затримано. В цьому випадку значення неважливе; ми
+                      повертаємо довільне значення щоб задовільнити компілятор.</p>
+                    <p>Коли запит оброблений та відповідь доступна, вона повинна
+                      бути надіслана з використанням об'єкта <code>QDBusMessage</code>,
+                      що був отриманий. В нашому прикладі код відповіді може
+                      бути таким, як наступний:</p>
+                    <pre class="cpp"><span class="type">void</span> sendReply(RequestData <span
+class="operator">*</span>data)
+{
+    <span class="comment">// data-&gt;processedData будо ініціалізовано відповіддю</span>
+    <span class="type"><a href="file:///home/TRANS/QT/qdbusmessage.html">QDBusMessage</a></span> <span
+class="operator">&amp;</span>reply <span class="operator">=</span> <span class="operator">&amp;</span>data<span
+class="operator">-</span><span class="operator">&gt;</span>reply;
+
+    <span class="comment">// надсилаємо відповідь через D-Bus:</span>
+    reply <span class="operator">&lt;</span><span class="operator">&lt;</span> data<span
+class="operator">-</span><span class="operator">&gt;</span>processedData;
+    <span class="type"><a href="file:///home/TRANS/QT/qdbusconnection.html">QDBusConnection</a></span><span
+class="operator">::</span>sessionBus()<span class="operator">.</span>send(reply);
+
+    <span class="comment">// відкидаємо дані транзакції</span>
+    <span class="keyword">delete</span> data;
+}</pre>
+                    <p>Як бачимо з приклада, коли маємо справу з відкладеною
+                      відповіддю, значення, що повертається зі слоту буде проігноровано
+                      Qt D-Bus. Ці повідомлення служать тільки для визначення
+                      сигнатури слоту, коли комунікують дескриптор адаптера з
+                      віддаленим застосунком, або в випадку, коли код слоту
+                      доходить рішення не використовувати відкладениу
+                      відповідь.&nbsp;</p>
+                    <p>Відкладена відповідь сама по собі запитується від Qt
+                      D-Bus викликом QDBusMessage::reply() на оригінальному
+                      повідомленні. Це остається на відповідальності викликаного
+                      коду колись надіслати справжню відповідь.</p>
+                    <p><b>Застереження:</b> Коли викликаючий розміщує виклик
+                      методу для відповіді, він чекатиме тільки обмежений
+                      проміжок часу. Слот, що збирається зайняти багато часу для
+                      відповіді, повинен прояснити це питання в документації,
+                      щоб викликаючий міг встановити збільшений таймаут. </p>
+                    <h1 class="title"><a id="#declSignal" name="#declSignal"></a>Декларування
+                      сигналів в D-Bus адаптерах</h1>
+                    Кожний сигнал в класі, що походить від <a href="file:///home/TRANS/QT/qdbusabstractadaptor.html">QDBusAbstractAdaptor</a>,
+                    буде автоматично перенаправлений в D-Bus, вважаючи, що
+                    параметри сигналу відповідають деяким правилам( дивіться <a
+                      href="#types">Система типів Qt D-Bus</a> для додаткової
+                    інформації). ніякого особливого коду не потрібно щоб зробите
+                    це перепризначення.
+                    <div class="descr">
+                      <p>Однак сигнали все ще треба надсилати. Найпростіший шлях
+                        надіслати сигнал адаптера, це під'єднати до нього інший
+                        сигнал, так що сигнали Qt та механізм слотів автоматично
+                        надсилатиме також і сигнали адаптера. Це може бути
+                        зроблене в конструкторі адаптера, як це було зроблене
+                        в&nbsp;<a href="file:///home/TRANS/QT/qdbusadaptorexample.html">Пракладі
+                          адаптера D-Bus</a>.</p>
+                      <p>Зручна функція <a href="file:///home/TRANS/QT/qdbusabstractadaptor.html#setAutoRelaySignals">QDBusAbstractAdaptor::setAutoRelaySignals</a>()
+також
+                        може бути використана, щоб зробити та перервати
+                        з'єднання між сигналами в реальному об'єкті, та
+                        відповідними сигналами в адаптері. Вна буде інспектувати
+                        список сигналів в обох класах, та поєднувати ті, список
+                        параметрів яких точно співпадає.</p>
+                      <h1 class="title"><a id="#types" name="#types"></a>Система
+                        типів Qt D-Bus</h1>
+                      <span class="subtitle"></span>
+                      <div class="descr">
+                        <p>D-Bus має розширювану систему типів, що базуєтся на
+                          декількох примітивах та композиції примітивів в масиви
+                          та структури. Qt D-Bus реалізує інтерфейс до цієї
+                          системи типів через клас&nbsp;<a href="file:///home/TRANS/QT/qdbusargument.html">QDBusArgument</a>,
+                          дозволяючи користувацьким застосункам надсилати та
+                          отримувати практично любий тип C++ по шині.</p>
+                        <a name="primitive-types"></a>
+                        <h2 id="primitive-types">Примітивні типи</h2>
+                        <p>Примітивні типи підтримуються природно в <a href="file:///home/TRANS/QT/qdbusargument.html">QDBusArgument</a>
+                          та не потребують спеціального огортання, щоб бути
+                          відісланими або отриманими. Вони перелічені нижче,
+                          разом з класами C++, до яких відносяться:</p>
+                        <div class="table">
+                          <table class="generic">
+                            <thead>
+                              <tr class="qt-style">
+                                <th>Qt type</th>
+                                <th>D-Bus equivalent type</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <tr class="odd" valign="top">
+                                <td>uchar</td>
+                                <td>BYTE</td>
+                              </tr>
+                              <tr class="even" valign="top">
+                                <td>bool</td>
+                                <td>BOOLEAN</td>
+                              </tr>
+                              <tr class="odd" valign="top">
+                                <td>short</td>
+                                <td>INT16</td>
+                              </tr>
+                              <tr class="even" valign="top">
+                                <td>ushort</td>
+                                <td>UINT16</td>
+                              </tr>
+                              <tr class="odd" valign="top">
+                                <td>int</td>
+                                <td>INT32</td>
+                              </tr>
+                              <tr class="even" valign="top">
+                                <td>uint</td>
+                                <td>UINT32</td>
+                              </tr>
+                              <tr class="odd" valign="top">
+                                <td>qlonglong</td>
+                                <td>INT64</td>
+                              </tr>
+                              <tr class="even" valign="top">
+                                <td>qulonglong</td>
+                                <td>UINT64</td>
+                              </tr>
+                              <tr class="odd" valign="top">
+                                <td>double</td>
+                                <td>DOUBLE</td>
+                              </tr>
+                              <tr class="even" valign="top">
+                                <td><a href="file:///home/TRANS/QT/qstring.html">QString</a></td>
+                                <td>STRING</td>
+                              </tr>
+                              <tr class="odd" valign="top">
+                                <td><a href="file:///home/TRANS/QT/qdbusvariant.html">QDBusVariant</a></td>
+                                <td>VARIANT</td>
+                              </tr>
+                              <tr class="even" valign="top">
+                                <td><a href="file:///home/TRANS/QT/qdbusobjectpath.html">QDBusObjectPath</a></td>
+                                <td>OBJECT_PATH</td>
+                              </tr>
+                              <tr class="odd" valign="top">
+                                <td><a href="file:///home/TRANS/QT/qdbussignature.html">QDBusSignature</a></td>
+                                <td>SIGNATURE</td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <p>Aside from the primitive types, <a href="file:///home/TRANS/QT/qdbusargument.html">QDBusArgument</a>
+                          also supports two non-primitive types natively, due to
+                          their widespread use in Qt applications: <a href="file:///home/TRANS/QT/qstringlist.html">QStringList</a>
+                          and <a href="file:///home/TRANS/QT/qbytearray.html">QByteArray</a>.</p>
+                        <a name="compound-types"></a>
+                        <h2 id="compound-types">Compound Types</h2>
+                        <p>D-Bus specifies three types of aggregations of
+                          primitive types that allow one to create compound
+                          types. They are <code>ARRAY</code>, <code>STRUCT</code>
+                          and maps/dictionaries.</p>
+                        <p>Arrays are sets of zero or more elements of the same
+                          type, while structures are a set of a fixed number of
+                          elements, each of any type. Maps or dictionaries are
+                          implemented as arrays of a pair of elements, so there
+                          can be zero or more elements in one map.</p>
+                        <a name="extending-the-type-system"></a>
+                        <h2 id="extending-the-type-system">Extending the Type
+                          System</h2>
+                        <p>In order to use one's own type with Qt D-Bus, the
+                          type has to be declared as a Qt meta-type with the <a
+                            href="file:///home/TRANS/QT/qmetatype.html#Q_DECLARE_METATYPE">Q_DECLARE_METATYPE</a>()
+                          macro and registered with the <a href="file:///home/TRANS/QT/qdbusargument.html#qDBusRegisterMetaType">qDBusRegisterMetaType</a>()
+                          function. The streaming operators <code>operator&gt;&gt;</code>
+                          and <code>operator&lt;&lt;</code> will be
+                          automatically found by the registration system.</p>
+                        <p>Qt D-Bus provides template specializations for arrays
+                          and maps for use with Qt's <a href="file:///home/TRANS/QT/topics-core.html#container-classes">container
+                            classes</a>, such as <a href="file:///home/TRANS/QT/qmap.html">QMap</a>
+                          and <a href="file:///home/TRANS/QT/qlist.html">QList</a>,
+                          so it is not necessary to write the streaming operator
+                          functions for those. For other types, and specially
+                          for types implementing structures, the operators have
+                          to be explicitly implemented.</p>
+                        <p>See the documentation for <a href="file:///home/TRANS/QT/qdbusargument.html">QDBusArgument</a>
+                          for examples for structures, arrays and maps.</p>
+                        <a name="the-type-system-in-use"></a>
+                        <h2 id="the-type-system-in-use">The Type System in Use</h2>
+                        <p>All of the Qt D-Bus types (primitives and
+                          user-defined alike) can be used to send and receive
+                          messages of all types over the bus.</p>
+                        <p><b>Warning:</b> You may not use any type that is not
+                          on the list above, including <i>typedefs</i> to the
+                          types listed. This also includes <a href="file:///home/TRANS/QT/qlist.html">QList</a>&lt;<a
+                            href="file:///home/TRANS/QT/qvariant.html">QVariant</a>&gt;
+                          and <a href="file:///home/TRANS/QT/qmap.html">QMap</a>&lt;<a
+                            href="file:///home/TRANS/QT/qstring.html">QString</a>,<a
+                            href="file:///home/TRANS/QT/qvariant.html">QVariant</a>&gt;.</p>
+                      </div>
+                    </div>
+                    <p></p>
+                  </div>
+                  <p></p>
+                  <a name="further-reading"></a>
+                  <h2 id="further-reading">Подальше читання</h2>
+                  <p>Наступні документи містять інформацію щодо можливостей
+                    інтеграції Qt D-Bus, та провадять деталі щодо механізми, що
+                    використовуються для надсилання та отримання інформації
+                    типів по шині:</p>
+                  <ul>
+                    <li><a href="qdbustypesystem.html">The Qt D-Bus Type System</a></li>
+                    <li><a href="qdbusxml2cpp.html">Qt D-Bus XML compiler
+                        (qdbusxml2cpp)</a></li>
+                    <li><a href="qtdbus-module.html">Qt D-Bus C++ Classes</a></li>
+                    <li><a href="examples-dbus.html">Qt D-Bus Examples</a></li>
+                    <li><a href="qdbusviewer.html">D-Bus Viewer</a></li>
+                  </ul>
+                </div>
+                <acronym title="Copyright">©</acronym> 2015 The Qt Company Ltd.
+                Documentation contributions included herein are the copyrights
+                of their respective owners. The documentation provided herein is
+                licensed under the terms of the <a href="http://www.gnu.org/licenses/fdl.html">GNU
+                  Free Documentation License version 1.3</a> as published by the
+                Free Software Foundation. Qt and respective logos are trademarks
+                of The Qt Company Ltd. in Finland and/or other countries
+                worldwide. All other trademarks are property of their respective
+                owners.<a href="http://qt.io/about-us/"><span style="color: black;">
+                  </span>© 2015 The Qt Company</a></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="footer">
+      <footer id="footerbar">
+        <div class="disclaimer">
+          <div class="container clearfix no_discs">
+            <ul id="menu-footer-submenu" class="right clearfix">
+            </ul>
+          </div>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>

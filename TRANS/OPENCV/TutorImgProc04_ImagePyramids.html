@@ -1,0 +1,453 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Піраміди зображень. Перекладено українською: Арсеній Чеботарьов,
+      Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="image-pyramids" class="section"> <span id="pyramids"></span>
+              <h1>Піраміди зображень<a title="Permalink to this headline" href="#image-pyramids"
+                  class="headerlink"><br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Ціль<a title="Permalink to this headline" href="#goal" class="headerlink"><br />
+                  </a></h2>
+                <p>І цьому туторіалі мипобачимо як:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Використовувати функнції OpenCV <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrup#pyrup"
+                        class="reference external">pyrUp</a> та <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrdown#pyrdown"
+                        class="reference external">pyrDown</a>, щоб збільшити
+                      або зменшити зображення.</li>
+                  </ul>
+                </div>
+              </div>
+              <div id="theory" class="section">
+                <h2>Теорія<a title="Permalink to this headline" href="#theory" class="headerlink"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пояснення нижче належить до книги <strong>Learning
+                      OpenCV</strong> від Bradski та Kaehler.</p>
+                </div>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Звичано нам треба перетворити зображення до іншого
+                      розміру, ніж його оригінал. Для цього є дві можливі опциї:
+                      <ol class="arabic">
+                        <li><em>Збільшити розмір</em> зображення (zoom in) або</li>
+                        <li><em>Зменшити </em>йогоit (zoom out).</li>
+                      </ol>
+                    </li>
+                    <li>Хоча є функція <em>геометричної трансформації </em>в
+                      OpenCV, що -буквально- змінює розмір зображення (<a href="http://docs.opencv.org/modules/imgproc/doc/geometric_transformations.html?highlight=resize#resize"
+                        class="reference external">resize</a>, яку ми побачимо в
+                      наступному туторіалі), в цьому туторіалі ми проаналізуємо
+                      спершу використання <strong>пірамід зображення</strong>,
+                      що широко застосовуються в великому диапазоні застосувань
+                      бачення.</li>
+                  </ul>
+                </div>
+                <div id="image-pyramid" class="section">
+                  <h3>Піраміда зображення<a title="Permalink to this headline" href="#image-pyramid"
+                      class="headerlink"><br />
+                    </a></h3>
+                  <div class="enumeratevisibleitemswithsquare container">
+                    <ul class="simple">
+                      <li>Піраміда зображення є набором зображень - всі походять
+                        від одного оригінального зображення -що послідовно
+                        зменшені до тих пір, доки не було досягнуто бажаної
+                        крапки.</li>
+                      <li>Є два загальні типи пірамід зображень:
+                        <ul>
+                          <li><strong>Гаусіанівська піраміда:</strong>
+                            Використовуєтсья для зменьшення зображень</li>
+                          <li><strong>Лапласіанська піраміда:</strong>
+                            Використовується для реконструкції збільшеного
+                            зображення з зображення, що є нижчим в піраміді (з
+                            нижчою розподільною здатністю)</li>
+                        </ul>
+                      </li>
+                      <li>В туторіалі ми використаємо гаусіанівську піраміду.</li>
+                    </ul>
+                  </div>
+                  <div id="gaussian-pyramid" class="section">
+                    <h4>Гаусіанівська піраміда<a title="Permalink to this headline"
+                        href="#gaussian-pyramid" class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li>
+                        <p class="first">Уявіть піраміду як набір шарів, де чим
+                          вищий шар, тим менше зораження. </p>
+                        <img src="../../../../_images/Pyramids_Tutorial_Pyramid_Theory.png"
+                          class="align-center" alt="Pyramid figure" /><img src="TutImgProc04-1.png"
+                          alt="" /> </li>
+                      <li>
+                        <p class="first">Кожний шар пронумеровано знизу до гори.</p>
+                      </li>
+                      <li>
+                        <p class="first">Щоб порахувати наступний шар, ми робимо
+                          наступне:</p>
+                        <ul>
+                          <li>
+                            <p class="first">Проганяємо зображення через
+                              гаусіанівське ядро: <img src="TutImgProc04-2.png"
+                                alt="" /></p>
+                            <div class="math">
+                              <p><img alt="\frac{1}{16} \begin{bmatrix} 1 &amp; 4 &amp; 6 &amp; 4 &amp; 1  \\ 4 &amp; 16 &amp; 24 &amp; 16 &amp; 4  \\ 6 &amp; 24 &amp; 36 &amp; 24 &amp; 6  \\ 4 &amp; 16 &amp; 24 &amp; 16 &amp; 4  \\ 1 &amp; 4 &amp; 6 &amp; 4 &amp; 1 \end{bmatrix}"
+                                  src="../../../../_images/math/c9c31f8f8d03beb75a6d450dde2572292550d241.png" /></p>
+                            </div>
+                          </li>
+                          <li>
+                            <p class="first">Видаляємо кожні непарні рядки та
+                              стовпчики.</p>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <p class="first">Ви легко помітите, що отримане
+                          зображення буде рівно четвертиною джерела. Продовжуючи
+                          цей процес отримаємо всю піраміду. </p>
+                      </li>
+                      <li>
+                        <p class="first">Це процес зменьшення зображення. Для
+                          збільшення робиться таке:</p>
+                        <ul class="simple">
+                          <li>Перше - збільшіть розмір в два рази по кожному
+                            напрямку, заповнюючі нові (парні) рядки нулями.</li>
+                          <li>Виконайте згортку з тим же ядром, що і вище, щоб
+                            апроксімувати недостаючі пікселі. </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <p class="first">Ці дві процедури, які показано вище,
+                          реалізовані в OpenCV як функції <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrup#pyrup"
+                            class="reference external">pyrUp</a> та <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrdown#pyrdown"
+                            class="reference external">pyrDown</a>, як це
+                          показано в прикладі:</p>
+                      </li>
+                    </ul>
+                    <div class="admonition note">
+                      <p class="last">Зауваження: Коли ми зменьшуємо розмір
+                        зображення, ми, насправді, <em>втрачаємо інформацію</em>. </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div id="code" class="section">
+                <h2>Код<a title="Permalink to this headline" href="#code" class="headerlink">
+                    <br />
+                  </a></h2>
+                <pre><span class="cp">#include "opencv2/imgproc/imgproc.hpp"</span>
+<span class="cp">#include "opencv2/highgui/highgui.hpp"</span>
+<span class="cp">#include &lt;math.h&gt;</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="n">Mat</span> <span class="n">src</span><span class="p">,</span> <span
+class="n">dst</span><span class="p">,</span> <span class="n">tmp</span><span class="p">;</span>
+<span class="kt">char</span><span class="o">*</span> <span class="n">window_name</span> <span
+class="o">=</span> <span class="s">"Pyramids Demo"</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+<span class="p">{</span>
+  <span class="n">printf</span><span class="p">(</span> <span class="s">"</span><span
+class="se">\n</span><span class="s"> Zoom In-Out demo  </span><span class="se">\n</span><span
+class="s"> "</span> <span class="p">);</span>
+  <span class="n">printf</span><span class="p">(</span> <span class="s">"------------------ </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+  <span class="n">printf</span><span class="p">(</span> <span class="s">" * [u] -&gt; Zoom in  </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+  <span class="n">printf</span><span class="p">(</span> <span class="s">" * [d] -&gt; Zoom out </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+  <span class="n">printf</span><span class="p">(</span> <span class="s">" * [ESC] -&gt; Close program </span><span
+class="se">\n</span><span class="s"> </span><span class="se">\n</span><span class="s">"</span> <span
+class="p">);</span>
+
+  <span class="c1">/// Test image - Make sure it s divisible by 2^{n}</span>
+  <span class="n">src</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span> <span class="s">"../images/chicky_512.jpg"</span> <span class="p">);</span>
+  <span class="k">if</span><span class="p">(</span> <span class="o">!</span><span
+class="n">src</span><span class="p">.</span><span class="n">data</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="n">printf</span><span class="p">(</span><span
+class="s">" No data! -- Exiting the program </span><span class="se">\n</span><span
+class="s">"</span><span class="p">);</span>
+      <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">;</span> <span class="p">}</span>
+
+  <span class="n">tmp</span> <span class="o">=</span> <span class="n">src</span><span
+class="p">;</span>
+  <span class="n">dst</span> <span class="o">=</span> <span class="n">tmp</span><span
+class="p">;</span>
+
+  <span class="n">namedWindow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+
+  <span class="k">while</span><span class="p">(</span> <span class="nb">true</span> <span
+class="p">)</span>
+  <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">c</span><span class="p">;</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">waitKey</span><span
+class="p">(</span><span class="mi">10</span><span class="p">);</span>
+
+    <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span
+class="kt">char</span><span class="p">)</span><span class="n">c</span> <span class="o">==</span> <span
+class="mi">27</span> <span class="p">)</span>
+      <span class="p">{</span> <span class="k">break</span><span class="p">;</span> <span
+class="p">}</span>
+    <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span
+class="kt">char</span><span class="p">)</span><span class="n">c</span> <span class="o">==</span> <span
+class="sc">'u'</span> <span class="p">)</span>
+      <span class="p">{</span> <span class="n">pyrUp</span><span class="p">(</span> <span
+class="n">tmp</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">tmp</span><span class="p">.</span><span
+class="n">cols</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span
+class="n">tmp</span><span class="p">.</span><span class="n">rows</span><span class="o">*</span><span
+class="mi">2</span> <span class="p">)</span> <span class="p">);</span>
+        <span class="n">printf</span><span class="p">(</span> <span class="s">"** Zoom In: Image x 2 </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+      <span class="p">}</span>
+    <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="p">(</span><span class="kt">char</span><span class="p">)</span><span class="n">c</span> <span
+class="o">==</span> <span class="sc">'d'</span> <span class="p">)</span>
+     <span class="p">{</span> <span class="n">pyrDown</span><span class="p">(</span> <span
+class="n">tmp</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">tmp</span><span class="p">.</span><span
+class="n">cols</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span
+class="n">tmp</span><span class="p">.</span><span class="n">rows</span><span class="o">/</span><span
+class="mi">2</span> <span class="p">)</span> <span class="p">);</span>
+       <span class="n">printf</span><span class="p">(</span> <span class="s">"** Zoom Out: Image / 2 </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+     <span class="p">}</span>
+
+    <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">dst</span><span
+class="p">;</span>
+  <span class="p">}</span>
+  <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre>
+                <div class="highlight-cpp"> </div>
+              </div>
+              <div id="explanation" class="section">
+                <h2>Пояснення<a title="Permalink to this headline" href="#explanation"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Подивимось на головну сигнатуру програми:</p>
+                    <ul>
+                      <li>
+                        <p class="first">Завантажуємо зображення</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="c1">/// Test image - Make sure it s divisible by 2^{n}</span>
+<span class="n">src</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span> <span class="s">"../images/chicky_512.jpg"</span> <span class="p">);</span>
+<span class="k">if</span><span class="p">(</span> <span class="o">!</span><span
+class="n">src</span><span class="p">.</span><span class="n">data</span> <span class="p">)</span>
+  <span class="p">{</span> <span class="n">printf</span><span class="p">(</span><span
+class="s">" No data! -- Exiting the program </span><span class="se">\n</span><span
+class="s">"</span><span class="p">);</span>
+    <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">;</span> <span class="p">}</span>
+</pre></div>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Створюємо Mat для зберігання результату
+                          та проміжних результатів (<em>tmp</em>).</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">Mat</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">tmp</span><span
+class="p">;</span>
+<span class="cm">/* ... */</span>
+<span class="n">tmp</span> <span class="o">=</span> <span class="n">src</span><span
+class="p">;</span>
+<span class="n">dst</span> <span class="o">=</span> <span class="n">tmp</span><span
+class="p">;</span>
+</pre></div>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Створюємо вікно</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">namedWindow</span><span class="p">(</span> <span
+class="n">window_name</span><span class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span
+class="p">);</span>
+<span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+</pre></div>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Створюємо безкінечний цикл для
+                          користувацького вводу</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="k">while</span><span class="p">(</span> <span
+class="nb">true</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="kt">int</span> <span class="n">c</span><span class="p">;</span>
+  <span class="n">c</span> <span class="o">=</span> <span class="n">waitKey</span><span
+class="p">(</span><span class="mi">10</span><span class="p">);</span>
+
+  <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span
+class="kt">char</span><span class="p">)</span><span class="n">c</span> <span class="o">==</span> <span
+class="mi">27</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="k">break</span><span class="p">;</span> <span
+class="p">}</span>
+  <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span
+class="kt">char</span><span class="p">)</span><span class="n">c</span> <span class="o">==</span> <span
+class="sc">'u'</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="n">pyrUp</span><span class="p">(</span> <span
+class="n">tmp</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">tmp</span><span class="p">.</span><span
+class="n">cols</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span
+class="n">tmp</span><span class="p">.</span><span class="n">rows</span><span class="o">*</span><span
+class="mi">2</span> <span class="p">)</span> <span class="p">);</span>
+      <span class="n">printf</span><span class="p">(</span> <span class="s">"** Zoom In: Image x 2 </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+    <span class="p">}</span>
+  <span class="k">else</span> <span class="k">if</span><span class="p">(</span> <span
+class="p">(</span><span class="kt">char</span><span class="p">)</span><span class="n">c</span> <span
+class="o">==</span> <span class="sc">'d'</span> <span class="p">)</span>
+   <span class="p">{</span> <span class="n">pyrDown</span><span class="p">(</span> <span
+class="n">tmp</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">tmp</span><span class="p">.</span><span
+class="n">cols</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span
+class="n">tmp</span><span class="p">.</span><span class="n">rows</span><span class="o">/</span><span
+class="mi">2</span> <span class="p">)</span> <span class="p">);</span>
+     <span class="n">printf</span><span class="p">(</span> <span class="s">"** Zoom Out: Image / 2 </span><span
+class="se">\n</span><span class="s">"</span> <span class="p">);</span>
+   <span class="p">}</span>
+
+  <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+  <span class="n">tmp</span> <span class="o">=</span> <span class="n">dst</span><span
+class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                        </div>
+                        <p>Наша програма виходить по <em>ESC</em>Окрім цього є
+                          дві опції. :</p>
+                        <ul>
+                          <li>
+                            <p class="first"><strong>збільшення ( ‘u’)</strong></p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">pyrUp</span><span class="p">(</span> <span
+class="n">tmp</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">tmp</span><span class="p">.</span><span
+class="n">cols</span><span class="o">*</span><span class="mi">2</span><span class="p">,</span> <span
+class="n">tmp</span><span class="p">.</span><span class="n">rows</span><span class="o">*</span><span
+class="mi">2</span> <span class="p">)</span>
+</pre></div>
+                            </div>
+                            <p>Ми використовуємо <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrup#pyrup"
+                                class="reference external">pyrUp</a> з трьома аргументами:</p>
+                            <ul class="simple">
+                              <li><em>tmp</em>: Поточне зображення, що ініціалізоване <em>src</em>.</li>
+                              <li><em>dst</em>: Цільове зображення (для
+                                відображення на екрані)</li>
+                              <li><em>Size( tmp.cols*2, tmp.rows*2 )</em> :
+                                Розмір цільового зображення. <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrup#pyrup"
+                                  class="reference external">pyrUp</a> очікує
+                                розмір в два рази більше ніж у вхідного
+                                зображення.</li>
+                            </ul>
+                          </li>
+                          <li>
+                            <p class="first"><strong>зменшення ( ‘d’)</strong></p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">pyrDown</span><span class="p">(</span> <span
+class="n">tmp</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">tmp</span><span class="p">.</span><span
+class="n">cols</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span
+class="n">tmp</span><span class="p">.</span><span class="n">rows</span><span class="o">/</span><span
+class="mi">2</span> <span class="p">)</span>
+</pre></div>
+                            </div>
+                            <p>Все аналогічно, тільки розмір очікується в два
+                              рази менший.</p>
+                            <ul class="simple">
+                            </ul>
+                          </li>
+                          <li>
+                            <p class="first">Зауважте, що розміри кратні двом.
+                              Інакше виникне помилка. </p>
+                          </li>
+                          <li>
+                            <p class="first">Нарешті, ми оновлюємо вхідне
+                              зображення тим, що тільки що обчислили. Так що
+                              подальші операції будуть виконуватись з вже
+                              обчисленим. </p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">tmp</span> <span class="o">=</span> <span
+class="n">dst</span><span class="p">;</span>
+</pre></div>
+                            </div>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+              <div id="results" class="section">
+                <h2>Результат<a title="Permalink to this headline" href="#results"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ul>
+                  <li>
+                    <p class="first">Після компіляції коду нижче ми можемо його
+                      протестувати. Знайдіть <strong>chicky_512.jpg</strong>
+                      що іде з цім прикладом. Зауважте, що розмір зображення
+                      512х512, тобто ступінь двійки. Це дозволить зменьшувати
+                      зображення без помилок:</p>
+                    <img src="TutImgProc04-Res1.jpeg" alt="" /><img src="../../../../_images/Pyramids_Tutorial_Original_Image.jpg"
+                      class="align-center" alt="Pyramids: Original image" /> </li>
+                  <li>
+                    <p class="first">Спочатку застосуємо <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrdown#pyrdown"
+                        class="reference external">pyrDown</a>, натиснувши ‘d’:</p>
+                    <img src="../../../../_images/Pyramids_Tutorial_PyrDown_Result.jpg"
+                      class="align-center" alt="Pyramids: PyrDown Result" /><img
+                      src="TutImgProc04-Res2.jpeg" alt="" /> </li>
+                  <li>
+                    <p class="first">Тепер збільшимо зображення. Ми бачимо, як
+                      була втрачена деяка інформація, та зображення стало
+                      нечітки. Натисніть ‘u’ двічі щоб викликати <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=pyrup#pyrup"
+                        class="reference external">pyrUp</a> два рази:</p>
+                    <img src="../../../../_images/Pyramids_Tutorial_PyrUp_Result.jpg"
+                      class="align-center" alt="Pyramids: PyrUp Result" /><img src="TutImgProc04-Res3.jpeg"
+                      alt="" /> </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

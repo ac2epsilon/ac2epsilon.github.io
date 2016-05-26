@@ -1,0 +1,617 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Як сканувати зображення, передивлятись таблиці та виміряти час
+                в OpenCV.
+      Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+      ac2epsilon@gmail.com </title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="how-to-scan-images-lookup-tables-and-time-measurement-with-opencv"
+              class="section"> <span id="howtoscanimagesopencv"></span>
+              <h1>Як сканувати зображення, передивлятись таблиці та виміряти час
+                в OpenCV<a title="Permalink to this headline" href="#how-to-scan-images-lookup-tables-and-time-measurement-with-opencv"
+                  class="headerlink"> <br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Призначення<a title="Permalink to this headline" href="#goal"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Ми будемо шукати відповіді на наступні запитання:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Як пройти по кожному пікселю зображення?</li>
+                    <li>Як зберігаються значення матриць в OpenCV?</li>
+                    <li>Як виміряти продуктівність нашого алгоритму?</li>
+                    <li>Що таке таблиці перегляду та для чого вони
+                      використовуються?</li>
+                  </ul>
+                </div>
+              </div>
+              <div id="our-test-case" class="section">
+                <h2>Наше тестове завдання<a title="Permalink to this headline" href="#our-test-case"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Уявімо простий метод редукції кольору. Використовуючи тип
+                  unsigned char C та C++ для елементів матриці зберігання, канал
+                  пікселя може мати до 256 різних значень. Для триканального
+                  зображення це може дати утворення дуже багатьох кольорів (16
+                  мільйомів, якщо бути точним). Робота з такою кількістью
+                  відтінків кольорів може в значній мірі вплинути на
+                  продуктівність нашого алгоритму. Однак, часом достатньо
+                  працювати зі значно меншим числом кольорів, та досягти того ж
+                  остаточного результату. </p>
+                <p>В ціх випадках є загальним виконати <em>редукцію кольорового
+                    простору</em>. Це означає, що ми ділимо поточне значення
+                  кольорового простору на нове значення, що призводить до
+                  зменьшення кількості кольорів. Наприклад, кожне значення від
+                  нуля до дев'яти отримує нове значення нуль, кожне значення від
+                  десятти до дев'ятнадцяти отримує значення десять, і так далі. </p>
+                <p>Коли ви ділите значення <em>uchar</em> (unsigned char -
+                  значення від 0 до 255) на значення <em>int</em>, результат
+                  буде все одно <em>char</em>. Ці значення можуть бути тільки
+                  значеннями char. Таким чином, любі дробі будуть відсічені.
+                  Користуючить перевагами цього факта, згадана операція в
+                  області <em>uchar</em> може виглядти так:</p>
+                <div class="math">
+                  <p><img alt="I_{new} = (\frac{I_{old}}{10}) * 10" src="../../../../_images/math/1b67187c3a505075c1fcf87143f53cb103db91c5.png" /></p>
+                </div>
+                <p>Алгоритм простої редукції кольорового простору може
+                  складатись тільки з того, що кожний піксель матриці зображення
+                  пропускається через цю формулу. Варто занотувати, що ми
+                  виконуємо операції множення та ділення. Ці операції важкі для
+                  системи. Якщо можливо, має сенс уникати їх, використовуючи
+                  дешевші операції, такі, як декілька віднімань, додавань, або,
+                  в найкращому випадку, просте присвоювання. Більше того,
+                  зауважте, що ми маємо тільки обмежену кількість вхідних
+                  значень, до яких виконується наша операція. В випадку системи <em>uchar</em>
+                  це рівно 256 можливих значень.</p>
+                <p>Таким чином, для більших зображень може мати сенс обчислити
+                  всі можливі значення наперед, та під час присвоєння тільки
+                  робити присвоєння, використовуючи таблицю пошуку. Таблиця
+                  пошуку - це звичайний масив (що має один або декілька
+                  вимірів), що для кожного вхідного значення містить результуюче
+                  вихідне значення. Потужність цього полягає в тому, що нам не
+                  треба робити обчислення, ми маємо тільки отримувати результат.</p>
+                <p>Наша тестова програма (та представлений тут приклад) буде
+                  робити наступне: читати з консолі зображення як аргумент (що
+                  може бути або кольоровим, або чорно-білим - також аргумент
+                  командного рядка), та застосовує редукцію на задане з консолі
+                  значення. В OpenCV, неразі, є три головні шляхи пройти по всім
+                  пікселям зображення, піксель за пікселем. Щоб зробити речі
+                  дещо цікавішими, ми будемо використовувати всі три методи, та
+                  замірятимемо, скльки часу це займе.</p>
+                <p>Ви можете завантажити повний код з прикладів OpenCV в розділі
+                  core. Використання програми наступне:</p>
+                <div class="highlight-bash">
+                  <div class="highlight">
+                    <pre>how_to_scan_images imageName.jpg intValueToReduce <span
+class="o">[</span>G<span class="o">]</span>
+</pre></div>
+                </div>
+                <p>Заключний аргумент є опціональним. Якщо обране зображення є
+                  сірим, інакше буде викоритсовуватись кольорова схема RGB.
+                  Перша річ, що треба зробити, це обчислити таблицю пошуку.</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre>    <span class="kt">int</span> <span class="n">divideWith</span> <span
+class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="c1">// перетворює вхідний рядок в число - стиль C++</span>
+    <span class="n">stringstream</span> <span class="n">s</span><span class="p">;</span>
+    <span class="n">s</span> <span class="o">&lt;&lt;</span> <span class="n">argv</span><span
+class="p">[</span><span class="mi">2</span><span class="p">];</span>
+    <span class="n">s</span> <span class="o">&gt;&gt;</span> <span class="n">divideWith</span><span
+class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span
+class="n">s</span> <span class="o">||</span> <span class="o">!</span><span class="n">divideWith</span><span
+class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Введено навірне число для ділення. "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+        <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">uchar</span> <span class="n">table</span><span class="p">[</span><span
+class="mi">256</span><span class="p">];</span>
+    <span class="k">for</span> <span class="p">(</span><span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="mi">256</span><span
+class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+       <span class="n">table</span><span class="p">[</span><span class="n">i</span><span
+class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">uchar</span><span
+class="p">)(</span><span class="n">divideWith</span> <span class="o">*</span> <span
+class="p">(</span><span class="n">i</span><span class="o">/</span><span class="n">divideWith</span><span
+class="p">));</span>
+</pre></div>
+                </div>
+                <p>Це перше використання класу C++ для перетворення третього
+                  аргументу командного рядка з текстового формату на число.
+                  Потім ми використовуємо простий вигляд та формулу для
+                  обчислення таблиці пошуку. Тут немає нічого специфічного до
+                  OpenCV.</p>
+                <p>Інша проблема в тому, як ми будемо вимірювати час? OpenCV
+                  надає дві прості функції щоб досягти цього <a href="http://docs.opencv.org/modules/core/doc/utility_and_system_functions_and_macros.html#gettickcount"
+                    class="reference external">getTickCount()</a> та <a href="http://docs.opencv.org/modules/core/doc/utility_and_system_functions_and_macros.html#gettickfrequency"
+                    class="reference external">getTickFrequency()</a>. Перша
+                  повертає число тіків вашого системного CPU після окремої події
+                  (як перезавантаження вашої системи). Друга повертає, як багато
+                  разів ваш CPU робить тікі на протязі секунди. Так що для
+                  вимірювання відрізків часу в секундах досить наступного коду:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="kt">double</span> <span class="n">t</span> <span
+class="o">=</span> <span class="p">(</span><span class="kt">double</span><span class="p">)</span><span
+class="n">getTickCount</span><span class="p">();</span>
+<span class="c1">// зробити дещо ...</span>
+<span class="n">t</span> <span class="o">=</span> <span class="p">((</span><span
+class="kt">double</span><span class="p">)</span><span class="n">getTickCount</span><span
+class="p">()</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span><span
+class="o">/</span><span class="n">getTickFrequency</span><span class="p">();</span>
+<span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Пройшло секунд: "</span> <span
+class="o">&lt;&lt;</span> <span class="n">t</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+</pre></div>
+                </div>
+              </div>
+              <div id="how-the-image-matrix-is-stored-in-the-memory" class="section">
+                <span id="how-image-stored-memory"></span>
+                <h2>Як матриця зображення зберігається в пам'яті?<a title="Permalink to this headline"
+                    href="#how-the-image-matrix-is-stored-in-the-memory" class="headerlink"><br />
+                  </a></h2>
+                <p>Як ви вже знаєте, розмір матриці залежить від використованої
+                  системи кольорів. Більш точно, він залежить від кількості
+                  використованих каналів. В випадку сірого зображення ми маємо
+                  щось подібне до наступного:</p>
+                <div class="math">
+                  <p><img alt="\newcommand{\tabItG}[1] { \textcolor{black}{#1} \cellcolor[gray]{0.8}} \begin{tabular} {ccccc}~ &amp; \multicolumn{1}{c}{Column 0} &amp;   \multicolumn{1}{c}{Column 1} &amp;   \multicolumn{1}{c}{Column ...} &amp; \multicolumn{1}{c}{Column m}\\ Row 0 &amp; \tabItG{0,0} &amp; \tabItG{0,1} &amp; \tabItG{...}  &amp; \tabItG{0, m} \\Row 1 &amp; \tabItG{1,0} &amp; \tabItG{1,1} &amp; \tabItG{...}  &amp; \tabItG{1, m} \\ Row ... &amp; \tabItG{...,0} &amp; \tabItG{...,1} &amp; \tabItG{...} &amp; \tabItG{..., m} \\Row n &amp; \tabItG{n,0} &amp; \tabItG{n,1} &amp; \tabItG{n,...} &amp; \tabItG{n, m} \\ \end{tabular}"
+                      src="../../../../_images/math/146857cf7bb2f26ce5ef0b4ddff686cf6f945204.png" /></p>
+                </div>
+                <p>Для багатоканального зображення стовпчики мають стільки
+                  під-стовбчиків, скільки є каналів. Наприклад, у випадку
+                  системи кольорів RGB:</p>
+                <div class="math">
+                  <p><img alt="\newcommand{\tabIt}[1] { \textcolor{yellow}{#1} \cellcolor{blue} &amp;  \textcolor{black}{#1} \cellcolor{green} &amp; \textcolor{black}{#1} \cellcolor{red}} \begin{tabular} {ccccccccccccc}~ &amp; \multicolumn{3}{c}{Column 0} &amp;   \multicolumn{3}{c}{Column 1} &amp;   \multicolumn{3}{c}{Column ...} &amp; \multicolumn{3}{c}{Column m}\\ Row 0 &amp; \tabIt{0,0} &amp; \tabIt{0,1} &amp; \tabIt{...}  &amp; \tabIt{0, m} \\Row 1 &amp; \tabIt{1,0} &amp; \tabIt{1,1} &amp; \tabIt{...}  &amp; \tabIt{1, m} \\ Row ... &amp; \tabIt{...,0} &amp; \tabIt{...,1} &amp; \tabIt{...} &amp; \tabIt{..., m} \\Row n &amp; \tabIt{n,0} &amp; \tabIt{n,1} &amp; \tabIt{n,...} &amp; \tabIt{n, m} \\ \end{tabular}"
+                      src="../../../../_images/math/b6df115410caafea291ceb011f19cc4a19ae6c2c.png" /></p>
+                </div>
+                <p>Зауважте, що порядок каналів зворотній: BGR замість RGB.
+                  Оскільки в багатьох випадках розмір пам'яті досить великий,
+                  щоб зберігати рядки послідовно, рядки можуть ідти один за
+                  одним, створюючи один довгий рядок. Оскільки все знаходиться в
+                  одному місці і іде одне за одним, це може скоротити час
+                  сканування зображення. Ми будемо використовувати функцію <a href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-iscontinuous"
+                    class="reference external">isContinuous()</a> для <em>запиту</em>
+                  до матриці, чи є вона неперевною. Приклад в наступному
+                  розділі.</p>
+              </div>
+              <div id="the-efficient-way" class="section">
+                <h2>Ефективний спосіб<a title="Permalink to this headline" href="#the-efficient-way"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Коли йдеться про продуктивність, ви не зможете сперечатись з
+                  класичним доступом через оператор C  оператор [] (вказівник).
+                  Таким чином, найбільш ефективним методом, що ми рекомендуємо,
+                  є наступне присвоювання:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">Mat</span><span class="o">&amp;</span> <span
+class="n">ScanImageAndReduceC</span><span class="p">(</span><span class="n">Mat</span><span
+class="o">&amp;</span> <span class="n">I</span><span class="p">,</span> <span class="k">const</span> <span
+class="n">uchar</span><span class="o">*</span> <span class="k">const</span> <span
+class="n">table</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// сприймаємо тільки якщо тип матриці char</span>
+    <span class="n">CV_Assert</span><span class="p">(</span><span class="n">I</span><span
+class="p">.</span><span class="n">depth</span><span class="p">()</span> <span class="o">!=</span> <span
+class="k">sizeof</span><span class="p">(</span><span class="n">uchar</span><span
+class="p">));</span>
+
+    <span class="kt">int</span> <span class="n">channels</span> <span class="o">=</span> <span
+class="n">I</span><span class="p">.</span><span class="n">channels</span><span class="p">();</span>
+
+    <span class="kt">int</span> <span class="n">nRows</span> <span class="o">=</span> <span
+class="n">I</span><span class="p">.</span><span class="n">rows</span><span class="p">;</span>
+    <span class="kt">int</span> <span class="n">nCols</span> <span class="o">=</span> <span
+class="n">I</span><span class="p">.</span><span class="n">cols</span> <span class="o">*</span> <span
+class="n">channels</span><span class="p">;</span>
+
+    <span class="k">if</span> <span class="p">(</span><span class="n">I</span><span
+class="p">.</span><span class="n">isContinuous</span><span class="p">())</span>
+    <span class="p">{</span>
+        <span class="n">nCols</span> <span class="o">*=</span> <span class="n">nRows</span><span
+class="p">;</span>
+        <span class="n">nRows</span> <span class="o">=</span> <span class="mi">1</span><span
+class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="kt">int</span> <span class="n">i</span><span class="p">,</span><span
+class="n">j</span><span class="p">;</span>
+    <span class="n">uchar</span><span class="o">*</span> <span class="n">p</span><span
+class="p">;</span>
+    <span class="k">for</span><span class="p">(</span> <span class="n">i</span> <span
+class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">i</span> <span
+class="o">&lt;</span> <span class="n">nRows</span><span class="p">;</span> <span
+class="o">++</span><span class="n">i</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">p</span> <span class="o">=</span> <span class="n">I</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+        <span class="k">for</span> <span class="p">(</span> <span class="n">j</span> <span
+class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span class="n">j</span> <span
+class="o">&lt;</span> <span class="n">nCols</span><span class="p">;</span> <span
+class="o">++</span><span class="n">j</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">p</span><span class="p">[</span><span class="n">j</span><span
+class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span
+class="n">p</span><span class="p">[</span><span class="n">j</span><span class="p">]];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+    <span class="k">return</span> <span class="n">I</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+                <p>Тут ми тільки захоплюємо вказівник на початок кожного рядка
+                  та ідемо до самого кінця. В особливому випадку, коли матриця
+                  зберігається неперервно, нам треба тільки запитати указівник
+                  один раз, та потім іти до самого кінця. Ми маємо звернути
+                  увагу на кольорові зображення: ми маємо три канали, так що нам
+                  треба пройти по ним три рази для кожного рядка.</p>
+                <p>Є інший шлях зробити те ж. Член <em>data</em> об'єкту <em>Mat</em>
+                  повертає вказівник на перший рядок, перший стовпчик. Якщо цей
+                  вказівник є null, ви не отримали потрібний об'єкт на вході.
+                  Перевірити це - простіший метод перевірити, що завантаження
+                  зображення було вдалим. В випадку, якщо зображеннб неперервне,
+                  ми можемо використати це для проходу по всім елементам. В
+                  випадку сірого зображення це буде виглядати так:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">uchar</span><span class="o">*</span> <span
+class="n">p</span> <span class="o">=</span> <span class="n">I</span><span class="p">.</span><span
+class="n">data</span><span class="p">;</span>
+
+<span class="k">for</span><span class="p">(</span> <span class="kt">unsigned</span> <span
+class="kt">int</span> <span class="n">i</span> <span class="o">=</span><span class="mi">0</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">ncol</span><span
+class="o">*</span><span class="n">nrows</span><span class="p">;</span> <span class="o">++</span><span
+class="n">i</span><span class="p">)</span>
+    <span class="o">*</span><span class="n">p</span><span class="o">++</span> <span
+class="o">=</span> <span class="n">table</span><span class="p">[</span><span class="o">*</span><span
+class="n">p</span><span class="p">];</span>
+</pre></div>
+                </div>
+                <p>Ми маємо отримати той же самий результат. Однак все стає ще
+                  жорсткіше, якщо ми використаємо деякі просунуті технології.
+                  Більше того, на практиці, як показали дослідження, буде
+                  отримано той же результат по швидкості (тому що більшість
+                  сучасних компіляторів вірогідно будуть робить невеликі трюки
+                  оптимізації за вас).</p>
+              </div>
+              <div id="the-iterator-safe-method" class="section">
+                <h2>Метод з ітератором (безпечний)<a title="Permalink to this headline"
+                    href="#the-iterator-safe-method" class="headerlink"><br />
+                  </a></h2>
+                <p>В випадку ефективного шляху на вас покладається перевірка, що
+                  ви пройшли потрібне число полів <em>uchar</em> та пропустили
+                  проміжки, що можуть траплятись між рядками. Метод з ітератором
+                  визнаний як більш безпечний при виконанні ціх дій. Все що вам
+                  треба, це запросити початок та кінець матриці, та потім тільки
+                  збільшувати ітератор, доки він не досягне кінця. Щоб захопити
+                  значення, на яке вказує ітератор, використовується оператор *
+                  (додайте його спереду).</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">Mat</span><span class="o">&amp;</span> <span
+class="n">ScanImageAndReduceIterator</span><span class="p">(</span><span class="n">Mat</span><span
+class="o">&amp;</span> <span class="n">I</span><span class="p">,</span> <span class="k">const</span> <span
+class="n">uchar</span><span class="o">*</span> <span class="k">const</span> <span
+class="n">table</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// сприймаємо тільки такі матриці</span>
+    <span class="n">CV_Assert</span><span class="p">(</span><span class="n">I</span><span
+class="p">.</span><span class="n">depth</span><span class="p">()</span> <span class="o">!=</span> <span
+class="k">sizeof</span><span class="p">(</span><span class="n">uchar</span><span
+class="p">));</span>
+
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">channels</span> <span
+class="o">=</span> <span class="n">I</span><span class="p">.</span><span class="n">channels</span><span
+class="p">();</span>
+    <span class="k">switch</span><span class="p">(</span><span class="n">channels</span><span
+class="p">)</span>
+    <span class="p">{</span>
+    <span class="k">case</span> <span class="mi">1</span>:
+        <span class="p">{</span>
+            <span class="n">MatIterator_</span><span class="o">&lt;</span><span
+class="n">uchar</span><span class="o">&gt;</span> <span class="n">it</span><span
+class="p">,</span> <span class="n">end</span><span class="p">;</span>
+            <span class="k">for</span><span class="p">(</span> <span class="n">it</span> <span
+class="o">=</span> <span class="n">I</span><span class="p">.</span><span class="n">begin</span><span
+class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span
+class="p">(),</span> <span class="n">end</span> <span class="o">=</span> <span class="n">I</span><span
+class="p">.</span><span class="n">end</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">();</span> <span class="n">it</span> <span
+class="o">!=</span> <span class="n">end</span><span class="p">;</span> <span class="o">++</span><span
+class="n">it</span><span class="p">)</span>
+                <span class="o">*</span><span class="n">it</span> <span class="o">=</span> <span
+class="n">table</span><span class="p">[</span><span class="o">*</span><span class="n">it</span><span
+class="p">];</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="mi">3</span>:
+        <span class="p">{</span>
+            <span class="n">MatIterator_</span><span class="o">&lt;</span><span
+class="n">Vec3b</span><span class="o">&gt;</span> <span class="n">it</span><span
+class="p">,</span> <span class="n">end</span><span class="p">;</span>
+            <span class="k">for</span><span class="p">(</span> <span class="n">it</span> <span
+class="o">=</span> <span class="n">I</span><span class="p">.</span><span class="n">begin</span><span
+class="o">&lt;</span><span class="n">Vec3b</span><span class="o">&gt;</span><span
+class="p">(),</span> <span class="n">end</span> <span class="o">=</span> <span class="n">I</span><span
+class="p">.</span><span class="n">end</span><span class="o">&lt;</span><span class="n">Vec3b</span><span
+class="o">&gt;</span><span class="p">();</span> <span class="n">it</span> <span
+class="o">!=</span> <span class="n">end</span><span class="p">;</span> <span class="o">++</span><span
+class="n">it</span><span class="p">)</span>
+            <span class="p">{</span>
+                <span class="p">(</span><span class="o">*</span><span class="n">it</span><span
+class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span
+class="n">table</span><span class="p">[(</span><span class="o">*</span><span class="n">it</span><span
+class="p">)[</span><span class="mi">0</span><span class="p">]];</span>
+                <span class="p">(</span><span class="o">*</span><span class="n">it</span><span
+class="p">)[</span><span class="mi">1</span><span class="p">]</span> <span class="o">=</span> <span
+class="n">table</span><span class="p">[(</span><span class="o">*</span><span class="n">it</span><span
+class="p">)[</span><span class="mi">1</span><span class="p">]];</span>
+                <span class="p">(</span><span class="o">*</span><span class="n">it</span><span
+class="p">)[</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span
+class="n">table</span><span class="p">[(</span><span class="o">*</span><span class="n">it</span><span
+class="p">)[</span><span class="mi">2</span><span class="p">]];</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">I</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+                <p>В випадку кольорових зображень ми маємо три елементи uchar в
+                  кожному стовпчику. Це може сприйматись як короткий вектор з
+                  елементів uchar, що набув в OpenCV ім'я <em>Vec3b</em>. Щоб
+                  отримати доступ до n-го суб елемента ми використовуємо доступ
+                  через простий оператор  оператор []. Важливо пам'ятати, що
+                  ітератори OpenCV проходять по стовпчиках, та автоматично
+                  перестрибують на наступний рядок. Таким чином, в випадку
+                  кольорових зображень, якщо ви використовуєте простий ітератор
+                  <em>uchar</em> ви будете в змозі отримати доступ тільки до
+                  синього каналу.</p>
+              </div>
+              <div id="on-the-fly-address-calculation-with-reference-returning"
+                class="section">
+                <h2>Обчислення адреси на льоту з поверненням посилання<a title="Permalink to this headline"
+                    href="#on-the-fly-address-calculation-with-reference-returning"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Заключний метод не рекомендований для канування. Він був
+                  зроблений для захоплення або модифікації будь-яких випадкових
+                  елементів зображення. Його базове застосування - встановити
+                  рядок та стовпчик елементу, до якого ви бажаєте отримати
+                  доступ. На протязі ваших попередніх методів ви могли помітити,
+                  що важливим є тип даних, що ми очікуємо побачити в зображенні.
+                  Тут це також важливо, бо нам потрібно вручну задати, який тип
+                  використовувати в таблиці пошуку. Ви можете визначити це для
+                  випадку сірих зображень в наступному початковому
+                  коді(використання функції + <a href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-at"
+                    class="reference external">at()</a>):</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">Mat</span><span class="o">&amp;</span> <span
+class="n">ScanImageAndReduceRandomAccess</span><span class="p">(</span><span class="n">Mat</span><span
+class="o">&amp;</span> <span class="n">I</span><span class="p">,</span> <span class="k">const</span> <span
+class="n">uchar</span><span class="o">*</span> <span class="k">const</span> <span
+class="n">table</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="c1">// обробляємо тільки матриці типу char</span>
+    <span class="n">CV_Assert</span><span class="p">(</span><span class="n">I</span><span
+class="p">.</span><span class="n">depth</span><span class="p">()</span> <span class="o">!=</span> <span
+class="k">sizeof</span><span class="p">(</span><span class="n">uchar</span><span
+class="p">));</span>
+
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">channels</span> <span
+class="o">=</span> <span class="n">I</span><span class="p">.</span><span class="n">channels</span><span
+class="p">();</span>
+    <span class="k">switch</span><span class="p">(</span><span class="n">channels</span><span
+class="p">)</span>
+    <span class="p">{</span>
+    <span class="k">case</span> <span class="mi">1</span>:
+        <span class="p">{</span>
+            <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">I</span><span class="p">.</span><span
+class="n">rows</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span
+class="p">)</span>
+                <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">j</span> <span class="o">&lt;</span> <span class="n">I</span><span class="p">.</span><span
+class="n">cols</span><span class="p">;</span> <span class="o">++</span><span class="n">j</span> <span
+class="p">)</span>
+                    <span class="n">I</span><span class="p">.</span><span class="n">at</span><span
+class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span
+class="p">(</span><span class="n">i</span><span class="p">,</span><span class="n">j</span><span
+class="p">)</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span
+class="n">I</span><span class="p">.</span><span class="n">at</span><span class="o">&lt;</span><span
+class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span
+class="p">,</span><span class="n">j</span><span class="p">)];</span>
+            <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="k">case</span> <span class="mi">3</span>:
+        <span class="p">{</span>
+         <span class="n">Mat_</span><span class="o">&lt;</span><span class="n">Vec3b</span><span
+class="o">&gt;</span> <span class="n">_I</span> <span class="o">=</span> <span class="n">I</span><span
+class="p">;</span>
+
+         <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">I</span><span class="p">.</span><span
+class="n">rows</span><span class="p">;</span> <span class="o">++</span><span class="n">i</span><span
+class="p">)</span>
+            <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">j</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">j</span> <span class="o">&lt;</span> <span class="n">I</span><span class="p">.</span><span
+class="n">cols</span><span class="p">;</span> <span class="o">++</span><span class="n">j</span> <span
+class="p">)</span>
+               <span class="p">{</span>
+                   <span class="n">_I</span><span class="p">(</span><span class="n">i</span><span
+class="p">,</span><span class="n">j</span><span class="p">)[</span><span class="mi">0</span><span
+class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span
+class="n">_I</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span
+class="n">j</span><span class="p">)[</span><span class="mi">0</span><span class="p">]];</span>
+                   <span class="n">_I</span><span class="p">(</span><span class="n">i</span><span
+class="p">,</span><span class="n">j</span><span class="p">)[</span><span class="mi">1</span><span
+class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span
+class="n">_I</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span
+class="n">j</span><span class="p">)[</span><span class="mi">1</span><span class="p">]];</span>
+                   <span class="n">_I</span><span class="p">(</span><span class="n">i</span><span
+class="p">,</span><span class="n">j</span><span class="p">)[</span><span class="mi">2</span><span
+class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span
+class="n">_I</span><span class="p">(</span><span class="n">i</span><span class="p">,</span><span
+class="n">j</span><span class="p">)[</span><span class="mi">2</span><span class="p">]];</span>
+            <span class="p">}</span>
+         <span class="n">I</span> <span class="o">=</span> <span class="n">_I</span><span
+class="p">;</span>
+         <span class="k">break</span><span class="p">;</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="k">return</span> <span class="n">I</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+                <p>Функція сприймають ваш вхідний тип та координати, та обчислює
+                  на льоту адресу запитаного елементу. Потім поветає посилання
+                  на нього. Це може бути константою, коли ви <em>отримуєте</em>
+                  значення, або може не бути константою, коли ви <em>встановлюєте
+                    значення</em>. Як запобіжний крок <strong>тільки в режимі
+                    налаштування*</strong> виконується перевірка, що ваші
+                  координати дійсні та існують. Якщо це не так, ви отримаєте
+                  гарне повідомлення про це в стандартний вихідний потік.
+                  Порівняно з ефективним шляхом в режимі релізу, єдина різниця
+                  використання цього в тому, що для кожного елементу зображення
+                  ви будете отримувати новий вказівник на рядок, для чого
+                  використовуєтсья  оператор [] для отримання елементів
+                  стовпчика. </p>
+                <p>Якщо вам треба декілька пошуків з використання цього методу
+                  для зображення, це може бути складним, та поглинаючим час,
+                  вводити тип та ключове слово at для кожного доступу. Щоб
+                  вирішити цю проблему, OpenCV має тип даних <a href="http://docs.opencv.org/modules/core/doc/basic_structures.html#id3"
+                    class="reference external">Mat_</a>. Це те ж саме, що і Mat,
+                  з додатковою вимогою, щоб при визначенні ви вказали тип даних,
+                  через який ви будете дивитись на дані матриці, однак після
+                  цього ви зможете використовувати оператор () для швидкого
+                  доступу до елементів. Щоб зробити речі ще краще, цей тип
+                  просто конвертується в звичайний тип даних <a href="http://docs.opencv.org/modules/core/doc/basic_structures.html#id3"
+                    class="reference external">Mat</a>. Приклад використання
+                  цього ви можете бачити в випадку кольорових зображень вище.
+                  Тим не менше, важливо, зауважити, що деякі операції (з тою ж
+                  швидкістю виконання) можуть бути зроблені за допомогою
+                  функції <a href="http://docs.opencv.org/modules/core/doc/basic_structures.html#mat-at"
+                    class="reference external">at()</a>. Все це тільки трюк для
+                  ледачих програмістів, що не люблять друкувати.</p>
+              </div>
+              <div id="the-core-function" class="section">
+                <h2>Функція LUT<span style="text-decoration: underline;">()</span><a
+                    title="Permalink to this headline" href="#the-core-function"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Це бонусний метод здійснити модифікацію зображення за
+                  таблицею пошуку. Оскільки в обробці зображень є досить
+                  загальним, коли ви бажаєте замінити всі надані значення на
+                  якісь інші, OpenCV має функцію, що робить модифікацію без
+                  потреби щоб ви писали сканування зображення. Ми використовуємо
+                  функцію <a href="http://docs.opencv.org/modules/core/doc/operations_on_arrays.html#lut"
+                    class="reference external">LUT()</a> з модуля core. Спершу
+                  ми будуємо тип Mat з таблицею пошуку:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre>    <span class="n">Mat</span> <span class="nf">lookUpTable</span><span
+class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">256</span><span
+class="p">,</span> <span class="n">CV_8U</span><span class="p">);</span>
+    <span class="n">uchar</span><span class="o">*</span> <span class="n">p</span> <span
+class="o">=</span> <span class="n">lookUpTable</span><span class="p">.</span><span
+class="n">data</span><span class="p">;</span>
+    <span class="k">for</span><span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="mi">256</span><span
+class="p">;</span> <span class="o">++</span><span class="n">i</span><span class="p">)</span>
+        <span class="n">p</span><span class="p">[</span><span class="n">i</span><span
+class="p">]</span> <span class="o">=</span> <span class="n">table</span><span class="p">[</span><span
+class="n">i</span><span class="p">];</span>
+</pre></div>
+                </div>
+                <p>Потім викликаємо функцію (I є вхідне зображення та J вихідне
+                  значення):</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre>        <span class="n">LUT</span><span class="p">(</span><span
+class="n">I</span><span class="p">,</span> <span class="n">lookUpTable</span><span
+class="p">,</span> <span class="n">J</span><span class="p">);</span>
+</pre></div>
+                </div>
+              </div>
+              <div id="performance-difference" class="section">
+                <h2>Зміни в продуктивності<a title="Permalink to this headline"
+                    href="#performance-difference" class="headerlink"><br />
+                  </a></h2>
+                <p>Для найкращих результатів скомпілюйте прогрму та виконайте її
+                  на вашій власній швидкості. Щоб показати більшу різницю в
+                  швидкості я використовував велике зображення (2560 X 1600).
+                  Покзаний тут час для кольорових зображень. Для більш
+                  акуратного значення я усереднюю час виклику функції на протязі
+                  ста викликів. </p>
+                <table border="1" class="docutils">
+                  <colgroup> <col width="39%" /> <col width="61%" /> </colgroup>
+                  <tbody valign="top">
+                    <tr class="row-odd">
+                      <td style="width: 266.983px;">Ефективний метод</td>
+                      <td style="width: 148.083px;">79.4717 мс</td>
+                    </tr>
+                    <tr class="row-even">
+                      <td>Ітератор</td>
+                      <td>83.7201 мс</td>
+                    </tr>
+                    <tr class="row-odd">
+                      <td>Обчислення адреси на льоту</td>
+                      <td>93.7878 мс</td>
+                    </tr>
+                    <tr class="row-even">
+                      <td>функція LUT</td>
+                      <td>32.5759 мс</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <p>Ми можемо дійти декількох висновків. Якщо можливо, завжди
+                  використовуйте готові функції OpenCV (замість повторно
+                  винаходити їх). Найшвидшим методом виявилась фукнція LUT. Це
+                  тому, що бібліотека OpenCV є багатопоточною, що включається
+                  через технологію Intel Threaded Building Blocks. Однак, якщо
+                  вам треба написати просте сканування зображення, обирайте
+                  метод вказівника. Ітератор є дещо безпечнішою ставкою, хоча і
+                  дещо повільніший. Використання методу обчислення посилань на
+                  льоту для повного сканування зображення найбільш коштовний в
+                  режимі налаштування. В режимі релізу він може подолати метод
+                  ітерації, або ні, однак йому напевне не вистачає безпечності,
+                  що забезпечують ітератори. </p>
+                <p>Нарешті, ви можете побачити роботу програми не <a href="https://www.youtube.com/watch?v=fB3AN5fjgwc"
+                    class="reference external">відео</a> на каналі YouTube.</p>
+                <p><br />
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

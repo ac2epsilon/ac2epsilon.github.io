@@ -1,0 +1,471 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Ще про морфологічні трансформації. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="more-morphology-transformations" class="section"> <span id="morphology-2"></span>
+              <h1>Ще про морфологічні трансформації<a title="Permalink to this headline"
+                  href="#more-morphology-transformations" class="headerlink"> <br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Ціль<a title="Permalink to this headline" href="#goal" class="headerlink"><br />
+                  </a></h2>
+                <p>В цьому туторіалі ми навчимось наступного:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Використовувати фукнцію OpenCV <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=morphologyex#morphologyex"
+                        class="reference external">morphologyEx</a> для
+                      застосування морфологічних трансформацій:
+                      <ul>
+                        <li>Відкриття</li>
+                        <li>Закриття</li>
+                        <li>Морфологічного градієнту</li>
+                        <li>Top Hat</li>
+                        <li>Black Hat</li>
+                      </ul>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div id="theory" class="section">
+                <h2>Теорія<a title="Permalink to this headline" href="#theory" class="headerlink"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пояснення нижче належать до книги <strong>Learning
+                      OpenCV</strong> від Bradski та Kaehler.</p>
+                </div>
+                <p>В попередньому туторіалі ми побачили морфологічні операції:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Ерозію</li>
+                    <li>Розповсюдження</li>
+                  </ul>
+                </div>
+                <p>Базуючись на ціх двох, ми можемо застосувати біль складні
+                  перетворення до наших зображень. Тут ми коротко обсудимо п'ять
+                  операцій, що надає OpenCV:</p>
+                <div id="opening" class="section">
+                  <h3>Відкриття<a title="Permalink to this headline" href="#opening"
+                      class="headerlink"><br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Досягається виконанням ерозії, за якою слідує
+                        розповсюдження.</p>
+                      <div class="math">
+                        <p><img alt="dst = open( src, element) = dilate( erode( src, element ) )"
+                            src="../../../../_images/math/70a289e574594774f936ed8ff5f86c32ab53015d.png" /></p>
+                      </div>
+                    </li>
+                    <li>
+                      <p class="first">Корисне для видалення малих об'єктів
+                        (якщо це яскраві об'єкти на темному тлі)</p>
+                    </li>
+                    <li>
+                      <p class="first">Наприклад, подивіться на приклад нижче.
+                        Зображення зліва є оригіналом, зправа - результатом
+                        перетворення відкриття. Ми можемо побачити, що малі
+                        плями по краях зникли. </p>
+                      <img src="TutImgProc03-1.png" alt="" /><img src="../../../../_images/Morphology_2_Tutorial_Theory_Opening.png"
+                        class="align-center" alt="Opening" /> </li>
+                  </ul>
+                </div>
+                <div id="closing" class="section">
+                  <h3>Закриття<a title="Permalink to this headline" href="#closing"
+                      class="headerlink"><br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Досягається розповсюдження, за яким
+                        слідує ерозія. </p>
+                      <div class="math">
+                        <p><img alt="dst = close( src, element ) = erode( dilate( src, element ) )"
+                            src="../../../../_images/math/6eced184bc40b6b2b45c20fc626d2caa16fe0261.png" /></p>
+                      </div>
+                    </li>
+                    <li>
+                      <p class="first">Корисне для видалення малих дірок (темних
+                        регіонів).</p>
+                      <img src="TutImgProc03-2.png" alt="" /><img src="../../../../_images/Morphology_2_Tutorial_Theory_Closing.png"
+                        class="align-center" alt="Closing example" /> </li>
+                  </ul>
+                </div>
+                <div id="morphological-gradient" class="section">
+                  <h3>Морфологічний градієнт<a title="Permalink to this headline"
+                      href="#morphological-gradient" class="headerlink"><br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Різниця між розповсюдженням та ерозією
+                        зображення.</p>
+                      <div class="math">
+                        <p><img alt="dst = morph_{grad}( src, element ) = dilate( src, element ) - erode( src, element )"
+                            src="../../../../_images/math/a8091e58404246486b5e909490512c53e8aeb681.png" /></p>
+                      </div>
+                    </li>
+                    <li>
+                      <p class="first">Корисне для пошуку контурів об'єкта, як
+                        можна бачити нижче:</p>
+                      <img src="TutImgProc03-3.png" alt="" /><img src="../../../../_images/Morphology_2_Tutorial_Theory_Gradient.png"
+                        class="align-center" alt="Gradient" /> </li>
+                  </ul>
+                </div>
+                <div id="top-hat" class="section">
+                  <h3>Top Hat<a title="Permalink to this headline" href="#top-hat"
+                      class="headerlink"> <br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Різниця між вхідним зображенням та
+                        відкриттям.</p>
+                      <div class="math">
+                        <p><img alt="dst = tophat( src, element ) = src - open( src, element )"
+                            src="../../../../_images/math/d503289f9f97a46f1d95744af11aee18a86ec59c.png" /></p>
+                      </div>
+                      <img src="TutImgProc03-4.png" alt="" /><img src="../../../../_images/Morphology_2_Tutorial_Theory_TopHat.png"
+                        class="align-center" alt="Top Hat" /> </li>
+                  </ul>
+                </div>
+                <div id="black-hat" class="section">
+                  <h3>Black Hat<a title="Permalink to this headline" href="#black-hat"
+                      class="headerlink"> <br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Різниця між закриттям та вхідним
+                        зображенням</p>
+                      <div class="math">
+                        <p><img alt="dst = blackhat( src, element ) = close( src, element ) - src"
+                            src="../../../../_images/math/b2e43cdd8d5a47001743fccf5796de61670bc57e.png" /></p>
+                      </div>
+                      <img src="TutImgProc03-5.png" alt="" /><img src="../../../../_images/Morphology_2_Tutorial_Theory_BlackHat.png"
+                        class="align-center" alt="Black Hat" /> </li>
+                  </ul>
+                </div>
+              </div>
+              <div id="code" class="section">
+                <h2>Код<a title="Permalink to this headline" href="#code" class="headerlink"><br />
+                  </a></h2>
+                <pre><span class="cp">#include "opencv2/imgproc/imgproc.hpp"</span>
+<span class="cp">#include "opencv2/highgui/highgui.hpp"</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="c1">/// Global variables</span>
+<span class="n">Mat</span> <span class="n">src</span><span class="p">,</span> <span
+class="n">dst</span><span class="p">;</span>
+
+<span class="kt">int</span> <span class="n">morph_elem</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">morph_size</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">morph_operator</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_operator</span> <span
+class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_elem</span> <span
+class="o">=</span> <span class="mi">2</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_kernel_size</span> <span
+class="o">=</span> <span class="mi">21</span><span class="p">;</span>
+
+<span class="kt">char</span><span class="o">*</span> <span class="n">window_name</span> <span
+class="o">=</span> <span class="s">"Morphology Transformations Demo"</span><span
+class="p">;</span>
+
+<span class="cm">/** Function Headers */</span>
+<span class="kt">void</span> <span class="nf">Morphology_Operations</span><span
+class="p">(</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">);</span>
+
+<span class="cm">/** @function main */</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+<span class="p">{</span>
+  <span class="c1">/// Load an image</span>
+  <span class="n">src</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span
+class="p">]</span> <span class="p">);</span>
+
+  <span class="k">if</span><span class="p">(</span> <span class="o">!</span><span
+class="n">src</span><span class="p">.</span><span class="n">data</span> <span class="p">)</span>
+  <span class="p">{</span> <span class="k">return</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+
+ <span class="c1">/// Create window</span>
+ <span class="n">namedWindow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span class="p">);</span>
+
+ <span class="c1">/// Create Trackbar to select Morphology operation</span>
+ <span class="n">createTrackbar</span><span class="p">(</span><span class="s">"Operator:</span><span
+class="se">\n</span><span class="s"> 0: Opening - 1: Closing </span><span class="se">\n</span><span
+class="s"> 2: Gradient - 3: Top Hat </span><span class="se">\n</span><span class="s"> 4: Black Hat"</span><span
+class="p">,</span> <span class="n">window_name</span><span class="p">,</span> <span
+class="o">&amp;</span><span class="n">morph_operator</span><span class="p">,</span> <span
+class="n">max_operator</span><span class="p">,</span> <span class="n">Morphology_Operations</span> <span
+class="p">);</span>
+
+ <span class="c1">/// Create Trackbar to select kernel type</span>
+ <span class="n">createTrackbar</span><span class="p">(</span> <span class="s">"Element:</span><span
+class="se">\n</span><span class="s"> 0: Rect - 1: Cross - 2: Ellipse"</span><span
+class="p">,</span> <span class="n">window_name</span><span class="p">,</span>
+                 <span class="o">&amp;</span><span class="n">morph_elem</span><span
+class="p">,</span> <span class="n">max_elem</span><span class="p">,</span>
+                 <span class="n">Morphology_Operations</span> <span class="p">);</span>
+
+ <span class="c1">/// Create Trackbar to choose kernel size</span>
+ <span class="n">createTrackbar</span><span class="p">(</span> <span class="s">"Kernel size:</span><span
+class="se">\n</span><span class="s"> 2n +1"</span><span class="p">,</span> <span
+class="n">window_name</span><span class="p">,</span>
+                 <span class="o">&amp;</span><span class="n">morph_size</span><span
+class="p">,</span> <span class="n">max_kernel_size</span><span class="p">,</span>
+                 <span class="n">Morphology_Operations</span> <span class="p">);</span>
+
+ <span class="c1">/// Default start</span>
+ <span class="n">Morphology_Operations</span><span class="p">(</span> <span class="mi">0</span><span
+class="p">,</span> <span class="mi">0</span> <span class="p">);</span>
+
+ <span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span
+class="p">);</span>
+ <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+ <span class="p">}</span>
+
+ <span class="cm">/**</span>
+<span class="cm">  * @function Morphology_Operations</span>
+<span class="cm">  */</span>
+<span class="kt">void</span> <span class="nf">Morphology_Operations</span><span
+class="p">(</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="c1">// Since MORPH_X : 2,3,4,5 and 6</span>
+  <span class="kt">int</span> <span class="n">operation</span> <span class="o">=</span> <span
+class="n">morph_operator</span> <span class="o">+</span> <span class="mi">2</span><span
+class="p">;</span>
+
+  <span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span
+class="n">getStructuringElement</span><span class="p">(</span> <span class="n">morph_elem</span><span
+class="p">,</span> <span class="n">Size</span><span class="p">(</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">morph_size</span> <span class="o">+</span> <span
+class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="o">*</span><span
+class="n">morph_size</span><span class="o">+</span><span class="mi">1</span> <span
+class="p">),</span> <span class="n">Point</span><span class="p">(</span> <span class="n">morph_size</span><span
+class="p">,</span> <span class="n">morph_size</span> <span class="p">)</span> <span
+class="p">);</span>
+
+  <span class="c1">/// Apply the specified morphology operation</span>
+  <span class="n">morphologyEx</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">operation</span><span
+class="p">,</span> <span class="n">element</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+  <span class="p">}</span>
+</pre>
+                <div class="highlight-cpp"> </div>
+              </div>
+              <div id="explanation" class="section">
+                <h2>Пояснення<a title="Permalink to this headline" href="#explanation"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Давайте подивимось на структуру програми:</p>
+                    <ul>
+                      <li>
+                        <p class="first">Завантажуємо зображення</p>
+                      </li>
+                      <li>
+                        <p class="first">Створюємо вікно для відтворення результатів
+                          марфологічних перетворень</p>
+                      </li>
+                      <li>
+                        <p class="first">Створюємо три Trackbars для введення
+                          параметрів:</p>
+                        <ul>
+                          <li>
+                            <p class="first">Перший <strong>“Operator”</strong>
+                              повертає тип морфологічної операції (<strong>morph_operator</strong>).</p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">createTrackbar</span><span
+class="p">(</span><span class="s">"Operator:</span><span class="se">\n</span><span
+class="s"> 0: Opening - 1: Closing </span><span class="se">\n</span><span class="s"> 2: Gradient - 3: Top Hat </span><span
+class="se">\n</span><span class="s"> 4: Black Hat"</span><span class="p">,</span>
+               <span class="n">window_name</span><span class="p">,</span> <span
+class="o">&amp;</span><span class="n">morph_operator</span><span class="p">,</span> <span
+class="n">max_operator</span><span class="p">,</span>
+               <span class="n">Morphology_Operations</span> <span class="p">);</span>
+</pre></div>
+                            </div>
+                          </li>
+                          <li>
+                            <p class="first">Другий <strong>“Element”</strong>
+                              повертає <strong>morph_elem</strong>, що вказує
+                              на тип структури нашого ядра:</p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">createTrackbar</span><span
+class="p">(</span> <span class="s">"Element:</span><span class="se">\n</span><span
+class="s"> 0: Rect - 1: Cross - 2: Ellipse"</span><span class="p">,</span> <span
+class="n">window_name</span><span class="p">,</span>
+                <span class="o">&amp;</span><span class="n">morph_elem</span><span
+class="p">,</span> <span class="n">max_elem</span><span class="p">,</span>
+                <span class="n">Morphology_Operations</span> <span class="p">);</span>
+</pre></div>
+                            </div>
+                          </li>
+                          <li>
+                            <p class="first">Нарешті, <strong>“Kernel Size”</strong>
+                              повертає розмір ядра (<strong>morph_size</strong>)</p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="n">createTrackbar</span><span
+class="p">(</span> <span class="s">"Kernel size:</span><span class="se">\n</span><span
+class="s"> 2n +1"</span><span class="p">,</span> <span class="n">window_name</span><span
+class="p">,</span>
+                <span class="o">&amp;</span><span class="n">morph_size</span><span
+class="p">,</span> <span class="n">max_kernel_size</span><span class="p">,</span>
+                <span class="n">Morphology_Operations</span> <span class="p">);</span>
+</pre></div>
+                            </div>
+                          </li>
+                        </ul>
+                      </li>
+                      <li>
+                        <p class="first">Кожного разу, коли ми рухаємо слайдер,
+                          викликається функція <strong>Morphology_Operations</strong>,
+                          що виконує операцію з новими параметрами та оновлює
+                          зображення.</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre> <span class="cm">/**</span>
+<span class="cm">  * @function Morphology_Operations</span>
+<span class="cm">  */</span>
+<span class="kt">void</span> <span class="nf">Morphology_Operations</span><span
+class="p">(</span> <span class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="c1">// Насправді коди перетворення MORPH_X є 2,3,4,5 та 6</span>
+  <span class="kt">int</span> <span class="n">operation</span> <span class="o">=</span> <span
+class="n">morph_operator</span> <span class="o">+</span> <span class="mi">2</span><span
+class="p">;</span>
+
+  <span class="n">Mat</span> <span class="n">element</span> <span class="o">=</span> <span
+class="n">getStructuringElement</span><span class="p">(</span> <span class="n">morph_elem</span><span
+class="p">,</span> <span class="n"></span></pre>
+                          </div>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">		        Size</span><span class="p">(</span> <span
+class="mi">2</span><span class="o">*</span><span class="n">morph_size</span> <span
+class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span
+class="o">*</span><span class="n">morph_size</span><span class="o">+</span><span
+class="mi">1</span> <span class="p">),</span> </pre>
+                          </div>
+                        </div>
+                      </li>
+                      <li>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">			Point</span><span class="p">(</span> <span
+class="n">morph_size</span><span class="p">,</span> <span class="n">morph_size</span> <span
+class="p">)</span> <span class="p">);</span>
+
+  <span class="c1">/// Застосовуємо перетворення</span>
+  <span class="n">morphologyEx</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">operation</span><span
+class="p">,</span> <span class="n">element</span> <span class="p">);</span>
+  <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+ <span class="p">}</span>
+</pre></div>
+                        </div>
+                        <p>Ми можемо дослідити ключову функцію, що виконує
+                          морфологічні перетворення <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=morphologyex#morphologyex"
+                            class="reference external">morphologyEx</a>. В цьому
+                          прикладі ми використовуємо чотири аргументи, полишаючи
+                          інші по замовчанню:</p>
+                        <ul>
+                          <li>
+                            <p class="first"><strong>src</strong> : Вхідне
+                              зображення</p>
+                          </li>
+                          <li>
+                            <p class="first"><strong>dst</strong>: Вихідне
+                              зображення</p>
+                          </li>
+                          <li>
+                            <p class="first"><strong>operation</strong>: Тип
+                              морфологічного перетворення, є п'ять альтернатив:</p>
+                            <ul class="simple">
+                              <li><em>Відкриття</em>: MORPH_OPEN : 2</li>
+                              <li><em>Закриття</em>: MORPH_CLOSE: 3</li>
+                              <li><em>Градієнт</em>: MORPH_GRADIENT: 4</li>
+                              <li><em>Top Hat</em>: MORPH_TOPHAT: 5</li>
+                              <li><em>Black Hat</em>: MORPH_BLACKHAT: 6</li>
+                            </ul>
+                            <p>Як ви можете бачити, значення в диапазоні 2-6, тому
+                              ми коректуємо значення, що отримуємо з елементу
+                              вводу:</p>
+                            <div class="highlight-cpp">
+                              <div class="highlight">
+                                <pre><span class="kt">int</span> <span class="n">operation</span> <span
+class="o">=</span> <span class="n">morph_operator</span> <span class="o">+</span> <span
+class="mi">2</span><span class="p">;</span>
+</pre></div>
+                            </div>
+                          </li>
+                          <li>
+                            <p class="first"><strong>element</strong>: Ядро, що
+                              використовується. Ми використовуємо функцію <a href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=getstructuringelement#getstructuringelement"
+                                class="reference external">getStructuringElement</a>
+                              для визначення нашої структури.</p>
+                          </li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+              <div id="results" class="section">
+                <h2>Результат<a title="Permalink to this headline" href="#results"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ul>
+                  <li>
+                    <p class="first">Після компіляції коду вище ми можемо
+                      виконати його, додаючи зображення як аргумент. Візьмемо
+                      наступне зображення: <strong>baboon.png</strong>:</p>
+                    <img src="TutImgProc03-Res1.jpeg" alt="" /><img src="../../../../_images/Morphology_2_Tutorial_Original_Image.jpg"
+                      class="align-center" alt="Morphology 2: Original image" />
+                  </li>
+                  <li>
+                    <p class="first">Нижче показане відкриття та Black Hat з
+                      різними формами ядра.</p>
+                  </li>
+                </ul>
+                <img src="TutImgProc03-Res2.jpeg" alt="" /></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

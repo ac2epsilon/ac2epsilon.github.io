@@ -1,0 +1,557 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Базові порогові операції. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="basic-thresholding-operations" class="section"> <span id="basic-threshold"></span>
+              <h1>Базові порогові операції<a title="Permalink to this headline"
+                  href="#basic-thresholding-operations" class="headerlink"><br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Ціль<a title="Permalink to this headline" href="#goal" class="headerlink"><br />
+                  </a></h2>
+                <p>В туторіалі ми вивчимо:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Як виконувати порогові операції з використанням фукнції
+                      OpenCV <a href="http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html?highlight=threshold#threshold"
+                        class="reference external">threshold</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div id="cool-theory" class="section">
+                <h2>Крута теорія<a title="Permalink to this headline" href="#cool-theory"
+                    class="headerlink"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пояснення нижче належить до книжки <strong>Learning
+                      OpenCV</strong> від Bradski та Kaehler.</p>
+                </div>
+                <div id="what-is-thresholding" class="section">
+                  <h3>Що таке поріг?<a title="Permalink to this headline" href="#what-is-thresholding"
+                      class="headerlink"> <br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">Найпростіший метод сегментації</p>
+                    </li>
+                    <li>
+                      <p class="first">Приклад застосування: відділити регіони
+                        зображення, де є об'єкти, що ми бажаємо проаналізувати.
+                        Це розділення базуєтся на варіації інтенсивності між
+                        пікселями об'єкта та пікселями тла.</p>
+                    </li>
+                    <li>
+                      <p class="first">Щоб відрізнити цікаві пікселі від решти
+                        (що буде відкинута), ми виконуємо порівняння інтенсивності
+                        кожного пікселя з точки зору <em>порогового знячення</em>
+                        (визначається відповідно до нашого завдання).</p>
+                    </li>
+                    <li>
+                      <p class="first">Коли ми відповідним чином виділили
+                        важливі пікселі, ми можемо встановити їх в інше значення,
+                        що б ідентифікувати їх (тобто, ми можемо надати їм
+                        значення чорне, біле, або будь яке, що нам треба). <img
+                          src="TutImgProc05-1.jpeg" alt="" /></p>
+                    </li>
+                  </ul>
+                </div>
+                <div id="types-of-thresholding" class="section">
+                  <h3>Типи порогів<a title="Permalink to this headline" href="#types-of-thresholding"
+                      class="headerlink"><br />
+                    </a></h3>
+                  <ul>
+                    <li>
+                      <p class="first">OpenCV надає фукнцію  <a href="http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html?highlight=threshold#threshold"
+                          class="reference external">threshold</a> для виконання
+                        порогових операцій.</p>
+                    </li>
+                    <li>
+                      <p class="first">Ми можемо впливати на операції з
+                        порогами. Ми пояснимо це в раступних розділах.</p>
+                    </li>
+                    <li>
+                      <p class="first">Щоб проілюструвати як це робить, нехай в
+                        нас буде зображення з каналом інтенсивності. Графік
+                        нижце демонструє це. Горизонтальна блакитна лінія
+                        представляє поріг (фікований)</p>
+                      <img src="TutImgProc05-2.png" alt="" /><img src="../../../../_images/Threshold_Tutorial_Theory_Base_Figure.png"
+                        class="align-center" alt="Threshold Binary" /> </li>
+                  </ul>
+                  <div id="threshold-binary" class="section">
+                    <h4>Бінарний поріг<a title="Permalink to this headline" href="#threshold-binary"
+                        class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li>
+                        <p class="first"> <img src="TutImgProc05-3.png" alt="" /></p>
+                        <div class="math">
+                          <p><img alt="\texttt{dst} (x,y) =  \fork{\texttt{maxVal}}{if $\texttt{src}(x,y) &gt; \texttt{thresh}$}{0}{otherwise}"
+                              src="../../../../_images/math/427876886dcab7b066dec1c5a9ab2ef1b3edfa5c.png" /></p>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Тобто якщо інтенсивніть вища порогу,
+                          вона встановлюється в максимум. Інакше скидаєтся до
+                          нуля. </p>
+                        <img src="../../../../_images/Threshold_Tutorial_Theory_Binary.png"
+                          class="align-center" alt="Threshold Binary" /> </li>
+                    </ul>
+                  </div>
+                  <div id="threshold-binary-inverted" class="section">
+                    <h4>Інвертований бінарниї поріг<a title="Permalink to this headline"
+                        href="#threshold-binary-inverted" class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li><img src="TutImgProc05-4.png" alt="" />
+                        <div class="math">
+                          <p><img alt="\texttt{dst} (x,y) =  \fork{0}{if $\texttt{src}(x,y) &gt; \texttt{thresh}$}{\texttt{maxVal}}{otherwise}"
+                              src="../../../../_images/math/d1794a6df898462093e5d8666e791f61b4d1ec6f.png" /></p>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Інтенсивність скидається в нуль, якщо
+                          сигнал перевишує поріг.</p>
+                      </li>
+                    </ul>
+                  </div>
+                  <div id="truncate" class="section">
+                    <h4>Усічення<a title="Permalink to this headline" href="#truncate"
+                        class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li><img src="TutImgProc05-5.png" class="align-center" alt="Threshold Truncate" />
+                      </li>
+                      <li>Порогове значення є максимальним, більши
+                        встановлюються в таке значенн.</li>
+                    </ul>
+                  </div>
+                  <div id="threshold-to-zero" class="section">
+                    <h4>Поріг до нуля<a title="Permalink to this headline" href="#threshold-to-zero"
+                        class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                    </ul>
+                    <img src="TutImgProc05-6.png" alt="" />
+                    <ul>
+                      <li> Якщ значення нижче порогу, воно скидаєтсья в нуль.<img
+                          src="../../../../_images/Threshold_Tutorial_Theory_Zero.png"
+                          class="align-center" alt="Threshold Zero" /> </li>
+                    </ul>
+                  </div>
+                  <div id="threshold-to-zero-inverted" class="section">
+                    <h4>Поріг до нуля, інвертований<a title="Permalink to this headline"
+                        href="#threshold-to-zero-inverted" class="headerlink"><br />
+                      </a></h4>
+                    <ul>
+                      <li> <img src="TutImgProc05-7.png" alt="" />
+                        <blockquote>
+                          <div>
+                            <div class="math">
+                              <p><img alt="\texttt{dst} (x,y) =  \fork{0}{if $\texttt{src}(x,y) &gt; \texttt{thresh}$}{\texttt{src}(x,y)}{otherwise}"
+                                  src="../../../../_images/math/6729a7b61fa189e9ad1a365aa5eb9290b70b023e.png" /></p>
+                            </div>
+                          </div>
+                        </blockquote>
+                      </li>
+                      <li>
+                        <p class="first">Якщо значення більше порогу, воно
+                          скидається в нуль.</p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div id="code" class="section">
+                <h2>Код<a title="Permalink to this headline" href="#code" class="headerlink"><br />
+                  </a></h2>
+                <p>The tutorial code’s is shown lines below. You can also
+                  download it from <a href="https://github.com/Itseez/opencv/tree/master/samples/cpp/tutorial_code/ImgProc/Threshold.cpp"
+                    class="reference external">here</a></p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="cp">#include "opencv2/imgproc/imgproc.hpp"</span>
+<span class="cp">#include "opencv2/highgui/highgui.hpp"</span>
+<span class="cp">#include &lt;stdlib.h&gt;</span>
+<span class="cp">#include &lt;stdio.h&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="c1">/// Global variables</span>
+
+<span class="kt">int</span> <span class="n">threshold_value</span> <span class="o">=</span> <span
+class="mi">0</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">threshold_type</span> <span class="o">=</span> <span
+class="mi">3</span><span class="p">;;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_value</span> <span
+class="o">=</span> <span class="mi">255</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_type</span> <span
+class="o">=</span> <span class="mi">4</span><span class="p">;</span>
+<span class="kt">int</span> <span class="k">const</span> <span class="n">max_BINARY_value</span> <span
+class="o">=</span> <span class="mi">255</span><span class="p">;</span>
+
+<span class="n">Mat</span> <span class="n">src</span><span class="p">,</span> <span
+class="n">src_gray</span><span class="p">,</span> <span class="n">dst</span><span
+class="p">;</span>
+<span class="kt">char</span><span class="o">*</span> <span class="n">window_name</span> <span
+class="o">=</span> <span class="s">"Threshold Demo"</span><span class="p">;</span>
+
+<span class="kt">char</span><span class="o">*</span> <span class="n">trackbar_type</span> <span
+class="o">=</span> <span class="s">"Type: </span><span class="se">\n</span><span
+class="s"> 0: Binary </span><span class="se">\n</span><span class="s"> 1: Binary Inverted </span><span
+class="se">\n</span><span class="s"> 2: Truncate </span><span class="se">\n</span><span
+class="s"> 3: To Zero </span><span class="se">\n</span><span class="s"> 4: To Zero Inverted"</span><span
+class="p">;</span>
+<span class="kt">char</span><span class="o">*</span> <span class="n">trackbar_value</span> <span
+class="o">=</span> <span class="s">"Value"</span><span class="p">;</span>
+
+<span class="c1">/// Function headers</span>
+<span class="kt">void</span> <span class="nf">Threshold_Demo</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * @function main</span>
+<span class="cm"> */</span>
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+<span class="p">{</span>
+  <span class="c1">/// Load an image</span>
+  <span class="n">src</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span> <span class="n">argv</span><span class="p">[</span><span class="mi">1</span><span
+class="p">],</span> <span class="mi">1</span> <span class="p">);</span>
+
+  <span class="c1">/// Convert the image to Gray</span>
+  <span class="n">cvtColor</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">src_gray</span><span class="p">,</span> <span
+class="n">CV_BGR2GRAY</span> <span class="p">);</span>
+
+  <span class="c1">/// Create a window to display results</span>
+  <span class="n">namedWindow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span class="p">);</span>
+
+  <span class="c1">/// Create Trackbar to choose type of Threshold</span>
+  <span class="n">createTrackbar</span><span class="p">(</span> <span class="n">trackbar_type</span><span
+class="p">,</span>
+                  <span class="n">window_name</span><span class="p">,</span> <span
+class="o">&amp;</span><span class="n">threshold_type</span><span class="p">,</span>
+                  <span class="n">max_type</span><span class="p">,</span> <span
+class="n">Threshold_Demo</span> <span class="p">);</span>
+
+  <span class="n">createTrackbar</span><span class="p">(</span> <span class="n">trackbar_value</span><span
+class="p">,</span>
+                  <span class="n">window_name</span><span class="p">,</span> <span
+class="o">&amp;</span><span class="n">threshold_value</span><span class="p">,</span>
+                  <span class="n">max_value</span><span class="p">,</span> <span
+class="n">Threshold_Demo</span> <span class="p">);</span>
+
+  <span class="c1">/// Call the function to initialize</span>
+  <span class="n">Threshold_Demo</span><span class="p">(</span> <span class="mi">0</span><span
+class="p">,</span> <span class="mi">0</span> <span class="p">);</span>
+
+  <span class="c1">/// Wait until user finishes program</span>
+  <span class="k">while</span><span class="p">(</span><span class="nb">true</span><span
+class="p">)</span>
+  <span class="p">{</span>
+    <span class="kt">int</span> <span class="n">c</span><span class="p">;</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">waitKey</span><span
+class="p">(</span> <span class="mi">20</span> <span class="p">);</span>
+    <span class="k">if</span><span class="p">(</span> <span class="p">(</span><span
+class="kt">char</span><span class="p">)</span><span class="n">c</span> <span class="o">==</span> <span
+class="mi">27</span> <span class="p">)</span>
+      <span class="p">{</span> <span class="k">break</span><span class="p">;</span> <span
+class="p">}</span>
+   <span class="p">}</span>
+
+<span class="p">}</span>
+
+
+<span class="cm">/**</span>
+<span class="cm"> * @function Threshold_Demo</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">Threshold_Demo</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="cm">/* 0: Binary</span>
+<span class="cm">     1: Binary Inverted</span>
+<span class="cm">     2: Threshold Truncated</span>
+<span class="cm">     3: Threshold to Zero</span>
+<span class="cm">     4: Threshold to Zero Inverted</span>
+<span class="cm">   */</span>
+
+  <span class="n">threshold</span><span class="p">(</span> <span class="n">src_gray</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">threshold_value</span><span
+class="p">,</span> <span class="n">max_BINARY_value</span><span class="p">,</span><span
+class="n">threshold_type</span> <span class="p">);</span>
+
+  <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+              </div>
+              <div id="explanation" class="section">
+                <h2>Explanation<a title="Permalink to this headline" href="#explanation"
+                    class="headerlink"> <br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Let’s check the general structure of the
+                      program:</p>
+                    <ul>
+                      <li>
+                        <p class="first">Load an image. If it is BGR we convert
+                          it to Grayscale. For this, remember that we can use
+                          the function <a href="http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html?highlight=cvtcolor#cvtcolor"
+                            class="reference external">cvtColor</a>:</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">src</span> <span class="o">=</span> <span
+class="n">imread</span><span class="p">(</span> <span class="n">argv</span><span
+class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span> <span
+class="p">);</span>
+
+<span class="c1">/// Convert the image to Gray</span>
+<span class="n">cvtColor</span><span class="p">(</span> <span class="n">src</span><span
+class="p">,</span> <span class="n">src_gray</span><span class="p">,</span> <span
+class="n">CV_BGR2GRAY</span> <span class="p">);</span>
+</pre></div>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Create a window to display the result</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">namedWindow</span><span class="p">(</span> <span
+class="n">window_name</span><span class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span
+class="p">);</span>
+</pre></div>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Create <img alt="2" src="../../../../_images/math/76ae9b2fd09dacfbce0df186ea46d1c6ea617e32.png"
+                            class="math" /> trackbars for the user to enter user
+                          input:</p>
+                        <ul class="simple">
+                          <li><strong>Type of thresholding</strong>: Binary, To
+                            Zero, etc...</li>
+                          <li><strong>Threshold value</strong></li>
+                        </ul>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="n">createTrackbar</span><span class="p">(</span> <span
+class="n">trackbar_type</span><span class="p">,</span>
+             <span class="n">window_name</span><span class="p">,</span> <span class="o">&amp;</span><span
+class="n">threshold_type</span><span class="p">,</span>
+             <span class="n">max_type</span><span class="p">,</span> <span class="n">Threshold_Demo</span> <span
+class="p">);</span>
+
+<span class="n">createTrackbar</span><span class="p">(</span> <span class="n">trackbar_value</span><span
+class="p">,</span>
+             <span class="n">window_name</span><span class="p">,</span> <span class="o">&amp;</span><span
+class="n">threshold_value</span><span class="p">,</span>
+             <span class="n">max_value</span><span class="p">,</span> <span class="n">Threshold_Demo</span> <span
+class="p">);</span>
+</pre></div>
+                        </div>
+                      </li>
+                      <li>
+                        <p class="first">Wait until the user enters the
+                          threshold value, the type of thresholding (or until
+                          the program exits)</p>
+                      </li>
+                      <li>
+                        <p class="first">Whenever the user changes the value of
+                          any of the Trackbars, the function <em>Threshold_Demo</em>
+                          is called:</p>
+                        <div class="highlight-cpp">
+                          <div class="highlight">
+                            <pre><span class="cm">/**</span>
+<span class="cm"> * @function Threshold_Demo</span>
+<span class="cm"> */</span>
+<span class="kt">void</span> <span class="nf">Threshold_Demo</span><span class="p">(</span> <span
+class="kt">int</span><span class="p">,</span> <span class="kt">void</span><span
+class="o">*</span> <span class="p">)</span>
+<span class="p">{</span>
+  <span class="cm">/* 0: Binary</span>
+<span class="cm">     1: Binary Inverted</span>
+<span class="cm">     2: Threshold Truncated</span>
+<span class="cm">     3: Threshold to Zero</span>
+<span class="cm">     4: Threshold to Zero Inverted</span>
+<span class="cm">   */</span>
+
+  <span class="n">threshold</span><span class="p">(</span> <span class="n">src_gray</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span class="n">threshold_value</span><span
+class="p">,</span> <span class="n">max_BINARY_value</span><span class="p">,</span><span
+class="n">threshold_type</span> <span class="p">);</span>
+
+  <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+                        </div>
+                        <p>As you can see, the function <a href="http://docs.opencv.org/modules/imgproc/doc/miscellaneous_transformations.html?highlight=threshold#threshold"
+                            class="reference external">threshold</a> is invoked.
+                          We give <img alt="5" src="../../../../_images/math/797e5a77b3e5816371cd3d52c9904d06c7678c35.png"
+                            class="math" /> parameters:</p>
+                        <ul class="simple">
+                          <li><em>src_gray</em>: Our input image</li>
+                          <li><em>dst</em>: Destination (output) image</li>
+                          <li><em>threshold_value</em>: The <img alt="thresh" src="../../../../_images/math/bdf021e6bbc8cfb30d49f89057a5b7221fcab495.png"
+                              class="math" /> value with respect to which the
+                            thresholding operation is made</li>
+                          <li><em>max_BINARY_value</em>: The value used with the
+                            Binary thresholding operations (to set the chosen
+                            pixels)</li>
+                          <li><em>threshold_type</em>: One of the <img alt="5"
+                              src="../../../../_images/math/797e5a77b3e5816371cd3d52c9904d06c7678c35.png"
+                              class="math" /> thresholding operations. They are
+                            listed in the comment section of the function above.</li>
+                        </ul>
+                      </li>
+                    </ul>
+                  </li>
+                </ol>
+              </div>
+              <div id="results" class="section">
+                <h2>Results<a title="Permalink to this headline" href="#results"
+                    class="headerlink"> <br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">After compiling this program, run it giving
+                      a path to an image as argument. For instance, for an input
+                      image as:</p>
+                    <img src="../../../../_images/Threshold_Tutorial_Original_Image.jpg"
+                      class="align-center" alt="Threshold Original Image" /> </li>
+                  <li>
+                    <p class="first">First, we try to threshold our image with a
+                      <em>binary threhold inverted</em>. We expect that the
+                      pixels brighter than the <img alt="thresh" src="../../../../_images/math/bdf021e6bbc8cfb30d49f89057a5b7221fcab495.png"
+                        class="math" /> will turn dark, which is what actually
+                      happens, as we can see in the snapshot below (notice from
+                      the original image, that the doggie’s tongue and eyes are
+                      particularly bright in comparison with the image, this is
+                      reflected in the output image).</p>
+                    <img src="../../../../_images/Threshold_Tutorial_Result_Binary_Inverted.jpg"
+                      class="align-center" alt="Threshold Result Binary Inverted" />
+                  </li>
+                  <li>
+                    <p class="first">Now we try with the <em>threshold to zero</em>.
+                      With this, we expect that the darkest pixels (below the
+                      threshold) will become completely black, whereas the
+                      pixels with value greater than the threshold will keep its
+                      original value. This is verified by the following snapshot
+                      of the output image:</p>
+                    <img src="../../../../_images/Threshold_Tutorial_Result_Zero.jpg"
+                      class="align-center" alt="Threshold Result Zero" /> </li>
+                </ol>
+              </div>
+            </div>
+          </div>
+          <div class="feedback">
+            <h2>Help and Feedback</h2>
+            You did not find what you were looking for?
+            <ul>
+              <li>Ask a question on the <a href="http://answers.opencv.org">Q&amp;A
+                  forum</a>.</li>
+              <li>If you think something is missing or wrong in the
+                documentation, please file a <a href="http://code.opencv.org">bug
+                  report</a>.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar">
+        <div class="sphinxsidebarwrapper">
+          <p class="logo"><a href="../../../../index.html"> <img alt="Logo" src="../../../../_static/opencv-logo-white.png"
+                class="logo" /> </a></p>
+          <div style="display: none" id="searchbox">
+            <form method="get" action="../../../../search.html" class="search">
+              <input type="text" size="18" name="q" /> <input type="submit" value="Search" />
+              <input type="hidden" value="yes" name="check_keywords" /> <input
+                type="hidden" value="default" name="area" /> </form>
+          </div>
+          <script type="text/javascript">$('#searchbox').show(0);</script>
+          <h3><a href="../../../../index.html">Table Of Contents</a></h3>
+          <ul>
+            <li><a href="#" class="reference internal">Basic Thresholding
+                Operations</a>
+              <ul>
+                <li><a href="#goal" class="reference internal">Goal</a></li>
+                <li><a href="#cool-theory" class="reference internal">Cool
+                    Theory</a>
+                  <ul>
+                    <li><a href="#what-is-thresholding" class="reference internal">What
+                        is Thresholding?</a></li>
+                    <li><a href="#types-of-thresholding" class="reference internal">Types
+                        of Thresholding</a>
+                      <ul>
+                        <li><a href="#threshold-binary" class="reference internal">Threshold
+                            Binary</a></li>
+                        <li><a href="#threshold-binary-inverted" class="reference internal">Threshold
+                            Binary, Inverted</a></li>
+                        <li><a href="#truncate" class="reference internal">Truncate</a></li>
+                        <li><a href="#threshold-to-zero" class="reference internal">Threshold
+                            to Zero</a></li>
+                        <li><a href="#threshold-to-zero-inverted" class="reference internal">Threshold
+                            to Zero, Inverted</a></li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li><a href="#code" class="reference internal">Code</a></li>
+                <li><a href="#explanation" class="reference internal">Explanation</a></li>
+                <li><a href="#results" class="reference internal">Results</a></li>
+              </ul>
+            </li>
+          </ul>
+          <h4>Previous topic</h4>
+          <p class="topless"><a title="previous chapter" href="../pyramids/pyramids.html">Image
+              Pyramids</a></p>
+          <h4>Next topic</h4>
+          <p class="topless"><a title="next chapter" href="../imgtrans/filter_2d/filter_2d.html">Making
+              your own linear filters!</a></p>
+          <h3>This Page</h3>
+          <ul class="this-page-menu">
+            <li><a rel="nofollow" href="../../../../_sources/doc/tutorials/imgproc/threshold/threshold.txt">Show
+                Source</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="related">
+      <h3>Navigation</h3>
+      <ul>
+        <li style="margin-right: 10px" class="right"> <a title="General Index"
+            href="../../../../genindex.html">index</a></li>
+        <li class="right"> <a title="Making your own linear filters!" href="../imgtrans/filter_2d/filter_2d.html">next</a>
+          |</li>
+        <li class="right"> <a title="Image Pyramids" href="../pyramids/pyramids.html">previous</a>
+          |</li>
+        <li><a href="../../../../index.html">OpenCV 2.4.12.0 documentation</a> »</li>
+        <li><a href="../../tutorials.html">OpenCV Tutorials</a> »</li>
+        <li><a href="../table_of_content_imgproc/table_of_content_imgproc.html"><em>imgproc</em>
+            module. Image Processing</a> »</li>
+      </ul>
+    </div>
+    <div class="footer"> © Copyright 2011-2014, opencv dev team. Last updated on
+      Nov 06, 2015. Created using <a href="http://sphinx.pocoo.org/">Sphinx</a>
+      1.2.3. </div>
+  </body>
+</html>

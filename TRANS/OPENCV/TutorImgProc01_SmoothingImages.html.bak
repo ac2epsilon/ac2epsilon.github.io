@@ -1,0 +1,587 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Згладжування зображень. Перекладено українською: Арсеній Чеботарьов,
+      Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div class="section" id="smoothing-images"> <span id="smoothing"></span>
+              <h1>Згладжування зображень<a class="headerlink" href="#smoothing-images"
+                  title="Permalink to this headline"><br />
+                </a></h1>
+              <div class="section" id="goal">
+                <h2>Ціль<a class="headerlink" href="#goal" title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>В цьому туторіалі ми навичимось, як застосовувати різні
+                  лінійні фільтри для згладжування зображень з використанням
+                  функцій OpenCV, таких як:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li><a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=blur#blur">blur</a></li>
+                    <li><a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=gaussianblur#gaussianblur">GaussianBlur</a></li>
+                    <li><a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=medianblur#medianblur">medianBlur</a></li>
+                    <li><a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=bilateralfilter#bilateralfilter">bilateralFilter</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div class="section" id="theory">
+                <h2>Теорія<a class="headerlink" href="#theory" title="Permalink to this headline"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пояснення нижче належить до книжки <a class="reference external"
+                      href="http://szeliski.org/Book/">Комп'ютерне бачення:
+                      алгоритми за застосування</a> від Richard Szeliski та з <em>LearningOpenCV</em></p>
+                </div>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul>
+                    <li>
+                      <p class="first"><em>Зглажування</em>, що також
+                        називається<em> розмиття</em>, є простою та часто
+                        застосовуваною операцією з зображеннями.</p>
+                    </li>
+                    <li>
+                      <p class="first">Є багато причин для зглажування. В цьому
+                        туторіалі ми сфокусуємось на згладжуванні для зменшення
+                        шуму (інші використання будуть показані в наступних
+                        туторіалах).</p>
+                    </li>
+                    <li>
+                      <p class="first">Щоб виконати операцію згладжування ми
+                        застосуємо <em>фільтр</em> до нашого зображення.
+                        Найбільш загальним типом фільтрів є <em>лінійний</em>,
+                        та вихідні значення пікселів визначаються як сума
+                        зважених значень вхідних пікселів: <img alt="" src="TutImgProc01-1.png" /></p>
+                      <div class="math">
+                        <p><img src="../../../../_images/math/63c07a05324e75528d0c1cf509df4519ae9f7e9e.png"
+                            alt="g(i,j) = \sum_{k,l} f(i+k, j+l) h(k,l)" /></p>
+                      </div>
+                      <p><img class="math" src="../../../../_images/math/19f1de2f5e3bad1b43ee538f375dc1f343b1625d.png"
+                          alt="h(k,l)" />Матриця називається <em>ядром</em>, що
+                        є нічого іншого, ніж коефіцієнти фільтра.</p>
+                      <p>Це дозволяє візіалізувати <em>фільтр</em> як вікно
+                        коеффіцієнтів, що сковзить по зображенню.</p>
+                    </li>
+                    <li>
+                      <p class="first">Є багато типів фільтрів, тут ми зазначимо
+                        тільки найбільш уживані:</p>
+                    </li>
+                  </ul>
+                </div>
+                <div class="section" id="normalized-box-filter">
+                  <h3>Фільтр нормальзованого квадрату<a class="headerlink" href="#normalized-box-filter"
+                      title="Permalink to this headline"><br />
+                    </a></h3>
+                  <div class="enumeratevisibleitemswithsquare container">
+                    <ul>
+                      <li>
+                        <p class="first">Цей фільтр є найпростішим з усіх!
+                          Кожний піксель є <em>очікуванням</em> від сусідей по
+                          ядру (всі вкладаються з рівними вагами)</p>
+                      </li>
+                      <li>
+                        <p class="first">Ядро таке: <img alt="" src="file:///home/TRANS/OPENCV/TutImgProc01-2.png" /></p>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+                <div class="section" id="gaussian-filter">
+                  <h3>Гаусівський фільтр<a class="headerlink" href="#gaussian-filter"
+                      title="Permalink to this headline"><br />
+                    </a></h3>
+                  <div class="enumeratevisibleitemswithsquare container">
+                    <ul>
+                      <li>
+                        <p class="first">Можливо найбільш корисний фільтр (хоча
+                          і не найшвидший). Гаусівське фільтрування виконується
+                          обробкою кожного пікселя у вхідному масиві <em>гаусівськім
+                            ядром</em>, та потом підсумомуванням їх для
+                          отримання вихідного масиву. </p>
+                      </li>
+                      <li>
+                        <p class="first">Тільки щоб зробити речі прозорішими,
+                          запам'ятайте, на що схоже одновимірне гаусівське ядро.</p>
+                        <img alt="" src="TutImgProc01-4.jpeg" /> <img alt="../../../../_images/Smoothing_Tutorial_theory_gaussian_0.jpg"
+                          class="align-center" src="../../../../_images/Smoothing_Tutorial_theory_gaussian_0.jpg" />
+                        <p>Вважаючи, що зображення 1D, ви можете помітити, що
+                          розташування пікселів в середині буде мати найбільшу
+                          вагу. Вага сусідей занепадає по мірі зростання
+                          відстані він них до центрального пікселя.</p>
+                      </li>
+                    </ul>
+                  </div>
+                  <div class="admonition note">
+                    <p class="first admonition-title">Зауваження</p>
+                    <p>Запам'ятайте, що гаусіанівська функція в 2D представлена
+                      наступним чином:</p>
+                    <img alt="" src="TutImgProc01-3.png" />
+                    <div class="math">
+                      <p><img src="../../../../_images/math/1fafabfdfb9d1057c61a51d9dcf97ca958262aeb.png"
+                          alt="G_{0}(x, y) = A  e^{ \dfrac{ -(x - \mu_{x})^{2} }{ 2\sigma^{2}_{x} } +  \dfrac{ -(y - \mu_{y})^{2} }{ 2\sigma^{2}_{y} } }" /></p>
+                    </div>
+                    <p class="last">де мю означає пік, а омега варіативність для
+                      кожного ікс та ігрек. </p>
+                  </div>
+                </div>
+                <div class="section" id="median-filter">
+                  <h3>Медіанний фільтр<a class="headerlink" href="#median-filter"
+                      title="Permalink to this headline"><br />
+                    </a></h3>
+                  <p>Медіанний фільтр пробігає по кожному елементу сигналу (в
+                    даному випадку зображенню) та замінює кожний піксель на <strong>медіану</strong>
+                    сусідніх пікселів (розташованих в квадраті кругом
+                    обчислюваного пікселя).</p>
+                </div>
+                <div class="section" id="bilateral-filter">
+                  <h3>Білетеральний фільтр<a class="headerlink" href="#bilateral-filter"
+                      title="Permalink to this headline"><br />
+                    </a></h3>
+                  <div class="enumeratevisibleitemswithsquare container">
+                    <ul class="simple">
+                      <li>Ми вже пояснили декілька фільтрів, чия головна мета <em>згладити
+                          </em>вхідне зображення. Однак, іноді фільтри не тільки
+                        прибирають шум, але такоз згладжують <em>краї</em>. Щоб
+                        запобігти цьому (щонайменьше в деякій мірі), миможемо
+                        застосувати білетеральний фільтр.</li>
+                      <li>По аналогії з гаусівськім фільтром, білатеральний
+                        фільтр також приймає до уваги сусідні пікселі, з вагами
+                        до кожного з них. Ці ваги мають два компоненти, перший з
+                        яких такий же самий, що і в гаусівському фільтрі. Другий
+                        компонент приймає до уваги різницю між сусідніми
+                        пікселями, та обчислюваним пікселем. </li>
+                      <li>Для детального пояснення ви можете скористатись цім <a
+                          class="reference external" href="http://homepages.inf.ed.ac.uk/rbf/CVonline/LOCAL_COPIES/MANDUCHI1/Bilateral_Filtering.html">посиланням</a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+              <div class="section" id="code">
+                <h2>Код<a class="headerlink" href="#code" title="Permalink to this headline">
+                    <br />
+                  </a></h2>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul>
+                    <li>
+                      <p class="first"><strong>Що робить ця програма?</strong></p>
+                      <div class="enumeratevisibleitemswithsquare container">
+                        <ul class="simple">
+                          <li>Завантажує зображення</li>
+                          <li>Застосовує 4 різні типи фільтрів (пояснено в
+                            Теорії) та відображує відфільтровані зображення
+                            послідовно</li>
+                        </ul>
+                      </div>
+                    </li>
+                    <li>
+                      <p class="first"><strong>Код для завантаження</strong>:
+                        Клацніть <a class="reference external" href="https://github.com/Itseez/opencv/tree/master/samples/cpp/tutorial_code/ImgProc/Smoothing.cpp">тут</a></p>
+                    </li>
+                    <li>
+                      <p class="first"><strong>Код більш детально</strong></p>
+                    </li>
+                  </ul>
+                </div>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="cp">#include "opencv2/imgproc/imgproc.hpp"</span>
+<span class="cp">#include "opencv2/highgui/highgui.hpp"</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span
+class="p">;</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="c1">/// Глобалні змінні</span>
+<span class="kt">int</span> <span class="n">DELAY_CAPTION</span> <span class="o">=</span> <span
+class="mi">1500</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">DELAY_BLUR</span> <span class="o">=</span> <span
+class="mi">100</span><span class="p">;</span>
+<span class="kt">int</span> <span class="n">MAX_KERNEL_LENGTH</span> <span class="o">=</span> <span
+class="mi">31</span><span class="p">;</span>
+
+<span class="n">Mat</span> <span class="n">src</span><span class="p">;</span> <span
+class="n">Mat</span> <span class="n">dst</span><span class="p">;</span>
+<span class="kt">char</span> <span class="n">window_name</span><span class="p">[]</span> <span
+class="o">=</span> <span class="s">"Filter Demo 1"</span><span class="p">;</span>
+
+<span class="c1">/// Заголовки функцій</span>
+<span class="kt">int</span> <span class="nf">display_caption</span><span class="p">(</span> <span
+class="kt">char</span><span class="o">*</span> <span class="n">caption</span> <span
+class="p">);</span>
+<span class="kt">int</span> <span class="nf">display_dst</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">delay</span> <span class="p">);</span>
+
+<span class="cm">/**</span>
+<span class="cm"> * функція main</span>
+<span class="cm"> */</span>
+ <span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+ <span class="p">{</span>
+   <span class="n">namedWindow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">CV_WINDOW_AUTOSIZE</span> <span class="p">);</span>
+
+   <span class="c1">/// Завантажити джерело зображення</span>
+   <span class="n">src</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span> <span class="s">"../images/lena.jpg"</span><span class="p">,</span> <span
+class="mi">1</span> <span class="p">);</span>
+
+   <span class="k">if</span><span class="p">(</span> <span class="n">display_caption</span><span
+class="p">(</span> <span class="s">"Original Image"</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span>
+
+   <span class="n">dst</span> <span class="o">=</span> <span class="n">src</span><span
+class="p">.</span><span class="n">clone</span><span class="p">();</span>
+   <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_CAPTION</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span>
+
+   <span class="c1">/// Застосовуємо гомогенние розмиття</span>
+   <span class="k">if</span><span class="p">(</span> <span class="n">display_caption</span><span
+class="p">(</span> <span class="s">"Homogeneous Blur"</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span>
+   <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+       <span class="p">{</span> <span class="n">blur</span><span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span
+class="n">i</span> <span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span
+class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span
+class="mi">1</span><span class="p">)</span> <span class="p">);</span>
+         <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+
+    <span class="c1">/// Застосовуємо гаусівське розмиття</span>
+    <span class="k">if</span><span class="p">(</span> <span class="n">display_caption</span><span
+class="p">(</span> <span class="s">"Gaussian Blur"</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span>
+    <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+        <span class="p">{</span> <span class="n">GaussianBlur</span><span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span
+class="n">i</span> <span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span
+class="mi">0</span> <span class="p">);</span>
+          <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+
+     <span class="c1">/// Застосовуємо медіанне розмиття</span>
+     <span class="k">if</span><span class="p">(</span> <span class="n">display_caption</span><span
+class="p">(</span> <span class="s">"Median Blur"</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span>
+     <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+         <span class="p">{</span> <span class="n">medianBlur</span> <span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">i</span> <span class="p">);</span>
+           <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+
+     <span class="c1">/// Застосовуємо білітеральний фільтр</span>
+     <span class="k">if</span><span class="p">(</span> <span class="n">display_caption</span><span
+class="p">(</span> <span class="s">"Bilateral Blur"</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span>
+     <span class="k">for</span> <span class="p">(</span> <span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span
+class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+         <span class="p">{</span> <span class="n">bilateralFilter</span> <span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="o">*</span><span
+class="mi">2</span><span class="p">,</span> <span class="n">i</span><span class="o">/</span><span
+class="mi">2</span> <span class="p">);</span>
+           <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+
+     <span class="c1">/// Очікуємо коли користувач натисне клавішу</span>
+     <span class="n">display_caption</span><span class="p">(</span> <span class="s">"End: Press a key!"</span> <span
+class="p">);</span>
+
+     <span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span
+class="p">);</span>
+     <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+ <span class="p">}</span>
+
+ <span class="kt">int</span> <span class="nf">display_caption</span><span class="p">(</span> <span
+class="kt">char</span><span class="o">*</span> <span class="n">caption</span> <span
+class="p">)</span>
+ <span class="p">{</span>
+   <span class="n">dst</span> <span class="o">=</span> <span class="n">Mat</span><span
+class="o">::</span><span class="n">zeros</span><span class="p">(</span> <span class="n">src</span><span
+class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">src</span><span
+class="p">.</span><span class="n">type</span><span class="p">()</span> <span class="p">);</span>
+   <span class="n">putText</span><span class="p">(</span> <span class="n">dst</span><span
+class="p">,</span> <span class="n">caption</span><span class="p">,</span>
+            <span class="n">Point</span><span class="p">(</span> <span class="n">src</span><span
+class="p">.</span><span class="n">cols</span><span class="o">/</span><span class="mi">4</span><span
+class="p">,</span> <span class="n">src</span><span class="p">.</span><span class="n">rows</span><span
+class="o">/</span><span class="mi">2</span><span class="p">),</span>
+            <span class="n">CV_FONT_HERSHEY_COMPLEX</span><span class="p">,</span> <span
+class="mi">1</span><span class="p">,</span> <span class="n">Scalar</span><span class="p">(</span><span
+class="mi">255</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span
+class="mi">255</span><span class="p">)</span> <span class="p">);</span>
+   <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+   <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span
+class="n">waitKey</span><span class="p">(</span> <span class="n">DELAY_CAPTION</span> <span
+class="p">);</span>
+   <span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">&gt;=</span> <span class="mi">0</span> <span class="p">)</span> <span
+class="p">{</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">;</span> <span class="p">}</span>
+   <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+
+  <span class="kt">int</span> <span class="nf">display_dst</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">delay</span> <span class="p">)</span>
+  <span class="p">{</span>
+    <span class="n">imshow</span><span class="p">(</span> <span class="n">window_name</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+    <span class="kt">int</span> <span class="n">c</span> <span class="o">=</span> <span
+class="n">waitKey</span> <span class="p">(</span> <span class="n">delay</span> <span
+class="p">);</span>
+    <span class="k">if</span><span class="p">(</span> <span class="n">c</span> <span
+class="o">&gt;=</span> <span class="mi">0</span> <span class="p">)</span> <span
+class="p">{</span> <span class="k">return</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">;</span> <span class="p">}</span>
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="p">}</span>
+</pre></div>
+                </div>
+              </div>
+              <div class="section" id="explanation">
+                <h2>Пояснення<a class="headerlink" href="#explanation" title="Permalink to this headline"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Давайте перевіримо функції OpenCV, що
+                      включають процедуру згладжування, тому що решту ви вже
+                      знаєте. </p>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Нормалізований блочний фільтр:</strong></p>
+                    <p>OpenCV пропонує функцію <a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=blur#blur">blur</a>
+                      для виконання згладжування за допомогою цього фільтру.</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="k">for</span> <span class="p">(</span> <span
+class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="n">blur</span><span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span
+class="n">i</span> <span class="p">),</span> <span class="n">Point</span><span class="p">(</span><span
+class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="o">-</span><span
+class="mi">1</span><span class="p">)</span> <span class="p">);</span>
+      <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Ми задаємо чотири аргументи (за додатковими деталями
+                      посилайтесь на документацію):</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li><em>src</em>: Первинне зображення</li>
+                        <li><em>dst</em>: Цільове зображення</li>
+                        <li><em>Size( w,h )</em>: Визначає розмір ядра, що буде
+                          використовуватись (ширирою <em>w</em> пікселів, та
+                          висотою <em>h</em>)</li>
+                        <li><em>Point(-1, -1)</em>: Вказує, де розташована
+                          крапка прив'язки (обчислюваний піксель) відносно до
+                          сусідей. Якщо це негативне значення, тоді точка
+                          прив'язки знаходиться в центрі ядра.</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Гаусівській фільтр</strong></p>
+                    <p>Він виконується за допомогою функнції  <a class="reference external"
+                        href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=gaussianblur#gaussianblur">GaussianBlur</a>
+                      :</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="k">for</span> <span class="p">(</span> <span
+class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="n">GaussianBlur</span><span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">Size</span><span class="p">(</span> <span class="n">i</span><span class="p">,</span> <span
+class="n">i</span> <span class="p">),</span> <span class="mi">0</span><span class="p">,</span> <span
+class="mi">0</span> <span class="p">);</span>
+      <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Ми використовуємо чотири аргумента (за додатковими даними
+                      звертайтесь до документацїі OpenCV):</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li><em>src</em>: Первинне зображення</li>
+                        <li><em>dst</em>: Цільове зображення</li>
+                        <li><em>Size(w, h)</em>: Розмір ядра, що буде
+                          використано (сусіди, що прийматимуть участь), має бути
+                          непарним позитивним числом, інакше розмір буде
+                          обчислюватися на основі аргументів стандартного відхилення.</li>
+                        <li><img class="math" src="../../../../_images/math/c8af017b022331c9c84693f51ad3cd94258879db.png"
+                            alt="\sigma_{x}" />: Стандартне відхилення по x.
+                          Нуль означає, що параметр обчислюється на основі
+                          розміру ядра.</li>
+                        <li><img class="math" src="../../../../_images/math/0ff7b5eae1591a8f8319a3a28bfaf459bc088233.png"
+                            alt="\sigma_{y}" />: Стандартне відхилення по y.
+                          Нуль означає, що параметр обчислюється на основі
+                          розміру ядра.</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Медіанний фільтр:</strong></p>
+                    <p>Цей фільтр провадиться фукнцією <a class="reference external"
+                        href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=medianblur#medianblur">medianBlur</a>:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="k">for</span> <span class="p">(</span> <span
+class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="n">medianBlur</span> <span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">i</span> <span class="p">);</span>
+      <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Ми використовуємо три аргументи:</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li><em>src</em>: Первинне зображення</li>
+                        <li><em>dst</em>: Цільове зображення, має бути того ж
+                          типу, що і <em>src</em></li>
+                        <li><em>i</em>: Розмір ядра (тільки одне число, бо ми
+                          використовуємо квадратне вікно). Має бути непарним.</li>
+                      </ul>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Білатеральний фільтр</strong></p>
+                    <p>Провадиться функцією OpenCV <a class="reference external"
+                        href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=bilateralfilter#bilateralfilter">bilateralFiltr</a></p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="k">for</span> <span class="p">(</span> <span
+class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">1</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">MAX_KERNEL_LENGTH</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span
+class="o">+</span> <span class="mi">2</span> <span class="p">)</span>
+    <span class="p">{</span> <span class="n">bilateralFilter</span> <span class="p">(</span> <span
+class="n">src</span><span class="p">,</span> <span class="n">dst</span><span class="p">,</span> <span
+class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="o">*</span><span
+class="mi">2</span><span class="p">,</span> <span class="n">i</span><span class="o">/</span><span
+class="mi">2</span> <span class="p">);</span>
+      <span class="k">if</span><span class="p">(</span> <span class="n">display_dst</span><span
+class="p">(</span> <span class="n">DELAY_BLUR</span> <span class="p">)</span> <span
+class="o">!=</span> <span class="mi">0</span> <span class="p">)</span> <span class="p">{</span> <span
+class="k">return</span> <span class="mi">0</span><span class="p">;</span> <span
+class="p">}</span> <span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Ми використовуємо п'ять аргументів:</p>
+                    <div class="enumeratevisibleitemswithsquare container">
+                      <ul class="simple">
+                        <li><em>src</em>: Первинне зображення</li>
+                        <li><em>dst</em>: Цільове зображення</li>
+                        <li><em>d</em>: Діаметр (<em>відстань</em>) до кожного
+                          сусіднього пікселя</li>
+                        <li><img class="math" src="../../../../_images/math/c38acc72885d6543dd0c9bf2758025f3dcfcefe0.png"
+                            alt="\sigma_{Color}" />: Стандартне відхилення в
+                          просторі кольорів.</li>
+                        <li><img class="math" src="../../../../_images/math/444e5713c5de5dc7ae25e4c6cca47304b09eacde.png"
+                            alt="\sigma_{Space}" />: Стандартне відхилення в
+                          просторі координат (в термінах пікселів)</li>
+                      </ul>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+              <div class="section" id="results">
+                <h2>Результати<a class="headerlink" href="#results" title="Permalink to this headline"><br />
+                  </a></h2>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul>
+                    <li>
+                      <p class="first">The code opens an image (in this case <em>lena.jpg</em>)
+                        and display it under the effects of the 4 filters
+                        explained.</p>
+                    </li>
+                    <li>
+                      <p class="first">Here is a snapshot of the image smoothed
+                        using <em>medianBlur</em>:</p>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html?highlight=bilateralfilter#bilateralfilter"><img
+        src="file:///home/TRANS/OPENCV/TutImgProc01-Result.png" alt="" /></a>
+  </body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Додавання (блендінг) двох зображень. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="adding-blending-two-images-using-opencv" class="section"> <span
+                id="adding-images"></span>
+              <h1>Додавання (блендінг) двох зображень з використанням OpenCV<a title="Permalink to this headline"
+                  href="#adding-blending-two-images-using-opencv" class="headerlink">
+                  <br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Ціль<a title="Permalink to this headline" href="#goal" class="headerlink"><br />
+                  </a></h2>
+                <p>В цьому уроці ми будемо вивчати:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>що такое <em>лінійний бледінг (змішування) </em>та
+                      чому воно корисне;</li>
+                    <li>як скласти два зображення з використанням <a href="http://docs.opencv.org/modules/core/doc/operations_on_arrays.html?highlight=addweighted#addweighted"
+                        class="reference external">addWeighted</a></li>
+                  </ul>
+                </div>
+              </div>
+              <div id="theory" class="section">
+                <h2>Теорія<a title="Permalink to this headline" href="#theory" class="headerlink"><br />
+                  </a></h2>
+                <div class="admonition note">
+                  <p class="first admonition-title">Зауваження</p>
+                  <p class="last">Пояснення нижче належать до книжки <a href="http://szeliski.org/Book/"
+                      class="reference external">Computer Vision: Algorithms and
+                      Applications</a> написаною Richard Szeliski</p>
+                </div>
+                <p>З попереднього ми вже знаємо дещо про піксельні оператори.
+                  Цікавий двомісний оперратор є <em>оператор лінійного
+                    блендінгу (змішування)</em>:</p>
+                <img src="blending_formula.png" alt="Blending formula" />
+                <div class="math">
+                  <p><img alt="g(x) = (1 - \alpha)f_{0}(x) + \alpha f_{1}(x)" src="../../../../_images/math/df576a6ff28b7f5a4c17446104ad4433c31f627c.png" /></p>
+                </div>
+                <p>Варіації цього оператора можуть використовуватись для
+                  виконання тимчасового переходу між двома зображеннями або
+                  відео, як це робиться у на слайд-шоу та виробництві фільмів
+                  (круто, еге ж?)</p>
+              </div>
+              <div id="code" class="section">
+                <h2>Код<a title="Permalink to this headline" href="#code" class="headerlink">
+                    <br />
+                  </a></h2>
+                <p>Як звичайно, після не дуже довгого пояснення переходимо до
+                  коду:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="cp">#include &lt;cv.h&gt;</span>
+<span class="cp">#include &lt;highgui.h&gt;</span>
+<span class="cp">#include &lt;iostream&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+
+<span class="kt">int</span> <span class="nf">main</span><span class="p">(</span> <span
+class="kt">int</span> <span class="n">argc</span><span class="p">,</span> <span
+class="kt">char</span><span class="o">**</span> <span class="n">argv</span> <span
+class="p">)</span>
+<span class="p">{</span>
+ <span class="kt">double</span> <span class="n">alpha</span> <span class="o">=</span> <span
+class="mf">0.5</span><span class="p">;</span> <span class="kt">double</span> <span
+class="n">beta</span><span class="p">;</span> <span class="kt">double</span> <span
+class="n">input</span><span class="p">;</span>
+
+ <span class="n">Mat</span> <span class="n">src1</span><span class="p">,</span> <span
+class="n">src2</span><span class="p">,</span> <span class="n">dst</span><span class="p">;</span>
+
+ <span class="c1">/// Питаємо користувача про значення альфа</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">" Простий лінійний блендер "</span><span
+class="o">&lt;&lt;</span><span class="n">std</span><span class="o">::</span><span
+class="n">endl</span><span class="p">;</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">"-----------------------"</span><span class="o">&lt;&lt;</span><span
+class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cout</span><span
+class="o">&lt;&lt;</span><span class="s">"* Введіть альфа-прозорість [0-1]: "</span><span
+class="p">;</span>
+ <span class="n">std</span><span class="o">::</span><span class="n">cin</span><span
+class="o">&gt;&gt;</span><span class="n">input</span><span class="p">;</span>
+
+ <span class="c1">/// Перевіряємо, чи альфа в диапазоні 0-1</span>
+ <span class="k">if</span><span class="p">(</span> <span class="n">input</span> <span
+class="o">&gt;=</span> <span class="mf">0.0</span> <span class="o">&amp;&amp;</span> <span
+class="n">input</span> <span class="o">&lt;=</span> <span class="mf">1.0</span> <span
+class="p">)</span>
+   <span class="p">{</span> <span class="n">alpha</span> <span class="o">=</span> <span
+class="n">input</span><span class="p">;</span> <span class="p">}</span>
+
+ <span class="c1">/// читаємо зображення ( однакові розміри та тип )</span>
+ <span class="n">src1</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span><span class="s">"../../images/LinuxLogo.jpg"</span><span class="p">);</span>
+ <span class="n">src2</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span><span class="s">"../../images/WindowsLogo.jpg"</span><span class="p">);</span>
+
+ <span class="k">if</span><span class="p">(</span> <span class="o">!</span><span
+class="n">src1</span><span class="p">.</span><span class="n">data</span> <span class="p">)</span> <span
+class="p">{</span> <span class="n">printf</span><span class="p">(</span><span class="s">"Помилка завантаження src1 </span><span
+class="se">\n</span><span class="s">"</span><span class="p">);</span> <span class="k">return</span> <span
+class="o">-</span><span class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+ <span class="k">if</span><span class="p">(</span> <span class="o">!</span><span
+class="n">src2</span><span class="p">.</span><span class="n">data</span> <span class="p">)</span> <span
+class="p">{</span> <span class="n">printf</span><span class="p">(</span><span class="s">"</span><span
+class="s"><span class="s">Помилка завантаження</span> src2 </span><span class="se">\n</span><span
+class="s">"</span><span class="p">);</span> <span class="k">return</span> <span
+class="o">-</span><span class="mi">1</span><span class="p">;</span> <span class="p">}</span>
+
+ <span class="c1">/// Стфорюємо вікна</span>
+ <span class="n">namedWindow</span><span class="p">(</span><span class="s">"Linear Blend"</span><span
+class="p">,</span> <span class="mi">1</span><span class="p">);</span>
+
+ <span class="n">beta</span> <span class="o">=</span> <span class="p">(</span> <span
+class="mf">1.0</span> <span class="o">-</span> <span class="n">alpha</span> <span
+class="p">);</span>
+ <span class="n">addWeighted</span><span class="p">(</span> <span class="n">src1</span><span
+class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">src2</span><span
+class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="mf">0.0</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">);</span>
+
+ <span class="n">imshow</span><span class="p">(</span> <span class="s">"Linear Blend"</span><span
+class="p">,</span> <span class="n">dst</span> <span class="p">);</span>
+
+ <span class="n">waitKey</span><span class="p">(</span><span class="mi">0</span><span
+class="p">);</span>
+ <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+              </div>
+              <div id="explanation" class="section">
+                <h2>Пояснення<a title="Permalink to this headline" href="#explanation"
+                    class="headerlink"><br />
+                  </a></h2>
+                <ol class="arabic">
+                  <li>
+                    <p class="first">Ось що ми виконуємо:</p>
+                    <div class="math">
+                      <p><img alt="g(x) = (1 - \alpha)f_{0}(x) + \alpha f_{1}(x)"
+                          src="../../../../_images/math/df576a6ff28b7f5a4c17446104ad4433c31f627c.png" /></p>
+                    </div>
+                    <p>Нам треба два зображення, які ми завантажуємо в звичайний
+                      шлях:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">src1</span> <span class="o">=</span> <span
+class="n">imread</span><span class="p">(</span><span class="s">"../../images/LinuxLogo.jpg"</span><span
+class="p">);</span>
+<span class="n">src2</span> <span class="o">=</span> <span class="n">imread</span><span
+class="p">(</span><span class="s">"../../images/WindowsLogo.jpg"</span><span class="p">);</span>
+</pre></div>
+                    </div>
+                    <div class="admonition warning">
+                      <p class="first admonition-title">Попередження</p>
+                      <p class="last">Оскільки ми <em>додаємо</em> <em>src1</em>
+                        та <em>src2</em>, вони обоє мають однаковий розмір
+                        (ширину та висоту) та тип.</p>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first">Теер нам треба згенерувати зображення. Для
+                      цього цілковито стане в нагоді <a href="http://docs.opencv.org/modules/core/doc/operations_on_arrays.html?highlight=addweighted#addweighted"
+                        class="reference external">addWeighted</a>:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">beta</span> <span class="o">=</span> <span
+class="p">(</span> <span class="mf">1.0</span> <span class="o">-</span> <span class="n">alpha</span> <span
+class="p">);</span>
+<span class="n">addWeighted</span><span class="p">(</span> <span class="n">src1</span><span
+class="p">,</span> <span class="n">alpha</span><span class="p">,</span> <span class="n">src2</span><span
+class="p">,</span> <span class="n">beta</span><span class="p">,</span> <span class="mf">0.0</span><span
+class="p">,</span> <span class="n">dst</span><span class="p">);</span>
+</pre></div>
+                    </div>
+                    <p>оскільки вона продукує <img src="blending_2.png" alt="Blending 2 " /><img
+                        alt="dst = \alpha \cdot src1 + \beta \cdot src2 + \gamma"
+                        src="../../../../_images/math/ebff7098976fee857b552f1559f0d17a38370b4e.png" /></p>
+                  </li>
+                  <li>
+                    <div class="math"> </div>
+                    <p>В цьому випадку
+                      <meta content="text/html; charset=utf-8" http-equiv="content-type" />
+                      <img style="border: 0px; max-width: 100%; vertical-align: middle; color: rgb(0, 0, 0); font-family: sans-serif; font-size: 16px; font-style: normal; font-variant: normal; font-weight: normal; letter-spacing: normal; line-height: 20.8px; orphans: auto; text-align: justify; text-indent: 0px; text-transform: none; white-space: normal; widows: 1; word-spacing: 0px; -webkit-text-stroke-width: 0px; background-color: rgb(255, 255, 255);"
+                        alt="\gamma" src="http://docs.opencv.org/_images/math/b9e28934ca3430cc3e38e109dd6554da8ae7f5bc.png"
+                        class="math" /> є 0.0 в коді вище.</p>
+                  </li>
+                  <li>
+                    <p class="first">Створюємо вікно, показуємоз зображення, та
+                      очікуємо, коли користувач завершить програму.</p>
+                  </li>
+                </ol>
+              </div>
+              <div id="result" class="section">
+                <h2>Результат<a title="Permalink to this headline" href="#result"
+                    class="headerlink"><br />
+                  </a></h2>
+                <img src="../../../../_images/Adding_Images_Tutorial_Result_0.jpg"
+                  class="align-center" alt="Blending Images Tutorial - Final Result" /><img
+                  src="blending_result.jpg" alt="Blending Result" /> </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

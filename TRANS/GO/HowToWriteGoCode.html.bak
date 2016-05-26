@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=utf-8" http-equiv="content-type">
+    <title>How to Write Go Code - The Go Programming Language</title>
+    <link type="text/css" rel="stylesheet" href="/lib/godoc/style.css">
+    <link rel="search" type="application/opensearchdescription+xml" title="godoc"
+      href="/opensearch.xml">
+    <link rel="stylesheet" href="/lib/godoc/jquery.treeview.css">
+  </head>
+  <body>
+    <div id="page" class="wide">
+      <div class="container">
+        <h1>Як писати код Go</h1>
+        <h2 id="Introduction">Вступ</h2>
+        <p>Цей документ демонструє розробку простого пакунку Go та є вступом до
+          інструменту <a href="/cmd/go/">go tool</a>, стандартного шляху для
+          отримання, побудови, та встановлення пакунків Go packages та команд. </p>
+        <p>Інструмент <code>go</code> потребує від вас організувати код певним
+          чином. Будь ласка, уважно прочитайте цей документ. Він пояснює
+          найпростіший шлях розпочати роботу з вашою інсталяцією Go. </p>
+        <p>Подібне пояснення існує також у вигляді&nbsp;<a href="//www.youtube.com/watch?v=XCsL89YtqCs">скринкасту</a>.
+        </p>
+        <h2 id="Organization">Організація коду</h2>
+        <h3 id="Workspaces">Робочі простори (Workspaces)</h3>
+        <p> Інструмент <code>go</code> розроблений для роботи з відкритим
+          початковим кодом, що розташований в публічних репозитаріях. Хоча вам
+          не потрібно публіковати свій код, модель того, як робить оточення є
+          тим же самим, робите ви це, чи ні. </p>
+        <p>Код Go повинен утримуватись в робочому просторі (<i>workspace</i>).
+          Робочий простір є ієрархією з трьома каталогами в своєму корені: </p>
+        <ul>
+          <li><code>src</code> містить початкові файли Go, організовані в
+            пакунки (один пакунок на каталог), </li>
+          <li><code>pkg</code> містить об’єкти пакунту, та</li>
+          <li><code>bin</code> містить виконувані команди. </li>
+        </ul>
+        <p> The <code>go</code> tool builds source packages and installs the
+          resulting binaries to the <code>pkg</code> and <code>bin</code>
+          directories. </p>
+        <p>Підкаталог <code>src</code> типово містить декілька репозитаріїв
+          контролю версій (таких, як Git або Mercurial), що відслідковують
+          розробку одного або більше початковихх пакунків. </p>
+        <p>Щоб надати ідею, як робочий простір виглядає насправді, ось приклад:
+        </p>
+        <pre>bin/
+    hello                          # виконавчий файл команди
+    outyet                         # виконавчий файл команди
+pkg/
+    linux_amd64/
+        github.com/golang/example/
+            stringutil.a           # об’єкт пакунку
+src/
+    <a href="https://github.com/golang/example/">github.com/golang/example/</a>
+        .git/                      # метадані репозитарію Git 
+	hello/
+	    hello.go               # початкові файли команди
+	outyet/
+	    main.go                # початковий код
+	    main_test.go           # початковий код тестів
+	stringutil/
+	    reverse.go             # початковий код
+	    reverse_test.go        # початковий код тестів
+</pre>
+        <p>Цей робочй простір містить один репозитарій (<code>example</code>),
+          що складається з двох команд (<code>hello</code> та <code>outyet</code>),
+          та одну бібліотеку (<code>stringutil</code>). </p>
+        <p>Типовий робочий простір буде містити багато початкових репозитаріїв,
+          що містять багато пакунків та команд. Більшість програмістів Go
+          тримають <em>весь </em>свій код Go та залежності в одному робочому
+          просторі. </p>
+        <p> Команди та бібліоткеки збудовані з різних типів початкових пакунків.
+          Ми будемо обгорювати різницю <a href="#PackageNames">піздніше</a>. </p>
+        <h3 id="GOPATH">Змінна оточенна <code>GOPATH</code></h3>
+        <p> Змінна оточення <code>GOPATH</code> вказує на розташування вашого
+          робочого простору. Вирогідно, це єдина змінна оточення, яку вам
+          потрібно встановити, щоб розробляти код Go. </p>
+        <p>Щоб розпочати роботу, створіть каталог робочого простору та
+          відповідно встановіть&nbsp;<code>GOPATH</code>. Ваш робочий простір
+          може розташовуватись будь-де, але ми використовуємо <code>$HOME/go</code>
+          в цьому документі. Зауважте, що це має бути <strong>іншим</strong> розташуванням,
+          ніж ваша інсталяція Go installation. </p>
+        <pre>$ <b>mkdir $HOME/go</b>
+$ <b>export GOPATH=$HOME/go</b>
+</pre>
+        <p>Для зручності додайте каталог <code>bin</code> вашого робочого
+          простору до вашого <code>PATH</code>: </p>
+        <pre>$ <b>export PATH=$PATH:$GOPATH/bin</b>
+</pre>
+        <h3 id="PackagePaths">Шляхи пакунків</h3>
+        <p>Пакунки зі стандартної бібліотеки набули коротких імен, таких,
+          як&nbsp;<code>"fmt"</code> та <code>"net/http"</code>. Для ваших
+          власних пакунків ви маєте обрати базовий шлях, що вірогідно не буде
+          конфліктувати з майбутніми додатками до стандартної бібліотеки або
+          іншими зовнішніми бібліотеками. </p>
+        <p>Якщо ви зберігаєте код в репозитарії деінде, тоді вам треба
+          використовувати корень цього репозитарію в якости кореневого шляху.
+          Наприклад, якщо ви маєте обліковий запис на&nbsp;<a href="https://github.com/">GitHub</a>
+          <code>github.com/user</code>, це має бути вашим базовим шляхом. </p>
+        <p>Зауважте, що вам не треба публіковати ваш код в віддалений
+          репозитарій, перед тим, як побудувати його. Це є лише гарною звичкою
+          організовувати свій код так, наче ви збираєтесь опубліковати його
+          одного дня. На практиці ви можете обрати любе довільне ім’я шляху, до
+          тих пір, доки воно є унікальним до стандартної бібліотеки та більшої
+          екосистеми Go. </p>
+        <p> Ми використовуємо <code>github.com/user</code> як власний базовий
+          шлях. Створіть каталог в середині вашого робочого простору, де ви
+          утримуватимите ваш код: </p>
+        <pre>$ <b>mkdir -p $GOPATH/src/github.com/user</b>
+</pre>
+        <h3 id="Command">Ваша перша програма</h3>
+        <p> Щоб скомпілювати та виконати простоу програму, спочатку оберіть шлях
+          пакунку (ми будем овикористовувати <code>github.com/user/hello</code>),
+          та створіть відповідний каталог пакунку в вашому робочому просторі: </p>
+        <pre>$ <b>mkdir $GOPATH/src/github.com/user/hello</b>
+</pre>
+        <p>Потім створіть файл з іменем&nbsp;<code>hello.go</code> в цьому
+          каталозі, що міститиме наступний код Go. </p>
+        <pre>package main
+
+import "fmt"
+
+func main() {
+	fmt.Printf("Hello, world.\n")
+}
+</pre>
+        <p>Тепер ви можете побудувати та встановити програму за допомогою
+          інструменту&nbsp;<code>go</code>: </p>
+        <pre>$ <b>go install github.com/user/hello</b>
+</pre>
+        <p>Зауважте, що ви можете викликати цю команду з любого місця вашої
+          системи. Інструмент <code>go</code> шукає початковий код з
+          використанням шляху до пакунку <code>github.com/user/hello</code>
+          та змінної оточення&nbsp; <code>GOPATH</code>. </p>
+        <p> Ви також можете оминути назву пакунку, якщо ви виконуєте <code>go
+            install</code>з каталогу пакунку : </p>
+        <pre>$ <b>cd $GOPATH/src/github.com/user/hello</b>
+$ <b>go install</b>
+</pre>
+        <p> Ця команду будує команду <code>hello</code>, продукуючи виконавчий
+          файл. Пічля цього встановлює цей двійниковий файл в каталог робочого простору&nbsp;<code>bin</code>
+          як <code>hello</code> (або, для Windows, <code>hello.exe</code>).
+          В нашому прикладі це буде <code>$GOPATH/bin/hello</code>, що те ж, що
+          і <code>$HOME/go/bin/hello</code>. </p>
+        <p> Інструмент <code>go</code> буде друкувати дещо тільки в випадку
+          виникнення помилки, і, таким чином, нічого не буде виводити, коли
+          виконується успішно. </p>
+        <p>Тепер ви можете виконати програму, друкуючи її повний шлях в
+          командному рядку: </p>
+        <pre>$ <b>$GOPATH/bin/hello</b>
+Hello, world.
+</pre>
+        <p> Або, якщо ви додали&nbsp;<code>$GOPATH/bin</code> до вашого&nbsp;<code>PATH</code>,
+          тільки наберіть це: </p>
+        <pre>$ <b>hello</b>
+Hello, world.
+</pre>
+        <p> Якщо ви використовуєте систему контроля версій, тепер настав добрий
+          час ініціалізувати репозитарій, додати файли та закріпити ваші перші
+          зміни. Знову, цей крок є опціональним: вам не треба використовувати
+          управління версіями для кодування на Go. </p>
+        <pre>$ <b>cd $GOPATH/src/github.com/user/hello</b>
+$ <b>git init</b>
+Initialized empty Git repository in /home/user/go/src/github.com/user/hello/.git/
+$ <b>git add hello.go</b>
+$ <b>git commit -m "initial commit"</b>
+[master (root-commit) 0b4507d] initial commit
+ 1 file changed, 1 insertion(+)
+  create mode 100644 hello.go
+</pre>
+        <p>Завантаження коду на віддалений репозитарій остається в якості вправи
+          для читача. </p>
+        <h3 id="Library">Ваша перша бібліотека</h3>
+        <p>Давайте напишемо бібліотеку та використаємо її з програми&nbsp;<code>hello</code>.
+        </p>
+        <p>Знову, перший шаг - обрати шлях пакунку (ми будемо використовувати <code>github.com/user/stringutil</code>)
+          та створимо каталог бібліотеки: </p>
+        <pre>$ <b>mkdir $GOPATH/src/github.com/user/stringutil</b>
+</pre>
+        <p>Наступне, створимо файл і іменем&nbsp;<code>reverse.go</code> в цьому
+          каталозі з наступним вмістом. </p>
+        <pre>// Пакунок stringutil містить допоміжні функції для роботи з рядками.
+package stringutil
+
+// Reverse повертає рядок-аргумент, обернений на рівні рун зліва направо.
+func Reverse(s string) string {
+	r := []rune(s)
+	for i, j := 0, len(r)-1; i &lt; len(r)/2; i, j = i+1, j-1 {
+		r[i], r[j] = r[j], r[i]
+	}
+	return string(r)
+}
+</pre>
+        <p> Теперь протестуйте що цей файл компілюється за допомогою&nbsp;<code>go
+            build</code>: </p>
+        <pre>$ <b>go build github.com/user/stringutil</b>
+</pre>
+        <p>Або, якщо ви робите в каталозі з кодами пакунку, тільки: </p>
+        <pre>$ <b>go build</b>
+</pre>
+        <p> Це не утворить вихідний файл. Щоб зробити це використайте&nbsp;<code>go
+            install</code>, що розмістить об’єкт пакунку в каталозі&nbsp; <code>pkg
+            </code>робочого простору . </p>
+        <p>Після підтвердження що пакунок&nbsp;<code>stringutil</code>
+          будується, модифікуйте оригінал <code>hello.go</code> (що в <code>$GOPATH/src/github.com/user/hello</code>)
+          щоб задіяти його: </p>
+        <pre>package main
+
+import (
+	"fmt"
+
+	<b>"github.com/user/stringutil"</b>
+)
+
+func main() {
+	fmt.Printf(stringutil.Reverse("!oG ,olleH"))
+}
+</pre>
+        <p>Коли інструмент <code>go</code> встановлює пакунок або двійковий файл,
+          він також встановлює всі залежності, що він має. Таким чином коли ви
+          встановлюєте програму&nbsp;<code>hello</code> </p>
+        <pre>$ <b>go install github.com/user/hello</b>
+</pre>
+        <p>пакунок <code>stringutil</code> також буде встановлено автоматично.
+        </p>
+        <p>Виконуючи нову версію програми ви побачите нове, обернене
+          повідомлення: </p>
+        <pre>$ <b>hello</b>
+Hello, Go!
+</pre>
+        <p> Після кроків вище ваш робочий простір буде виглядати наступним чином:
+        </p>
+        <pre>bin/
+    hello                 # виконавча команда
+pkg/
+    linux_amd64/          # це буде відзеркалювати вашу OS та архітектуру
+        github.com/user/
+            stringutil.a  # об’єкт пакунку
+src/
+    github.com/user/
+        hello/
+            hello.go      # початковий файл
+        stringutil/
+            reverse.go    # початковий файл
+</pre>
+        <p>Зауважте, що&nbsp; <code>go install</code> розташував об’єкт <code>stringutil.a</code>
+          в каталозі в&nbsp;<code>pkg/linux_amd64</code>, що зазеркалює його
+          каталог. Так чиниться тому, щоб подальші виклики інструменту <code>go</code>
+          змогли знайти об’єкт пакунку та уникнути непотрібну рекомпіляцію
+          пакунку. Частина <code>linux_amd64</code> є тут для допомоги в
+          кросс-компіляції, та буде відповідати операційній системі та
+          архитектурі вашої системи. </p>
+        <p>Виконавчі команди Go є статично скомпільованими; об’єкт пакунку на
+          повинен бути присутнім, що виконувати програми Go. </p>
+        <h3 id="PackageNames">Імена пакунків</h3>
+        <p>Першим твердженням в коді Go має бути</p>
+        <pre>package <i>name</i>
+</pre>
+        <p>де <code><i>name</i></code> є іменем пакунку по замовчанню для імпорту.
+          (Всі файли в пакунку повинні використовувати єдине&nbsp; <code><i>name</i></code>.)
+          </p>
+        <p>Домовленість Go полягає в тому, що именем пакунку є останній елемент
+          імпортованого пакунку: пакунок, імпортований як "<code>crypto/rot13</code>
+          повинен називатись&nbsp; <code>rot13</code>. </p>
+        <p> Виконавчі команди повинні завжди використовувати <code>package main</code>.
+        </p>
+        <p>Немає вимоги, щоб імена пакунків були унікальними серед всіх пакунків,
+          що зв’язані в один двійниковий файл, тільки ті, що імпортують
+          шляхи&nbsp; (свої повні файлові імена) будуть унікальними. </p>
+        <p> Дивіться <a href="/doc/effective_go.html#names">Ефективний Go</a>
+          щоб вивчити більше про домовленості іменування в Go. </p>
+        <h2 id="Testing">Тестування</h2>
+        <p> Go має легковажний тестовий фреймворк, що складається з команди <code>go
+            test</code>, та пакунку&nbsp;<code>testing</code>. </p>
+        <p>Ви пишете тест через створення файлу з іменем, що закінчується
+          на&nbsp;<code>_test.go</code>, що містить функції з іменами&nbsp; <code>TestXXX</code>
+          та сігнатурою <code>func (t *testing.T)</code>. Тестовий фреймворк
+          виконує кожну таку функцію; якщо функція викликає функцію збою, таку
+          як&nbsp; <code>t.Error</code> або <code>t.Fail</code>, тест
+          вважається за такий, що схибив. </p>
+        <p> Додайте тест до пакунку <code>stringutil</code>, створивши файл <code>$GOPATH/src/github.com/user/stringutil/reverse_test.go</code>,
+          що містить наступний код Go. </p>
+        <pre>package stringutil
+
+import "testing"
+
+func TestReverse(t *testing.T) {
+	cases := []struct {
+		in, want string
+	}{
+		{"Hello, world", "dlrow ,olleH"},
+		{"Hello, 世界", "界世 ,olleH"},
+		{"", ""},
+	}
+	for _, c := range cases {
+		got := Reverse(c.in)
+		if got != c.want {
+			t.Errorf("Reverse(%q) == %q, want %q", c.in, got, c.want)
+		}
+	}
+}
+</pre>
+        <p>Тоді виконайте тест за допомогою <code>go test</code>: </p>
+        <pre>$ <b>go test github.com/user/stringutil</b>
+ok  	github.com/user/stringutil 0.165s
+</pre>
+        <p> Як завжди, якщо ви виконуєте інструмент&nbsp;<code>go</code> з
+          каталогу пакунку, ви можете не вказувати шлях пакунку: </p>
+        <pre>$ <b>go test</b>
+ok  	github.com/user/stringutil 0.165s
+</pre>
+        <p>Виконайте <code><a href="/cmd/go/#hdr-Test_packages">go help test</a></code>
+          та передивіться <a href="/pkg/testing/">документацію тестового
+            пакунку</a> для отримання деталей . </p>
+        <h2 id="remote">Відддалені пакунки</h2>
+        <p>Шлях імпорту може вказувати, як отримати початкові файли пакунку, з
+          використанням систему контрою версій, такої як Git або Mercurial. Інструмент&nbsp;<code>go</code>
+          використовує цю властивість для автоматичного отримання пакунків з
+          віддалених репозитаріїв. Наприклад, приклади, описані в цьому
+          документі, також зберігаються в Git репозитарії на GitHub <code><a href="https://github.com/golang/example">github.com/golang/example</a></code>.
+          Якщо ви включаєте URL репозитарію в шлях імпорту,&nbsp;<code>go get</code>
+          буде отримувати, будувати на інсталювати його автоматично: </p>
+        <pre>$ <b>go get github.com/golang/example/hello</b>
+$ <b>$GOPATH/bin/hello</b>
+Hello, Go examples!
+</pre>
+        <p> Якщо вказаний пакунок не присутній в робочому просторі, <code>go
+            get</code> буде розташовувати його в першому робочому просторі,
+          вказаному в&nbsp;<code>GOPATH</code>. (Якщо пакунок ще не існує,&nbsp;<code>go
+            get</code> пропускає віддалене отримання, та поводиться однаково з <code>go
+            install</code>).</p>
+        <p>Після видачі вказаної вище команди <code>go get</code>, дерево робочого
+          простору тепер має виглядати подібно наступному: </p>
+        <pre>bin/
+    hello                           # виконавча команда
+pkg/
+    linux_amd64/
+        github.com/golang/example/
+            stringutil.a            # об’єкт пакунку
+        github.com/user/
+            stringutil.a            # об’єкт пакунку
+src/
+    github.com/golang/example/
+	.git/                       # метадата репозитарію Git
+        hello/
+            hello.go                # первинний код
+        stringutil/
+            reverse.go              # код пакунку
+            reverse_test.go         # код тесту
+    github.com/user/
+        hello/
+            hello.go                # код команди
+        stringutil/
+            reverse.go              # код пакунку
+            reverse_test.go         # код тесту
+</pre>
+        <p>Команда&nbsp;<code>hello</code>, що розташовується на GitHub,
+          залежить від пакунку&nbsp;<code>stringutil</code>
+          в тому ж репозитарії. Імпорт в файлі&nbsp;<code>hello.go</code>
+          використовує ту ж домовленість по шлахам імпорту, так що команда <code>go
+            get</code> має можливість знайти та встановити пакунки-залежності
+          також. </p>
+        <pre>import "github.com/golang/example/stringutil"
+</pre>
+        <p>Ця домовленість є найпростішим шляхом зробити ваші пакунки Go
+          доступними для використання іншими. <a href="//golang.org/wiki/Projects">Go
+            Wiki</a> та <a href="//godoc.org/">godoc.org</a> провадять список
+          зовнішніх проектів Go. </p>
+        <p>Для додаткової інформації по використанню віддалених репозитаріїв за
+          допомогою інструмента <code>go</code>, див <code><a href="/cmd/go/#hdr-Remote_import_paths">go
+              help importpath</a></code>. </p>
+        <h2 id="next">Що далі</h2>
+        <p>Підпишіться на список почтової розсилки <a href="//groups.google.com/group/golang-announce">golang-announce</a>,
+          щоб бути поінформованими про вихід нових стабільних версій Go. </p>
+        <p>Дивіться&nbsp;<a href="/doc/effective_go.html">Ефективний Go</a> для
+          підказок по написанню чистого, ідеоматичного коду Go. </p>
+        <p>Візьміть <a href="//tour.golang.org/">Тур по Go</a> щоб вивчити мову
+          як слід. </p>
+        <p> Завітайте на&nbsp;<a href="/doc/#articles">сторінку документації</a>
+          для набору поглиблених статей про мову Go, та її бібліотеки та
+          інструменти. </p>
+        <h2 id="help">Отримання допомоги</h2>
+        <p>Для допомоги в реальному часі запитайте користних барсучків на&nbsp;<code>#go-nuts
+            </code>на сервері&nbsp; <a href="http://freenode.net/">Freenode</a>
+          IRC. </p>
+        <p>Офіційний список розсилки для обговорення мови Go є <a href="//groups.google.com/group/golang-nuts">Go
+            Nuts</a>. </p>
+        <p> Повідомляйте про помилки на&nbsp; <a href="//golang.org/issue">Go
+            issue tracker</a>. </p>
+        <div id="footer"> Build version go1.4.2.<br>
+          Except as <a href="https://developers.google.com/site-policies#restrictions">noted</a>,
+          the content of this page is licensed under the Creative Commons
+          Attribution 3.0 License, and code is licensed under a <a href="/LICENSE">BSD
+            license</a>.<br>
+          <a href="/doc/tos.html">Terms of Service</a> | <a href="http://www.google.com/intl/en/policies/privacy/">Privacy
+            Policy</a> </div>
+      </div></div>
+  </body>
+</html>

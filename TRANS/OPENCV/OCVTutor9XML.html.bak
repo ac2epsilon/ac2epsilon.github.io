@@ -1,0 +1,923 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+      ac2epsilon@gmail.com</title>
+  </head>
+  <body>
+    <div class="related"><br />
+    </div>
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div id="file-input-and-output-using-xml-and-yaml-files" class="section">
+              <span id="fileinputoutputxmlyaml"></span>
+              <h1>File Input and Output using XML and YAML files<a title="Permalink to this headline"
+                  href="#file-input-and-output-using-xml-and-yaml-files" class="headerlink">
+                  <br />
+                </a></h1>
+              <div id="goal" class="section">
+                <h2>Ціль<a title="Permalink to this headline" href="#goal" class="headerlink"><br />
+                  </a></h2>
+                <p>Ви знайдете відповіді на наступні запитання:</p>
+                <div class="enumeratevisibleitemswithsquare container">
+                  <ul class="simple">
+                    <li>Як друкувати та читати текстові файли OpenCV з
+                      використанням YAML та XML.</li>
+                    <li>Як робити те ж саме з структурами даних OpenCV.</li>
+                    <li>Як робити це з вашими структурами даними.</li>
+                    <li>Використання структур даних OpenCV, таких як <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filestorage"
+                        class="reference external">FileStorage</a>, <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filenode"
+                        class="reference external">FileNode</a> або <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filenodeiterator"
+                        class="reference external">FileNodeIterator</a>.</li>
+                  </ul>
+                </div>
+              </div>
+              <div id="source-code" class="section">
+                <h2>Код<a title="Permalink to this headline" href="#source-code"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Ви можете <a href="../../../../_downloads/file_input_output.cpp"
+                    class="reference download internal"><tt class="xref download docutils literal"><span
+                        class="pre">завантажити код звідси</span></tt></a> або
+                  знайти його в <tt class="file docutils literal"><span class="pre">samples/cpp/tutorial_code/core/file_input_output/file_input_output.cpp</span></tt>
+                  в кодовій бібліотеці OpenCV.</p>
+                <p>Ось код приклада, що використовує все, що було перелічено в
+                  списку цілей. </p>
+                <div class="highlight-cpp">
+                  <table class="highlighttable">
+                    <tbody>
+                      <tr>
+                        <td class="linenos">
+                          <div class="linenodiv">
+                            <pre>  1
+  2
+  3
+  4
+  5
+  6
+  7
+  8
+  9
+ 10
+ 11
+ 12
+ 13
+ 14
+ 15
+ 16
+ 17
+ 18
+ 19
+ 20
+ 21
+ 22
+ 23
+ 24
+ 25
+ 26
+ 27
+ 28
+ 29
+ 30
+ 31
+ 32
+ 33
+ 34
+ 35
+ 36
+ 37
+ 38
+ 39
+ 40
+ 41
+ 42
+ 43
+ 44
+ 45
+ 46
+ 47
+ 48
+ 49
+ 50
+ 51
+ 52
+ 53
+ 54
+ 55
+ 56
+ 57
+ 58
+ 59
+ 60
+ 61
+ 62
+ 63
+ 64
+ 65
+ 66
+ 67
+ 68
+ 69
+ 70
+ 71
+ 72
+ 73
+ 74
+ 75
+ 76
+ 77
+ 78
+ 79
+ 80
+ 81
+ 82
+ 83
+ 84
+ 85
+ 86
+ 87
+ 88
+ 89
+ 90
+ 91
+ 92
+ 93
+ 94
+ 95
+ 96
+ 97
+ 98
+ 99
+100
+101
+102
+103
+104
+105
+106
+107
+108
+109
+110
+111
+112
+113
+114
+115
+116
+117
+118
+119
+120
+121
+122
+123
+124
+125
+126
+127
+128
+129
+130
+131
+132
+133
+134
+135
+136
+137
+138
+139
+140
+141</pre>
+                          </div>
+                        </td>
+                        <td class="code">
+                          <div class="highlight">
+                            <pre><span class="cp">#include &lt;opencv2/core/core.hpp&gt;</span>
+<span class="cp">#include &lt;iostream&gt;</span>
+<span class="cp">#include &lt;string&gt;</span>
+
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">cv</span><span
+class="p">;</span>
+<span class="k">using</span> <span class="k">namespace</span> <span class="n">std</span><span
+class="p">;</span>
+
+<span class="k">class</span> <span class="nc">MyData</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+    <span class="n">MyData</span><span class="p">()</span> <span class="o">:</span> <span
+class="n">A</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span
+class="n">X</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span
+class="n">id</span><span class="p">()</span>
+    <span class="p">{}</span>
+    <span class="k">explicit</span> <span class="n">MyData</span><span class="p">(</span><span
+class="kt">int</span><span class="p">)</span> <span class="o">:</span> <span class="n">A</span><span
+class="p">(</span><span class="mi">97</span><span class="p">),</span> <span class="n">X</span><span
+class="p">(</span><span class="n">CV_PI</span><span class="p">),</span> <span class="n">id</span><span
+class="p">(</span><span class="s">"mydata1234"</span><span class="p">)</span> <span
+class="c1">// explicit щоб запобігти неявної конверсії</span>
+    <span class="p">{}</span>
+    <span class="kt">void</span> <span class="n">write</span><span class="p">(</span><span
+class="n">FileStorage</span><span class="o">&amp;</span> <span class="n">fs</span><span
+class="p">)</span> <span class="k">const</span>                        <span class="c1">// записуємо серіалізацію для класу</span>
+    <span class="p">{</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"{"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"A"</span> <span class="o">&lt;&lt;</span> <span
+class="n">A</span> <span class="o">&lt;&lt;</span> <span class="s">"X"</span> <span
+class="o">&lt;&lt;</span> <span class="n">X</span> <span class="o">&lt;&lt;</span> <span
+class="s">"id"</span> <span class="o">&lt;&lt;</span> <span class="n">id</span> <span
+class="o">&lt;&lt;</span> <span class="s">"}"</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="kt">void</span> <span class="n">read</span><span class="p">(</span><span
+class="k">const</span> <span class="n">FileNode</span><span class="o">&amp;</span> <span
+class="n">node</span><span class="p">)</span>                          <span class="c1">// читаємо клас</span>
+    <span class="p">{</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="p">(</span><span
+class="kt">int</span><span class="p">)</span><span class="n">node</span><span class="p">[</span><span
+class="s">"A"</span><span class="p">];</span>
+        <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span
+class="kt">double</span><span class="p">)</span><span class="n">node</span><span
+class="p">[</span><span class="s">"X"</span><span class="p">];</span>
+        <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span
+class="n">string</span><span class="p">)</span><span class="n">node</span><span
+class="p">[</span><span class="s">"id"</span><span class="p">];</span>
+    <span class="p">}</span>
+<span class="nl">public:</span>   <span class="c1">// члени даних</span>
+    <span class="kt">int</span> <span class="n">A</span><span class="p">;</span>
+    <span class="kt">double</span> <span class="n">X</span><span class="p">;</span>
+    <span class="n">string</span> <span class="n">id</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="c1">// Ці функції читання та зипису визначені для FileStorage</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">write</span><span
+class="p">(</span><span class="n">FileStorage</span><span class="o">&amp;</span> <span
+class="n">fs</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span
+class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span
+class="p">,</span> <span class="k">const</span> <span class="n">MyData</span><span
+class="o">&amp;</span> <span class="n">x</span><span class="p">)</span> <span class="p">{</span> <span
+class="n">x</span><span class="p">.</span><span class="n">write</span><span class="p">(</span><span
+class="n">fs</span><span class="p">);</span> <span class="p">}</span>
+<span class="k">static</span> <span class="kt">void</span> <span class="nf">read</span><span
+class="p">(</span><span class="k">const</span> <span class="n">FileNode</span><span
+class="o">&amp;</span> <span class="n">node</span><span class="p">,</span> <span
+class="n">MyData</span><span class="o">&amp;</span> <span class="n">x</span><span
+class="p">,</span> <span class="k">const</span> <span class="n">MyData</span><span
+class="o">&amp;</span> <span class="n">default_value</span> <span class="o">=</span> <span
+class="n">MyData</span><span class="p">()){</span>
+    <span class="k">if</span><span class="p">(</span><span class="n">node</span><span
+class="p">.</span><span class="n">empty</span><span class="p">()) </span><span class="n">x</span> <span
+class="o">=</span> <span class="n">default_value</span><span class="p">;</span>
+    <span class="k">else </span><span class="n">x</span><span class="p">.</span><span
+class="n">read</span><span class="p">(</span><span class="n">node</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="c1">// Ця функція буде друкувати наш клас на консоль</span>
+<span class="k">static</span> <span class="n">ostream</span><span class="o">&amp;</span> <span
+class="k">operator</span><span class="o">&lt;&lt;</span><span class="p">(</span><span
+class="n">ostream</span><span class="o">&amp;</span> <span class="n">out</span><span
+class="p">,</span> <span class="k">const</span> <span class="n">MyData</span><span
+class="o">&amp;</span> <span class="n">m</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">out</span> <span class="o">&lt;&lt;</span> <span class="s">"{ id = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">m</span><span class="p">.</span><span
+class="n">id</span> <span class="o">&lt;&lt;</span> <span class="s">", "</span><span
+class="p">;</span>
+    <span class="n">out</span> <span class="o">&lt;&lt;</span> <span class="s">"X = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">m</span><span class="p">.</span><span
+class="n">X</span> <span class="o">&lt;&lt;</span> <span class="s">", "</span><span
+class="p">;</span>
+    <span class="n">out</span> <span class="o">&lt;&lt;</span> <span class="s">"A = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">m</span><span class="p">.</span><span
+class="n">A</span> <span class="o">&lt;&lt;</span> <span class="s">"}"</span><span
+class="p">;</span>
+    <span class="k">return</span> <span class="n">out</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="n">main</span><span class="p">(</span><span
+class="kt">int</span> <span class="n">ac</span><span class="p">,</span> <span class="kt">char</span><span
+class="o">**</span> <span class="n">av</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">if</span> <span class="p">(</span><span class="n">ac</span> <span
+class="o">!=</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">help</span><span class="p">(</span><span class="n">av</span><span
+class="p">);</span>
+        <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">string</span> <span class="n">filename</span> <span class="o">=</span> <span
+class="n">av</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+    <span class="p">{</span> <span class="c1">// записуємо</span>
+        <span class="n">Mat</span> <span class="n">R</span> <span class="o">=</span> <span
+class="n">Mat_</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;::</span><span class="n">eye</span><span class="p">(</span><span class="mi">3</span><span
+class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+            <span class="n">T</span> <span class="o">=</span> <span class="n">Mat_</span><span
+class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span
+class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span
+class="mi">1</span><span class="p">);</span>
+        <span class="n">MyData</span> <span class="nf">m</span><span class="p">(</span><span
+class="mi">1</span><span class="p">);</span>
+
+        <span class="n">FileStorage</span> <span class="nf">fs</span><span class="p">(</span><span
+class="n">filename</span><span class="p">,</span> <span class="n">FileStorage</span><span
+class="o">::</span><span class="n">WRITE</span><span class="p">);</span>
+
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"iterationNr"</span> <span
+class="o">&lt;&lt;</span> <span class="mi">100</span><span class="p">;</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"strings"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"["</span><span class="p">;</span>                              <span
+class="c1">// текст - послідовність рядків</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"image1.jpg"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"Awesomeness"</span> <span class="o">&lt;&lt;</span> <span
+class="s">"baboon.jpg"</span><span class="p">;</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"]"</span><span
+class="p">;</span>                                           <span class="c1">// закакриваємо послідовність</span>
+
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"Mapping"</span><span
+class="p">;</span>                  <span class="c1">// текст - відображення</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"{"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"One"</span> <span class="o">&lt;&lt;</span> <span
+class="mi">1</span><span class="p">;</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span>        <span class="s">"Two"</span> <span
+class="o">&lt;&lt;</span> <span class="mi">2</span> <span class="o">&lt;&lt;</span> <span
+class="s">"}"</span><span class="p">;</span>
+
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"R"</span> <span
+class="o">&lt;&lt;</span> <span class="n">R</span><span class="p">;</span>                   <span
+class="c1">// cv::Mat</span>
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"T"</span> <span
+class="o">&lt;&lt;</span> <span class="n">T</span><span class="p">;</span>
+
+        <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"MyData"</span> <span
+class="o">&lt;&lt;</span> <span class="n">m</span><span class="p">;</span>              <span
+class="c1">// ваша власна структура</span>
+
+        <span class="n">fs</span><span class="p">.</span><span class="n">release</span><span
+class="p">();</span>                     <span class="c1">// закриваємо</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Write Done."</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="p">{</span><span class="c1"> // читання</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="s">"Reading: "</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+        <span class="n">FileStorage</span> <span class="n">fs</span><span class="p">;</span>
+        <span class="n">fs</span><span class="p">.</span><span class="n">open</span><span
+class="p">(</span><span class="n">filename</span><span class="p">,</span> <span
+class="n">FileStorage</span><span class="o">::</span><span class="n">READ</span><span
+class="p">);</span>
+
+        <span class="kt">int</span> <span class="n">itNr</span><span class="p">;</span>
+        <span class="c1">//fs["iterationNr"] &gt;&gt; itNr;</span>
+        <span class="n">itNr</span> <span class="o">=</span> <span class="p">(</span><span
+class="kt">int</span><span class="p">)</span> <span class="n">fs</span><span class="p">[</span><span
+class="s">"iterationNr"</span><span class="p">];</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">itNr</span><span
+class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="o">!</span><span
+class="n">fs</span><span class="p">.</span><span class="n">isOpened</span><span
+class="p">())</span>
+        <span class="p">{</span>
+            <span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">"Failed to open "</span> <span
+class="o">&lt;&lt;</span> <span class="n">filename</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+            <span class="n">help</span><span class="p">(</span><span class="n">av</span><span
+class="p">);</span>
+            <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">FileNode</span> <span class="n">n</span> <span class="o">=</span> <span
+class="n">fs</span><span class="p">[</span><span class="s">"strings"</span><span
+class="p">];</span>                         <span class="c1">// отримуємо послідовність</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">n</span><span
+class="p">.</span><span class="n">type</span><span class="p">()</span> <span class="o">!=</span> <span
+class="n">FileNode</span><span class="o">::</span><span class="n">SEQ</span><span
+class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">"strings is not a sequence! FAIL"</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+            <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+        <span class="p">}</span>
+
+        <span class="n">FileNodeIterator</span> <span class="n">it</span> <span
+class="o">=</span> <span class="n">n</span><span class="p">.</span><span class="n">begin</span><span
+class="p">(),</span> <span class="n">it_end</span> <span class="o">=</span> <span
+class="n">n</span><span class="p">.</span><span class="n">end</span><span class="p">();</span> <span
+class="c1">// перебігаємо вузол</span>
+        <span class="k">for</span> <span class="p">(;</span> <span class="n">it</span> <span
+class="o">!=</span> <span class="n">it_end</span><span class="p">;</span> <span
+class="o">++</span><span class="n">it</span><span class="p">)</span>
+            <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span
+class="n">string</span><span class="p">)</span><span class="o">*</span><span class="n">it</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+
+
+        <span class="n">n</span> <span class="o">=</span> <span class="n">fs</span><span
+class="p">[</span><span class="s">"Mapping"</span><span class="p">];</span>                                <span
+class="c1">// отримуємо відображення з послідовності</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Two  "</span> <span
+class="o">&lt;&lt;</span> <span class="p">(</span><span class="kt">int</span><span
+class="p">)(</span><span class="n">n</span><span class="p">[</span><span class="s">"Two"</span><span
+class="p">])</span> <span class="o">&lt;&lt;</span> <span class="s">"; "</span><span
+class="p">;</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"One  "</span> <span
+class="o">&lt;&lt;</span> <span class="p">(</span><span class="kt">int</span><span
+class="p">)(</span><span class="n">n</span><span class="p">[</span><span class="s">"One"</span><span
+class="p">])</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+
+
+        <span class="n">MyData</span> <span class="n">m</span><span class="p">;</span>
+        <span class="n">Mat</span> <span class="n">R</span><span class="p">,</span> <span
+class="n">T</span><span class="p">;</span>
+
+        <span class="n">fs</span><span class="p">[</span><span class="s">"R"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">R</span><span
+class="p">;</span>                                      <span class="c1">// Читаємо cv::Mat</span>
+        <span class="n">fs</span><span class="p">[</span><span class="s">"T"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">T</span><span
+class="p">;</span>
+        <span class="n">fs</span><span class="p">[</span><span class="s">"MyData"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">m</span><span
+class="p">;</span>                                 <span class="c1">// Читаємо власну структуру</span>
+
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span>
+            <span class="o">&lt;&lt;</span> <span class="s">"R = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">R</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"T = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">T</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span><span
+class="p">;</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"MyData = "</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span> <span class="o">&lt;&lt;</span> <span
+class="n">m</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+
+        <span class="c1">// показати поведінку по замовчанню для неіснуючих вузлів</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Attempt to read NonExisting (should initialize the data structure with its default)."</span><span
+class="p">;</span>
+        <span class="n">fs</span><span class="p">[</span><span class="s">"NonExisting"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">m</span><span
+class="p">;</span>
+        <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="s">"NonExisting = "</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">m</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span>
+        <span class="o">&lt;&lt;</span> <span class="s">"Tip: Open up "</span> <span
+class="o">&lt;&lt;</span> <span class="n">filename</span> <span class="o">&lt;&lt;</span> <span
+class="s">" with a text editor to see the serialized data."</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span><span class="p">;</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</pre></div>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div id="explanation" class="section">
+                <h2>Пояснення<a title="Permalink to this headline" href="#explanation"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Ми тут кажемо про формати XML та YAML. Ваш вихідний (та,
+                  відповідно, вхідний) файл може мати тільки одне з ціх
+                  розширень, та структуру, що випливає з цього. Це два види
+                  структур даних, що можно <em>серіалізувати</em> (<em>перетворити
+                    на бітовий потік. прим. перекл.</em>): <em>відображення </em>(як
+                  асоціативні таблиці STL) та <em>послідовності елементів</em>
+                  (як вектори STL). Різниця між ціми в тому, що таблиці мають
+                  ключ для кожного елементу, через який ви отримуєте до нього
+                  доступ. Для послідовностей вам треба пройти щоб отримати
+                  доступ до окремого елементу. </p>
+                <ol class="arabic">
+                  <li>
+                    <p class="first"><strong>Відкриття та закриття файлу
+                        XML/YAML.</strong>
+                      Перед тим, як ви запишете жодний вміст в такий файл, вам
+                      треба відкрити його, та потім закрити. Структура даних
+                      XML/YAML в OpenCV називається <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filestorage"
+                        class="reference external">FileStorage</a>. Щоб з'язати
+                      цю структуру з файлом на жорсткому диску (<em>справді це
+                        дурне припущення, Linux абстрагує жодні ідеї щодо того,
+                        де знаходиться файл. прим. перекл.</em>) ви можете
+                      використовувати один з конструкторів, або функцію <em>open()</em>:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">string</span> <span class="n">filename</span> <span
+class="o">=</span> <span class="s">"I.xml"</span><span class="p">;</span>
+<span class="n">FileStorage</span> <span class="nf">fs</span><span class="p">(</span><span
+class="n">filename</span><span class="p">,</span> <span class="n">FileStorage</span><span
+class="o">::</span><span class="n">WRITE</span><span class="p">);</span>
+<span class="c1">//...</span>
+<span class="n">fs</span><span class="p">.</span><span class="n">open</span><span
+class="p">(</span><span class="n">filename</span><span class="p">,</span> <span
+class="n">FileStorage</span><span class="o">::</span><span class="n">READ</span><span
+class="p">);</span>
+</pre></div>
+                    </div>
+                    <p>Любий варіант сприймає другий аргумент, що вказує, що ви
+                      бажаєте робити: WRITE (писати), READ (читати) або APPEND (додавати).
+                      Розширення, вказане в імені, також визначає формат, що
+                      буде застосований. Вивід може бути стиснутий, якщо ви
+                      вкажете розширення як <em>.xml.gz</em>.</p>
+                    <p>Файл автоматично зачиняється, коли руйнується об'єкт <a
+                        href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filestorage"
+                        class="reference external">FileStorage</a>. Однак ви
+                      можете зробити це самостійно, викликавшу функцію <em>release</em>:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">fs</span><span class="p">.</span><span
+class="n">release</span><span class="p">();</span>  <span class="c1">// закрили явно</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Ввід та вивід тексту та чисел.</strong>
+                      Структура даних використовує той же оператор &lt;&lt;, що
+                      і бібліотека STL. Для виводу любого типу структури даних,
+                      нам спершу треба задати ім'я. Ми робимо це, простоу
+                      друкуючи ім'я для цього. Для базових типів ви можете
+                      робити це досить просто:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">fs</span> <span class="o">&lt;&lt;</span> <span
+class="s">"iterationNr"</span> <span class="o">&lt;&lt;</span> <span class="mi">100</span><span
+class="p">;</span>
+</pre></div>
+                    </div>
+                    <p>Читання є простим адресуванням (через оператор [])
+                      та кастинг, або через оператор &gt;&gt;:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">int</span> <span class="n">itNr</span><span
+class="p">;</span>
+<span class="n">fs</span><span class="p">[</span><span class="s">"iterationNr"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">itNr</span><span
+class="p">;</span>
+<span class="n">itNr</span> <span class="o">=</span> <span class="p">(</span><span
+class="kt">int</span><span class="p">)</span> <span class="n">fs</span><span class="p">[</span><span
+class="s">"iterationNr"</span><span class="p">];</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Ввід/вивід структур даних OpenCV.</strong>
+                      Це робить таким же чином, як і для базових типів C++:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">Mat</span> <span class="n">R</span> <span
+class="o">=</span> <span class="n">Mat_</span><span class="o">&lt;</span><span class="n">uchar</span> <span
+class="o">&gt;::</span><span class="n">eye</span>  <span class="p">(</span><span
+class="mi">3</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span>
+    <span class="n">T</span> <span class="o">=</span> <span class="n">Mat_</span><span
+class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span
+class="n">zeros</span><span class="p">(</span><span class="mi">3</span><span class="p">,</span> <span
+class="mi">1</span><span class="p">);</span>
+
+<span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"R"</span> <span
+class="o">&lt;&lt;</span> <span class="n">R</span><span class="p">;</span> <span
+class="c1">// пишемо cv::Mat</span>
+<span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"T"</span> <span
+class="o">&lt;&lt;</span> <span class="n">T</span><span class="p">;</span>
+
+<span class="n">fs</span><span class="p">[</span><span class="s">"R"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">R</span><span
+class="p">;</span> <span class="c1">// читаємо cv::Mat</span>
+<span class="n">fs</span><span class="p">[</span><span class="s">"T"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">T</span><span
+class="p">;</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Ввід/вивід векторів (масивів) та
+                        асоціативних мап.</strong> Як вже було зазначено, ми
+                      можемо виводити мапи та послідовності (масисви, вектори)
+                      також. Спочатку ми виводимо ім'я змінної, та потім
+                      вказуємо, чи її тип є послідовність або мапа.</p>
+                    <p>Для послідовностей ми спочатку друкуємо “[”, та “]” після
+                      останнього елементу:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">fs</span> <span class="o">&lt;&lt;</span> <span
+class="s">"strings"</span> <span class="o">&lt;&lt;</span> <span class="s">"["</span><span
+class="p">;</span> // початок послідовності
+<span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"image1.jpg"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"Awesomeness"</span> <span class="o">&lt;&lt;</span> <span
+class="s">"baboon.jpg"</span><span class="p">;</span>
+<span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"]"</span><span
+class="p">; </span><span class="c1">// замикаємо послідовність</span>
+</pre></div>
+                    </div>
+                    <p>Для мап те ж саме, але ми використовуємо “{” та “}”:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">fs</span> <span class="o">&lt;&lt;</span> <span
+class="s">"Mapping"</span><span class="p">;</span>
+<span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"{"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"One"</span> <span class="o">&lt;&lt;</span> <span
+class="mi">1</span><span class="p">;</span>
+<span class="n">fs</span> <span class="o">&lt;&lt;</span>        <span class="s">"Two"</span> <span
+class="o">&lt;&lt;</span> <span class="mi">2</span> <span class="o">&lt;&lt;</span> <span
+class="s">"}"</span><span class="p">;</span>
+</pre></div>
+                    </div>
+                    <p>Щоб читати це ми використовуємо структури даних <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filenode"
+                        class="reference external">FileNode</a> та <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filenodeiterator"
+                        class="reference external">FileNodeIterator</a>.
+                      Оператор [] з класу <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filestorage"
+                        class="reference external">FileStorage</a> повертає тип
+                      даних <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filenode"
+                        class="reference external">FileNode</a>. Якщо вузол
+                      послідовний, ми можемо використовувати <a href="http://docs.opencv.org/modules/core/doc/xml_yaml_persistence.html#filenodeiterator"
+                        class="reference external">FileNodeIterator</a> для
+                      ітерації по елементах:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">FileNode</span> <span class="n">n</span> <span
+class="o">=</span> <span class="n">fs</span><span class="p">[</span><span class="s">"strings"</span><span
+class="p">]; </span><span class="c1">// отримання вузла для послідовності</span>
+<span class="k">if</span> <span class="p">(</span><span class="n">n</span><span
+class="p">.</span><span class="n">type</span><span class="p">()</span> <span class="o">!=</span> <span
+class="n">FileNode</span><span class="o">::</span><span class="n">SEQ</span><span
+class="p">)</span>
+<span class="p">{</span>
+    <span class="n">cerr</span> <span class="o">&lt;&lt;</span> <span class="s">"strings is not a sequence! FAIL"</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="n">FileNodeIterator</span> <span class="n">it</span> <span class="o">=</span> <span
+class="n">n</span><span class="p">.</span><span class="n">begin</span><span class="p">(),</span> <span
+class="n">it_end</span> <span class="o">=</span> <span class="n">n</span><span class="p">.</span><span
+class="n">end</span><span class="p">();</span> <span class="c1">// перехід по вузлах</span>
+<span class="k">for</span> <span class="p">(;</span> <span class="n">it</span> <span
+class="o">!=</span> <span class="n">it_end</span><span class="p">;</span> <span
+class="o">++</span><span class="n">it</span><span class="p">)</span>
+    <span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="p">(</span><span
+class="n">string</span><span class="p">)</span><span class="o">*</span><span class="n">it</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</pre></div>
+                    </div>
+                    <p>Для мап ви можете використовувати оператор [] для доступу
+                      до елементу (але також і оператор &gt;&gt;):</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">n</span> <span class="o">=</span> <span
+class="n">fs</span><span class="p">[</span><span class="s">"Mapping"</span><span
+class="p">]; </span><span class="c1">// читання послідоності</span>
+<span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Two  "</span> <span
+class="o">&lt;&lt;</span> <span class="p">(</span><span class="kt">int</span><span
+class="p">)(</span><span class="n">n</span><span class="p">[</span><span class="s">"Two"</span><span
+class="p">])</span> <span class="o">&lt;&lt;</span> <span class="s">"; "</span><span
+class="p">;</span>
+<span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"One  "</span> <span
+class="o">&lt;&lt;</span> <span class="p">(</span><span class="kt">int</span><span
+class="p">)(</span><span class="n">n</span><span class="p">[</span><span class="s">"One"</span><span
+class="p">])</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</pre></div>
+                    </div>
+                  </li>
+                  <li>
+                    <p class="first"><strong>Читання та запис ваших структур.</strong>
+                      Припустимо, ви маєте наступну структуру даних:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="k">class</span> <span class="nc">MyData</span>
+<span class="p">{</span>
+<span class="nl">public:</span>
+      <span class="n">MyData</span><span class="p">()</span> <span class="o">:</span> <span
+class="n">A</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span
+class="n">X</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span
+class="n">id</span><span class="p">()</span> <span class="p">{}</span>
+<span class="nl">public:</span>   <span class="c1">// члени даних</span>
+   <span class="kt">int</span> <span class="n">A</span><span class="p">;</span>
+   <span class="kt">double</span> <span class="n">X</span><span class="p">;</span>
+   <span class="n">string</span> <span class="n">id</span><span class="p">;</span>
+<span class="p">};</span>
+</pre></div>
+                    </div>
+                    <p>Можливо серіалізувати це через інтерфейс OpenCV I/O
+                      XML/YAML (так, як це робиться для структур OpenCV),
+                      додаючи функції запису та читання в класі та зовні вашого
+                      класу. Для внутрішньої частини:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">void</span> <span class="n">write</span><span
+class="p">(</span><span class="n">FileStorage</span><span class="o">&amp;</span> <span
+class="n">fs</span><span class="p">)</span> <span class="k">const </span><span class="c1">// серіалізація для цього класу</span>
+<span class="p">{</span>
+  <span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"{"</span> <span
+class="o">&lt;&lt;</span> <span class="s">"A"</span> <span class="o">&lt;&lt;</span> <span
+class="n">A</span> <span class="o">&lt;&lt;</span> <span class="s">"X"</span> <span
+class="o">&lt;&lt;</span> <span class="n">X</span> <span class="o">&lt;&lt;</span> <span
+class="s">"id"</span> <span class="o">&lt;&lt;</span> <span class="n">id</span> <span
+class="o">&lt;&lt;</span> <span class="s">"}"</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">read</span><span class="p">(</span><span
+class="k">const</span> <span class="n">FileNode</span><span class="o">&amp;</span> <span
+class="n">node</span><span class="p">) </span><span class="c1">// читаємо серіалізацію для цього класу</span>
+<span class="p">{</span>
+  <span class="n">A</span> <span class="o">=</span> <span class="p">(</span><span
+class="kt">int</span><span class="p">)</span><span class="n">node</span><span class="p">[</span><span
+class="s">"A"</span><span class="p">];</span>
+  <span class="n">X</span> <span class="o">=</span> <span class="p">(</span><span
+class="kt">double</span><span class="p">)</span><span class="n">node</span><span
+class="p">[</span><span class="s">"X"</span><span class="p">];</span>
+  <span class="n">id</span> <span class="o">=</span> <span class="p">(</span><span
+class="n">string</span><span class="p">)</span><span class="n">node</span><span
+class="p">[</span><span class="s">"id"</span><span class="p">];</span>
+<span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Тепер вам треба додати наступну функцію за межами класу:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="kt">void</span> <span class="nf">write</span><span
+class="p">(</span><span class="n">FileStorage</span><span class="o">&amp;</span> <span
+class="n">fs</span><span class="p">,</span> <span class="k">const</span> <span class="n">std</span><span
+class="o">::</span><span class="n">string</span><span class="o">&amp;</span><span
+class="p">,</span> <span class="k">const</span> <span class="n">MyData</span><span
+class="o">&amp;</span> <span class="n">x</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="n">x</span><span class="p">.</span><span class="n">write</span><span
+class="p">(</span><span class="n">fs</span><span class="p">);</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="nf">read</span><span class="p">(</span><span
+class="k">const</span> <span class="n">FileNode</span><span class="o">&amp;</span> <span
+class="n">node</span><span class="p">,</span> <span class="n">MyData</span><span
+class="o">&amp;</span> <span class="n">x</span><span class="p">,</span> <span class="k">const</span> <span
+class="n">MyData</span><span class="o">&amp;</span> <span class="n">default_value</span> <span
+class="o">=</span> <span class="n">MyData</span><span class="p">())</span>
+<span class="p">{</span>
+<span class="k">if</span><span class="p">(</span><span class="n">node</span><span
+class="p">.</span><span class="n">empty</span><span class="p">())</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">default_value</span><span
+class="p">;</span>
+<span class="k">else</span>
+    <span class="n">x</span><span class="p">.</span><span class="n">read</span><span
+class="p">(</span><span class="n">node</span><span class="p">);</span>
+<span class="p">}</span>
+</pre></div>
+                    </div>
+                    <p>Тепер ви можете дослідити це в розділі читання, що ми
+                      визначили, що відбуватиметься, коли користувач намагається
+                      прочитатаи неіснуючий вузол. В цьому випадку ми тільки
+                      повертаємо значення по замовчанню, однак більш балакуче
+                      рішення може полягати в тому, щоб повернути з мынусом
+                      одному значенню для ID об'єкта.</p>
+                    <p>Коли ви задали ці чотири функції, використовуйте оператор
+                      &gt;&gt;
+                      для запису, та оператор &lt;&lt; для читання:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">MyData</span> <span class="nf">m</span><span
+class="p">(</span><span class="mi">1</span><span class="p">);</span>
+<span class="n">fs</span> <span class="o">&lt;&lt;</span> <span class="s">"MyData"</span> <span
+class="o">&lt;&lt;</span> <span class="n">m</span><span class="p">;</span> /<span
+class="c1">/ тут ваша структура даних</span>
+<span class="n">fs</span><span class="p">[</span><span class="s">"MyData"</span><span
+class="p">]</span> <span class="o">&gt;&gt;</span> <span class="n">m</span><span
+class="p">;   </span><span class="c1">// читаємо власну структуру</span>
+</pre></div>
+                    </div>
+                    <p>Або щоб задати те, чого не можна прочитати:</p>
+                    <div class="highlight-cpp">
+                      <div class="highlight">
+                        <pre><span class="n">fs</span><span class="p">[</span><span
+class="s">"NonExisting"</span><span class="p">]</span> <span class="o">&gt;&gt;</span> <span
+class="n">m</span><span class="p">;</span>   <span class="c1">// не додавайте команду fs &lt;&lt; "NonExisting" &lt;&lt; m</span>, щоб це працювало
+<span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">endl</span> <span
+class="o">&lt;&lt;</span> <span class="s">"NonExisting = "</span> <span class="o">&lt;&lt;</span> <span
+class="n">endl</span> <span class="o">&lt;&lt;</span> <span class="n">m</span> <span
+class="o">&lt;&lt;</span> <span class="n">endl</span><span class="p">;</span>
+</pre></div>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+              <div id="result" class="section">
+                <h2>Результат<a title="Permalink to this headline" href="#result"
+                    class="headerlink"><br />
+                  </a></h2>
+                <p>Так, загалом ми тільки друкуємо числа, що тільки що отримали.
+                  На консолі має буде щось на кшталт такого:</p>
+                <div class="highlight-bash">
+                  <div class="highlight">
+                    <pre>Write Done.
+
+Reading:
+100image1.jpg
+Awesomeness
+baboon.jpg
+Two  2; One  1
+
+
+<span class="nv">R</span> <span class="o">=</span> <span class="o">[</span>1, 0, 0;
+  0, 1, 0;
+  0, 0, 1<span class="o">]</span>
+<span class="nv">T</span> <span class="o">=</span> <span class="o">[</span>0; 0; 0<span
+class="o">]</span>
+
+<span class="nv">MyData</span> <span class="o">=</span>
+<span class="o">{</span> <span class="nv">id</span> <span class="o">=</span> mydata1234, <span
+class="nv">X</span> <span class="o">=</span> 3.14159, <span class="nv">A</span> <span
+class="o">=</span> 97<span class="o">}</span>
+
+Attempt to <span class="nb">read </span>NonExisting <span class="o">(</span>should initialize the data structure with its default<span
+class="o">)</span>.
+<span class="nv">NonExisting</span> <span class="o">=</span>
+<span class="o">{</span> <span class="nv">id</span> <span class="o">=</span> , <span
+class="nv">X</span> <span class="o">=</span> 0, <span class="nv">A</span> <span
+class="o">=</span> 0<span class="o">}</span>
+
+Tip: Open up output.xml with a text editor to see the serialized data.
+</pre></div>
+                </div>
+                <p>Тим не менше, значно цікавіше, що ми побачимо в вихідному
+                  файлі xml:</p>
+                <div class="highlight-xml">
+                  <div class="highlight">
+                    <pre><span class="cp">&lt;?xml version="1.0"?&gt;</span>
+<span class="nt">&lt;opencv_storage&gt;</span>
+<span class="nt">&lt;iterationNr&gt;</span>100<span class="nt">&lt;/iterationNr&gt;</span>
+<span class="nt">&lt;strings&gt;</span>
+  image1.jpg Awesomeness baboon.jpg<span class="nt">&lt;/strings&gt;</span>
+<span class="nt">&lt;Mapping&gt;</span>
+  <span class="nt">&lt;One&gt;</span>1<span class="nt">&lt;/One&gt;</span>
+  <span class="nt">&lt;Two&gt;</span>2<span class="nt">&lt;/Two&gt;&lt;/Mapping&gt;</span>
+<span class="nt">&lt;R</span> <span class="na">type_id=</span><span class="s">"opencv-matrix"</span><span
+class="nt">&gt;</span>
+  <span class="nt">&lt;rows&gt;</span>3<span class="nt">&lt;/rows&gt;</span>
+  <span class="nt">&lt;cols&gt;</span>3<span class="nt">&lt;/cols&gt;</span>
+  <span class="nt">&lt;dt&gt;</span>u<span class="nt">&lt;/dt&gt;</span>
+  <span class="nt">&lt;data&gt;</span>
+    1 0 0 0 1 0 0 0 1<span class="nt">&lt;/data&gt;&lt;/R&gt;</span>
+<span class="nt">&lt;T</span> <span class="na">type_id=</span><span class="s">"opencv-matrix"</span><span
+class="nt">&gt;</span>
+  <span class="nt">&lt;rows&gt;</span>3<span class="nt">&lt;/rows&gt;</span>
+  <span class="nt">&lt;cols&gt;</span>1<span class="nt">&lt;/cols&gt;</span>
+  <span class="nt">&lt;dt&gt;</span>d<span class="nt">&lt;/dt&gt;</span>
+  <span class="nt">&lt;data&gt;</span>
+    0. 0. 0.<span class="nt">&lt;/data&gt;&lt;/T&gt;</span>
+<span class="nt">&lt;MyData&gt;</span>
+  <span class="nt">&lt;A&gt;</span>97<span class="nt">&lt;/A&gt;</span>
+  <span class="nt">&lt;X&gt;</span>3.1415926535897931e+000<span class="nt">&lt;/X&gt;</span>
+  <span class="nt">&lt;id&gt;</span>mydata1234<span class="nt">&lt;/id&gt;&lt;/MyData&gt;</span>
+<span class="nt">&lt;/opencv_storage&gt;</span>
+</pre></div>
+                </div>
+                <p>Або в файлі YAML:</p>
+                <div class="highlight-yaml">
+                  <div class="highlight">
+                    <pre>%YAML:1.0
+iterationNr: 100
+strings:
+   - "image1.jpg"
+   - Awesomeness
+   - "baboon.jpg"
+Mapping:
+   One: 1
+   Two: 2
+R: !!opencv-matrix
+   rows: 3
+   cols: 3
+   dt: u
+   data: [ 1, 0, 0, 0, 1, 0, 0, 0, 1 ]
+T: !!opencv-matrix
+   rows: 3
+   cols: 1
+   dt: d
+   data: [ 0., 0., 0. ]
+MyData:
+   A: 97
+   X: 3.1415926535897931e+000
+   id: mydata1234
+</pre></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

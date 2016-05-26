@@ -1,0 +1,1 @@
+Some canonic texts translations to Ukarainian

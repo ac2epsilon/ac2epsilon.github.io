@@ -1,0 +1,317 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="content-type" content="application/xhtml+xml; charset=utf-8" />
+    <title>Операції маскування з матрицями. Перекладено українською: Арсеній
+      Чеботарьов, Ніжин 2015. ac2epsilon@gmail.com — OpenCV 2.4.11.0
+      documentation</title>
+  </head>
+  <body> <br />
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body">
+            <address>© Copyright 2011-2014, opencv dev team<br />
+              Перекладено українською: Арсеній Чеботарьов, Ніжин 2015.
+              ac2epsilon@gmail.com</address>
+            <div class="section" id="mask-operations-on-matrices"> <span id="maskoperationsfilter"></span>
+              <h1>Операції маскування з матрицями<a class="headerlink" href="#mask-operations-on-matrices"
+                  title="Permalink to this headline"> <br />
+                </a></h1>
+              <p>Операції маскування з матрицями є досить простими. Ідея полягає
+                в тому, що ми переобчислюємо значення пікселів згідно матриці
+                маски (також відомої як ядро). Ця маска містить значення, які
+                вказують на вплив сусідніх пікселів (та самого поточного
+                пікселя) на нове значення. З математичної точки зору ми робимо
+                зважене середнє по вказаним значенням.</p>
+              <div class="section" id="our-test-case">
+                <h2>Наше тестове завдання<a class="headerlink" href="#our-test-case"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Давайте звернемось до створення методу підвищення контрасту
+                  зображення. В основному ми хочемо застосувати для кожного
+                  пікселя зображення наступну формулу:</p>
+                <div class="math">
+                  <p><img src="mask_formula.png" alt="Mask Formula" /></p>
+                </div>
+                <p>Перший рядок використовує формулу, тоді як другий є
+                  компактною версією першого з використанням маски. Ми
+                  використовуємо маску, покаладаючи піксель в цетр матриці (в
+                  термінах нашої формули це індекси ноль-ноль) на піксель, що ми
+                  бажаємо обчислити, та сумуємо значення пікселів, помножених на
+                  значення перекритої матриці. Це те ж саме, що і в першому
+                  рядку, однак в випадку великих матриць остання нотація значно
+                  проще для сприяння.</p>
+                <p>Тепер давайте подивимось, як це можна реалізувати з викоритстанням
+                  базового методу доступу до пікселів, або з використанням <a class="reference external"
+                    href="http://docs.opencv.org/modules/imgproc/doc/filtering.html#filter2d">filter2D</a>.</p>
+              </div>
+              <div class="section" id="the-basic-method">
+                <h2>Базовий метод<a class="headerlink" href="#the-basic-method"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Ось фукнція, що робить все це:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="kt">void</span> <span class="nf">Sharpen</span><span
+class="p">(</span><span class="k">const</span> <span class="n">Mat</span><span class="o">&amp;</span> <span
+class="n">myImage</span><span class="p">,</span> <span class="n">Mat</span><span
+class="o">&amp;</span> <span class="n">Result</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="n">CV_Assert</span><span class="p">(</span><span class="n">myImage</span><span
+class="p">.</span><span class="n">depth</span><span class="p">()</span> <span class="o">==</span> <span
+class="n">CV_8U</span><span class="p">);</span>  <span class="c1">// сприймаємо матриці тільки uchar</span>
+
+    <span class="n">Result</span><span class="p">.</span><span class="n">create</span><span
+class="p">(</span><span class="n">myImage</span><span class="p">.</span><span class="n">size</span><span
+class="p">(),</span> <span class="n">myImage</span><span class="p">.</span><span
+class="n">type</span><span class="p">());</span>
+    <span class="k">const</span> <span class="kt">int</span> <span class="n">nChannels</span> <span
+class="o">=</span> <span class="n">myImage</span><span class="p">.</span><span class="n">channels</span><span
+class="p">();</span>
+
+    <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span
+class="n">j</span> <span class="o">=</span> <span class="mi">1</span><span class="p">;</span> <span
+class="n">j</span> <span class="o">&lt;</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span
+class="p">;</span> <span class="o">++</span><span class="n">j</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="k">const</span> <span class="n">uchar</span><span class="o">*</span> <span
+class="n">previous</span> <span class="o">=</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span
+class="mi">1</span><span class="p">);</span>
+        <span class="k">const</span> <span class="n">uchar</span><span class="o">*</span> <span
+class="n">current</span>  <span class="o">=</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">j</span>    <span class="p">);</span>
+        <span class="k">const</span> <span class="n">uchar</span><span class="o">*</span> <span
+class="n">next</span>     <span class="o">=</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span
+class="mi">1</span><span class="p">);</span>
+
+        <span class="n">uchar</span><span class="o">*</span> <span class="n">output</span> <span
+class="o">=</span> <span class="n">Result</span><span class="p">.</span><span class="n">ptr</span><span
+class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span
+class="p">(</span><span class="n">j</span><span class="p">);</span>
+
+        <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="n">nChannels</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nChannels</span> <span
+class="o">*</span> <span class="p">(</span><span class="n">myImage</span><span class="p">.</span><span
+class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span> <span
+class="o">++</span><span class="n">i</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="o">*</span><span class="n">output</span><span class="o">++</span> <span
+class="o">=</span> <span class="n">saturate_cast</span><span class="o">&lt;</span><span
+class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">5</span> <span
+class="o">*</span> <span class="n">current</span><span class="p">[</span><span class="n">i</span><span
+class="p">]</span>
+                         <span class="o">-</span><span class="n">current</span><span
+class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="n">nChannels</span><span
+class="p">]</span> <span class="o">-</span> <span class="n">current</span><span
+class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">nChannels</span><span
+class="p">]</span> <span class="o">-</span> <span class="n">previous</span><span
+class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span
+class="n">next</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+
+    <span class="n">Result</span><span class="p">.</span><span class="n">row</span><span
+class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span>
+    <span class="n">Result</span><span class="p">.</span><span class="n">row</span><span
+class="p">(</span><span class="n">Result</span><span class="p">.</span><span class="n">rows</span> <span
+class="o">-</span> <span class="mi">1</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span>
+    <span class="n">Result</span><span class="p">.</span><span class="n">col</span><span
+class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span>
+    <span class="n">Result</span><span class="p">.</span><span class="n">col</span><span
+class="p">(</span><span class="n">Result</span><span class="p">.</span><span class="n">cols</span> <span
+class="o">-</span> <span class="mi">1</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+                <p>Pgjxfnre ми переконуємось, що вхідне зображення має тип
+                  unsigned char. Для цього ми використовуємо функнцію <a class="reference external"
+                    href="http://docs.opencv.org/modules/core/doc/utility_and_system_functions_and_macros.html#cv-assert">CV_Assert</a>,
+                  що викликає помилку, якщо вираз в дужках є false.</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">CV_Assert</span><span class="p">(</span><span
+class="n">myImage</span><span class="p">.</span><span class="n">depth</span><span
+class="p">()</span> <span class="o">==</span> <span class="n">CV_8U</span><span
+class="p">);</span>  <span class="c1">// перевіряємо, що зображення тільки uchar</span>
+</pre></div>
+                </div>
+                <p>Ми створюємо вихідне зображення того ж роміру та того ж типу,
+                  що і вхідне. Як ви знаєте з розділу <a class="reference internal"
+                    href="OCVTutor2ScanImages.html"><em>Як матриця зображення
+                      зберігається в пам'яті?</em></a>, в залежності від
+                  кількості каналів ми можемо мати один або більше
+                  суб-стовпчиків. Ми будемо ітерувати по них через вказівники,
+                  так що загальне число елементів залежиться від цього числа.</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">Result</span><span class="p">.</span><span
+class="n">create</span><span class="p">(</span><span class="n">myImage</span><span
+class="p">.</span><span class="n">size</span><span class="p">(),</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">type</span><span class="p">());</span>
+<span class="k">const</span> <span class="kt">int</span> <span class="n">nChannels</span> <span
+class="o">=</span> <span class="n">myImage</span><span class="p">.</span><span class="n">channels</span><span
+class="p">();</span>
+</pre></div>
+                </div>
+                <p>Ми використовуємо звичайний оператор C [] для доступу до
+                  пікселів. Оскільки нам треба отримати доступ до багатьох
+                  рядків одночасно, ми захоплюємо вказівники на кожний з них
+                  (попередній, поточний, та наступний). Нам треба ще один
+                  вказівник, щоб зберігати обчислення. Потім просто отримуємо
+                  доступ до потрібного елементу за допомогою оператору []. Для
+                  переміщення вихідного вказівника вперед ми просто збільшуємо
+                  його (на один батйт) після кожної операції:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="k">for</span><span class="p">(</span><span
+class="kt">int</span> <span class="n">j</span> <span class="o">=</span> <span class="mi">1</span><span
+class="p">;</span> <span class="n">j</span> <span class="o">&lt;</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">rows</span> <span class="o">-</span> <span class="mi">1</span><span
+class="p">;</span> <span class="o">++</span><span class="n">j</span><span class="p">)</span>
+<span class="p">{</span>
+    <span class="k">const</span> <span class="n">uchar</span><span class="o">*</span> <span
+class="n">previous</span> <span class="o">=</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">j</span> <span class="o">-</span> <span
+class="mi">1</span><span class="p">);</span>
+    <span class="k">const</span> <span class="n">uchar</span><span class="o">*</span> <span
+class="n">current</span>  <span class="o">=</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">j</span>    <span class="p">);</span>
+    <span class="k">const</span> <span class="n">uchar</span><span class="o">*</span> <span
+class="n">next</span>     <span class="o">=</span> <span class="n">myImage</span><span
+class="p">.</span><span class="n">ptr</span><span class="o">&lt;</span><span class="n">uchar</span><span
+class="o">&gt;</span><span class="p">(</span><span class="n">j</span> <span class="o">+</span> <span
+class="mi">1</span><span class="p">);</span>
+
+    <span class="n">uchar</span><span class="o">*</span> <span class="n">output</span> <span
+class="o">=</span> <span class="n">Result</span><span class="p">.</span><span class="n">ptr</span><span
+class="o">&lt;</span><span class="n">uchar</span><span class="o">&gt;</span><span
+class="p">(</span><span class="n">j</span><span class="p">);</span>
+
+    <span class="k">for</span><span class="p">(</span><span class="kt">int</span> <span
+class="n">i</span> <span class="o">=</span> <span class="n">nChannels</span><span
+class="p">;</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="n">nChannels</span> <span
+class="o">*</span> <span class="p">(</span><span class="n">myImage</span><span class="p">.</span><span
+class="n">cols</span> <span class="o">-</span> <span class="mi">1</span><span class="p">);</span> <span
+class="o">++</span><span class="n">i</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="o">*</span><span class="n">output</span><span class="o">++</span> <span
+class="o">=</span> <span class="n">saturate_cast</span><span class="o">&lt;</span><span
+class="n">uchar</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">5</span> <span
+class="o">*</span> <span class="n">current</span><span class="p">[</span><span class="n">i</span><span
+class="p">]</span>
+                     <span class="o">-</span><span class="n">current</span><span
+class="p">[</span><span class="n">i</span> <span class="o">-</span> <span class="n">nChannels</span><span
+class="p">]</span> <span class="o">-</span> <span class="n">current</span><span
+class="p">[</span><span class="n">i</span> <span class="o">+</span> <span class="n">nChannels</span><span
+class="p">]</span> <span class="o">-</span> <span class="n">previous</span><span
+class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span
+class="n">next</span><span class="p">[</span><span class="n">i</span><span class="p">]);</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+                </div>
+                <p>На краях зображення наша формула посилається на неіснуючі
+                  пікселі (з негативними, від'ємними значеннями). В ціх крапках
+                  формула невизначена. Просте рішення є не застосовувати ядро в
+                  ціх крапках, та, наприклад, встановити ці границі в нуль:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">Result</span><span class="p">.</span><span
+class="n">row</span><span class="p">(</span><span class="mi">0</span><span class="p">).</span><span
+class="n">setTo</span><span class="p">(</span><span class="n">Scalar</span><span
+class="p">(</span><span class="mi">0</span><span class="p">));</span>               <span
+class="c1">// Верхній рядок</span>
+<span class="n">Result</span><span class="p">.</span><span class="n">row</span><span
+class="p">(</span><span class="n">Result</span><span class="p">.</span><span class="n">rows</span> <span
+class="o">-</span> <span class="mi">1</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span> <span class="c1">// Нижній рядок</span>
+<span class="n">Result</span><span class="p">.</span><span class="n">col</span><span
+class="p">(</span><span class="mi">0</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span>               <span class="c1">// Лівий стовпчиик</span>
+<span class="n">Result</span><span class="p">.</span><span class="n">col</span><span
+class="p">(</span><span class="n">Result</span><span class="p">.</span><span class="n">cols</span> <span
+class="o">-</span> <span class="mi">1</span><span class="p">).</span><span class="n">setTo</span><span
+class="p">(</span><span class="n">Scalar</span><span class="p">(</span><span class="mi">0</span><span
+class="p">));</span> <span class="c1">// Правий стовпчик</span>
+</pre></div>
+                </div>
+              </div>
+              <div class="section" id="the-filter2d-function">
+                <h2>Функція filter2D<a class="headerlink" href="#the-filter2d-function"
+                    title="Permalink to this headline"><br />
+                  </a></h2>
+                <p>Застосування таких фільтрів є настільки загальним в обробці
+                  зображень за допомогою OpenCV, що існує фукнція, що, що подбає
+                  про застосування маски (також подекуди називаної ядром). Для
+                  цього вам спершу треба визначити об'єкт <em>Mat</em>,
+                  щоміститиме маску:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">Mat</span> <span class="n">kern</span> <span
+class="o">=</span> <span class="p">(</span><span class="n">Mat_</span><span class="o">&lt;</span><span
+class="kt">char</span><span class="o">&gt;</span><span class="p">(</span><span class="mi">3</span><span
+class="p">,</span><span class="mi">3</span><span class="p">)</span> <span class="o">&lt;&lt;</span>  <span
+class="mi">0</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span
+class="p">,</span>  <span class="mi">0</span><span class="p">,</span>
+                               <span class="o">-</span><span class="mi">1</span><span
+class="p">,</span>  <span class="mi">5</span><span class="p">,</span> <span class="o">-</span><span
+class="mi">1</span><span class="p">,</span>
+                                <span class="mi">0</span><span class="p">,</span> <span
+class="o">-</span><span class="mi">1</span><span class="p">,</span>  <span class="mi">0</span><span
+class="p">);</span>
+</pre></div>
+                </div>
+                <p>Потім викличте функцію <a class="reference external" href="http://docs.opencv.org/modules/imgproc/doc/filtering.html#filter2d">filter2D</a>,
+                  вказавши входну матрицю, вихідне зображення та ядро для
+                  використання:</p>
+                <div class="highlight-cpp">
+                  <div class="highlight">
+                    <pre><span class="n">filter2D</span><span class="p">(</span><span
+class="n">I</span><span class="p">,</span> <span class="n">K</span><span class="p">,</span> <span
+class="n">I</span><span class="p">.</span><span class="n">depth</span><span class="p">(),</span> <span
+class="n">kern</span><span class="p">);</span>
+</pre></div>
+                </div>
+                <p>Функція також має опціональний п'ятий аргумент, щоб задати
+                  центр ядра, та шостий для визначення, що робити з регіонами,
+                  де операція не визначена (краями). Використання цієї функції
+                  має ті переваги, що вона коротша, менш балакуча, та тому що
+                  виконується деяка оптимізація, що роить її зазвичай швидшою,
+                  ніж <em>закодований вручну метод</em>. Наприклад, в моєму
+                  тесті, коли другий метод зайнів всього 13 мс, перший
+                  виконувався близько 31 мс. Це помітна різниця.</p>
+                <p>Наприклад:</p>
+                <img src="mask_res1.png" alt="Mask Res1 " /> <img alt="A sample output of the program"
+                  class="align-center" src="../../../../_images/resultMatMaskFilter2D.png" />
+                <p>Ви можете завантажити код з прикладів OpenCV.</p>
+                <p>Також подивіться, як виконуєтся ця програма на <a class="reference external"
+                    href="http://www.youtube.com/watch?v=7PF1tAU9se4">нашому
+                    каналі YouTube</a>.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
