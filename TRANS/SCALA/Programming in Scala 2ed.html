@@ -3249,7 +3249,7 @@ res22: java.lang.String = no</pre>
 &nbsp; case UnOp("abs", e @ UnOp("abs", _)) =&gt; e
 &nbsp; case _ =&gt;
 }</pre>
-        <p>Лістинг 15.13 Шаблон з прив'язкою до змінної (через @).</p><p>В Лістингу 15.13 є шаблон з прив'язкою змінної e, та шаблон UnOp("abs", _). Якщо співпадіння цілого шаблона буде успішним, тоді частина, що співпаде з частиною UnOp("abs", _) буде доступною через змінну e. Як записаний цей код, e буде повернена як є .</p><h4>15.3 Захисники шаблонів</h4><p>Іноді синтаксичне порівняння шаблонів не є досить точним. Наприклад, скажімо, ви отримали завдання сформулювати правило спрощення, що замінює вирази суми на два ідентичні операнди, як&nbsp; e + e, на множення на двійку, як e * 2 . В мові дерев Expr вираз як:</p>
+        <p>Лістинг 15.13 Шаблон з прив'язкою до змінної (через @).</p><p>В Лістингу 15.13 є шаблон з прив'язкою змінної e, та шаблон UnOp("abs", _). Якщо співпадіння цілого шаблона буде успішним, тоді частина, що співпаде з частиною UnOp("abs", _) буде доступною через змінну e. Як записаний цей код, e буде повернена як є .</p><h4>15.3 Вартівник шаблону</h4><p>Іноді синтаксичне порівняння шаблонів не є досить точним. Наприклад, скажімо, ви отримали завдання сформулювати правило спрощення, що замінює вирази суми на два ідентичні операнди, як&nbsp; e + e, на множення на двійку, як e * 2 . В мові дерев Expr вираз як:</p>
 <pre class="prettyprint linenums language-scala">BinOp("+", Var("x"), Var("x"))</pre>
         <p>завдяки цьому правилу перетвориться на:</p>
 <pre class="prettyprint linenums language-scala">BinOp("*", Var("x"), Number(2))</pre>
@@ -3261,10 +3261,318 @@ res22: java.lang.String = no</pre>
 &lt;console&gt;:11: error: x is already defined as value x
 case BinOp("+", x, x) =&gt; BinOp("*", x, Number(2))
 ˆ</pre>
-        <p>Це не дає результату, оскільки Scala обмежує шаблони до лінійних: змінна шаблона може потрапити в шаблон тільки один раз. Однак ви можете переформулювати match за допомогою захисника шаблона, як показане на Лістингу 15.14:</p>
+        <p>Це не дає результату, оскільки Scala обмежує шаблони до лінійних: змінна шаблона може потрапити в шаблон тільки один раз. Однак ви можете переформулювати match за допомогою вартівника шаблона, як показано на Лістингу 15.14:</p>
 <pre class="prettyprint linenums language-scala">scala&gt; def simplifyAdd(e: Expr) = e match {
   case BinOp("+", x, y) if x == y =&gt;
     BinOp("*", x, Number(2))
   case _ =&gt; e
 }simplifyAdd: (e: Expr)Expr</pre>
-        <p>Лістинг 15.14 Вираз match з захисником шаблона.</p><p>A pattern guard comes after a pattern and starts with an if . The guard<br>can be an arbitrary boolean expression, which typically refers to variables<br>in the pattern. If a pattern guard is present, the match succeeds only if the guard evaluates to true . Hence, the first case above would only match binary operations with two equal operands.</p><p>Some other examples of guarded patterns are:</p><p>// match only positive integers<br>case n: Int if 0 &lt; n =&gt; ...<br>// match only strings starting with the letter ‘a’<br>case s: String if s(0) == 'a' =&gt; ...</p><h3>15.4 Pattern overlaps</h3><p>Patterns are tried in the order in which they are written. The version of<br>simplify shown in Listing 15.15 presents an example where the order of<br>the cases matters:</p><p>def simplifyAll(expr: Expr): Expr = expr match {<br>case UnOp("-", UnOp("-", e)) =&gt;<br>simplifyAll(e)<br>// ‘-’ is its own inverse<br>case BinOp("+", e, Number(0)) =&gt;<br>simplifyAll(e)<br>// ‘0’ is a neutral element for ‘+’<br>case BinOp("*", e, Number(1)) =&gt;<br>simplifyAll(e)<br>// ‘1’ is a neutral element for ‘*’<br>case UnOp(op, e) =&gt;<br>UnOp(op, simplifyAll(e))<br>case BinOp(op, l, r) =&gt;<br>BinOp(op, simplifyAll(l), simplifyAll(r))<br>case _ =&gt; expr<br>}</p><p>Listing 15.15 · Match expression in which case order matters.</p><p>The version of simplify shown in Listing 15.15 will apply simplification<br>rules everywhere in an expression, not just at the top, as simplifyTop did.<br>It can be derived from simplifyTop by adding two more cases for general<br>unary and binary expressions (cases four and five in Listing 15.15).<br>The fourth case has the pattern UnOp(op, e); i.e., it matches every unary<br>operation. The operator and operand of the unary operation can be arbitrary.</p><p>They are bound to the pattern variables op and e, respectively. The alternative in this case applies simplifyAll recursively to the operand e and then rebuilds the same unary operation with the (possibly) simplified operand.</p><p>The fifth case for BinOp is analogous: it is a “catch-all” case for arbitrary binary operations, which recursively applies the simplification method to its two operands.</p><p>In this example, it is important that the catch-all cases come after the<br>more specific simplification rules. If you wrote them in the other order, then the catch-all case would be run in favor of the more specific rules. In many cases, the compiler will even complain if you try.</p><p>For example, here’s a match expression that won’t compile because the<br>first case will match anything that would be matched by the second case:</p><p>scala&gt; def simplifyBad(expr: Expr): Expr = expr match {<br>case UnOp(op, e) =&gt; UnOp(op, simplifyBad(e))<br>case UnOp("-", UnOp("-", e)) =&gt; e<br>}<br>&lt;console&gt;:18: error: unreachable code<br>case UnOp("-", UnOp("-", e)) =&gt; e<br>ˆ</p><h3>15.5 Sealed classes</h3><p>Whenever you write a pattern match, you need to make sure you have cov<br>ered all of the possible cases. Sometimes you can do this by adding a default case at the end of the match, but that only applies if there is a sensible default behavior. What do you do if there is no default? How can you ever feel safe that you covered all the cases?</p><p>In fact, you can enlist the help of the Scala compiler in detecting missing<br>combinations of patterns in a match expression. To be able to do this, the<br>compiler needs to be able to tell which are the possible cases. In general,<br>this is impossible in Scala, because new case classes can be defined at any time and in arbitrary compilation units. For instance, nothing would prevent you from adding a fifth case class to the Expr class hierarchy in a different compilation unit from the one where the other four cases are defined.</p><p>The alternative is to make the superclass of your case classes sealed.<br>A sealed class cannot have any new subclasses added except the ones in the same file. This is very useful for pattern matching, because it means you only need to worry about the subclasses you already know about. What’s more, you get better compiler support as well. If you match against case classes that inherit from a sealed class, the compiler will flag missing combinations of patterns with a warning message.</p><p>Therefore, if you write a hierarchy of classes intended to be pattern<br>matched, you should consider sealing them. Simply put the sealed keyword in front of the class at the top of the hierarchy. Programmers using your class hierarchy will then feel confident in pattern matching against it. The sealed keyword, therefore, is often a license to pattern match. Listing 15.16 shows an example in which Expr is turned into a sealed class.</p><p>sealed abstract class Expr<br>case class Var(name: String) extends Expr<br>case class Number(num: Double) extends Expr<br>case class UnOp(operator: String, arg: Expr) extends Expr<br>case class BinOp(operator: String,<br>left: Expr, right: Expr) extends Expr</p><p>Listing 15.16 · A sealed hierarchy of case classes.</p><p>Now define a pattern match where some of the possible cases are left out:</p><p>def describe(e: Expr): String = e match {<br>case Number(_) =&gt; "a number"<br>case Var(_)<br>=&gt; "a variable"<br>}</p><p>You will get a compiler warning like the following:</p><p>warning: match is not exhaustive!<br>missing combination UnOp<br>missing combination BinOp</p><p>Such a warning tells you that there’s a risk your code might produce a<br>MatchError exception because some possible patterns ( UnOp, BinOp ) are not handled. The warning points to a potential source of runtime faults, so it is usually a welcome help in getting your program right.<br>However, at times you might encounter a situation where the compiler<br>is too picky in emitting the warning. For instance, you might know from<br>the context that you will only ever apply the describe method above to<br>expressions that are either Number s or Var s. So you know that in fact no<br>MatchError will be produced. To make the warning go away, you could add a third catch-all case to the method, like this:</p><p>def describe(e: Expr): String = e match {<br>case Number(_) =&gt; "a number"<br>case Var(_) =&gt; "a variable"<br>case _ =&gt; throw new RuntimeException // Should not happen<br>}</p><p>That works, but it is not ideal. You will probably not be very happy that you were forced to add code that will never be executed (or so you think), just to make the compiler shut up.</p><p>A more lightweight alternative is to add an @unchecked annotation to<br>the selector expression of the match. This is done as follows:</p><p>def describe(e: Expr): String = (e: @unchecked) match {<br>case Number(_) =&gt; "a number"<br>case Var(_)<br>=&gt; "a variable"<br>}</p><p>Annotations are described in Chapter 27. In general, you can add an annotation to an expression in the same way you add a type: follow the expression with a colon and the name of the annotation (preceded by an at sign). For example, in this case you add an @unchecked annotation to the variable e, with “ e: @unchecked ”. The @unchecked annotation has a special meaning for pattern matching. If a match ’s selector expression carries this annotation, exhaustivity checking for the patterns that follow will be suppressed.</p><h3>15.6 The Option type</h3><p>Scala has a standard type named Option for optional values. Such a value<br>can be of two forms. It can be of the form Some(x) where x is the actual<br>value. Or it can be the None object, which represents a missing value.<br>Optional values are produced by some of the standard operations on<br>Scala’s collections. For instance, the get method of Scala’s Map produces<br>Some(value) if a value corresponding to a given key has been found, or<br>None if the given key is not defined in the Map . Here’s an example:</p><p>scala&gt; val capitals =<br>Map("France" -&gt; "Paris", "Japan" -&gt; "Tokyo")<br>capitals: scala.collection.immutable.Map[java.lang.String,<br>java.lang.String] = Map(France -&gt; Paris, Japan -&gt; Tokyo)<br>scala&gt; capitals get "France"<br>res23: Option[java.lang.String] = Some(Paris)<br>scala&gt; capitals get "North Pole"<br>res24: Option[java.lang.String] = None<br>The most common way to take optional values apart is through a pattern<br>match. For instance:<br>scala&gt; def show(x: Option[String]) = x match {<br>case Some(s) =&gt; s<br>case None =&gt; "?"<br>}<br>show: (x: Option[String])String<br>scala&gt; show(capitals get "Japan")<br>res25: String = Tokyo<br>scala&gt; show(capitals get "France")<br>res26: String = Paris<br>scala&gt; show(capitals get "North Pole")<br>res27: String = ?</p><p>The Option type is used frequently in Scala programs. Compare this to the<br>dominant idiom in Java of using null to indicate no value. For example,<br>the get method of java.util.HashMap returns either a value stored in the<br>HashMap, or null if no value was found. This approach works for Java, but is error prone, because it is difficult in practice to keep track of which variables in a program are allowed to be null . If a variable is allowed to be null, then you must remember to check it for null every time you use it. When you forget to check, you open the possibility that a NullPointerException may result at runtime. Because such exceptions may not happen very often, it can be difficult to discover the bug during testing. For Scala, the approach would not work at all, because it is possible to store value types in hash maps, and null is not a legal element for a value type. For instance, a HashMap[Int, Int] cannot return null to signify “no element.”</p><p>By contrast, Scala encourages the use of Option to indicate an optional<br>value. This approach to optional values has several advantages over Java’s.</p><p>First, it is far more obvious to readers of code that a variable whose type<br>is Option[String] is an optional String than a variable of type String,<br>which may sometimes be null . But most importantly, that programming<br>error described earlier of using a variable that may be null without first<br>checking it for null becomes in Scala a type error. If a variable is of type<br>Option[String] and you try to use it as a String, your Scala program will<br>not compile.</p><h3>15.7 Patterns everywhere</h3><p>Patterns are allowed in many parts of Scala, not just in standalone match<br>expressions. Take a look at some other places you can use patterns.<br>Patterns in variable definitions Any time you define a val or a var, you can use a pattern instead of a simple identifier. For example, you can use this to take apart a tuple and assign each of its parts to its own variable, as shown in Listing 15.17:</p><p>scala&gt; val myTuple = (123, "abc")<br>myTuple: (Int, java.lang.String) = (123,abc)<br>scala&gt; val (number, string) = myTuple<br>number: Int = 123<br>string: java.lang.String = abc</p><p>Listing 15.17 · Defining multiple variables with one assignment.</p><p>This construct is quite useful when working with case classes. If you<br>know the precise case class you are working with, then you can deconstruct it with a pattern. Here’s an example:</p><p>scala&gt; val exp = new BinOp("*", Number(5), Number(1))<br>exp: BinOp = BinOp(*,Number(5.0),Number(1.0))<br>scala&gt; val BinOp(op, left, right) = exp<br>op: String = *<br>left: Expr = Number(5.0)<br>right: Expr = Number(1.0)</p><h4>Case sequences as partial functions</h4><p>A sequence of cases (i.e., alternatives) in curly braces can be used anywhere a function literal can be used. Essentially, a case sequence is a function literal, only more general. Instead of having a single entry point and list of parameters, a case sequence has multiple entry points, each with their own list of parameters. Each case is an entry point to the function, and the parameters are specified with the pattern. The body of each entry point is the right-hand side of the case.</p><p>Here is a simple example:</p><p>val withDefault: Option[Int] =&gt; Int = {<br>case Some(x) =&gt; x<br>case None =&gt; 0<br>}</p><p>The body of this function has two cases. The first case matches a Some, and returns the number inside the Some . The second case matches a None, and returns a default value of zero. Here is this function in use:</p><p>scala&gt; withDefault(Some(10))<br>res28: Int = 10<br>scala&gt; withDefault(None)<br>res29: Int = 0</p><p>This facility is quite useful for the actors library, described in Chapter 32.<br>Here is some typical actors code. It passes a pattern match directly to the<br>react method:</p><p>react {<br>case (name: String, actor: Actor) =&gt; {<br>actor ! getip(name)<br>act()<br>}<br>case msg =&gt; {<br>println("Unhandled message: "+ msg)<br>act()<br>}<br>}</p><p>One other generalization is worth noting: a sequence of cases gives you a<br>partial function. If you apply such a function on a value it does not support, it will generate a run-time exception. For example, here is a partial function that returns the second element of a list of integers:</p><p>val second: List[Int] =&gt; Int = {<br>case x :: y :: _ =&gt; y<br>}</p><p>When you compile this, the compiler will correctly complain that the match is not exhaustive:</p><p>&lt;console&gt;:17: warning: match is not exhaustive!<br>missing combination<br>Nil</p><p>This function will succeed if you pass it a three-element list, but not if you<br>pass it an empty list:</p><p>scala&gt; second(List(5, 6, 7))<br>res24: Int = 6<br>scala&gt; second(List())<br>scala.MatchError: List()<br>at $anonfun$1.apply(&lt;console&gt;:17)<br>at $anonfun$1.apply(&lt;console&gt;:17)</p><p>If you want to check whether a partial function is defined, you must first tell the compiler that you know you are working with partial functions. The type List[Int] =&gt; Int includes all functions from lists of integers to integers, whether or not the functions are partial. The type that only includes partial functions from lists of integers to integers is written<br>PartialFunction[List[Int],Int] . Here is the second function again, this time written with a partial function type:</p><p>val second: PartialFunction[List[Int],Int] = {<br>case x :: y :: _ =&gt; y<br>}</p><p>Partial functions have a method isDefinedAt, which can be used to test<br>whether the function is defined at a particular value. In this case, the function is defined for any list that has at least two elements:</p><p>scala&gt; second.isDefinedAt(List(5,6,7))<br>res30: Boolean = true<br>scala&gt; second.isDefinedAt(List())<br>res31: Boolean = false</p><p>The typical example of a partial function is a pattern matching function literal like the one in the previous example. In fact, such an expression gets translated by the Scala compiler to a partial function by translating the patterns twice—once for the implementation of the real function, and once to test whether the function is defined or not. For instance, the function literal { case x :: y :: _ =&gt; y } above gets translated to the following partial function value:</p><p>new PartialFunction[List[Int], Int] {<br>def apply(xs: List[Int]) = xs match {<br>case x :: y :: _ =&gt; y<br>}<br>def isDefinedAt(xs: List[Int]) = xs match {<br>case x :: y :: _ =&gt; true<br>case _ =&gt; false<br>}<br>}</p><p>This translation takes effect whenever the declared type of a function literal is PartialFunction . If the declared type is just Function1, or is missing, the function literal is instead translated to a complete function.<br>In general, you should try to work with complete functions whenever<br>possible, because using partial functions allows for runtime errors that the compiler cannot help you with. Sometimes partial functions are really helpful, though. You might be sure that an unhandled value will never be supplied. Alternatively, you might be using a framework that expects partial functions and so will always check isDefinedAt before calling the function. An example of the latter is the react example given above, where the argument is a partially defined function, defined precisely for those messages that the caller wants to handle.</p><h4>Patterns in for expressions</h4><p>You can also use a pattern in a for expression, as shown in Listing 15.18.<br>This for expression retrieves all key/value pairs from the capitals map.<br>Each pair is matched against the pattern (country, city), which defines<br>the two variables country and city .</p><p>scala&gt; for ((country, city) &lt;- capitals)<br>println("The capital of "+ country +" is "+ city)<br>The capital of France is Paris<br>The capital of Japan is Tokyo</p><p>Listing 15.18 · A for expression with a tuple pattern.</p><p>The pair pattern shown in Listing 15.18 was special because the match<br>against it can never fail. Indeed, capitals yields a sequence of pairs, so you can be sure that every generated pair can be matched against a pair pattern. But it is equally possible that a pattern might not match a generated value.</p><p>Listing 15.19 shows an example where that is the case:</p><p>scala&gt; val results = List(Some("apple"), None,<br>Some("orange"))<br>results: List[Option[java.lang.String]] = List(Some(apple),<br>None, Some(orange))<br>scala&gt; for (Some(fruit) &lt;- results) println(fruit)<br>apple<br>orange</p><p>Listing 15.19 · Picking elements of a list that match a pattern.</p><p>As you can see from this example, generated values that do not match the<br>pattern are discarded. For instance, the second element None in the results list does not match the pattern Some(fruit); therefore it does not show up in the output.</p><h4>Більший приклад</h4><p>Після того, як ви навчились різних формам шаблонів, ви можете бути зацікавлені в їх застосуванні в більшому прикладі. Запропоноване завдання є написати клас-форматувальник виразів, що відображуєарифметичний вираз в двовимірному розташуванні. Діленя, як “x/(x + 1)” повинне бути роздруковане вертикально, розміщуючи чисельник над знаменником, десь так:</p><p>x<br>-----<br>x + 1</p><p>Як інший приклад, ось вираз ((a / (b * c) + 1 / n) / 3) в двовимірному форматі:</p><p>a<br>1<br>----- + -<br>b * c<br>n<br>---------<br>3</p><p>From these examples it looks like the class (we’ll call it ExprFormatter )<br>will have to do a fair bit of layout juggling, so it makes sense to use the<br>layout library developed in Chapter 10. We’ll also use the Expr family of<br>case classes you saw previously in this chapter, and place both Chapter 10’s layout library and this chapter’s expression formatter into named packages.</p><p>The full code for the example will be shown in Listings 15.20 and 15.21.<br>A useful first step is to concentrate on horizontal layout. A structured<br>expression like:</p><p>BinOp("+",<br>BinOp("*",<br>BinOp("+", Var("x"), Var("y")),<br>Var("z")),<br>Number(1))</p><p>should print (x + y) * z + 1 . Note that parentheses are mandatory around<br>x + y, but would be optional around (x + y) * z . To keep the layout as<br>legible as possible, your goal should be to omit parentheses wherever they are redundant, while ensuring that all necessary parentheses are present.</p><p>To know where to put parentheses, the code needs to know about the<br>relative precedence of each operator, so it’s a good idea to tackle this first. You could express the relative precedence directly as a map literal of the following form:</p><p>Map(<br>"|" -&gt; 0, "||" -&gt; 0,<br>"&amp;" -&gt; 1, "&amp;&amp;" -&gt; 1, ...<br>)</p><p>However, this would involve some amount of pre-computation of precedences on your part. A more convenient approach is to just define groups of operators of increasing precedence and then calculate the precedence of each operator from that. Listing 15.20 shows the code.<br>The precedence variable is a map from operators to their precedences,<br>which are integers starting with 0 . It is calculated using a for expres-<br>sion with two generators. The first generator produces every index i of<br>the opGroups array. The second generator produces every operator op in<br>opGroups(i) . For each such operator the for expression yields an associ-<br>ation from the operator op to its index i . Hence, the relative position of an operator in the array is taken to be its precedence. Associations are written with an infix arrow, e.g., op -&gt; i . So far you have seen associations only as part of map constructions, but they are also values in their own right. In fact, the association op -&gt; i is nothing else but the pair (op, i).</p><p>Now that you have fixed the precedence of all binary operators except /,<br>it makes sense to generalize this concept to also cover unary operators. The precedence of a unary operator is higher than the precedence of every binary operator. Thus we can set unaryPrecedence (shown in Listing 15.20) to the length of the opGroups array, which is one more than the precedence of the * and % operators.</p><p>The precedence of a fraction is treated differently from the other operators because fractions use vertical layout. However, it will prove convenient to assign to the division operator the special precedence value -1, so we’ll initialize fractionPrecedence to -1 (shown in Listing 15.20).<br>After these preparations, you are ready to write the main format method.<br>This method takes two arguments: an expression e, of type Expr, and the precedence enclPrec of the operator directly enclosing the expression e (if there’s no enclosing operator, enclPrec should be zero). The method yields a layout element that represents a two-dimensional array of characters.</p><p>package org.stairwaybook.expr<br>import org.stairwaybook.layout.Element.elem<br>sealed abstract class Expr<br>case class Var(name: String) extends Expr<br>case class Number(num: Double) extends Expr<br>case class UnOp(operator: String, arg: Expr) extends Expr<br>case class BinOp(operator: String,<br>left: Expr, right: Expr) extends Expr<br>class ExprFormatter {<br>// Contains operators in groups of increasing precedence<br>private val opGroups =<br>Array(<br>Set("|", "||"),<br>Set("&amp;", "&amp;&amp;"),<br>Set("ˆ"),<br>Set("==", "!="),<br>Set("&lt;", "&lt;=", "&gt;", "&gt;="),<br>Set("+", "-"),<br>Set("*", " % ")<br>)<br>// A mapping from operators to their precedence<br>private val precedence = {<br>val assocs =<br>for {<br>i &lt;- 0 until opGroups.length<br>op &lt;- opGroups(i)<br>} yield op -&gt; i<br>assocs.toMap<br>}<br>private val unaryPrecedence = opGroups.length<br>private val fractionPrecedence = -1<br>// continued in Listing 15.21...</p><p>Listing 15.20 · The top half of the expression formatter.</p><p>// ...continued from Listing 15.20<br>private def format(e: Expr, enclPrec: Int): Element =<br>e match {<br>case Var(name) =&gt;<br>elem(name)<br>case Number(num) =&gt;<br>def stripDot(s: String) =<br>if (s endsWith ".0") s.substring(0, s.length - 2)<br>else s<br>elem(stripDot(num.toString))<br>case UnOp(op, arg) =&gt;<br>elem(op) beside format(arg, unaryPrecedence)<br>case BinOp("/", left, right) =&gt;<br>val top = format(left, fractionPrecedence)<br>val bot = format(right, fractionPrecedence)<br>val line = elem('-', top.width max bot.width, 1)<br>val frac = top above line above bot<br>if (enclPrec != fractionPrecedence) frac<br>else elem(" ") beside frac beside elem(" ")<br>case BinOp(op, left, right) =&gt;<br>val opPrec = precedence(op)<br>val l = format(left, opPrec)<br>val r = format(right, opPrec + 1)<br>val oper = l beside elem(" "+ op +" ") beside r<br>if (enclPrec &lt;= opPrec) oper<br>else elem("(") beside oper beside elem(")")<br>}<br>def format(e: Expr): Element = format(e, 0)<br>}</p><p>Listing 15.21 · The bottom half of the expression formatter.</p><p>Listing 15.21 shows the remainder of class ExprFormatter, which in-<br>cludes three methods. The first method, stripDot, is a helper method.The<br>next method, the private format method, does most of the work to format<br>expressions. The last method, also named format, is the lone public method in the library, which takes an expression to format.</p><p>The private format method does its work by performing a pattern match<br>on the kind of expression. The match expression has five cases. We’ll dis-<br>cuss each case individually. The first case is:</p><p>case Var(name) =&gt;<br>elem(name)</p><p>If the expression is a variable, the result is an element formed from the variable’s name. The second case is:</p><p>case Number(num) =&gt;<br>def stripDot(s: String) =<br>if (s endsWith ".0") s.substring(0, s.length - 2)<br>else s<br>elem(stripDot(num.toString))</p><p>If the expression is a number, the result is an element formed from the number’s value. The stripDot function cleans up the display of a floating-point number by stripping any ".0" suffix from a string.<br>The third case is:</p><p>case UnOp(op, arg) =&gt;<br>elem(op) beside format(arg, unaryPrecedence)</p><p>If the expression is a unary operation UnOp(op, arg) the result is formed<br>from the operation op and the result of formatting the argument arg with the highest-possible environment precedence. 3 This means that if arg is a binary operation (but not a fraction) it will always be displayed in parentheses.</p><p>The fourth case is:</p><p>case BinOp("/", left, right) =&gt;<br>val top = format(left, fractionPrecedence)<br>val bot = format(right, fractionPrecedence)<br>val line = elem('-', top.width max bot.width, 1)<br>val frac = top above line above bot<br>if (enclPrec != fractionPrecedence) frac<br>else elem(" ") beside frac beside elem(" ")</p><p>If the expression is a fraction, an intermediate result frac is formed by placing the formatted operands left and right on top of each other, separated by an horizontal line element. The width of the horizontal line is the maximum of the widths of the formatted operands. This&nbsp; intermediate result is also the final result unless the fraction appears itself as an argument of another fraction. In the latter case, a space is added on each side of frac.</p><p>To see the reason why, consider the expression “ (a / b) / c ”. Without the<br>widening correction, formatting this expression would give:</p><p>a<br>-<br>b<br>-<br>c</p><p>The problem with this layout is evident—it’s not clear where the top-level<br>fractional bar is. The expression above could mean either “ (a / b) / c ” or<br>“ a / (b / c) ”. To disambiguate, a space should be added on each side to the layout of the nested fraction “ a / b ”. Then the layout becomes unambiguous:</p><p>a<br>-<br>b<br>---<br>c</p><p>The fifth and last case is:</p><p>case BinOp(op, left, right) =&gt;<br>val opPrec = precedence(op)<br>val l = format(left, opPrec)<br>val r = format(right, opPrec + 1)<br>val oper = l beside elem(" "+ op +" ") beside r<br>if (enclPrec &lt;= opPrec) oper<br>else elem("(") beside oper beside elem(")")</p><p>This case applies for all other binary operations. Since it comes after the<br>case starting with:</p><p>case BinOp("/", left, right) =&gt; ...</p><p>you know that the operator op in the pattern BinOp(op, left, right) can-<br>not be a division. To format such a binary operation, one needs to format<br>first its operands left and right . The precedence parameter for formatting<br>the left operand is the precedence opPrec of the operator op, while for the right operand it is one more than that. This scheme ensures that parentheses also reflect the correct associativity. For instance, the operation:</p><p>BinOp("-", Var("a"), BinOp("-", Var("b"), Var("c")))</p><p>would be correctly parenthesized as “ a - (b - c) ”. The intermediate result<br>oper is then formed by placing the formatted left and right operands side-<br>by-side, separated by the operator. If the precedence of the current operator is smaller than the precedence of the enclosing operator, r is placed between parentheses, otherwise it is returned as is.<br>import org.stairwaybook.expr._</p><p>object Express extends Application {<br>val f = new ExprFormatter<br>val e1 = BinOp("*", BinOp("/", Number(1), Number(2)),<br>BinOp("+", Var("x"), Number(1)))<br>val e2 = BinOp("+", BinOp("/", Var("x"), Number(2)),<br>BinOp("/", Number(1.5), Var("x")))<br>val e3 = BinOp("/", e1, e2)<br>def show(e: Expr) = println(f.format(e)+ "\n\n")<br>for (e &lt;- Array(e1, e2, e3)) show(e)<br>}</p><p>Listing 15.22 · An application that prints formatted expressions.</p><p>This finishes the design of the private format function. The only re-<br>maining method is the public format method, which allows client programmers to format a top-level expression without passing a precedence argument. Listing 15.22 shows a demo program that exercises ExprFormatter.</p><p>Note that, even though this program does not define a main method, it is<br>still a runnable application because it inherits from the Application trait.<br>As mentioned in Section 4.5, trait Application simply defines an empty<br>main method that gets inherited by the Express object. The actual work in<br>the Express object gets done as part of the object’s initialization, before the main method is run. That’s why you can apply this trick only if your program does not take any command-line arguments. Once there are arguments, you need to write the main method explicitly. You can run the Express program with the command:</p><p>scala Express</p><p>Це дасть такий результат:</p><p>1<br>- * (x + 1)<br>2<br>x<br>1.5<br>- + ---<br>2<br>x<br>1<br>- * (x + 1)<br>2<br>-----------<br>x<br>1.5<br>- + ---<br>2<br>x</p><h3>15.9 Висновок</h3><p>В цій главі ви в деталях вивчили кейс класи Scala, та порівняння шаблонів. З їх використанням ви можете отримати переваги від декількох стислих ідіом, що звичайно недоступні в об'єктно-орієнтовних мовах. Однак співпадіння шаблонів Scala іде далі, ніж описує ця глава. Якщо ви бажаєте використовувати співпадіння шаблонів для ваших класів, але не бажаєте відкривати доступ до ваших класів таким чином, як це роблять кейс класи, тоді ви можете використовувати екстрактори, описані в Главі 26. Однак в наступній главі ми повернемо нашу увагу до списків.</p><p><br></p></body></html>
+        <p>Лістинг 15.14 Вираз match з вартівником шаблона.</p><p>Вартівник шаблона іде після шаблона, та починається з if. Вартівник може бути довільним логічним виразом, що типово посилається на змінні в шаблоні. Якщо вартівник присутній, порівняння буде вдалим, тільки якщо вартівник обчислюється до true. Таким чином, перший випадок вище буде співпадати з бінарними операціями з двома однаковими операндами.</p><p>Деякі інші приклади шаблонів з вартівником:</p>
+<pre class="prettyprint linenums language-scala">// співпадає тільки з додатними цілими
+case n: Int if 0 &lt; n =&gt; ...
+<br>// співпадає тільки з рядками, що починаються на літеру ‘a’
+case s: String if s(0) == 'a' =&gt; ...</pre>
+        <h3>15.4 Перекриття шаблонів</h3><p>Шаблони випробовуються в тому порядку, в якому записані. Версія спрощення, показана в Лістингу 15.15, презентує приклад, коли порядок випадків має значення:</p>
+<pre class="prettyprint linenums language-scala">def simplifyAll(expr: Expr): Expr = expr match {
+<br>  case UnOp("-", UnOp("-", e)) =&gt; simplifyAll(e)
+// ‘-’ інвертує значення
+<br>  case BinOp("+", e, Number(0)) =&gt; simplifyAll(e)
+// ‘0’ є нейтральним елементом для ‘+’
+<br>  case BinOp("*", e, Number(1)) =&gt; simplifyAll(e)
+// ‘1’ є нейтральним елементом для ‘*’
+<br>  case UnOp(op, e) =&gt; UnOp(op, simplifyAll(e))
+<br>  case BinOp(op, l, r) =&gt; BinOp(op, simplifyAll(l), simplifyAll(r))
+  <br>  case _ =&gt; expr
+}</pre>
+        <p>Лістинг 15.15 Вираз порівняння, де порядок має значення.</p><p>Версія спрощення, показана в Лістингу 15.15 буде стосуватись правил спрощення будь-де в виразі, не тільки нагорі, як робив simplifyTop. Він може походити від simplifyTop додаванням двох випадків для загальних унарних та бінарних виразів (чипадки чотири та п'ять в Лістингу 15.15). Четвертий випадок має шаблон UnOp(op, e); тобто, він співпадає з любою унарною операцією. Оператор та операнд унарної операції можуть бути довільними. Вони прив'язані до змінних шаблона op та e, відповідно. Альтернатива в цьому випадку стосується simplifyAll рекурсивно до операнда e, та потім перебудовує ту ж унарну операцію з (можливо) спрощеним операндом.</p><p>П'ятий випадок для BinOp є аналогічним: це випадок “всі-інші” для довільних бінарних операцій, що рекурсивно застосовує метод спрощення до двох операндів.</p><p>В цьому прикладі важливо, що випадки всі-інші ідуть після більш специфічних правил спрощення. Якщо ви напишете іх в іншому порядку, тоді випадки всі-інші будуть мати перевагу над більш специфічними випадками. В багатьох випадках компілятор буде скаржитись за такої спроби.</p><p>Наприклад, ось вираз порівняння, що не буде компілюватись, оскікльи перший випадок буде співпадати з усім, що могло б співпасти з другим випадком:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; def simplifyBad(expr: Expr): Expr = expr match {
+  case UnOp(op, e) =&gt; UnOp(op, simplifyBad(e))
+  case UnOp("-", UnOp("-", e)) =&gt; e
+}
+&lt;console&gt;:18: error: unreachable code
+case UnOp("-", UnOp("-", e)) =&gt; e
+ˆ</pre>
+        <h3>15.5 Запечатані класи</h3><p>Коли ви пишете порівняння шаблонів, вам треба переконатись, що ви накрили всі можливі випадки. Іноді ви можете зробити це, додавши випадок по замовчанню в кінці&nbsp;match, але це стосується тільки якщо є змістовна поведінка по замовчанню. Що, коли немає нічого по замовчанню? Як ви можете почуватись в безпеці щодо того, що накрили всі випадки?</p><p>Фактично, ви можете залучитись допомогою компілятора Scala в визначенні пропущених комбінацій шаблонів в виразі match. Щоб мати змогу зробити це, компілятор потребує бути в змозі сказати, які випадки є можливими. Загалом, це неможливо в Scala, оскільки нові кейс класи можуть бути визначені будь-коли, в довільних одиницях компіляції. Наприклад, нічого не заважає вам додати п'ятий кейс клас до ієрархії класа Expr в іншій одиниці компіляції, ніж визначені інші чотири випадки.&nbsp;</p><p>Альтернативою є зробити суперклас ваших кейс класів запечатаним. Запечатаний клас не може додати жодних субкласів, за винятком тих, що знаходятся в тому ж файлі. Це дуже корисно для порівняння шаблонів, оскільки це означає, що вам треба турбуватись щодо субкласів, про які ви вже знаєте. Що ще більше, ви також отримуєте кращу підтримку компілятора. Якщо ви порівнюєте з кейс класами, що наслідують від запечатаного класа, компілятор буде відмічати втрачені комбінації шаблонів повідомленнями попереджень.</p><p>Таким чином, якщо ви пишете ієрархію класів, призначену бути шаблонами для порівняння, вам слід розглянути можливість зробити їх запечатаними. Просто додайте ключове слово sealed перед class нагорі ієрархії. Програмісти, що будуть використовувати вашу ієрархію класів, будуть відчувати зручність при порівнянні за їх участю. Ключове слово sealed, таким чином, часто є ліцензією на порівняння з шаблонами. Лістинг 15.16 показує приклад, в якому Expr перетврений на запечатаний клас.</p>
+<pre class="prettyprint linenums language-scala">sealed abstract class Expr
+case class Var(name: String) extends Expr
+case class Number(num: Double) extends Expr
+case class UnOp(operator: String, arg: Expr) extends Expr
+case class BinOp(operator: String,
+  left: Expr, right: Expr) extends Expr</pre>
+        <p>Лістинг 15.16 Запечатана ієрархія кейс класів.</p><p>Тепер визначимо порівняння шаблонів, де пропущені деякі з кейс класів:</p>
+<pre class="prettyprint linenums language-scala">def describe(e: Expr): String = e match {
+  case Number(_) =&gt; "число"
+  case Var(_) =&gt; "змінна"
+}</pre>
+        <p>Ви можете отримати попередження компілятора, подібне до наступного:</p>
+<pre class="prettyprint linenums language-scala">warning: match is not exhaustive!
+missing combination UnOp
+missing combination BinOp</pre>
+        <p>Таке повідомленя каже вам, що існує ризик, що ваш код може спродукувати виключення MatchError, оскількі деякі можливі шаблони ( UnOp, BinOp) не оброблени. Попередження вказує на потенційне джерело збоїв часу виконання, так ща, зазвичай, так що ви запрошені допомогти вашій програмі. Однак, часом ви можете натрапити на ситуацію, коли компілятор дуже прискіпливий, щодо надання попередження. Наприклад, ви можете знати з контекста, що ви напевне застосували метод describe вище для виразів, що не Number, ні Var. Так що ви знаєте, що, фактично, не буде спродуковано MatchError. Щоб попередження пішло, ви можете додати третій випадок все-інше до метода, таким чином:</p>
+<pre class="prettyprint linenums language-scala">def describe(e: Expr): String = e match {
+  case Number(_) =&gt; "число"
+  case Var(_) =&gt; "змінна"
+  case _ =&gt; throw new RuntimeException // не повинно відбутись
+}</pre>
+        <p>Це робить, але не є ідеальним. Можливо, ви будете не дуже щастливим від того, що змушені додавати код, що ніколи не буде виконаний (або ви так вважаєте), just to make the compiler shut up.</p><p>A more lightweight alternative is to add an @unchecked annotation to<br>the selector expression of the match. This is done as follows:</p>
+<pre class="prettyprint linenums language-scala">def describe(e: Expr): String = (e: @unchecked) match {
+  case Number(_) =&gt; "число"
+  case Var(_) =&gt; "змінна"
+}</pre>
+        <p>Annotations are described in Chapter 27. In general, you can add an annotation to an expression in the same way you add a type: follow the expression with a colon and the name of the annotation (preceded by an at sign). For example, in this case you add an @unchecked annotation to the variable e, with “ e: @unchecked ”. The @unchecked annotation has a special meaning for pattern matching. If a match ’s selector expression carries this annotation, exhaustivity checking for the patterns that follow will be suppressed.</p><h3>15.6 The Option type</h3><p>Scala has a standard type named Option for optional values. Such a value<br>can be of two forms. It can be of the form Some(x) where x is the actual<br>value. Or it can be the None object, which represents a missing value.<br>Optional values are produced by some of the standard operations on<br>Scala’s collections. For instance, the get method of Scala’s Map produces<br>Some(value) if a value corresponding to a given key has been found, or<br>None if the given key is not defined in the Map . Here’s an example:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; val capitals =
+  Map("France" -&gt; "Paris", "Japan" -&gt; "Tokyo")
+  capitals: scala.collection.immutable.Map[java.lang.String,
+  java.lang.String] = Map(France -&gt; Paris, Japan -&gt; Tokyo)
+<br>scala&gt; capitals get "France"
+res23: Option[java.lang.String] = Some(Paris)
+<br>scala&gt; capitals get "North Pole"
+res24: Option[java.lang.String] = None</pre><p>The most common way to take optional values apart is through a pattern<br>match. For instance:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; def show(x: Option[String]) = x match {
+  case Some(s) =&gt; s
+  case None =&gt; "?"
+}
+show: (x: Option[String])String
+<br>scala&gt; show(capitals get "Japan")
+res25: String = Tokyo
+<br>scala&gt; show(capitals get "France")
+res26: String = Paris
+<br>scala&gt; show(capitals get "North Pole")
+res27: String = ?</pre>
+        <p>The Option type is used frequently in Scala programs. Compare this to the<br>dominant idiom in Java of using null to indicate no value. For example,<br>the get method of java.util.HashMap returns either a value stored in the<br>HashMap, or null if no value was found. This approach works for Java, but is error prone, because it is difficult in practice to keep track of which variables in a program are allowed to be null . If a variable is allowed to be null, then you must remember to check it for null every time you use it. When you forget to check, you open the possibility that a NullPointerException may result at runtime. Because such exceptions may not happen very often, it can be difficult to discover the bug during testing. For Scala, the approach would not work at all, because it is possible to store value types in hash maps, and null is not a legal element for a value type. For instance, a HashMap[Int, Int] cannot return null to signify “no element.”</p><p>By contrast, Scala encourages the use of Option to indicate an optional<br>value. This approach to optional values has several advantages over Java’s.</p><p>First, it is far more obvious to readers of code that a variable whose type<br>is Option[String] is an optional String than a variable of type String,<br>which may sometimes be null . But most importantly, that programming<br>error described earlier of using a variable that may be null without first<br>checking it for null becomes in Scala a type error. If a variable is of type<br>Option[String] and you try to use it as a String, your Scala program will<br>not compile.</p><h3>15.7 Patterns everywhere</h3><p>Patterns are allowed in many parts of Scala, not just in standalone match<br>expressions. Take a look at some other places you can use patterns.<br>Patterns in variable definitions Any time you define a val or a var, you can use a pattern instead of a simple identifier. For example, you can use this to take apart a tuple and assign each of its parts to its own variable, as shown in Listing 15.17:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; val myTuple = (123, "abc")
+myTuple: (Int, java.lang.String) = (123,abc)
+<br>scala&gt; val (number, string) = myTuple
+number: Int = 123
+string: java.lang.String = abc</pre>
+        <p>Listing 15.17 · Defining multiple variables with one assignment.</p><p>This construct is quite useful when working with case classes. If you<br>know the precise case class you are working with, then you can deconstruct it with a pattern. Here’s an example:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; val exp = new BinOp("*", Number(5), Number(1))
+exp: BinOp = BinOp(*,Number(5.0),Number(1.0))
+<br>scala&gt; val BinOp(op, left, right) = exp
+op: String = *
+left: Expr = Number(5.0)
+right: Expr = Number(1.0)</pre>
+        <h4>Case sequences as partial functions</h4><p>A sequence of cases (i.e., alternatives) in curly braces can be used anywhere a function literal can be used. Essentially, a case sequence is a function literal, only more general. Instead of having a single entry point and list of parameters, a case sequence has multiple entry points, each with their own list of parameters. Each case is an entry point to the function, and the parameters are specified with the pattern. The body of each entry point is the right-hand side of the case.</p><p>Here is a simple example:</p>
+<pre class="prettyprint linenums language-scala">val withDefault: Option[Int] =&gt; Int = {
+  case Some(x) =&gt; x
+  case None =&gt; 0
+}</pre>
+        <p>The body of this function has two cases. The first case matches a Some, and returns the number inside the Some . The second case matches a None, and returns a default value of zero. Here is this function in use:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; withDefault(Some(10))
+res28: Int = 10
+<br>scala&gt; withDefault(None)
+res29: Int = 0</pre>
+        <p>This facility is quite useful for the actors library, described in Chapter 32.<br>Here is some typical actors code. It passes a pattern match directly to the<br>react method:</p>
+<pre class="prettyprint linenums language-scala">react {
+  case (name: String, actor: Actor) =&gt; {
+    actor ! getip(name)
+    act()
+  } 
+  case msg =&gt; {
+    println("Unhandled message: "+ msg)
+    act()
+  }
+}</pre>
+        <p>One other generalization is worth noting: a sequence of cases gives you a<br>partial function. If you apply such a function on a value it does not support, it will generate a run-time exception. For example, here is a partial function that returns the second element of a list of integers:</p>
+<pre class="prettyprint linenums language-scala">val second: List[Int] =&gt; Int = {
+  case x :: y :: _ =&gt; y
+}</pre>
+        <p>When you compile this, the compiler will correctly complain that the match is not exhaustive:</p>
+<pre class="prettyprint linenums language-scala">&lt;console&gt;:17: warning: match is not exhaustive!
+missing combination
+Nil</pre>
+        <p>This function will succeed if you pass it a three-element list, but not if you<br>pass it an empty list:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; second(List(5, 6, 7))
+res24: Int = 6
+<br>scala&gt; second(List())
+scala.MatchError: List()
+at $anonfun$1.apply(&lt;console&gt;:17)
+at $anonfun$1.apply(&lt;console&gt;:17)</pre>
+        <p>If you want to check whether a partial function is defined, you must first tell the compiler that you know you are working with partial functions. The type List[Int] =&gt; Int includes all functions from lists of integers to integers, whether or not the functions are partial. The type that only includes partial functions from lists of integers to integers is written PartialFunction[List[Int],Int] . Here is the second function again, this time written with a partial function type:</p>
+<pre class="prettyprint linenums language-scala">val second: PartialFunction[List[Int],Int] = {
+  case x :: y :: _ =&gt; y
+}</pre>
+        <p>Partial functions have a method isDefinedAt, which can be used to test<br>whether the function is defined at a particular value. In this case, the function is defined for any list that has at least two elements:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; second.isDefinedAt(List(5,6,7))
+res30: Boolean = true
+<br>scala&gt; second.isDefinedAt(List())
+res31: Boolean = false</pre>
+        <p>The typical example of a partial function is a pattern matching function literal like the one in the previous example. In fact, such an expression gets translated by the Scala compiler to a partial function by translating the patterns twice—once for the implementation of the real function, and once to test whether the function is defined or not. For instance, the function literal { case x :: y :: _ =&gt; y } above gets translated to the following partial function value:</p>
+<pre class="prettyprint linenums language-scala">new PartialFunction[List[Int], Int] {
+  def apply(xs: List[Int]) = xs match {
+    case x :: y :: _ =&gt; y
+  }
+  def isDefinedAt(xs: List[Int]) = xs match {
+    case x :: y :: _ =&gt; true
+    case _ =&gt; false
+  }
+}</pre>
+        <p>This translation takes effect whenever the declared type of a function literal is PartialFunction . If the declared type is just Function1, or is missing, the function literal is instead translated to a complete function.</p><p>In general, you should try to work with complete functions whenever<br>possible, because using partial functions allows for runtime errors that the compiler cannot help you with. Sometimes partial functions are really helpful, though. You might be sure that an unhandled value will never be supplied. Alternatively, you might be using a framework that expects partial functions and so will always check isDefinedAt before calling the function. An example of the latter is the react example given above, where the argument is a partially defined function, defined precisely for those messages that the caller wants to handle.</p><h4>Patterns in for expressions</h4><p>You can also use a pattern in a for expression, as shown in Listing 15.18.<br>This for expression retrieves all key/value pairs from the capitals map.<br>Each pair is matched against the pattern (country, city), which defines<br>the two variables country and city .</p>
+<pre class="prettyprint linenums language-scala">scala&gt; for ((country, city) &lt;- capitals)
+println("The capital of "+ country +" is "+ city)
+<br>The capital of France is Paris
+The capital of Japan is Tokyo</pre>
+        <p>Listing 15.18 · A for expression with a tuple pattern.</p><p>The pair pattern shown in Listing 15.18 was special because the match<br>against it can never fail. Indeed, capitals yields a sequence of pairs, so you can be sure that every generated pair can be matched against a pair pattern. But it is equally possible that a pattern might not match a generated value.</p><p>Listing 15.19 shows an example where that is the case:</p>
+<pre class="prettyprint linenums language-scala">scala&gt; val results = List(Some("apple"), None,
+  Some("orange"))
+results: List[Option[java.lang.String]] = List(Some(apple),
+  None, Some(orange))
+<br>scala&gt; for (Some(fruit) &lt;- results) println(fruit)
+apple
+orange</pre>
+        <p>Listing 15.19 · Picking elements of a list that match a pattern.</p><p>As you can see from this example, generated values that do not match the<br>pattern are discarded. For instance, the second element None in the results list does not match the pattern Some(fruit); therefore it does not show up in the output.</p><h4>Більший приклад</h4><p>Після того, як ви навчились різних формам шаблонів, ви можете бути зацікавлені в їх застосуванні в більшому прикладі. Запропоноване завдання є написати клас-форматувальник виразів, що відображуєарифметичний вираз в двовимірному розташуванні. Діленя, як “x/(x + 1)” повинне бути роздруковане вертикально, розміщуючи чисельник над знаменником, десь так:</p>
+<pre class="prettyprint linenums language-scala">x<br>-----<br>x + 1</pre>
+        <p>Як інший приклад, ось вираз ((a / (b * c) + 1 / n) / 3) в двовимірному форматі:</p>
+<pre class="prettyprint linenums language-scala">a
+1
+----- + -
+b * c
+n
+---------
+3</pre>
+        <p>From these examples it looks like the class (we’ll call it ExprFormatter )<br>will have to do a fair bit of layout juggling, so it makes sense to use the<br>layout library developed in Chapter 10. We’ll also use the Expr family of<br>case classes you saw previously in this chapter, and place both Chapter 10’s layout library and this chapter’s expression formatter into named packages.</p><p>The full code for the example will be shown in Listings 15.20 and 15.21.<br>A useful first step is to concentrate on horizontal layout. A structured<br>expression like:</p>
+<pre class="prettyprint linenums language-scala">BinOp("+",
+BinOp("*",
+BinOp("+", Var("x"), Var("y")),
+Var("z")),
+Number(1))</pre>
+        <p>should print (x + y) * z + 1 . Note that parentheses are mandatory around<br>x + y, but would be optional around (x + y) * z . To keep the layout as<br>legible as possible, your goal should be to omit parentheses wherever they are redundant, while ensuring that all necessary parentheses are present.</p><p>To know where to put parentheses, the code needs to know about the<br>relative precedence of each operator, so it’s a good idea to tackle this first. You could express the relative precedence directly as a map literal of the following form:</p>
+<pre class="prettyprint linenums language-scala">Map(
+"|" -&gt; 0, "||" -&gt; 0,
+"&amp;" -&gt; 1, "&amp;&amp;" -&gt; 1, ...
+)</pre>
+        <p>However, this would involve some amount of pre-computation of precedences on your part. A more convenient approach is to just define groups of operators of increasing precedence and then calculate the precedence of each operator from that. Listing 15.20 shows the code.</p><p>The precedence variable is a map from operators to their precedences,<br>which are integers starting with 0 . It is calculated using a for expres-<br>sion with two generators. The first generator produces every index i of<br>the opGroups array. The second generator produces every operator op in<br>opGroups(i) . For each such operator the for expression yields an associ-<br>ation from the operator op to its index i . Hence, the relative position of an operator in the array is taken to be its precedence. Associations are written with an infix arrow, e.g., op -&gt; i . So far you have seen associations only as part of map constructions, but they are also values in their own right. In fact, the association op -&gt; i is nothing else but the pair (op, i).</p><p>Now that you have fixed the precedence of all binary operators except /,<br>it makes sense to generalize this concept to also cover unary operators. The precedence of a unary operator is higher than the precedence of every binary operator. Thus we can set unaryPrecedence (shown in Listing 15.20) to the length of the opGroups array, which is one more than the precedence of the * and % operators.</p><p>The precedence of a fraction is treated differently from the other operators because fractions use vertical layout. However, it will prove convenient to assign to the division operator the special precedence value -1, so we’ll initialize fractionPrecedence to -1 (shown in Listing 15.20).<br>After these preparations, you are ready to write the main format method.<br>This method takes two arguments: an expression e, of type Expr, and the precedence enclPrec of the operator directly enclosing the expression e (if there’s no enclosing operator, enclPrec should be zero). The method yields a layout element that represents a two-dimensional array of characters.</p>
+<pre class="prettyprint linenums language-scala">package org.stairwaybook.expr
+import org.stairwaybook.layout.Element.elem
+<br>sealed abstract class Expr
+case class Var(name: String) extends Expr
+case class Number(num: Double) extends Expr
+case class UnOp(operator: String, arg: Expr) extends Expr
+case class BinOp(operator: String,
+  left: Expr, right: Expr) extends Expr
+<br>class ExprFormatter {
+<br>// Містить оператори в групах з наростаючим рейтингом
+  private val opGroups =
+   Array(
+     Set("|", "||"),
+     Set("&amp;", "&amp;&amp;"),
+     Set("ˆ"),
+     Set("==", "!="),
+     Set("&lt;", "&lt;=", "&gt;", "&gt;="),
+     Set("+", "-"),
+     Set("*", " % ")
+  )
+<br>// A mapping from operators to their precedence
+  private val precedence = {
+    val assocs =
+    for {
+      i &lt;- 0 until opGroups.length
+      op &lt;- opGroups(i)
+    } yield op -&gt; i
+    assocs.toMap
+  }
+<br>  private val unaryPrecedence = opGroups.length
+  private val fractionPrecedence = -1
+<br>  private def format(e: Expr, enclPrec: Int): Element =
+    e match {
+      case Var(name) =&gt;
+        elem(name)
+      case Number(num) =&gt;
+        def stripDot(s: String) =
+          if (s endsWith ".0") s.substring(0, s.length - 2)
+          else s
+          elem(stripDot(num.toString))
+      case UnOp(op, arg) =&gt;
+        elem(op) beside format(arg, unaryPrecedence)
+      case BinOp("/", left, right) =&gt;
+        val top = format(left, fractionPrecedence)
+        val bot = format(right, fractionPrecedence)
+        val line = elem('-', top.width max bot.width, 1)
+        val frac = top above line above bot
+        if (enclPrec != fractionPrecedence) frac
+        else elem(" ") beside frac beside elem(" ")
+      case BinOp(op, left, right) =&gt;
+        val opPrec = precedence(op)
+        val l = format(left, opPrec)
+        val r = format(right, opPrec + 1)
+        val oper = l beside elem(" "+ op +" ") beside r
+        if (enclPrec &lt;= opPrec) oper
+        else elem("(") beside oper beside elem(")")
+    }
+  def format(e: Expr): Element = format(e, 0)
+}</pre>
+        <p>Listing 15.21 · The bottom half of the expression formatter.</p><p>Listing 15.21 shows the remainder of class ExprFormatter, which in-<br>cludes three methods. The first method, stripDot, is a helper method.The<br>next method, the private format method, does most of the work to format<br>expressions. The last method, also named format, is the lone public method in the library, which takes an expression to format.</p><p>The private format method does its work by performing a pattern match<br>on the kind of expression. The match expression has five cases. We’ll dis-<br>cuss each case individually. The first case is:</p>
+<pre class="prettyprint linenums language-scala">case Var(name) =&gt;
+  elem(name)</pre>
+        <p>If the expression is a variable, the result is an element formed from the variable’s name. The second case is:</p>
+<pre class="prettyprint linenums language-scala">case Number(num) =&gt;
+  def stripDot(s: String) =
+    if (s endsWith ".0") s.substring(0, s.length - 2)
+    else s
+  elem(stripDot(num.toString))</pre>
+        <p>If the expression is a number, the result is an element formed from the number’s value. The stripDot function cleans up the display of a floating-point number by stripping any ".0" suffix from a string.<br>The third case is:</p>
+<pre class="prettyprint linenums language-scala">case UnOp(op, arg) =&gt;
+  elem(op) beside format(arg, unaryPrecedence)</pre>
+        <p>If the expression is a unary operation UnOp(op, arg) the result is formed<br>from the operation op and the result of formatting the argument arg with the highest-possible environment precedence. 3 This means that if arg is a binary operation (but not a fraction) it will always be displayed in parentheses.</p><p>The fourth case is:</p>
+<pre class="prettyprint linenums language-scala">case BinOp("/", left, right) =&gt;
+  val top = format(left, fractionPrecedence)
+  val bot = format(right, fractionPrecedence)
+  val line = elem('-', top.width max bot.width, 1)
+  val frac = top above line above bot
+  if (enclPrec != fractionPrecedence) frac
+  else elem(" ") beside frac beside elem(" ")</pre>
+        <p>If the expression is a fraction, an intermediate result frac is formed by placing the formatted operands left and right on top of each other, separated by an horizontal line element. The width of the horizontal line is the maximum of the widths of the formatted operands. This&nbsp; intermediate result is also the final result unless the fraction appears itself as an argument of another fraction. In the latter case, a space is added on each side of frac.</p><p>To see the reason why, consider the expression “ (a / b) / c ”. Without the<br>widening correction, formatting this expression would give:</p>
+<pre class="prettyprint linenums language-scala">a
+-
+b
+-
+c</pre>
+        <p>The problem with this layout is evident—it’s not clear where the top-level<br>fractional bar is. The expression above could mean either “ (a / b) / c ” or<br>“ a / (b / c) ”. To disambiguate, a space should be added on each side to the layout of the nested fraction “ a / b ”. Then the layout becomes unambiguous:</p>
+<pre class="prettyprint linenums language-scala">a
+-
+b
+---
+c</pre>
+        <p>The fifth and last case is:</p>
+<pre class="prettyprint linenums language-scala">case BinOp(op, left, right) =&gt;
+  val opPrec = precedence(op)
+  val l = format(left, opPrec)
+  val r = format(right, opPrec + 1)
+  val oper = l beside elem(" "+ op +" ") beside r
+  if (enclPrec &lt;= opPrec) oper
+  else elem("(") beside oper beside elem(")")</pre>
+        <p>This case applies for all other binary operations. Since it comes after the<br>case starting with:</p>
+<pre class="prettyprint linenums language-scala">case BinOp("/", left, right) =&gt; ...</pre>
+        <p>you know that the operator op in the pattern BinOp(op, left, right) can-<br>not be a division. To format such a binary operation, one needs to format<br>first its operands left and right . The precedence parameter for formatting<br>the left operand is the precedence opPrec of the operator op, while for the right operand it is one more than that. This scheme ensures that parentheses also reflect the correct associativity. For instance, the operation:</p>
+<pre class="prettyprint linenums language-scala">BinOp("-", Var("a"), BinOp("-", Var("b"), Var("c")))</pre>
+        <p>would be correctly parenthesized as “ a - (b - c) ”. The intermediate result<br>oper is then formed by placing the formatted left and right operands side-<br>by-side, separated by the operator. If the precedence of the current operator is smaller than the precedence of the enclosing operator, r is placed between parentheses, otherwise it is returned as is.<br>import org.stairwaybook.expr._</p>
+<pre class="prettyprint linenums language-scala">object Express extends Application {
+  val f = new ExprFormatter
+  val e1 = BinOp("*", BinOp("/", Number(1), Number(2)),
+  <br>  BinOp("+", Var("x"), Number(1)))
+  val e2 = BinOp("+", BinOp("/", Var("x"), Number(2)),
+  <br>  BinOp("/", Number(1.5), Var("x")))
+  val e3 = BinOp("/", e1, e2)
+  <br>  def show(e: Expr) = println(f.format(e)+ "\n\n")
+  <br>  for (e &lt;- Array(e1, e2, e3)) show(e)
+}</pre>
+        <p>Listing 15.22 · An application that prints formatted expressions.</p><p>This finishes the design of the private format function. The only re-<br>maining method is the public format method, which allows client programmers to format a top-level expression without passing a precedence argument. Listing 15.22 shows a demo program that exercises ExprFormatter.</p><p>Note that, even though this program does not define a main method, it is<br>still a runnable application because it inherits from the Application trait.<br>As mentioned in Section 4.5, trait Application simply defines an empty<br>main method that gets inherited by the Express object. The actual work in<br>the Express object gets done as part of the object’s initialization, before the main method is run. That’s why you can apply this trick only if your program does not take any command-line arguments. Once there are arguments, you need to write the main method explicitly. You can run the Express program with the command:</p>
+<pre class="prettyprint linenums language-scala">scala Express</pre><p>Це дасть такий результат:</p>
+<pre class="prettyprint linenums language-scala">1
+- * (x + 1)
+2
+x
+1.5
+- + ---
+2
+x
+1
+- * (x + 1)
+2
+-----------
+x
+1.5
+- + ---
+2
+x</pre>
+        <h3>15.9 Висновок</h3><p>В цій главі ви в деталях вивчили кейс класи Scala, та порівняння шаблонів. З їх використанням ви можете отримати переваги від декількох стислих ідіом, що звичайно недоступні в об'єктно-орієнтовних мовах. Однак співпадіння шаблонів Scala іде далі, ніж описує ця глава. Якщо ви бажаєте використовувати співпадіння шаблонів для ваших класів, але не бажаєте відкривати доступ до ваших класів таким чином, як це роблять кейс класи, тоді ви можете використовувати екстрактори, описані в Главі 26. Однак в наступній главі ми повернемо нашу увагу до списків.</p><p><br></p></body></html>
