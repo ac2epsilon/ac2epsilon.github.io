@@ -1,0 +1,1804 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta content="text/html; charset=UTF-8" http-equiv="content-type">
+    <title>GIF ALL</title>
+  </head>
+  <body> <sub> Переклад українською - <a href="mailto:ac2epsilon@gmail.com">Арсеній
+        Чеботарьов</a> - Ніжин 2017</sub><br>
+    <p> </p>
+    <table summary="Canned page header" style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"
+      bgcolor="#ddd" cellpadding="0" width="100%">
+      <tbody>
+        <tr>
+          <td style="width: 1069.58px;">
+            <h2>Що всередині GIF</h2>
+          </td>
+          <td style="width: 187.417px;" align="center"><img src="http://giflib.sourceforge.net/giflib-logo.gif"></td>
+          <td align="right"><br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="body" style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+      <p>Ці сторінки пояснюють на рінві біт, що всередині GIF, та надаються в
+        надії, що вони будуть корисні для програмістів при використанні GIFLIB.</p>
+      <p>Пояснення розбите на три частини:</p>
+      <p></p>
+      <ol>
+        <li><a href="http://giflib.sourceforge.net/whatsinagif/bits_and_bytes.html">Біти
+            та байти</a><span> </span>- спочатку ми подивимось на формат файла,
+          що утворює файл GIF</li>
+        <li><a href="http://giflib.sourceforge.net/whatsinagif/lzw_image_data.html">Дані
+            зображення LZW</a><span> </span>- ближчий погляд на те, як
+          зображення зтискаєтсья в GIF файлі</li>
+        <li><a href="http://giflib.sourceforge.net/whatsinagif/animation_and_transparency.html">Прозорість
+            та анімація</a><span> </span>- як роблять найбільш просунуті
+          можливості GIF</li>
+      </ol>
+    </div>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Вдячність:
+      більшість цього матеріалу було написано одним Mike Flickinger в 2005му
+      році, хоча він був значною мірою переписаний та поширений для GIFLIB. Всі
+      ілюстрації його власні. </p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+    </p>
+    <table summary="Canned page header" style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"
+      bgcolor="#ddd" cellpadding="0" width="100%">
+      <tbody>
+        <tr>
+          <td style="width: 1023.17px;">
+            <h2>Біти та байти</h2>
+          </td>
+          <td style="width: 233.83px;" align="center"><img src="http://giflib.sourceforge.net/giflib-logo.gif"></td>
+          <td align="right"><br>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div id="body" style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+      <p>Авторитетним джерелом щодо смісту GIF є специфікація<span> </span><a href="http://giflib.sourceforge.net/gif89.txt">GIF89a</a>.
+        Оригінально розроблений на CompuServe в пізніх 1980х, тепер це стандарт
+        W3C.</p>
+      <p>Файл GIF fутворюється з послідовності блоків даних. Перші два блоки
+        мають фіксовану довжину та фіксований формат. Інші мають змінну довжину,
+        але описують себе; вони складаються з байту, що ідентифікує тип блоку,
+        за яким слідує байт довжини корисних даних, за яким слідують корисні
+        дані.&nbsp;</p>
+      <p>Наступна диаграмма показує всі різні типи блоків, та де вони можуть
+        бути в файлі. Кожний шлях зі стрілками відповідає до валідної
+        послідовності блоків. Зокрема, велика центральна секція, може
+        повторюватись декілька разів.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/gif_file_stream.gif"
+          alt="GIF file stream diagram" style="border: 1px solid black;" height="220"
+          width="700"></p>
+      <p>Ми вивчимо більше на прикладі простого GIF. Ви можете бачити простий
+        файл, та його відповідні байти.&nbsp;</p>
+      <table>
+        <tbody>
+          <tr>
+            <td style="text-align: center; vertical-align: top; padding: 5px; width: 256px;">
+              <h3>Дійсни&nbsp;&nbsp; й розмір</h3>
+              <img src="http://giflib.sourceforge.net/whatsinagif/sample_1.gif"
+                alt="sample gif, actual size" title="Actual Size" style="padding: 20px;"
+                height="10" width="10"><br>
+              (10x10)</td>
+            <td style="text-align: center; vertical-align: top; padding: 5px; width: 255px;">
+              <h3>Збільшено</h3>
+              <img src="http://giflib.sourceforge.net/whatsinagif/sample_1_enlarged.gif"
+                alt="sample gif, enlarged" title="Enlarged" height="100" width="100"><br>
+              (100x100)</td>
+            <td style="vertical-align: top; padding: 5px; width: 786px;">
+              <h3>Байти</h3>
+              <span class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">47<span>&nbsp;</span></span><span
+                class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">49<span>&nbsp;</span></span><span
+                class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">46<span>&nbsp;</span></span><span
+                class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">38<span>&nbsp;</span></span><span
+                class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">39<span>&nbsp;</span></span><span
+                class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">61<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">0A<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">0A<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">91<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+                class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF</span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">21<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">F9<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">04<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+                class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">2C<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">0A<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">0A<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">02</span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">16<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">8C<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">2D<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">99<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">87<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">2A<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">1C<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">DC<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">33<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">A0<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">02<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">75<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">EC<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">95<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">FA<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">A8<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">DE<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">60<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">8C<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">04<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">91<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">4C</span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">01<span>&nbsp;</span></span><span
+                class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">00<span>&nbsp;</span></span><span
+                class="byte gif_trailer" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">3B</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <p>Зауважте, що в цьому простому файлі представлені не всі можливі типи
+        блоків. Пізніше ми запровадимо приклади інших типів блоків, коли це буде
+        доцільно. Різні типи блоків включають:<span>&nbsp;</span><span style="color: black;"></span><span
+          style="color: black;">заголовок</span>,<span> </span>логічний
+        дескриптор екрану,<span>&nbsp;</span><span style="color: black;">глобальна
+          таблиця кольорів</span>,<span> </span><span style="color: black;">розширення
+          графічного контролю</span>,<span> </span><span style="color: black;">дескриптор
+          зображення</span>,<span> локальна таблиця кольорів</span>,<span> дані
+          зображення</span>,<span> </span>просте текстове розширення,<span>
+          розширення застосування</span>,<span> розширення коментаря</span>, та
+        трейлер. Давайте почнемо з першого блоку!</p>
+      <h3><a name="header_block">Блок заголовку</a> </h3>
+      <p>З файла приклада:<span>&nbsp;</span><span class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">47<span>&nbsp;</span></span><span
+          class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">49<span>&nbsp;</span></span><span
+          class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">46<span>&nbsp;</span></span><span
+          class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">38<span>&nbsp;</span></span><span
+          class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">39<span>&nbsp;</span></span><span
+          class="byte gif_header" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">61</span></p>
+      <p>Всі GIF файли повинні починатись з блоку заголовка. Заголовок займає
+        перші шість байтів файла. Ці байти повинні всі відповідати до кодової
+        таблиці <span></span><a href="http://www.ascii.cl/">ASCII</a>. Перші
+        три байти називаютсья&nbsp;<strong>сигнатурою</strong>. Вони завжди
+        повинні бути "GIF" (тобто, 47="G", 49="I", 46="F"). Наступні три задають
+        <strong>версію</strong> специфікації, що була використана для кодування
+        зображення.</p>
+      <p>Звичайно рядок версії повинен бути або "89a" (тобто, 38="8", 39="9",
+        61="a") або "87a" (тобто, 38="8", 37="7", 61="a"). Всі сучасні програми
+        обробки&nbsp; GIF розпізнають обоє версії. Для максимальної сумісності
+        GIFLIB буде звичайно записувати сигнатуру 87a, якщо файл не містить
+        можливостей GIF89.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/header_block.gif"
+          alt="GIF header block layout" style="border: 1px solid black;"></p>
+      <h3><a name="logical_screen_descriptor_block">Логічний дескриптор екрана (LSD)</a>
+      </h3>
+      <p>З файла приклада:<span>&nbsp;</span><span class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">0A<span>&nbsp;</span></span><span
+          class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+          class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">0A<span>&nbsp;</span></span><span
+          class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+          class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">91<span>&nbsp;</span></span><span
+          class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00<span>&nbsp;</span></span><span
+          class="byte gif_screen" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(200, 219, 217);">00</span></p>
+      <p>LSD завжди безпосередньо слідує за заголовком. Цей блок каже декодеру,
+        скільки місця буде займати це зображення. Він завжди рівно сім байт
+        довжиною. Він починається з <span></span><strong>ширини полотна&nbsp;</strong><span></span>та<span>
+        </span><strong>висоти полотна</strong>. Ці значення можуть бути знайдені
+        в перших двох парах байтах кожний. Обоє 16-бітові беззнакові цілі
+        (0-65,535).</p>
+      <p>Як і завжди з іншими мульти-байтними значеннями в GIF форматі, найменш
+        значущий байт зберігається першим (little-endian формат). Це означає, що
+        повинні читати&nbsp;<span></span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">0A<span>&nbsp;</span></span><span
+          class="byte" style="font-family: Courier, fixed; padding: 0.2em;">00</span>з
+        потока байтів, та після цього записувати як<span></span> 10. Такич
+        чином, ширина зображення-приклада є 10 пікселів. Як наступний приклад,
+        255 має зберігатись як<span> </span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">FF<span>&nbsp;</span></span><span
+          class="byte" style="font-family: Courier, fixed; padding: 0.2em;">00<span>
+            , але</span></span>256 буде<span> </span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">00<span>&nbsp;</span></span><span
+          class="byte" style="font-family: Courier, fixed; padding: 0.2em;">01<span>&nbsp;</span></span>.</p>
+      <p>Ширина та висота полотна зазвичай ігнорується сучаними переглядачами.
+        Формат GIF, здається, був розроблений з ідеєю, що переглядачі будуть
+        малювати декілька зображень GIF на загальних полотнах, даючи ефект стіни
+        зображень. Але сьогодні мульти-зображення в GIF загалом використовуються
+        як анімації, в яких кожне суб-зображення є фреймом, або бібліотеками
+        зображень, де GIF клієнт обробляє композицію в деяке полотно, про яке
+        формат GIF не має інформації. Таким чином, ширина та висота полотна в
+        основному є старим непотрібом. Однак GIFLIB отримує їх, та дозволяє вам
+        встановлювати ці значення.&nbsp;</p>
+      <p>Наступне поле містить чотири поля запакованих даних, "логічний
+        дескриптор екрана". Щоб зрозуміти його, нам треба розширити байт&nbsp;<span>
+        </span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">91<span>
+          </span></span>до двійникового<span> </span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">10010001</span><span>
+          та подивитись на поля в ньому</span>.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/logical_screen_desc_block.gif"
+          alt="GIF logical screen descriptor block layout" style="border: 1px solid black;"></p>
+      <p>Перший (самий значущий) біт є&nbsp;<span></span><strong>флагом
+          глобальної таблиці кольорів (GCT)</strong>. Якщо він є 0, тоді
+        глобальної таблиці кольорів немає. Якщо це 1, тоді глобальна таблиця
+        присутня, та іде наступною. В нашому простому зображенні ми можемо
+        бачити, що у нас є глобальна таблиця (що зазвичай буде саме так).</p>
+      <p></p>
+      <p>Наступні три біти є&nbsp;<span></span><strong>розрішенням кольору</strong>.
+        Вони мають сенс тільки при наявності глобальної таблиці кольорів, та
+        дозволяють вам обчислити її розмір. Якщо значення уього поля N, число
+        входжень в глобальній таблиці кольлорів буде 2 ^ (N+1) - тобто, два
+        піднесене в ступінь (N+1). Таким чином,<span> </span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">001</span><span>
+          в зображенні-прикладі представляє </span>2 біти/піксель;<span>&nbsp;</span><span
+          class="byte" style="font-family: Courier, fixed; padding: 0.2em;">111</span><span>
+        </span>представлятиме 8 біт/піксель.</p>
+      <p>Тут формат GIF виявляє свій вік. Більш сучасні розробки можуть просто
+        розміщувати байт або два для довжини таблиці кольора. Але GIF був
+        розроблений, коли пам'ять була значно більш коштовною, ніж сьогодні, та
+        розробники відчували потужний тиск економити кожний біт. Слідоцтвом є
+        те, що довжина таблиці кольорів має бути точною степінню двох. Це,
+        навпаки, може змусити втрату пам'яті в зображеннях з непарним числом
+        кольорів.</p>
+      <p>Наступний поодинокий біт є&nbsp;<span></span><strong>флагом сортування</strong>.
+        Якщо це значення є 1, тоді кольори в глобальній таблиці кольорів
+        відсортовані в порядку "зменшення важливості", що зазвичай означає
+        "зменшення частоти" в зображенні. Це може допомогти декодеру зображення,
+        але це не потрібно. В файлі-прикладі це значення залишене в 0.</p>
+      <p>Флаг сортування відзеркалює високу вартість пам'яті з дуальним портом
+        на час, коли була написана специфікація GIF в кінці 1980х. Цей різновид
+        обмежень зник в середині 1990х, та сучасне програмне забезпечення
+        ігнорує цей флаг. До версії 5.0, GIFLIB ігнорував його на вході, та
+        обнуляв на виході; 5.0 та пізніші версії читають та зберігають його.</p>
+      <p>Наступний байт дає нам&nbsp;<span></span><strong>індекс фонового
+          кольору</strong>. Цей байт має значення тільки в випадку, якщо флаг
+        GCT встановлений в 1, та якщо GCT немає, він має бути встановлений в 0.
+        Щоб зрозуміти його, ви маєте пам'ятати про оригінальну для GIF модель
+        малювання "стіни зображень", коли меньші суб-зображення компонуються в
+        більші полотна. Він представляє, який індекс в глобальній таблиці
+        кольорів повинно використовувати для пікселів на віртуальному полотні,
+        що не перекриті зображенням. GIFLIB підтримує читання та встановлення
+        цього байта, але сучасні переглядачі загалом не мають для нього
+        призначення.</p>
+      <p>Останній байт дескриптора логічного екрана є&nbsp;<span></span><strong>коефіціентом
+          викривлення пікселя</strong>. Сучасні переглядачі не використовують
+        його. До 5.0, GIFLIB ігнорував цей флаг на вході, та зануляв на виході;
+        тепер він читається та зберігається, якщо присутній. Стандарт GIF не дає
+        його пояснення, але виглядає, що розробники призначали його для
+        представлення зображень, захоплених з аналогового телебачення тих часів,
+        що мав прямокутний еквівалент пікселів. Специфікація GIF каже, що якщо
+        для цього байта було задане значення N, дійсне відношення буде (N + 15)
+        / 64 для всіх N&lt;&gt;0<a name="global_color_table_block"><br>
+        </a></p>
+      <h3><a name="global_color_table_block">Глобальна таблиця кольорів, GCT</a>
+      </h3>
+      <p>З файла-приклада:<span>&nbsp;</span><span class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">FF<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00<span>&nbsp;</span></span><span
+          class="byte gif_color" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(225, 225, 225);">00</span></p>
+      <p>GIFs може мати або&nbsp;<span></span><strong>глобальну таблицю кольорів
+          (GCT)</strong><span>, або локальну таблицю кольорів LCT для кожного
+          суб-зображення</span>. Кожна таблиця кольорів складається з компонент
+        кольлорів RGB (Red-Green-Blue), по три байти на кожний колір, кожний від
+        0 (менший) до 255. Колір (0,0,0) є чорним, (255,255,255) білий. Інші
+        чисті кольори є червоний (255,0,0), зелений (0,255,0) та синій
+        (0,0,255).</p>
+      <p>Як зазначалось раніше, довжина GCT є 2^(N+1), де N надходить з LCD.
+        Таблиця буде займати 3*2^(N+1) байт в потоці.</p>
+      <div style="text-align: center;">
+        <table id="global_color_size" style="margin-left: auto; margin-right: auto; border: 1px solid black;">
+          <tbody>
+            <tr>
+              <th>Size In Logical<br>
+                Screen Desc</th>
+              <th>Number Of<br>
+                Colors</th>
+              <th>Byte<br>
+                Length</th>
+            </tr>
+            <tr>
+              <td style="text-align: center;">0</td>
+              <td style="text-align: center;">2</td>
+              <td style="text-align: center;">6</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">1</td>
+              <td style="text-align: center;">4</td>
+              <td style="text-align: center;">12</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">2</td>
+              <td style="text-align: center;">8</td>
+              <td style="text-align: center;">24</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">3</td>
+              <td style="text-align: center;">16</td>
+              <td style="text-align: center;">48</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">4</td>
+              <td style="text-align: center;">32</td>
+              <td style="text-align: center;">96</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">5</td>
+              <td style="text-align: center;">64</td>
+              <td style="text-align: center;">192</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">6</td>
+              <td style="text-align: center;">128</td>
+              <td style="text-align: center;">384</td>
+            </tr>
+            <tr>
+              <td style="text-align: center;">7</td>
+              <td style="text-align: center;">256</td>
+              <td style="text-align: center;">768</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Наш простий файл має розмір GCT 1. Це означає, що число кольорів
+        2^(1+1)=2^2=4. Це займе 12, (3*4) байт. Ми читаємо кольлори по три байти
+        за раз. Перший колір за індексом 0 білий #FFFFFF, другий червоний
+        #FF0000, потім з індексом 2 синій #0000FF (blue), останній чорний
+        #000000. Номери індексів стануть важливі, коли ми будемо декодувати
+        справжні дані зображень. </p>
+      <p>Зауважте, що блок є опціональний. Не кожний GIF має задавати таблицю
+        кольорів. Однак якщо флаг GCT встановлений в LSD, GCT має безпосередньо
+        іти за блоком LSD.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/global_color_table.gif"
+          alt="GIF global color table block layout" style="border: 1px solid black;"></p>
+      <h2><a name="graphics_control_extension_block">Розширення контролю графіки
+          (GCExt)</a></h2>
+      <p>З файлу-прикладу<span> </span><span class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">21</span><span>&nbsp;</span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">F9<span>&nbsp;</span></span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">04<span>&nbsp;</span></span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00</span><span>&nbsp;</span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00<span>&nbsp;</span></span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00</span><span>&nbsp;</span><span
+          class="byte gif_graphic" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 235, 157);">00</span></p>
+      <p>Блоки GCExt використовуються для задання прозорості та контролю за
+        анімацією. Вони є опціональним розширенням GIF89. Семантика цього
+        розширення детально буде описана в наступному розділі (дивіться<span> </span><a
+          href="http://giflib.sourceforge.net/whatsinagif/animation_and_transparency.html">Прозорість
+          та анімація</a>); тут для повноти ми тільки перелічимо поля даних.</p>
+      <p>Перший байт любого розширення завжди&nbsp;<span></span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">21</span>(ми
+        будемо ігнорувати цей факт в подальшому - <em>прим.перекл.</em>). Далі
+        іде <strong>лейбл типу розширення</strong><span> </span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">F9</span>, що
+        позначає, що це GCExt. Третім іде <strong>розмір блоку</strong> в
+        байтах. Далі запаковане поле. Біти 1-3 разервовані, біти 4-6 є<span> </span><strong>метод
+          видалення</strong>. Передостанній біт є&nbsp;<span></span><strong>флаг
+          користувацького вводу</strong><span>, та останній є <strong>флагом
+            прозорого кольору</strong></span>. Значення <strong>часу затримки </strong>слідує
+        в останніх двох беззнакових байтах. Після цього іде байт&nbsp;<span></span><strong>індексу
+          прозорого кольору</strong>. Нарешті, ми маємо&nbsp;<span></span><strong>термінатор
+          блоку</strong><span>, що завжди є&nbsp;</span><span> </span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">00</span>.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/graphic_control_ext.gif"
+          alt="GIF graphic control extension block layout" style="border: 1px solid black;"></p>
+      <h2><a name="image_descriptor_block">Image Descriptor</a></h2>
+      <p>З файлу-прикладу<span> </span><span class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">2C<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">0A<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">0A<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00<span>&nbsp;</span></span><span
+          class="byte gif_imgdesc" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(194, 209, 220);">00</span></p>
+      <p>A single GIF file may contain multiple images. In the original GIF
+        rendering model these wwere meant to be composited onto a larger virtual
+        canvas. Nowadays nultiple images are normally used for animations.</p>
+      <p>Each image begins with an image descriptor block. This block is exactly
+        10 bytes long.</p>
+      <p>The first byte is the<span>&nbsp;</span><strong>image separator</strong>.
+        Every image descriptor begins with the value<span>&nbsp;</span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">2C</span>. The
+        next 8 bytes represent the location and size of the following image.</p>
+      <p>An image in the stream may not necessarily take up the entire canvas
+        size defined by the logical screen descriptor. Therefore, the image
+        descriptor specifies the<span>&nbsp;</span><strong>image left position</strong><span>&nbsp;</span>and<span>&nbsp;</span><strong>image
+          top position</strong><span>&nbsp;</span>of where the image should
+        begin on the canvas. Both these fields are usually ignored by modern
+        viewers and browsers.</p>
+      <p>Next, this block specifies the<span>&nbsp;</span><strong>image width</strong><span>&nbsp;</span>and<span>&nbsp;</span><strong>image
+          height</strong>. Each of these values is in the two-byte, unsigned
+        little-endian format. Our sample image indicates that the image starts
+        at (0,0) and is 10 pixels wide by 10 pixels tall. (This image does take
+        up the whole canvas size.)</p>
+      <p>The last byte is another packed field. In our sample file this byte is
+        0 so all of the sub-values will be zero. The first (most significant)
+        bit in the byte is the<span>&nbsp;</span><strong>local color table flag</strong>.
+        Setting this flag to 1 allows you to specify that the image data that
+        follows uses a different color table than the global color table. (More
+        information on the local color table follows.)</p>
+      <p>The second bit is the<span>&nbsp;</span><strong>interlace flag</strong>.
+        Interlacing changes the way images are rendered onto the screen in a way
+        that may reduce annoying visual flicker. The effect of interlacing on a
+        display is that the first pass of appears immediately, displaying the
+        graphic as a first as a blur and then sharpenining it up as later passes
+        fill in lines. That allows the human viewer to at least get an idea of
+        what's coming up rather than waiting for the entire image to be painted,
+        line by line.<span>&nbsp;</span><a href="http://webtutor.tamu.edu/lesson6/interlace.html">See
+          an example</a>. To support this, the scan lines of the image need to
+        be stored in a different order than the normal top-down, separated into
+        sections that will be rendered in four separate passes.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/image_descriptor_block.gif"
+          alt="GIF image descriptor block layout" style="border: 1px solid black;"></p>
+      <h2><a name="local_color_table_block">Local Color Table</a></h2>
+      <p>A local color table is organized the same as a global color table. The
+        local color table would always immediately follow an image descriptor
+        but will only be there if the local color table flag is set to 1. It is
+        effective only for the block of image data that immediately follows it.
+        If no local color table is specified, the global color table is used for
+        the following image data.</p>
+      <p>The size of the local color table can be calculated by the value given
+        in the image descriptor. Just like with the global color table, if the
+        image descriptor specifies a size of N, the color table will contain
+        2^(N+1) colors and will take up 3*2^(N+1) bytes.</p>
+      <h2><a name="image_data_block">Image Data</a></h2>
+      <p>З файлу-прикладу<span> </span><span class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">02<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">16<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">8C<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">2D<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">99<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">87<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">2A<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">1C<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">DC<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">33<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">A0<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">02<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">75<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">EC<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">95<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">FA<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">A8<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">DE<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">60<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">8C<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">04<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">91<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">4C<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">01<span>&nbsp;</span></span><span
+          class="byte gif_imgdata" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 196, 196);">00</span></p>
+      <p>Finally we get to the actual image data. The image data is composed of
+        a series of output codes which tell the decoder which colors to emit to
+        the canvas. These codes are combined into the bytes that make up the
+        block.</p>
+      <p>There's another section on decoding these output code into an image
+        (see<span>&nbsp;</span><a href="http://giflib.sourceforge.net/whatsinagif/lzw_image_data.html">LZW
+          Image Data</a>). Here we'll just see how to determine how long the
+        block will be.</p>
+      <p>The first byte of this block is the<span>&nbsp;</span><strong>LZW
+          minimum code size</strong>. This value is used to decode the
+        compressed output codes. (Again, see the section on<span>&nbsp;</span><a
+          href="http://giflib.sourceforge.net/whatsinagif/lzw_image_data.html">LZW
+          compression</a><span>&nbsp;</span>to see how this works.) The rest of
+        the bytes represent<span>&nbsp;</span><em>data sub-blocks</em>. Data
+        sub-blocks are are groups of 1 - 256 bytes. The first byte in the
+        sub-block tells you how many bytes of actual data follow. This can be a
+        value from 0 (<span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">00</span>)
+        it 255 (<span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">FF</span>).
+        After you've read those bytes, the next byte you read will tell you now
+        many more bytes of data follow that one. You continue to read until you
+        reach a sub-block that says that zero bytes follow.</p>
+      <p>You can see our sample file has a LZW minimum code size of 2. The next
+        byte tells us that 22 bytes of data follow it (<span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">16</span><span>&nbsp;</span>hex
+        = 22). After we've read those 22 bytes, we see the next value is 0. This
+        means that no bytes follow and we have read all the data in this block.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/image_data_block.gif"
+          alt="GIF image data block layout" style="border: 1px solid black;"></p>
+      <h2><a name="plain_text_extension_block">Plain Text Extension</a></h2>
+      <p>Example (not in the sample file):<span>&nbsp;</span><span class="byte gif_ext"
+          style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">21<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">01<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">0C<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">64<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">64<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">14<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">14<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">01<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">0B<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">68<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">65<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">6C<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">6C<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">6F<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">20<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">77<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">6F<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">72<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">6C<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">64<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00</span></p>
+      <p>The GIF89 specification allows you to specify text captions to be
+        overlayed on the following image. This feature never took off; browsers
+        and image-processing applications such as Photoshop ignore it, and
+        GIFLIB doesn't try to interpret it.</p>
+      <p>The block begins with an<span>&nbsp;</span><strong>extension introducer</strong><span>&nbsp;</span>as
+        all extension block types do. This value is always<span>&nbsp;</span><span
+          class="byte" style="font-family: Courier, fixed; padding: 0.2em;">21</span>.
+        The next byte is the<span>&nbsp;</span><strong>plain text label</strong>.
+        This value of<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">01</span><span>&nbsp;</span>is
+        used to distinguish plain text extensions from all other extensions. The
+        next byte is the<span>&nbsp;</span><strong>block size</strong>. This
+        tells you how many bytes there are until the actual text data begins, or
+        in other words, how many bytes you can now skip. The byte value will
+        probably be<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">0C</span><span>&nbsp;</span>which
+        means you should jump forward 12 bytes. The text that follows is encoded
+        in data sub-blocks (see<span>&nbsp;</span><a href="http://giflib.sourceforge.net/whatsinagif/bits_and_bytes.html#image_data_block">Image
+          Data</a><span>&nbsp;</span>to see how these sub-blocks are formed).
+        The block ends when you reach a sub-block of length 0.</p>
+      <h2><a name="application_extension_block">Application Extension</a></h2>
+      <p>Example (not in sample file):<span>&nbsp;</span><span class="byte gif_ext"
+          style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">21<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">FF<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">0B<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">4E<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">45<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">54<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">53<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">43<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">41<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">50<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">45<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">32<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">2E<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">30<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">03<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">01<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">05<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00</span></p>
+      <p>The GIF89 specification allows for application-specific information to
+        be embedded in the GIF file itself. This capability is not much used.
+        About the only known public one is the Netscape 2.0 extension (described
+        below) which is used to loop an animated GIF file. We'll go into more
+        detail on looping in when we talk about<span>&nbsp;</span><a href="http://giflib.sourceforge.net/whatsinagif/animation_and_transparency.html">animation</a>.</p>
+      <p>The Netscape 2.0 looping block must appear immediately after the global
+        color table of the logical screen descriptor. It is 19 bytes long.</p>
+      <pre>byte  1        : 33 (hex 0x21) GIF Extension code
+byte  2        : 255 (hex 0xFF) Application Extension Label
+byte  3        : 11 (hex 0x0B) Length of Application Block
+                 (eleven bytes of data to follow)
+bytes 4 to 11  : "NETSCAPE"
+bytes 12 to 14 : "2.0"
+byte  15       : 3 (hex 0x03) Length of Data Sub-Block
+                 (three bytes of data to follow)
+byte  16       : 1 (hex 0x01)
+bytes 17 to 18 : 0 to 65535, an unsigned integer in
+                 little-endian byte format. This specifies the
+                 number of times the loop should
+                 be executed.
+byte  19       : 0 (hex 0x00) a Data Sub-Block Terminator.
+</pre>
+      <p></p>
+      <p>As with all extensions, we start with<span>&nbsp;</span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">21</span><span>&nbsp;</span>which
+        is the<span>&nbsp;</span><strong>extension introducer</strong>. Next is
+        the<span>&nbsp;</span><strong>extension label</strong><span>&nbsp;</span>which
+        for application extensions is<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">FF</span>.
+        The next value is the<span>&nbsp;</span><strong>block size</strong><span>&nbsp;</span>which
+        tells you how many bytes there are before the actual application data
+        begins. This byte value should be<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">0B</span><span>&nbsp;</span>which
+        indicates 11 bytes. These 11 bytes hold two pieces of information. First
+        is the<span>&nbsp;</span><strong>application identifier</strong><span>&nbsp;</span>which
+        takes up the first 8 bytes. These bytes should contain ASCII character
+        codes that identify to which application the extension belongs. In the
+        case of the example above, the application identifier is "NETSCAPE"
+        which is conveniently 8 characters long. The next three bytes are the<span>&nbsp;</span><strong>application
+          authentication code</strong>. The spec says these bytes can be used to
+        "authenticate the application identifier." With the Netscape 2.0
+        extension, this value is simply a version number, "2.0", hence the
+        extensions name. What follows is the application data broken into data
+        sub-blocks. As with the other extensions, the block terminates when you
+        read a sub-block that has zero bytes of data.</p>
+      <h2><a name="comment_extension_block">Comment Extension</a></h2>
+      <p>Example (not in sample file):<span>&nbsp;</span><span class="byte gif_ext"
+          style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">21<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">FE<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">09<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">62<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">6C<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">75<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">65<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">62<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">65<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">72<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">72<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">79<span>&nbsp;</span></span><span
+          class="byte gif_ext" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(208, 207, 174);">00</span></p>
+      <p>One last GIF89 extension type is the comment extension. This allows you
+        to embed ASCII text in a GIF file, and is sometimes used to include an
+        image description, image credit, or other human-readable metadata such
+        as the GPS location of the image capture.</p>
+      <p>It's probably no surprise by now that the first byte is the<span>&nbsp;</span><strong>extension
+          introducer</strong><span>&nbsp;</span>which is<span>&nbsp;</span><span
+          class="byte" style="font-family: Courier, fixed; padding: 0.2em;">21</span>.
+        The next byte is always<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">FE</span><span>&nbsp;</span>which
+        is the<span>&nbsp;</span><strong>comment label</strong>. Then we jump
+        right to data sub-blocks containing ASCII character codes for your
+        comment. As you can see from the example we have one data sub-block that
+        is 9 bytes long. If you translate the character codes you see that the
+        comment is "blueberry." The final byte,<span>&nbsp;</span><span class="byte"
+          style="font-family: Courier, fixed; padding: 0.2em;">00</span>,
+        indicates a sub-block with zero bytes that follow which let's us know we
+        have reached the end of the block.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/comment_ext.gif"
+          alt="GIF comment extension block layout" style="border: 1px solid black;"></p>
+      <h2><a name="trailer_block">Trailer</a></h2>
+      <p>From sample file:<span>&nbsp;</span><span class="byte gif_trailer" style="font-family: Courier, fixed; padding: 0.2em; background-color: rgb(249, 232, 157);">3B</span></p>
+      <p>The trailer block indicates when you've reached the end of the file. It
+        is always a byte with a value of<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">3B</span>.</p>
+      <p style="text-align: center;"><img src="http://giflib.sourceforge.net/whatsinagif/trailer_block.gif"
+          alt="GIF
+trailer block layout" style="border: 1px solid black;"></p>
+    </div>
+    <h2 style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"><a
+        name="lzw_compression"><br class="Apple-interchange-newline">
+        LZW компресія</a></h2>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">The
+      compression method GIF use is a variant of LZW (Lempel-Ziv-Welch)
+      compression. To start using this method, we need a<span>&nbsp;</span><strong>code
+        table</strong>. This code table will allow us to use special codes to
+      indicate a sequence of colors rather than just one at a time. The first
+      thing we do is to<span>&nbsp;</span><em>initialize the code table</em>. We
+      start by adding a code for each of the colors in the color table. This
+      would be a local color table if one was provided, or the global color
+      table. (I will be starting all codes with "#" to distinguish them from
+      color indexes.)</p>
+    <table class="code_table" style="margin-left: auto; margin-right: auto; border: 1px solid black; color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+      <tbody>
+        <tr>
+          <th style="text-align: left; border-bottom: 1px solid rgb(102, 102, 102);">Code</th>
+          <th style="text-align: left; border-bottom: 1px solid rgb(102, 102, 102);">Color(s)</th>
+        </tr>
+        <tr>
+          <td>#0</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>#1</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>#2</td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>#3</td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>#4</td>
+          <td>Clear Code</td>
+        </tr>
+        <tr>
+          <td>#5</td>
+          <td>End Of Information Code</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">I
+      added a code for each of the colors in the global color table of our
+      sample image. I also snuck in two special control codes. (These special
+      codes are only used in the GIF version of LZW, not in standard LZW
+      compression.) Our code table is now considered initialized.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Let
+      me now explain what those special codes are for. The first new code is the<span>&nbsp;</span><em>clear
+        code</em><span>&nbsp;</span>(CC). Whenever you come across the clear
+      code in the image data, it's your cue to reinitialize the code table.
+      (I'll explain why you might need to do this in a bit.) The second new code
+      is the<span>&nbsp;</span><em>end of information code</em><span>&nbsp;</span>(EOI).
+      When you come across this code, this means you've reached the end of the
+      image. Here I've placed the special codes right after the color codes, but
+      actually the value of the special codes depends on the value of the LZW
+      minimum code size from the image data block. If the LZW minimum code size
+      is the same as the color table size, then special codes immediatly follow
+      the colors; however it is possible to specify a larger LWZ minimum code
+      size which may leave a gap in the codes where no colors are assigned. This
+      can be summarizaed in the<span>&nbsp;</span><a name="color_table_size">following
+        table</a>.</p>
+    <div style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial; text-align: center;">
+      <table id="global_color_size" style="margin-left: auto; margin-right: auto; border: 1px solid black;">
+        <tbody>
+          <tr>
+            <th style="border-bottom: 1px solid rgb(102, 102, 102);">LWZ Min
+              Code<br>
+              Size</th>
+            <th style="border-bottom: 1px solid rgb(102, 102, 102);">Color<br>
+              Codes</th>
+            <th style="border-bottom: 1px solid rgb(102, 102, 102);">Clear<br>
+              Code</th>
+            <th style="border-bottom: 1px solid rgb(102, 102, 102);">EOI<br>
+              Code</th>
+          </tr>
+          <tr>
+            <td style="text-align: center;">2</td>
+            <td style="text-align: center;">#0-#3</td>
+            <td style="text-align: center;">#4</td>
+            <td style="text-align: center;">#5</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">3</td>
+            <td style="text-align: center;">#0-#7</td>
+            <td style="text-align: center;">#8</td>
+            <td style="text-align: center;">#9</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">4</td>
+            <td style="text-align: center;">#0-#15</td>
+            <td style="text-align: center;">#16</td>
+            <td style="text-align: center;">#17</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">5</td>
+            <td style="text-align: center;">#0-#31</td>
+            <td style="text-align: center;">#32</td>
+            <td style="text-align: center;">#33</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">6</td>
+            <td style="text-align: center;">#0-#63</td>
+            <td style="text-align: center;">#64</td>
+            <td style="text-align: center;">#65</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">7</td>
+            <td style="text-align: center;">#0-#127</td>
+            <td style="text-align: center;">#128</td>
+            <td style="text-align: center;">#129</td>
+          </tr>
+          <tr>
+            <td style="text-align: center;">8</td>
+            <td style="text-align: center;">#0-#255</td>
+            <td style="text-align: center;">#256</td>
+            <td style="text-align: center;">#257</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Before
+      we proceed, let me define two more terms. First the<span>&nbsp;</span><strong>index
+        stream</strong><span>&nbsp;</span>will be the list of indexes of the
+      color for each of the pixels. This is the input we will be compressing.
+      The<span>&nbsp;</span><strong>code stream</strong><span>&nbsp;</span>will
+      be the list of codes we generate as output. The<span>&nbsp;</span><strong>index
+        buffer</strong><span>&nbsp;</span>will be the list of color indexes we
+      care "currently looking at." The index buffer will contain a list of one
+      or more color indexes. Now we can step though the LZW compression
+      algorithm. First, I'll just list the steps. After that I'll walk through
+      the steps with our specific example.</p>
+    <ul style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+      <li>Initialize code table</li>
+      <li>Always start by sending a clear code to the code stream.</li>
+      <li>Read first index from index stream. This value is now the value for
+        the index buffer</li>
+      <li>&lt;LOOP POINT&gt;</li>
+      <li>Get the next index from the index stream to the index buffer. We will
+        call this index, K</li>
+      <li>Is index buffer + K in our code table?</li>
+      <li>Yes:
+        <ul>
+          <li>add K to the end of the index buffer</li>
+          <li>if there are more indexes, return to LOOP POINT</li>
+        </ul>
+      </li>
+      <li>No:
+        <ul>
+          <li>Add a row for index buffer + K into our code table with the next
+            smallest code</li>
+          <li>Output the code for just the index buffer to our code steam</li>
+          <li>Index buffer is set to K</li>
+          <li>K is set to nothing</li>
+          <li>if there are more indexes, return to LOOP POINT</li>
+        </ul>
+      </li>
+      <li>Output code for contents of index buffer</li>
+      <li>Output end-of-information code</li>
+    </ul>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Seems
+      simple enough, right? It really isn't all that bad. Let's walk though our
+      sample image to show you how this works. (The steps I will be describing
+      are summarized in the following table. Numbers highlighted in green are in
+      the index buffer; numbers in purple are the current K value.) We have
+      already initialized our code table. We start by doing two things: we
+      output our clear code (#4) to the code stream, and we read the first color
+      index from the index stream, 1, into our index buffer [Step 0].</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Now
+      we enter the main loop of the algorithm. We read the next index in the
+      index stream, 1, into K [Step 1]. Next we see if we have a record for the
+      index buffer plus K in the code stream. In this case we looking for 1,1.
+      Currently our code table only contains single colors so this value is not
+      in there. Now we will actually add a new row to our code table that does
+      contain this value. The next available code is #6, we will let #6 be 1,1.
+      Note that we do not actually send this code to the code stream, instead we
+      send just the code for the value(s) in the index buffer. The index buffer
+      is just 1 and the code for 1 is #1. This is the code we output. We now
+      reset the index buffer to just the value in K and K becomes nothing. [Step
+      2].</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">We
+      continue by reading the next index into K. [Step 3]. Now K is 1 and the
+      index buffer is 1. Again we look to see if there is a value in our code
+      table for the buffer plus K (1,1) and this time there is. (In fact we just
+      added it.) Therefore we add K to the end of the index buffer and clear out
+      K. Now our index buffer is 1,1. [Step 4].</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">The
+      next index in the index stream is yet another 1. This is our new K [Step
+      5]. Now the index buffer plus K is 1,1,1 which we do not have a code for
+      in our code table. As we did before, we define a new code and add it to
+      the code table. The next code would be #7; thus #7 = 1, 1, 1. Now we kick
+      out the code for just the values in the index buffer (#6 = 1,1) to the
+      code stream and set the index buffer to be K. [Step 6].</p>
+    <table class="alg_steps" style="margin: 0px auto; border: 1px solid black; color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"
+      cellspacing="0">
+      <tbody>
+        <tr>
+          <th style="border: 1px solid black;">Step</th>
+          <th style="border: 1px solid black;">Action</th>
+          <th style="border: 1px solid black;">Index Stream</th>
+          <th style="border: 1px solid black;">New Code Table Row</th>
+          <th style="border: 1px solid black;">Code Stream</th>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">0</td>
+          <td style="border: 1px solid black;">Init</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"></span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">1</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"></span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">2</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">#6 - 1, 1</td>
+          <td style="border: 1px solid black;">#4 #1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">3</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">4</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">5</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">6</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">#7 - 1, 1, 1</td>
+          <td style="border: 1px solid black;">#4 #1 #6</td>
+        </tr>
+      </tbody>
+      <tbody id="compress_more">
+        <tr>
+          <td style="border: 1px solid black;">7</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">8</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">9</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">10</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">#8 - 1, 1, 2</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">11</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">12</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">#9 - 2, 2</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">13</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">14</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">15</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">16</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">#10 - 2, 2, 2</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">17</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">18</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">19</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">20</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">#11 - 2, 2, 1</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">21</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">22</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">23</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">24</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="index" style="padding: 0px 0.3em;">1</span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">25</td>
+          <td style="border: 1px solid black;">Read</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span>...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">26</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);"><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">2</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span><span>&nbsp;</span><span
+                class="index" style="padding: 0px 0.3em;">1</span></span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);"><span
+                class="index" style="padding: 0px 0.3em;">1</span></span>...</td>
+          <td style="border: 1px solid black;">#12 - 1, 1, 1, 1</td>
+          <td style="border: 1px solid black;">#4 #1 #6 #6 #2 #9 #9 #7</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">I've
+      included a few more steps to help you see the pattern. You keep going
+      until you run out of indexes in the index stream. When there is nothing
+      new to read, you simply write out the code for whatever values you may
+      have in your index buffer. Finally you should send the end-of-information
+      code to the code stream. In this example, that code is #5. (View the<span>&nbsp;</span><a
+        href="http://giflib.sourceforge.net/whatsinagif/lzw_image_data_code_table.html">complete
+        code table</a>.)</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">As
+      you can see we dynamically built many new codes for our code table as we
+      compressed the data. For large files this can turn into a large number of
+      codes. It turns out that the GIF format specifies a maximum code of #4095
+      (this happens to be the largest 12-bit number). If you want to use a new
+      code, you have to clear out all of your old codes. You do this by sending
+      the clear code (which for our sample was the #4). This tells the decoder
+      that you are reinitializing your code table and it should too. Then you
+      start building your own codes again starting just after the value for your
+      end-of-information code (in our sample, we would start again at #6).</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">The
+      final code stream would look like this:</p>
+    <blockquote style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+      <p>#4 #1 #6 #6 #2 #9 #9 #7 #8 #10 #2 #12 #1 #14 #15 #6 #0 #21 #0 #10 #7
+        #22 #23 #18 #26 #7 #10 #29 #13 #24 #12 #18 #16 #36 #12 #5</p>
+    </blockquote>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">This
+      is only 36 codes versus the 100 that would be required without
+      compression.</p>
+    <h2 style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"><a
+        name="lzw_decompression">LZW Decompression</a></h2>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">At
+      some point we will need to turn this code stream back into a picture. To
+      do this, we only need to know the values in the stream and the size of the
+      color table that was used. That's it. You remember that big code table we
+      built during compression? We actually have enough information in the code
+      stream itself to be able to rebuild it.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Again,
+      i'll list the algorithm and then we will walk though an example. Let me
+      define a few terms i will be using. CODE will be current code we're
+      working with. CODE-1 will be the code just before CODE in the code stream.
+      {CODE} will be the value for CODE in the code table. For example, using
+      the code table we created during compression, if CODE=#7 then
+      {CODE}=1,1,1. In the same way, {CODE-1} would be the value in the code
+      table for the code that came before CODE. Looking at step 26 from the
+      compression, if CODE=#7, then {CODE-1} would be {#9}, not {#6}, which was
+      2,2.</p>
+    <ul style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+      <li>Initialize code table</li>
+      <li>let CODE be the first code in the code stream</li>
+      <li>output {CODE} to index stream</li>
+      <li>&lt;LOOP POINT&gt;</li>
+      <li>let CODE be the next code in the code stream</li>
+      <li>is CODE in the code table?</li>
+      <li>Yes:
+        <ul>
+          <li>output {CODE} to index stream</li>
+          <li>let K be the first index in {CODE}</li>
+          <li>add {CODE-1}+K to the code table</li>
+        </ul>
+      </li>
+      <li>No:
+        <ul>
+          <li>let K be the first index of {CODE-1}</li>
+          <li>output {CODE-1}+K to index stream</li>
+          <li>add {CODE-1}+K to code table</li>
+        </ul>
+      </li>
+      <li>return to LOOP POINT</li>
+    </ul>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Let's
+      start reading though the code stream we've created to show how to turn it
+      back into a list of color indexes. The first value in the code stream
+      should be a clear code. This means we should initialize our code table. To
+      do this we must know how many colors are in our color table. (This
+      information comes from the first byte in the image data block in the file.
+      More on this later.) Again we will set up codes #0-#3 to be each of the
+      four colors and add in the clear code (#4) and end of information code
+      (#5).</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">The
+      next step is to read the first color code. In the following table you will
+      see the values of CODE highlighted in purple, and the values for CODE-1
+      highlighted in green. Our first CODE value is #1. We then output {#1}, or
+      simply 1, to the index stream [Step 0].</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Now
+      we enter the main loop of the algorithm. The next code gets assigned to
+      CODE which now makes that value #6. Next we check to see if this value is
+      in our code table. At this time, it is not. This means we must find the
+      first index in the value of {CODE-1} and call this K. Thus K = first index
+      of {CODE-1} = first index of {#1} = 1. Now we output {CODE-1} + K to the
+      index stream and add this value to our code table. The means we output 1,1
+      and give this value a code of #6 [Step 1].</p>
+    <table class="alg_steps" style="margin: 0px auto; border: 1px solid black; color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"
+      cellspacing="0">
+      <tbody>
+        <tr>
+          <th style="border: 1px solid black;">Step</th>
+          <th style="border: 1px solid black;">Action</th>
+          <th style="border: 1px solid black;">Code Stream</th>
+          <th style="border: 1px solid black;">New Code Table Row</th>
+          <th style="border: 1px solid black;">Index Stream</th>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">0</td>
+          <td style="border: 1px solid black;">Init</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#1</span><span>&nbsp;</span>#6
+            #6 #2 #9 #9 #7 ...</td>
+          <td style="border: 1px solid black;">&nbsp;</td>
+          <td style="border: 1px solid black;">1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">1</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4</span><span>&nbsp;</span><span
+              class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);">#1</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#6</span><span>&nbsp;</span>#6
+            #2 #9 #9 #7 ...</td>
+          <td style="border: 1px solid black;">#6 - 1, 1</td>
+          <td style="border: 1px solid black;">1, 1, 1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">2</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4
+              #1</span><span>&nbsp;</span><span class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);">#6</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#6</span><span>&nbsp;</span>#2
+            #9 #9 #7 ...</td>
+          <td style="border: 1px solid black;">#7 - 1, 1, 1</td>
+          <td style="border: 1px solid black;">1, 1, 1, 1, 1</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">3</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4
+              #1 #6</span><span>&nbsp;</span><span class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);">#6</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#2</span><span>&nbsp;</span>#9
+            #9 #7 ...</td>
+          <td style="border: 1px solid black;">#8 - 1, 1, 2</td>
+          <td style="border: 1px solid black;">1, 1, 1, 1, 1, 2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">4</td>
+          <td style="border: 1px solid black;">Not Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4
+              #1 #6 #6</span><span>&nbsp;</span><span class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);">#2</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#9</span><span>&nbsp;</span>#9
+            #7 ...</td>
+          <td style="border: 1px solid black;">#9 - 2, 2</td>
+          <td style="border: 1px solid black;">1, 1, 1, 1, 1, 2, 2, 2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">5</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4
+              #1 #6 #6 #2</span><span>&nbsp;</span><span class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);">#9</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#9</span><span>&nbsp;</span>#7
+            ...</td>
+          <td style="border: 1px solid black;">#10 - 2, 2, 2</td>
+          <td style="border: 1px solid black;">1, 1, 1, 1, 1, 2, 2, 2, 2, 2</td>
+        </tr>
+        <tr>
+          <td style="border: 1px solid black;">6</td>
+          <td style="border: 1px solid black;">Found</td>
+          <td style="border: 1px solid black;"><span class="processed" style="color: rgb(204, 204, 204);">#4
+              #1 #6 #6 #2 #9</span><span>&nbsp;</span><span class="buffer" style="background: url(&quot;highlight_green.gif&quot;) left center repeat-x rgb(200, 219, 217); border-top: 1px solid rgb(170, 162, 162); border-bottom: 1px solid rgb(170, 162, 162);">#9</span><span>&nbsp;</span><span
+              class="current" style="background: url(&quot;highlight_purple.gif&quot;) left center repeat-x rgb(208, 196, 196); border-top: 1px solid rgb(152, 165, 164); border-bottom: 1px solid rgb(152, 165, 164);">#7</span><span>&nbsp;</span>...</td>
+          <td style="border: 1px solid black;">#11 - 2, 2, 1</td>
+          <td style="border: 1px solid black;">1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 1,
+            1, 1</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">We
+      start the loop again by reading the next code. CODE now would be #6 and
+      this time we do have a record for this code in our code table. Thus we
+      dump {#6} to the index stream which would be 1,1. Now we take the first
+      index in {#6} and call that K. Here, {#6} has two indexes, the first of
+      which is 1; thus K = 1. Before moving on, we add {CODE-1}+K to the code
+      table. This #7 is now 1, 1, 1 [Step 2].</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">I've
+      included a few more steps so you can see the algorithm in action. While
+      the explanation may sound complicated, you can see it's actually quite
+      simple. You'll also notice that you end up building the exact same<span>&nbsp;</span><a
+        href="http://giflib.sourceforge.net/whatsinagif/lzw_image_data_code_table.html">code
+        table</a><span>&nbsp;</span>as the one that was created during
+      compression. This is the reason that LZW is so great; we can just share
+      the codes and not the table.</p>
+    <h2 style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;"><a
+        name="lzw_bytes">Saving the Code Stream as Bytes</a></h2>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">I've
+      shown you how to go back and forth between index and code stream, but
+      haven't told you what to do with them. The index stream is used to specify
+      the color of each of the pixel of your image and really only shows up on
+      screen. It is the code stream that is actually saved in the GIF files on
+      your computer or transmitted over the internet. In order to save these
+      code streams, we must turn them into bytes. The first thought might be to
+      store each of the codes as its own byte; however this would limit the max
+      code to just #255 and result in a lot of wasted bits for the small codes.
+      To solve these problems, the GIF file format actually uses flexible<span>&nbsp;</span><em>code
+        sizes</em>.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Flexible
+      code sizes allow for further compression by limiting the bits needed to
+      save the code stream as bytes. The<span>&nbsp;</span><em>code size</em><span>&nbsp;</span>is
+      the number of bits it takes to store the value of the code. When we talk
+      about bits, we're referring to the 1's and 0's that make up a byte. The
+      codes are converted to their binary values to come up with the bits. To
+      specify the code for #4, you would look at this binary equivalent, which
+      is 100, and see that you would need three bits to store this value. The
+      largest code value in our sample code stream is #36 (binary: 100100) which
+      would take 6 bits to encode. Note that the number of bits i've just given
+      is the minimum number. You can make the number take up more bits by adding
+      zeros to the front.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial; text-align: center;"><img
+        src="http://giflib.sourceforge.net/whatsinagif/image_data_block.gif" alt="GIF image data block layout"
+        style="border: 1px solid black;"></p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">We
+      need a way to know what size each of the codes are. Recall that the image
+      data block begins with a single byte value called the<span>&nbsp;</span><em>LZW
+        minimum code size</em>. The GIF format allows sizes as small as 2 bits
+      and as large as 12 bits. This minimum code size value is typically the
+      number of bits/pixel of the image. So if you have 32 colors in your image,
+      you will need 5 bits/pixel (for numbers 0-31 because 31 in binary is
+      11111). Thus, this will most likely be one more than the bit value for the
+      size of the color table you are using. (Even if you only have two colors,
+      the minimum code size most be at least 2.) Refer to the<span>&nbsp;</span><a
+        href="http://giflib.sourceforge.net/whatsinagif/lzw_image_data.html#color_table_size">code
+        table above</a><span>&nbsp;</span>to remind yourself how that works.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Here's
+      the funny thing: the value for minimum code size isn't actually the
+      smallest code size that's used in the encoding process. Because the
+      minimum code size tells you how many bits are needed just for the
+      different colors of the image, you still have to account for the two
+      special codes that we always add to the code table. Therefore the actual
+      smallest code size that will be used is one more than the value specified
+      in the "minimum" code size byte. I'll call this new value the<span>&nbsp;</span><em>first
+        code size</em>.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">We
+      now know how many bytes the first code will be. This size will probably
+      work for the next few codes as well, but recall that the GIF format allows
+      for flexible code sizes. As larger code values get added to your code
+      table, you will soon realize that you need larger code sizes if you were
+      to output those values. When you are encoding the data, you increase your
+      code size as soon as your write out the code equal to 2^(current code
+      size)-1. If you are decoding from codes to indexes, you need to increase
+      your code size as soon as you add the code value that is equal to
+      2^(current code size)-1 to your code table. That is, the next time you
+      grab the next section of bits, you grab one more.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Note
+      that the largest code size allowed is 12 bits. If you get to this limit,
+      the next code you encounter should be the<span>&nbsp;</span><em>clear code</em><span>&nbsp;</span>which
+      would tell you to reinitialize the code table. You then go back to using
+      the first code size and grow again when necessary.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Jumping
+      back to our sample image, we see that we have a minimum code size value of
+      2 which means out first code size will be 3 bits long. Out first three
+      codes, #1 #6 and #6, would be coded as 001 110 and 110. If you see at Step
+      6 of the encoding, we added a code of #7 to our code table. This is our
+      clue to increase our code size because 7 is equal to 2^3-1 (where 3 is our
+      current code size). Thus, the next code we write out, #2, will use the new
+      code size of 4 and therefore look like 0010. In the decoding process, we
+      again would increase our code size when we read the code for #7 and would
+      read the next 4, rather than the next 3 bits, to get the next code. In the
+      sample table above this occurs in Step 2.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Finally
+      we must turn all these bit values into bytes. The lowest bit of the code
+      bit value gets placed in the lowest available bit of the byte. After
+      you've filled up the 8 bits in the byte, you take any left over bits and
+      start a new byte. Take a look at the following illustration to see how
+      that works with the codes from our sample image.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial; text-align: center;"><img
+        src="http://giflib.sourceforge.net/whatsinagif/lzw_encoding_codes.gif" alt="Encoding LZW Codes"
+        style="border: 1px solid black;" height="220" width="500"></p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">You
+      can see in the first byte that was returned (<span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">8C</span>)
+      that the lowest three bits (because that was our first code size) contain
+      110 which is the binary value of 4 so that would be the clear code we
+      started with, #4. In the three bits to the left, you see 001 which out or
+      first data code of #1. You can also see when we switched into code sizes
+      of 4 bits in the second byte (<span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">2D</span>).</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">When
+      you run out of codes but have filled less than 8 bits of the byte, you
+      should just fill the remaining bits with zeros. Recall that the image data
+      must be broken up onto<span>&nbsp;</span><a href="http://giflib.sourceforge.net/whatsinagif/bits_and_bytes.html#image_data_block">data
+        sub-blocks</a>. Each of the data sub-blocks begins with a byte that
+      specifies how many bytes of data. The value will be between 1 and 255.
+      After you read those bytes, the next byte indicates again how many bytes
+      of data follow. You stop when you encounter a subblock that has a lenght
+      of zero. That tells you when you've reached the end of the image data. In
+      our sample the image the byte just after the LZW code size is<span>&nbsp;</span><span
+        class="byte" style="font-family: Courier, fixed; padding: 0.2em;">16</span><span>&nbsp;</span>which
+      indicates that 22 bytes of data follow. After we reach those, we see the
+      next byte is<span>&nbsp;</span><span class="byte" style="font-family: Courier, fixed; padding: 0.2em;">00</span><span>&nbsp;</span>which
+      means we are all done.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Return
+      codes from bytes the basically just the same process in reverse. A sample
+      illustration of the process follows which shows how you would extract
+      codes if the first code size were 5 bits.</p>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial; text-align: center;"><img
+        src="http://giflib.sourceforge.net/whatsinagif/lzw_decoding_bytes.gif" alt="Decoding LZW Bytes"
+        style="border: 1px solid black;" height="220" width="500"></p>
+    <h2 style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">Next:
+      Animation and Transparency</h2>
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">That
+      is pretty much everything you need to know to read or generate a basic
+      image file. One of the reasons the GIF becames such a popular format was
+      because it also allowed for "fancier" features. These features include
+      animation and transparency. Next we'll look at how those work.</p>
+    <br class="Apple-interchange-newline">
+    <p style="color: rgb(0, 0, 0); font-family: &quot;Times New Roman&quot;; font-size: medium; font-style: normal; font-variant-ligatures: normal; font-variant-caps: normal; font-weight: normal; letter-spacing: normal; orphans: 2; text-align: start; text-indent: 0px; text-transform: none; white-space: normal; widows: 2; word-spacing: 0px; -webkit-text-stroke-width: 0px; text-decoration-style: initial; text-decoration-color: initial;">
+    </p>
+    <p></p>
+  </body>
+</html>
