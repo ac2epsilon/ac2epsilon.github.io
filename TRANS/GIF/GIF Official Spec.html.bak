@@ -806,54 +806,37 @@ LZW мінімальний розмір коду. Цей байт визнача
 
 Компресія LZW зі змінною довжиною кода є варіацією алгоритма компресії Lempel-Ziv, в якому використовуються коди для заміни шаблонів, визначених в оригінальних даних. Алгоритм використовує таблицю кодів або трансляції, сконструйовану з шаблонів, знайдених в оригінальних даних; кожний новий шаблон вставляється в таблицю, та його індекс використовується для заміщення його в стиснутому потоці.
 
-The compressor takes the data from the input stream and builds a code or
-translation table with the patterns as it encounters them; each new pattern is
-entered into the code table and its index is added to the output stream; when a
-pattern is encountered which had been detected since the last code table
-refresh, its index from the code table is put on the output stream, thus
-achieving the data compression.  The expander takes input from the compressed
-data stream and builds the code or translation table from it; as the compressed
-data stream is processed, codes are used to index into the code table and the
-corresponding data is put on the decompressed output stream, thus achieving
-data decompression.  The details of the algorithm are explained below.  The
-Variable-Length-Code aspect of the algorithm is based on an initial code size
-(LZW-initial code size), which specifies the initial number of bits used for
-the compression codes.  When the number of patterns detected by the compressor
-in the input stream exceeds the number of patterns encodable with the current
-number of bits, the number of bits per LZW code is increased by one.
+Компрессор приймає дані на вхідному потоці, та будує кодову таблицю, або таблицю транзакції, з шаблонами, по мірі того,як натрапляють на їх; кожний новий шаблон потрапляє в кодову таблицю, та його індекс додається в вихідний потік; коли трапляється шаблон, що був знайдений з часу останнього оновлення кодової таблиці, його індекс з кодової таблиці потрапляє в вихідний список, і, таким чином, досягається компресія даних. На боці розширення приймається потік зі стиснутих даних, та з них будується таблиця кодів або трансляції; по мірі обробки потоку компресованих даних, коди використовуються для індексування в кодовій таблиці, та відповідні дані покладаються в вихідний декомпресований потік, і так досягаючи декомпресію даних. Деталі алгоритму наведені далі. Аспект кодів змінною довжини цього алгоритму базується на початковому розмірі коду
+(початковий розмір коду LZW), що вказує початкову кількість біт, що використовується для кодів компресії. Коли число шаблонів, визначених компресором у вхідному потоці перевищує число шаблонів з поточною кількістю біт, число біт на код LZW буде збільшений на одиницю.
 
-The Raster Data stream that represents the actual output image can be
-represented as:
+Потік растрових даних, що презентує дійсний вивід, може бути представлений таким чином:
 
          7 6 5 4 3 2 1 0
         +---------------+
-        | LZW code size |
+        |розмір коду LZW|
         +---------------+
 
         +---------------+ ----+
-        |  block size   |     |
+        |розмір блоку   |     |
         +---------------+     |
-        |               |     +-- Repeated as many
-        |  data bytes   |     |   times as necessary.
+        |               |     +-- Повторюється так багато
+        | байти даних   |     |   разів, як треба.
         |               |     |
         +---------------+ ----+
 
-        . . .       . . . ------- The code that terminates the LZW
-                                  compressed data must appear before
+        . . .       . . . ------- Код що завершує компресовані дані LZW
                                   Завершувач блоку.
         +---------------+
         |0 0 0 0 0 0 0 0|  Завершувач блоку
         +---------------+
 
-The conversion of the image from a series of pixel values to a transmitted or
-stored character stream involves several steps. In brief these steps are:
+Перетворення зображення з послідовності значень пікселів до передаваних або збережених потоків символів включає декілька кроків. Скорочено ці кроки наступні:
 
-1. Establish the Code Size - Define the number of bits needed to represent the
-actual data.
+1. Встановити розмір коду - Визначити кількість біт, потрібних для представлення дійсних даних.
 
-2. Compress the Data - Compress the series of image pixels to a series of compression codes.
+2. Компресія даних - Компресія послідовності пікселів зображення в послідовність компресованих кодів.
 
-3. Build a Series of Байт - Take the set of compression codes and convert to a
+3. Будування послідовності байт - Take the set of compression codes and convert to a
 string of 8-bit bytes.
 
 4. Package the Байт - Package sets of bytes into blocks preceded by character
