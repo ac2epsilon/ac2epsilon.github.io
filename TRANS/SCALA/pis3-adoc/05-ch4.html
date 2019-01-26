@@ -798,316 +798,276 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>Chapter 4
-Classes and Objects
-You&#8217;ve now seen the basics of classes and objects in Scala from the previous two chapters. In this
-chapter, we&#8217;ll take you a bit deeper. You&#8217;ll learn more about classes, fields, and methods, and get an
-overview of semicolon inference. We&#8217;ll discuss singleton objects, including how to use them to write
-and run a Scala application. If you are familiar with Java, you&#8217;ll find that the concepts in Scala are
-similar, but not exactly the same. So even if you&#8217;re a Java guru, it will pay to read on.
-4.1 CLASSES, FIELDS, AND METHODS
-A class is a blueprint for objects. Once you define a class, you can create objects from the class
-blueprint with the keyword new. For example, given the class definition:
-class ChecksumAccumulator {
-
-}
-You can create ChecksumAccumulator objects with:
-new ChecksumAccumulator
-Inside a class definition, you place fields and methods, which are collectively called members.Fields,
-which you define with either val or var, are variables that refer to objects. Methods, which you define
-with def, contain executable code. The fields hold the state, or data, of an object, whereas the methods
-use that data to do the computational work of the object. When you instantiate a class, the runtime sets
-aside some memory to hold the image of that object&#8217;s state (i.e., the content of its variables). For
-example, if you defined a ChecksumAccumulator class and gave it a var field named sum:
-class ChecksumAccumulator {
-var sum = 0
-}
-and you instantiated it twice with:
-val acc = new ChecksumAccumulator
-val csa = new ChecksumAccumulator
-The image of the objects in memory might look like this:Since sum, a field declared inside class ChecksumAccumulator, is a var, not a val, you can later
-reassign to sum a different Int value, like this:
-acc.sum = 3
-Now the picture would look like this:
-One thing to notice about this picture is that there are two sum variables, one in the object referenced
-by acc and the other in the object referenced by csa. Fields are also known asinstance
-variables, because every instance gets its own set of the variables. Collectively, an object&#8217;s instance
-variables make up the memory image of the object. You see this illustrated here not only in that you see
-two sum variables, but also that when you changed one, the other was unaffected.
-Another thing to note in this example is that you were able to mutate the object acc referred to, even
-though acc is a val. What you can&#8217;t do with acc (or csa), given that they are vals, notvars, is reassign a
-different object to them. For example, the following attempt would fail:
-
-acc = new ChecksumAccumulator
-What you can count on, therefore, is that acc will always refer to the
-same ChecksumAccumulatorobject with which you initialize it, but the fields contained inside that
-object might change over time.
-One important way to pursue robustness of an object is to ensure that the object&#8217;s state—the values of
-its instance variables—remains valid during its entire lifetime. The first step is to prevent outsidersfrom accessing the fields directly by making the fields private. Because private fields can only be
-accessed by methods defined in the same class, all the code that can update the state will be localized to
-the class. To declare a field private, you place a privateaccess modifier in front of the field, like this:
-class ChecksumAccumulator {
-private var sum = 0
-}
-Given this definition of ChecksumAccumulator, any attempt to access sum from the outside of the class
-would fail:
-val acc = new ChecksumAccumulator
-acc.sum = 5 // Won&#8217;t compile, because sum is private
-Note
-The way you make members public in Scala is by not explicitly specifying any access modifier. Put
-another way, where you&#8217;d say "public" in Java, you simply say nothing in Scala. Public is Scala&#8217;s
-default access level.
-Now that sum is private, the only code that can access sum is code defined inside the body of the class
-itself. Thus, ChecksumAccumulator won&#8217;t be of much use to anyone unless we define some methods in
-it:
-class ChecksumAccumulator {
-private var sum = 0
-def add(b: Byte): Unit = {
-sum += b
-}
-}
-def checksum(): Int = {
-return <sub>(sum &amp; 0xFF) + 1
-}
-The ChecksumAccumulator now has two methods, add and checksum, both of which exhibit the basic
-form of a function definition, shown in Figure 2.1 here.
-Any parameters to a method can be used inside the method. One important characteristic of method
-parameters in Scala is that they are vals, not vars.[1] If you attempt to reassign a parameter inside a
-method in Scala, therefore, it won&#8217;t compile:
-def add(b: Byte): Unit = {
-b = 1
-
-sum += b
-}
-Although add and checksum in this version of ChecksumAccumulator correctly implement the desired
-functionality, you can express them using a more concise style. First, the return at the end ofthe checksum method is superfluous and can be dropped. In the absence of any explicit return
-statement, a Scala method returns the last value computed by the method.
-The recommended style for methods is in fact to avoid having explicit, and especially multiple, return
-statements. Instead, think of each method as an expression that yields one value, which is returned.
-This philosophy will encourage you to make methods quite small, to factor larger methods into
-multiple smaller ones. On the other hand, design choices depend on the design context, and Scala
-makes it easy to write methods that have multiple, explicitreturns if that&#8217;s what you desire.
-Because all checksum does is calculate a value, it does not need an explicit return. Another shorthand
-for methods is that you can leave off the curly braces if a method computes only a single result
-expression. If the result expression is short, it can even be placed on the same line as the def itself. For
-the utmost in conciseness, you can leave off the result type and Scala will infer it. With these changes,
-class ChecksumAccumulator looks like this:
-class ChecksumAccumulator {
-private var sum = 0
-def add(b: Byte) = sum += b
-def checksum() = </sub>(sum &amp; 0xFF) + 1
-}
-Although the Scala compiler will correctly infer the result types of the add and checksummethods
-shown in the previous example, readers of the code will also need to mentally inferthe result types by
-studying the bodies of the methods. As a result it is often better to explicitly provide the result types of
-public methods declared in a class even when the compiler would infer it for you. Listing 4.1 shows
-this style.
-
-class ChecksumAccumulator {
-private var sum = 0
-def add(b: Byte): Unit = { sum += b }
-def checksum(): Int = ~(sum &amp; 0xFF) + 1
-}
-Listing 4.1 - Final version of class ChecksumAccumulator.
-Methods with a result type of Unit, such as ChecksumAccumulator&#8217;s add method, are executed for their
-side effects. A side effect is generally defined as mutating state somewhere external to the method or
-performing an I/O action. In add&#8217;s case, the side effect is that sum is reassigned. A method that is
-executed only for its side effects is known as a procedure.
-4.2 SEMICOLON INFERENCE
-In a Scala program, a semicolon at the end of a statement is usually optional. You can type one if you
-want but you don&#8217;t have to if the statement appears by itself on a single line. On the other hand, a
-semicolon is required if you write multiple statements on a single line:
-val s = "hello"; println(s)If you want to enter a statement that spans multiple lines, most of the time you can simply enter it and
-Scala will separate the statements in the correct place. For example, the following is treated as one
-four-line statement:
-if (x &lt; 2)
-println("too small")
-else
-println("ok")
-Occasionally, however, Scala will split a statement into two parts against your wishes:
-x
-+ y
-This parses as two statements x and +y. If you intend it to parse as one statement x + y, you can always
-wrap it in parentheses:
-(x
-+ y)
-Alternatively, you can put the + at the end of a line. For just this reason, whenever you are chaining an
-infix operation such as +, it is a common Scala style to put the operators at the end of the line instead of
-the beginning:
-x<br />
-y<br />
-z
-THE RULES OF SEMICOLON INFERENCE
-The precise rules for statement separation are surprisingly simple for how well they work. In short, a
-line ending is treated as a semicolon unless one of the following conditions is true:
-1. The line in question ends in a word that would not be legal as the end of a statement, such as a
-period or an infix operator.
-2. The next line begins with a word that cannot start a statement.
-3. The line ends while inside parentheses (&#8230;) or brackets [&#8230;], because these cannot contain
-multiple statements anyway.
-4.3 SINGLETON OBJECTS
-As mentioned in Chapter 1, one way in which Scala is more object-oriented than Java is that classes in
-Scala cannot have static members. Instead, Scala has singleton objects. A singleton object definition
-looks like a class definition, except instead of the keyword class you use the keyword object. Listing
-4.2 shows an example.
-The singleton object in this figure is named ChecksumAccumulator, the same name as the class in the
-previous example. When a singleton object shares the same name with a class, it is called that
-class&#8217;s companion object. You must define both the class and its companion object in the same sourcefile. The class is called the companion class of the singleton object. A class and its companion object
-can access each other&#8217;s private members.
-
-import scala.collection.mutable
-object ChecksumAccumulator {
-private val cache = mutable.Map.empty[String, Int]
-def calculate(s: String): Int =
-if (cache.contains(s))
-cache(s)
-else {
-val acc = new ChecksumAccumulator
-for (c &#8592; s)
-acc.add(c.toByte)
-val cs = acc.checksum()
-cache += (s &#8594; cs)
-cs
-}
-}
-Listing 4.2 - Companion object for class ChecksumAccumulator.
-The ChecksumAccumulator singleton object has one method, named calculate, which takes a Stringand
-calculates a checksum for the characters in the String. It also has one private field, cache, a mutable
-map in which previously calculated checksums are cached.[2] The first line of the method,
-"if (cache.contains(s))", checks the cache to see if the passed string is already contained as a key in the
-map. If so, it just returns the mapped value, cache(s). Otherwise, it executes the else clause, which
-calculates the checksum. The first line of the else clause defines a val named acc and initializes it with
-a new ChecksumAccumulator instance.[3] The next line is a for expression, which cycles through each
-character in the passed string, converts the character to a Byte by invoking toByte on it, and passes that
-to the add method of theChecksumAccumulator instances to which acc refers. After the for expression
-completes, the next line of the method invokes checksum on acc, which gets the checksum for the
-passed String, and stores it into a val named cs. In the next line, cache += (s &#8594; cs), the passed string
-key is mapped to the integer checksum value, and this key-value pair is added to the cache map. The
-last expression of the method, cs, ensures the checksum is the result of the method.
-If you are a Java programmer, one way to think of singleton objects is as the home for any static
-methods you might have written in Java. You can invoke methods on singleton objects using a similar
-syntax: the name of the singleton object, a dot, and the name of the method. For example, you can
-invoke the calculate method of singleton object ChecksumAccumulator like this:
-ChecksumAccumulator.calculate("Every value is an object.")
-A singleton object is more than a holder of static methods, however. It is a first-class object. You can
-think of a singleton object&#8217;s name, therefore, as a "name tag" attached to the object:Defining a singleton object doesn&#8217;t define a type (at the Scala level of abstraction). Given just a
-definition of object ChecksumAccumulator, you can&#8217;t make a variable of type ChecksumAccumulator.
-Rather, the type named ChecksumAccumulator is defined by the singleton object&#8217;s companion class.
-However, singleton objects extend a superclass and can mix in traits. Given each singleton object is an
-instance of its superclasses and mixed-in traits, you can invoke its methods via these types, refer to it
-from variables of these types, and pass it to methods expecting these types. We&#8217;ll show some examples
-of singleton objects inheriting from classes and traits in Chapter 13.
-One difference between classes and singleton objects is that singleton objects cannot take parameters,
-whereas classes can. Because you can&#8217;t instantiate a singleton object with the newkeyword, you have
-no way to pass parameters to it. Each singleton object is implemented asan instance of a synthetic
-class referenced from a static variable, so they have the same initialization semantics as Java statics.
-[4] In particular, a singleton object is initialized the first time some code accesses it.
-A singleton object that does not share the same name with a companion class is called astandalone
-object. You can use standalone objects for many purposes, including collecting related utility methods
-together or defining an entry point to a Scala application. This use case is shown in the next section.
-4.4 A SCALA APPLICATION
-To run a Scala program, you must supply the name of a standalone singleton object with amain method
-that takes one parameter, an Array[String], and has a result type of Unit. Any standalone object with
-a main method of the proper signature can be used as the entry point into an application. An example is
-shown in Listing 4.3:
-
-import ChecksumAccumulator.calculate
-object Summer {
-def main(args: Array[String]) = {
-for (arg &#8592; args)
-println(arg + ": " + calculate(arg))
-}
-}
-Listing 4.3 - The Summer application.
-The name of the singleton object in Listing 4.3 is Summer. Its main method has the proper signature, so
-you can use it as an application. The first statement in the file is an import of thecalculate method
-defined in the ChecksumAccumulator object in the previous example. This import statement allowsyou to use the method&#8217;s simple name in the rest of the file.[5] The body of the main method simply
-prints out each argument and the checksum for the argument, separated by a colon.
-Note
-Scala implicitly imports members of packages java.lang and scala, as well as the members of a
-singleton object named Predef, into every Scala source file. Predef, which resides in package scala,
-contains many useful methods. For example, when you say println in a Scala source file, you&#8217;re actually
-invoking println on Predef. (Predef.println turns around and invokes Console.println, which does the
-real work.) When you say assert, you&#8217;re invoking Predef.assert.
-To run the Summer application, place the code from Listing 4.3 into a file named Summer.scala.
-Because Summer uses ChecksumAccumulator, place the code for ChecksumAccumulator, both the
-class shown in Listing 4.1 and its companion object shown in Listing 4.2, into a file
-namedChecksumAccumulator.scala.
-One difference between Scala and Java is that whereas Java requires you to put a public class in a file
-named after the class—for example, you&#8217;d put class SpeedRacer in file SpeedRacer.java—in Scala, you
-can name .scala files anything you want, no matter what Scala classes or code you put in them. In
-general in the case of non-scripts, however, it is recommended style to name files after the classes they
-contain as is done in Java, so that programmers can more easily locate classes by looking at file names.
-This is the approach we&#8217;ve taken with the two files in this
-example, Summer.scala and ChecksumAccumulator.scala.
-Neither ChecksumAccumulator.scala nor Summer.scala are scripts, because they end in a definition. A
-script, by contrast, must end in a result expression. Thus if you try to run Summer.scala as a script, the
-Scala interpreter will complain that Summer.scala does not end in a result expression (assuming of
-course you didn&#8217;t add any expression of your own after the Summer object definition). Instead, you&#8217;ll
-need to actually compile these files with the Scala compiler, then run the resulting class files. One way
-to do this is to use scalac, which is the basic Scala compiler, like this:
-$ scalac ChecksumAccumulator.scala Summer.scala
-This compiles your source files, but there may be a perceptible delay before the compilation finishes.
-The reason is that every time the compiler starts up, it spends time scanning the contents of jar files and
-doing other initial work before it even looks at the fresh source files you submit to it. For this reason,
-the Scala distribution also includes a Scala compilerdaemon called fsc (for fast Scala compiler). You
-use it like this:
-$ fsc ChecksumAccumulator.scala Summer.scala
-The first time you run fsc, it will create a local server daemon attached to a port on your computer. It
-will then send the list of files to compile to the daemon via the port, and the daemon will compile the
-files. The next time you run fsc, the daemon will already be running, so fsc will simply send the file list
-to the daemon, which will immediately compile the files. Using fsc, you only need to wait for the Javaruntime to startup the first time. If you ever want to stop the fsc daemon, you can do so with fsc -
-shutdown.
-Running either of these scalac or fsc commands will produce Java class files that you can then run via
-the scala command, the same command you used to invoke the interpreter in previous
-examples. However, instead of giving it a filename with a .scala extension containing Scala code to
-interpret as you did in every previous example,[6] in this case you&#8217;ll give it the name of a standalone
-object containing a main method of the proper signature. You can run theSummer application,
-therefore, by typing:
-$ scala Summer of love
-You will see checksums printed for the two command line arguments:
-of: -213
-love: -182
-4.5 THE APP TRAIT
-Scala provides a trait, scala.App, that can save you some finger typing. Although we haven&#8217;t yet
-covered everything you&#8217;ll need to understand exactly how this trait works, we figured you&#8217;d want to
-know about it now anyway. Listing 4.4 shows an example:
-import ChecksumAccumulator.calculate
-object FallWinterSpringSummer extends App {
-}
-for (season &#8592; List("fall", "winter", "spring"))
-println(season + ": " + calculate(season))
-Listing 4.4 - Using the App trait.
-To use the trait, you first write "extends App" after the name of your singleton object. Then instead of
-writing a main method, you place the code you would have put in the main method directly between
-the curly braces of the singleton object. You can access command-line arguments via an array of strings
-named args. That&#8217;s it. You can compile and run this application just like any other.
-4.6 CONCLUSION
-This chapter has given you the basics of classes and objects in Scala, and shown you how to compile
-and run applications. In the next chapter, you&#8217;ll learn about Scala&#8217;s basic types and how to use them.
-Footnotes for Chapter 4:
-[1] The reason parameters are vals is that vals are easier to reason about. You needn&#8217;t look further to
-determine if a val is reassigned, as you must do with a var.
-[2] We used a cache here to show a singleton object with a field. A cache such as this is a performance
-optimization that trades off memory for computation time. In general, you would likely use such acache only if you encountered a performance problem that the cache solves, and might use a weak map,
-such as WeakHashMap in scala.collection.jcl, so that entries in the cache could be garbage collected if
-memory becomes scarce.
-[3] Because the keyword new is only used to instantiate classes, the new object created here is an
-instance of the ChecksumAccumulator class, not the singleton object of the same name.
-[4] The name of the synthetic class is the object name plus a dollar sign. Thus the synthetic class for the
-singleton object named ChecksumAccumulator is ChecksumAccumulator$.
-[5] If you&#8217;re a Java programmer, you can think of this import as similar to the static import feature
-introduced in Java 5. One difference in Scala, however, is that you can import members from any
-object, not just singleton objects.
-[6] The actual mechanism that the scala program uses to "interpret" a Scala source file is that it
-compiles the Scala source code to Java bytecodes, loads them immediately via a class loader, and
-executes them.</p></div>
+<div class="sect1">
+<h2 id="__4">Глава 4</h2>
+<div class="sectionbody">
+</div>
+</div>
+<h1 id="____">Класи та об'єкти</h1>
+<div class="paragraph"><p>Тепер ви побачили основи класів та об'єетів Scala з попередніх двох символів. В цій главі ми проведемо вас трохи глибше. Ви навчитесь більше щодо класів, полів те методів, та отримаєте огляд виводу крапки з комою. Ми обсудимо об'єкти синглтонів, включаючи як їх використовувати для написання та виконання застосування Scala. Якщо ви знайомі з Java, ви знайдете, що концепції Scala є подібними, але не саме такі самі. Так що навіть якщо ви Java гуру, все одно це читання варте того.</p></div>
+<div class="sect1">
+<h2 id="_4_1____">4.1 Класи, поля та методи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Клас є проектом об'єкту. Коли ви визначаєте клас, ви можете створити об'єкти з проекту класу за допомогою ключового слова <code>new</code>. Наприклад, маючи визначення класа:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+<span class="c1">// class definition goes here</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете створити об'єкти <code>ChecksumAccumulator</code> таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">new</span> <span class="nc">ChecksumAccumulator</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Всередині визначення класа ви покладаєте поля та методи, що разом називаються членами. Поля, що ви визначаєте за допомогою <code>val</code> або <code>var</code>, є змінними, що посилаються на об'єкти. Методи, що ви визначаєте за допомогою <code>def</code>, містять виконавчий код. Поля зберігають стан, або дані об'єкта, тоді як методи використовують ці дані, щоб зробити обчислювальну роботу об'єкта. Коли ви створюєте примірник класу, середовище виконання відкладає деяку пам'ять для зберігання образу стану об'єкта (тобто вмісту його змінних). Наприклад, так ви визначаєте клас <code>ChecksumAccumulator</code>, та даєте йому поле <code>var</code> на ім'я <code>sum</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>та двічі створюєте його примірник:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">acc</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ChecksumAccumulator</span>
+<span class="k">val</span> <span class="n">csa</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ChecksumAccumulator</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зображення об'єктів в пам'яті може виглядати так:</p></div>
+<div class="paragraph"><p>Оскільки <code>sum</code>, поле, деклароване в класі <code>ChecksumAccumulator</code>, є <code>var</code>, не <code>val</code>, ви можете пізніше переприсвоїти <code>sum</code> інше значення  <code>Int</code>, таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">acc</span><span class="o">.</span><span class="n">sum</span> <span class="k">=</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер картинка може виглядати ось так:</p></div>
+<div class="paragraph"><p>Одна річ, що треба зауважити щодо цього малюнка, в тому, що тут дві змінні <code>sum</code>, одна в об'єкті, не який посилається <code>acc</code>, та інша в об'єкті, на який посилається <code>csa</code>. Поля також відомі як взмінні примірника, бо кожний примірник отримує свій власний набір змінних. Колективно, змінні примірника-об'єкта складають образ пам'яті об'єкта. Ви бачите ілюстрацію цього тут, не тільки тому що ви бачите дві змінні <code>sum</code>, але і через те, що коли змінюєте одну, це не впливає на іншу.</p></div>
+<div class="paragraph"><p>Інша річ, на яку слід звернути увагу в цьому прикладі, це те, що ви були в змозі змінити об'єкт, на який посилається <code>acc</code>, навіть якщо сам <code>acc</code> <code>val</code>. Що ви не можете робити з <code>acc</code> (або csa), з гляду на те, що вони <code>val</code>, не <code>var</code>, це переприсвоїти їм інший об'єкт. Наприклад, наступна спроба схибить:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Не буде компілюватись, бо acc є val</span>
+<span class="n">acc</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ChecksumAccumulator</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Таким чином, все, на що ви можете розраховувати, це що <code>acc</code> буде завжди посилатись на той самий об'єкт <code>ChecksumAccumulator</code>, яким його ініціалізували, але поля, що містяться всередині цього об'єкта, можуть змінюваться з часом.</p></div>
+<div class="paragraph"><p>Один важливий шлях досягти надійності об'єкта, є переконатись, що стан об'єкта — значення його змінних примірника — залишаються валідними під час цілого життєвого циклу. Перший крок є заборонити зовнішньому світу напряму отримувати доступ до полів, зробивши поля приватними. Оскільки приватні поля досяжні тільки з методів, визначених в тому ж класі, весь код, що може оновити стан, буде локалізований в класі. Щоб декларувати приватне поле, покладіть модифікатор доступу <code>private</code> перед полем, таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи таку декларацію <code>ChecksumAccumulator</code>, люба спроба отримати доступ до <code>sum</code> ззовні класу буде невдалою:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">acc</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ChecksumAccumulator</span>
+<span class="n">acc</span><span class="o">.</span><span class="n">sum</span> <span class="k">=</span> <span class="mi">5</span> <span class="c1">// Не буде компілюватись, оскільки `sum` є приватним</span>
+</pre></div></div></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Спосіб, в який ви робите члени публічними в Scala, це не вказувати явно жодного модифікатора доступу. Інакше кажучи, там, де ви кажете <code>public</code> в Java, ви просто нічого не кажете в Scala. Публічний рівень доступу в Scala обираєтьмя по замовчанню.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>Тепер, коли <code>sum</code> є <code>private</code>, єдиний код, що може отримати доступ до <code>sum</code> є код, визначений всередині тіла самого класа. Таким чином, <code>ChecksumAccumulator</code> не буде дуже корисним, якщо ми не визначимо деякі методи для нього:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">b</span><span class="k">:</span> <span class="kt">Byte</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="n">sum</span> <span class="o">+=</span> <span class="n">b</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="k">def</span> <span class="n">checksum</span><span class="o">()</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">return</span> <span class="o">~(</span><span class="n">sum</span> <span class="o">&amp;</span> <span class="mh">0xFF</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер <code>ChecksumAccumulator</code> має два методи, <code>add</code> та <code>checksum</code>, обоє з яких демонструють базову форму визначення функції, показану на Малюнку 2.1.</p></div>
+<div class="paragraph"><p>Любі параметри метода можуть бути використані всередині метода. Одна важлива характеристика пreasonараметрів метода в Scala в тому, що вони <code>val</code>, не <code>var</code>.<span class="footnote"><br />[Причина, з якої параметри є val в тому, що про val простіше розмірковувати. Ви більше не дивитесь, щоб визначити, чи val було перепризначене, як ви маєте робити з var.]<br /></span> Таким чином, якщо ви спробуєте переприсвоїти параметр всередині метода в Scala, це не буде компілюватись:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">b</span><span class="k">:</span> <span class="kt">Byte</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="n">b</span> <span class="k">=</span> <span class="mi">1</span> <span class="c1">// Не буде компілюватись, оскільки b є val</span>
+  <span class="n">sum</span> <span class="o">+=</span> <span class="n">b</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Хоча <code>add</code> та <code>checksum</code> в цій версії <code>ChecksumAccumulator</code> коректно реалізують бажану функціональність, ви можете виразити їх в більш стислому стилі. Перше, <code>return</code> в кінці метода <code>checksum</code> є надлишковим і може бути відкінуте. За відсутності явного твердження  <code>return</code>, метод Scala повертає останнє значення, обчислене методом.</p></div>
+<div class="paragraph"><p>Рекомендованим стилем для методів є, фактично, уникати мати явний, а особливо декілька, тверджень <code>return</code>. Замість цього думайте про кожний метод як про вираз, що видає одне значення, яке він повертає. Ця філософія буде надихати вас робити методи досіть малими, та ділити великі методи на декілька меньших. З іншого боку, вибір дизайну залежить від контексту, та Scala спрощує написання методів, що мають декілька явних <code>returns</code>, якщо це те, що ви задумали.</p></div>
+<div class="paragraph"><p>Оскільки все, що робить <code>checksum</code> це обчислення значення, він не потребує явного <code>return</code>. Інше скорочення для методів є те, що ви можете опустити фігурні дужки, якщо метод тільки обчислює одне результуюче значення. Якщо результуючий вираз короткий, його навіть можна покласи в той же рядок, що і сам <code>def</code>. Для виключної стислості ви можете відкинути тип результату, і Scala виведе його. З ціма змінами, клас <code>ChecksumAccumulator</code> виглядає так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">b</span><span class="k">:</span> <span class="kt">Byte</span><span class="o">)</span> <span class="k">=</span> <span class="n">sum</span> <span class="o">+=</span> <span class="n">b</span>
+  <span class="k">def</span> <span class="n">checksum</span><span class="o">()</span> <span class="k">=</span> <span class="o">~(</span><span class="n">sum</span> <span class="o">&amp;</span> <span class="mh">0xFF</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Хоча компілятор Scala буде коректно виводити типи результату методів <code>add</code> та <code>checksum</code>, показаних в попередньому прикладі, читачам коду буде треба подумки вивести ці типи результату, через дослідження тіла методів. Як результат, часто краще явно провадити типи результату публічних методів, декларованих в класі, навіть якщо компілятор може вивести його за вас. Лістинг 4.1 показує цей стиль.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// In file ChecksumAccumulator.scala</span>
+<span class="k">class</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">b</span><span class="k">:</span> <span class="kt">Byte</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span> <span class="n">sum</span> <span class="o">+=</span> <span class="n">b</span> <span class="o">}</span>
+  <span class="k">def</span> <span class="n">checksum</span><span class="o">()</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">~(</span><span class="n">sum</span> <span class="o">&amp;</span> <span class="mh">0xFF</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 4.1 - Фінальна версія класу ChecksumAccumulator.</p></div>
+<div class="paragraph"><p>Методи з типом результата Unit, такі як метод <code>add</code> в ChecksumAccumulator, виконуються заради своїх побочних ефектів. Побічний ефект в основному визначений як зміна стану десь зовні до метода, або виконання операції I/O. В випадку <code>add</code> побічний ефект полягає в переприсвоєнні змінної <code>sum</code>. Метод, що виконується виключно ради побічних ефектів, також відомий як процедура.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_4_2____">4.2 Вивід крапки з комою</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В Scala програмах крапка з комою в кінці твердження часто є опціональними. Ви можете ставити їх, якщо бажаєте, але не зобов'язані робити це, якщо рядок сам по собі розташований на одному рядку. З іншого боку, крапка з комою обов'язкові, якщо ви маєте декілька тверджень в одному рядку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">s</span> <span class="k">=</span> <span class="s">&quot;hello&quot;</span><span class="o">;</span> <span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви бажаєте ввести твердження, що займає декілька рядків, більшість часу ви можете просто покласти її, і Scala поділить тврдження в коректному місці. Наприклад, наступне трактується як однорядкове твердження:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="o">(</span><span class="n">x</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;too small&quot;</span><span class="o">)</span>
+<span class="k">else</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;ok&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак часом Scala буде ділити твердження на дві частини проти вашого бажання:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">x</span>
+<span class="o">+</span> <span class="n">y</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це розбирається як два твердження, <code>x</code> та <code>+y</code>. Якщо вашим наміром було розібрати це як одне твердження <code>x + y</code>, ви завжди можете огорнути це в дужки:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">(</span><span class="n">x</span>
+<span class="o">+</span> <span class="n">y</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Альтернативно, ви можете покласти <code>+</code> в кінці рядка. Тільки з цієї причини, коли ви зціплююте інфіксні операції, такі як <code>+</code>, є загальним стилем Scala покладати оператор в кінці рядка, а не напочатку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">+</span>
+<span class="n">y</span> <span class="o">+</span>
+<span class="n">z</span>
+</pre></div></div></div>
+<div class="sect2">
+<h3 id="_____">Правила виводу крапок з комою</h3>
+<div class="paragraph"><p>Точні правила для розділення тверджень дивуюче прості, як для того, як гарно вони роблять. Коротко, кінці рядків трактуються як крапка з комою, за винятком коли вірне одна умова з наступних:</p></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Розглядаємий рядок завершується на слово, яке не може бути легальним в кінці твердження, таке, як крапка або інфіксний оператор.
+</p>
+</li>
+<li>
+<p>
+Наступний рядок починається зі слова, що не може починати твердження.
+</p>
+</li>
+<li>
+<p>
+Рядок завершується, коли відкриті дужки (&#8230;) або [&#8230;], оскільки вони в жодному разі не можуть містити декілька тверджень.
+</p>
+</li>
+</ol></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_4_3___">4.3 Об'єкти синглтонів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як зазначалось в Главі 1, один спосіб, в який Scala більш об'єктно-орієнтована, ніж Java, це що класи в Scala. Замість цього,  Scala має об'єкти синглтонів. Визначення об'єкта синглтона виглядає як визначення класу, за винятком того, що замість ключового слова <code>class</code> ви використовуєте ключове слово <code>object</code>. Лістинг 4.2 показує приклад.</p></div>
+<div class="paragraph"><p>Об'єкт синглтона на цій фігурі названий <code>ChecksumAccumulator</code>, те саме, що і ім'я класу в попередньому прикладі. Коли сінглтон поділяє те саме ім'я з класом, він називається об'єктом компанйоном класа. Ви маєте обох, клас та його об'єкт компанйон в тому ж джерельному файлі. Клас називається компанйон класом об'єкта синглтона. Клас та його об'єкт компанйон можуть отримувати доступ до приватних членів один одного.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// In file ChecksumAccumulator.scala</span>
+<span class="k">import</span> <span class="nn">scala.collection.mutable</span>
+<span class="k">object</span> <span class="nc">ChecksumAccumulator</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">cache</span> <span class="k">=</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">Map</span><span class="o">.</span><span class="n">empty</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">calculate</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">cache</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="n">s</span><span class="o">))</span>
+      <span class="n">cache</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+    <span class="k">else</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">acc</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ChecksumAccumulator</span>
+      <span class="k">for</span> <span class="o">(</span><span class="n">c</span> <span class="k">&lt;-</span> <span class="n">s</span><span class="o">)</span>
+        <span class="n">acc</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">c</span><span class="o">.</span><span class="n">toByte</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">cs</span> <span class="k">=</span> <span class="n">acc</span><span class="o">.</span><span class="n">checksum</span><span class="o">()</span>
+      <span class="n">cache</span> <span class="o">+=</span> <span class="o">(</span><span class="n">s</span> <span class="o">-&gt;</span> <span class="n">cs</span><span class="o">)</span>
+      <span class="n">cs</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 4.2 - Об'єкт компанйон для класа ChecksumAccumulator.</p></div>
+<div class="paragraph"><p>Об'єкт сінглтон <code>ChecksumAccumulator</code> має один метод з назвою <code>calculate</code>, що приймає <code>String</code>, та обчислює контрольну суму для символів в <code>String</code>. Він також має одне приватне поле, <code>cache</code>, змінну мапу, в якій кешуються попередньо обчислені контрольні суми.<span class="footnote"><br />[Ми використовуємо тут кеш, щоб показати об'єкт синглтон з полем. Кеш, такий як цей, є оптимізацією продуктивності, що міняє пам'ять на час обчислення. Загалом, ви мали б використовувати такий архів, тільки якщо натрапили на проблему продуктивності, яку може вирішити кеш, та можливо використовувати слабку мапу, таку як <code>WeakHashMap</code> в <code>scala.collection.jcl</code>, так що елементи цього кеша підпали б під збирання сміття, коли з пам'ятю стало скрутно.]<br /></span> Перший рядок цього метода, <code>if (cache.contains(s))</code>, перевіряє кеш, чи переданий рядок вже існує як ключ в кеші. Якщо так, він просто повертає відображене значення, кеш(і). Інакше, він виконує варіант <code>else</code>, що обчислює контрольну суму. Перший рядок <code>else</code> визначає <code>val</code> на ім'я <code>acc</code>, та ініціалізує її новим примірником <code>ChecksumAccumulator</code>.<span class="footnote"><br />[Оскільки ключове слово  <code>new</code> використовується тільки для створення класів, новий створений тут об'єкт є примірником класу <code>ChecksumAccumulator</code>, не об'єкта синглтона з тим самим іменем.]<br /></span> Наступний рядок є виразом <code>for</code>, що проходить по кожному символу в переданому рядку, конвертуючи символ на Byte, через виклик toByte на ньому, та передає його до метода  <code>add</code> примірника <code>ChecksumAccumulator</code>, на який посилається <code>acc</code>. Після завершення виразу <code>for</code>, наступний рядок метода викликає <code>checksum</code> на <code>acc</code>, що отримує контрольну суму для переданого <code>String</code>, та зберігає його в <code>val</code> на ім'я <code>cs</code>. В наступному рядку, <code>cache += (s -&gt; cs)</code>, переданий рядок-ключ відзеркалюється на ціле значення контрольної суми, і ця пара ключ-значення додається до мапи <code>cache</code>. Останній вираз метода, <code>cs</code>, запевняє, що контрольна сума є результатом метода.</p></div>
+<div class="paragraph"><p>ЯКщо ви Java програміст, один спосіб щоб думати про об'єкт синглтон як про домівку для любих статичних методів, що ви могли написати в  Java. Ви можете викликати методи на об'єкті синглтоні, використовуючи подібний синтаксис: ім'я об'єкта синглтона, крапка, та ім'я метода. Наприклад, ви можете викликати метод <code>calculate</code> об'єкта синглтона таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">ChecksumAccumulator</span><span class="o">.</span><span class="n">calculate</span><span class="o">(</span><span class="s">&quot;Every value is an object.&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак об'єкт синглтон є більше, ніж утримувач статичних методів. Це першокласний об'єкт. Ви можете думати про ім'я об'єкта синглтона, таким чином, як про "тег імені", приєднаного до об'єкту:</p></div>
+<div class="paragraph"><p>Визначення об'єкта синглтона не визначає тип (на рівні абстракції Scala). Маючи тільки визначення об'єкту ChecksumAccumulator, ви не зможете створити змінну типу ChecksumAccumulator. Скоріше, тип з назвою ChecksumAccumulator визначається через клас компанйон об'єкта синглтона. Однак, синглтон об'єкти розширюють суперклас, та можуть міксувати трейти. Беручи, що кожний об'єкт синглтон є примірником свого суперкласу та примішаних трейтів, ви можете викликати його методи через ці типи, посилатись на нього через змінні ціх типів, та передавати його методам, що очікують ці типи. Ми покажемо деякі приклади об'єктів синглтонів, що наслідують від класів та трейтів в Главі 13.</p></div>
+<div class="paragraph"><p>Одна відмінність між класами та об'єктами синглтонами в тому, що синглтон об'єкт не може приймати параметрів, тоді як клас може. Оскільки ви не можете створити примірник синглтон об'єкта за допомогою ключового слова <code>new</code>,ви не маєте способа передати йому параметри. Кожний синглтон об'єкт був реалізований як примірник синтетичного класу, на який посилається статична змінна, так що вони мають ту саму семантику ініціалізації, що і статики в Java.<span class="footnote"><br />[Ім'я синтетичного класу є ім'я об'єкту, плюс знак долару. Таким чином, синтетичний клас для об'єкта синглтона на ім'я ChecksumAccumulator є ChecksumAccumulator$.]<br /></span> Зокрема, об'єкт синглтон буде ініціалізований, коли код отримає до нього доступ в перший раз.</p></div>
+<div class="paragraph"><p>Синглтон, що не поділяє те саме ім'я з класом компанйоном, називається окремим об'єктом. Ви можете використовувати окремі об'єкти для багатьох призначень, включаючи збір пов'язаних допоміжних методів, або визначення точки входу в застосування Scala. Цей випадок застосування показаний в наступному розділі.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_4_4__scala">4.4 Застосування Scala</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Щоб виконати Scala програму, ви маєте надати ім'я окремого об'єкта синглтона з методом <code>main</code>, що приймає один параметр, <code>Array[String]</code>, та має тип результата Unit. Любий окремий об'єкт з методом <code>main</code> відповідної сигнатури, може бути використаний як вхідна точка в застосування. Приклад показаний в Лістингу 4.3:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// In file Summer.scala</span>
+<span class="k">import</span> <span class="nn">ChecksumAccumulator.calculate</span>
+<span class="k">object</span> <span class="nc">Summer</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">arg</span> <span class="k">&lt;-</span> <span class="n">args</span><span class="o">)</span>
+       <span class="n">println</span><span class="o">(</span><span class="n">arg</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">calculate</span><span class="o">(</span><span class="n">arg</span><span class="o">))</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 4.3 - Застосування Summer.</p></div>
+<div class="paragraph"><p>Ім'я об'єкта синглтона в Лістенгу 4.3 є Summer. Його метод <code>main</code> має відповідну сигнатуру, так що ви можете використовувати його як застосування. Перше твердження в файлі є імпорт метода <code>calculate</code>, визначеного в об'єкті ChecksumAccumulator в попередньому прикладі. Це твердження <code>import</code> дозволяє вам використовувати просте ім'я метода в залишку файла.<span class="footnote"><br />[Якщо ви Java програміст, ви можете думати про цей імпорт, як про можливість статичного імпорту, введену в Java 5. Однак в Scala є одна різниця, в тому, що ви можете імпортувати члени з любого об'єкта, не тільки з об'єктів синглтонів.]<br /></span> Тіло метода <code>main</code> просто друкує кожний аргумент, та контрольну суму для аргумена, відділену роздільником.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Scala неявно імпортує члени пакунків <code>java.lang</code> та <code>scala</code>, так само, як члени об'єкта синглтона на ім'я <code>Predef</code>, в кожний джерельний файл Scala. <code>Predef</code>, що знаходиться в пакунку <code>scala</code>, містить багато корисних методів. Наприклад, коли ви кажете <code>println</code> в джерельному файлі Scala, насправді ви викликаєте <code>println</code> на <code>Predef</code>. (<code>Predef.println</code> обертається, та викликає <code>Console.println</code>, що робить реальну роботу). Коли ви кажете <code>assert</code>, ви викликаєте <code>Predef.assert</code>.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>Щоб виконати застосування Summer, покладіть код з Лістинга 4.3 в файл з назвою Summer.scala. Оскільки <code>Summer</code> використовує <code>ChecksumAccumulator</code>, покладіть код для <code>ChecksumAccumulator</code>, обоє, клас, показаний в Лістингу 4.1, та його об'єкт компанйон, показаний в Лістингу 4.2, в файл на ім'я <code>ChecksumAccumulator.scala</code>.</p></div>
+<div class="paragraph"><p>Одна різниця між Scala та Java в тому, що коли Java вимагає, щоб ви покладали публічні класи в файл з іменем класа — наприклад, ви поклали клас <code>SpeedRacer</code> в файл <code>SpeedRacer.java</code> — в Scala ви можете називати <code>.scala</code> файли як побажаєте, не важливо, які Scala класи або код ви покладете до них. Однак загалом, в випадку не-скриптів, є рекомендованим стилем називати файли по іменах класів, які вони містять, як це зроблено в Java, так що програмісти можуть більш просто знайти класи, шукаючи по іменах файлів. Цей підхід, що ми прийняли для двох файлів в цьому  прикладі, <code>Summer.scala</code> та <code>ChecksumAccumulator.scala</code>.</p></div>
+<div class="paragraph"><p>Ні <code>ChecksumAccumulator.scala</code>, ані <code>Summer.scala</code> не є скриптами, бо закінчуються на визначення. Скрипт, для контрасту, має завершуватись на вираз результату. Так що якщо ви спробуєте виконати <code>Summer.scala</code> як скрипт, інтерпретатор Scala буде скаржитись, що <code>Summer.scala</code> не завершується на вираз результату (вважаємо, звичайно, що ви не додали якийсь вираз після визначення об'єкта  <code>Summer</code>). Замість цього, вам буде треба насправді скомпілювати ці файли за допомогою Scala компілятора, та потім виконати отримані файли <code>class</code>. Один шлях зробити це є використання <code>scalac</code>, що є базовим компілятором Scala, ось так:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ scalac ChecksumAccumulator.scala Summer.scala</code></pre>
+</div></div>
+<div class="paragraph"><p>Це компілює ваш джерельний файл, але може бути відчутня затримка перед завершенням компіляції. Причина в тому, що кожного разу, коли запускається компілятор, він витрачає час, скануючі вміст jar файлів, та роблячи іншу роботу з ініціалізації, перед тим, як він навіть тільки погляне не нові джерельні файли, яки ви надіслали йому. З цієї причини дистрибутив Scala також включає демон компіляції Scala з назвою <code>fsc</code> (fast Scala compiler). Ви використовуєте його таким чином:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ fsc ChecksumAccumulator.scala Summer.scala</code></pre>
+</div></div>
+<div class="paragraph"><p>Перший раз, як ви запустите <code>fsc</code>, він створить локальний демон сервера, підключений до порту вашого комп'ютера. Потім він буде надсилати список файлів на компіляцію до демона через порт, і демон буде компілювати ці файли. Наступний раз, коли ви виконаєте <code>fsc</code>, демон вже буде запущений, так що <code>fsc</code> буде просто посилати список файлів до демона, що буде безпосередньо компілювати ці файли. Використовуючи <code>fsc</code>, вам треба чекати тільки щоб рантайм Java запустився в перший раз. Якщо ви колись побажаєте запинити демона <code>fsc</code>, ви можете зробити це за допомогою <code>fsc - shutdown</code>.</p></div>
+<div class="paragraph"><p>Виконання любого з них, команди <code>scalac</code> або <code>fsc</code>, буде продукувати файли класів Java, які ви потім можете виконати через команду <code>scala</code>, ту саму команду, що ви використовували для виклику інтерпретатора в попередніх прикладах. Оданак замість надання їй файла з розширенням <code>.scala</code>, що містить код Scala для інтерпретації, як ви робили в кожному попередньому прикладі,<span class="footnote"><br />[Справжній механізм, який програма <code>scala</code> використовує для "інтерпретації" джерельного файлу Scala, є те, що вона компілює джерельний код Scala в байткоди Java, безпосередньо завантажує їх через завантажувач класів, та виконує їх.]<br /></span> в цьому випадку ви дасте їй ім'я окремого об'єкту, що має метод <code>main</code> з відповідною сигнатурою. Ви можете виконати застосування Summer, таким чином, набравши:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ scala Summer of love</code></pre>
+</div></div>
+<div class="paragraph"><p>Ви побачите контрольні суми, роздруковані для двох аргументів командного рядка:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>of: -213
+love: -182</code></pre>
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_4_5__app">4.5 Трейт App</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala провадить трейт <code>scala.App</code>, що може зберігти вам деякий час за друком. Хоча ми ще не розглянули все, що вам треба для розуміння саме як цей трейт робить, ми припускаємо, що ви бажаєте знати про це саме зараз, будь-що. Лістинг 4.4 показує приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">ChecksumAccumulator.calculate</span>
+<span class="k">object</span> <span class="nc">FallWinterSpringSummer</span> <span class="k">extends</span> <span class="nc">App</span> <span class="o">{</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">season</span> <span class="k">&lt;-</span> <span class="nc">List</span><span class="o">(</span><span class="s">&quot;fall&quot;</span><span class="o">,</span> <span class="s">&quot;winter&quot;</span><span class="o">,</span> <span class="s">&quot;spring&quot;</span><span class="o">))</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">season</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">calculate</span><span class="o">(</span><span class="n">season</span><span class="o">))</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 4.4 - Використання трейта App.</p></div>
+<div class="paragraph"><p>Щоб використати цей трейт, зпочатку ви пишете <code>extends App</code> після імені вашого синглтон об'єкта. Потім замість писати метод <code>main</code>, ви кладете код, що ви б мали покласти в метод <code>main</code>, прямо між фігурними дужками об'єкта синглтона. Ви можете отримати доступ до аргументів командного рядка через масив рядків на ім'я <code>args</code>. Це все. Ви можете компілювати та виконувати це застосування, так само як любе інше.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_4_6_">4.6 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ця глава надала вам основи класів та об'єктів в Scala, та показала вам, як компілювати та виконувати застосування. В наступній главі ми вивчимо базові типи Scala, та як їх використовувати.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-24 07:07:48 EET
+ 2019-01-26 08:33:06 EET
 </div>
 </div>
 </body>

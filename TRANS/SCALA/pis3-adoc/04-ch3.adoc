@@ -117,7 +117,7 @@ val oneTwoThreeFour = oneTwo ::: threeFour
 println(oneTwo + " and " + threeFour + " were not mutated.")
 println("Thus, " + oneTwoThreeFour + " is a new list.")
 ----
-If you run this script, you'll see:
+Якщо ви виконаєте цей скрипт, ви побачите:
 ----
 List(1, 2) and List(3, 4) were not mutated.
 Thus, List(1, 2, 3, 4) is a new list.
@@ -469,7 +469,7 @@ assert(res == "zero\none\ntwo")
 
 Крок 12. Читання рядків з файла
 -------------------------------
-Scripts that perform small, everyday tasks often need to process lines in files. In this section, you'll build a script that reads lines from a file and prints them out prepended with the number of characters in each line. The first version is shown in Лістинг 3.10:
+Скрипти, що виконують малі, щоденні завдання, часто потребують обробки рядків в файлі. В цьому розділі ви побудуєте скрипт, що читає рядки з файла, та друкує їх, проставляючи напочату кількість символів в кожному рядку. Перша версія показана в Лістингу 3.10:
 [source,scala]
 ----
 import scala.io.Source
@@ -480,71 +480,68 @@ if (args.length > 0) {
 else
   Console.err.println("Please enter filename")
 ----
-Лістинг 3.10 - Reading lines from a file.
+Лістинг 3.10 - Читання рядків з файла.
 
-This script starts with an import of a class named Source from package scala.io. It then checks to see if at least one argument was specified on the command line. If so, the first argument is interpreted as a filename to open and process. The expression Source.fromFile(args(0))attempts to open the specified file and returns a Source object, on which you call getLines. ThegetLines method returns an Iterator[String], which provides one line on each iteration, excluding the end-of-line character. The for expression iterates through these lines and prints for each the length of the line, a space, and the line itself. If there were no arguments supplied on the command line, the final else clause will print amessage to the standard error stream. If you place this code in a file named countchars1.scala, and run it on itself with:
+Цей скрипт починається з імпорту класу на ім'я `Source` з пакунка  `scala.io`. Потім він перевіряє, щоб побачити, що в командному рядку був вказаний хоча б один аргумент. Якщо так, перший аргумент інтерпретується як ім'я файла, що треба відкрити та обробити. Вираз `Source.fromFile(args(0))` намагається відкрити вказаний файл, та повертає об'єкт `Source`, на якому ви викликаєте `getLines`. Метод `getLines` повертає `Iterator[String]`, що провадить по одному рядку на кожній ітерації, відкидаючи символ кінця рядка. Вираз `for` ітерує по цім рядках, та друкує для кожноого довжину рядка, проміжок, та сам рядок. Якщо в командному рядку не надано жодного аргументу, фінальне твердження `else` буде друкувати повідомлення в стандартний потік помилок. Якщо ви покладете цей код в файл на ім'я `countchars1.scala`, та викличете його для самого себе командою:
 ----
 $ scala countchars1.scala countchars1.scala
 ----
-You should see:
+Ви маєте побачити:
 ----
 22 import scala.io.Source
 0
 22 if (args.length > 0) {
 0
-51
-for (line <- Source.fromFile(args(0)).getLines())
-37
-println(line.length + " " + line)
+51 for (line <- Source.fromFile(args(0)).getLines())
+37 println(line.length + " " + line)
 1 }
 4 else
-46
-Console.err.println("Please enter filename")
+46 Console.err.println("Please enter filename")
 ----
-Although the script in its current form prints out the needed information, you may wish to line up the numbers, right adjusted, and add a pipe character, so that the output looks instead like:
+Хоча скрипт в своїй поточній формі друкує потрібну інформацію, ви можете побажати підрівняти числа, вирівняти вправо, та додати символ роздільника, так щоб вивід виглядав так:
 ----
 22 | import scala.io.Source
-0  | 
+ 0 | 
 22 | if (args.length > 0) {
-0  |
+ 0 |
 51 |   for (line <- Source.fromFile(args(0)).getLines())
 37 |     println(line.length + " " + line)
-1  | }
-4  | else
+ 1 | }
+ 4 | else
 46 |   Console.err.println("Please enter filename")
 ----
-To accomplish this, you can iterate through the lines twice. The first time through you'll determine the maximum width required by any line's character count. The second time through you'll print the output, using the maximum width calculated previously. Because you'll be iterating through the lines twice, you may as well assign them to a variable:
+Щоб досягти цього, ви можете ітерувати по рядках двічі. На першому проході ви будете визначати максимальну довжину, достатню для любого підрахунку символів. На другому проході ви друкуєте вивід, використовуючи максимальну ширину, що обчислена раніше. Оскільки ви будете ітерувати по рядках двічі, ми можете також присвоїти їх до змінної:
 [source,scala]
 ----
 val lines = Source.fromFile(args(0)).getLines().toList
 ----
-The final toList is required because the getLines method returns an iterator. Once you've iterated through an iterator, it is spent. By transforming it into a list via the toList call, you gain the ability to iterate as many times as you wish, at the cost of storing all lines from the file in memory at once. The lines variable, therefore, references a list of strings that contains the contents of the file specified on the command line. Next, because you'll be calculating the width of each line's character count twice, once per iteration, you might factor that expression out into a small function, which calculates the character width of the passed string's length:
+Заключний `toList` потрібне, бо метод `getLines` повертає ітератор. Коли ви проходите через ітератор, він вже витрачений. Трансформуючи його в список через виклик `toList`, ви отримаєте здатність ітерувати так багато раз, як вам треба, ціною зберігання всіх рядків з файла, одночасно. Таким чином, змінна `lines` посилається на список рядків, що складають вміст файла, вказаного в командному рядку. Далі, оскільки ми будемо обчислювати ширину довжини кожного рядка двічі, по разу для кожної ітерації, ви можете виділити цей вираз в невелику функцію, що обчислює скільки символів в ширину буде займати довжина рядка:
 [source,scala]
 ----
 def widthOfLength(s: String) = s.length.toString.length
 ----
-With this function, you could calculate the maximum width like this:
+З такою функцією ви можете обчислювати максимальну ширину таким чином:
 [source,scala]
 ----
 var maxWidth = 0
 for (line <- lines)
   maxWidth = maxWidth.max(widthOfLength(line))
 ----
-Here you iterate through each line with a for expression, calculate the character width of that line's length, and, if it is larger than the current maximum, assign it to maxWidth, a var that was initialized to 0. (The max method, which you can invoke on any Int, returns the greater of the value on which it was invoked and the value passed to it). Alternatively, if you prefer to find the maximum without vars, you could first find the longest line like this:
+Тут ви ітеруєте по кожному рядку за допомогою вираза `for`, обчислює символьну ширину довжини рядка, і якщо вона довша ніж поточний максимум, присвоюється до `maxWidth`, `var`, що була ініціалізована як 0. (Метод `max`, який ви можете викликати на Int, повертає більше зі значень, того, на якому вона викликана, та переданого як параметр). Альтернативно, якщо ви обираєте знайти максимум без `var`, ви можете спочатку знайти довший рядок, ось так:
 [source,scala]
 ----
 val longestLine = lines.reduceLeft(
   (a, b) => if (a.length > b.length) a else b
 )
 ----
-The reduceLeft method applies the passed function to the first two elements in lines, then applies it to the result of the first application and the next element in lines, and so on, all the way through the list. On each such application, the result will be the longest line encountered so far because the passed function, (a, b) => if (a.length > b.length) a else b, returns the longest of the two passed strings. "reduceLeft" will return the result of the last application of the function, which in this case will be the longest string element contained in lines.
+Метод `reduceLeft` застосовує передану функцію до перших двох елементів в `lines`, потім застосовує її до результату першої операції та наступного елементу в `lines`, і так далі, по всьому списку. На кожному такому застосуванні результат буде довшим рядком, знайденим до цього моменту, оскільки передана функція, `(a, b) => if (a.length > b.length) a else b`, повертає довший з переданих рядків. `reduceLeft` буде повертати результат останнього застосування функції, що в цьому випадку буде найдовшим рядком-елементом, що міститься в `lines`.
 
-Given this result, you can calculate the maximum width by passing the longest line towidthOfLength:
+Маючи цей результат, ви можете обчислити максимальну ширину, передаючи найдовший рядок в `towidthOfLength`:
 [source,scala]
 ----
 val maxWidth = widthOfLength(longestLine)
 ----
-All that remains is to print out the lines with proper formatting. You can do that like this:
+Все що лишається, це надрукувати рядки з відповідним форматуванням. Ви можете зробити це так:
 [source,scala]
 ----
 for (line <- lines) {
@@ -553,7 +550,7 @@ val padding = " " * numSpaces
 println(padding + line.length + " | " + line)
 }
 ----
-In this for expression, you once again iterate through the lines. For each line, you first calculate the number of spaces required before the line length and assign it to numSpaces. Then you create a string containing numSpaces spaces with the expression " " * numSpaces. Finally, you print out the information with the desired formatting. The entire script looks as shown in Лістинг 3.11:
+В цьому виразі ви ще раз ітеруєте по рядках. Для кожного рядка ви спочатку обчислюєте число проміжків, потрібних перед довжиною рядка, та присвоюєте його до `numSpaces`. Потім ви створюєте рядок, що містить `numSpaces` проміжків за допомогою вираза `" " * numSpaces`. Нарешті ви друкуєте інформацію з бажаним форматуванням. Повний скрипт виглядає як показано на Лістингу 3.11:
 [source,scala]
 ----
 import scala.io.Source
@@ -574,8 +571,9 @@ if (args.length > 0) {
 else
   Console.err.println("Please enter filename")
 ----
-Лістинг 3.11 - Printing formatted character counts for the lines of a file.
+Лістинг 3.11 - Друкування форматованого підрахунку символів для рядків в файлі.
 
-CONCLUSION
-----------
-With the knowledge you've gained in this chapter, you should be able to start using Scala for small tasks, especially scripts. In later chapters, we will dive further into these topics and introduce other topics that weren't even hinted at here.
+Висновок
+--------
+Зі знанням, що ви отримали в цій главі, ви повинні бути здатні почати використовувати Scala для малих завдань, особливо скриптів. В подальших главах ми будемо занурюватись далі в ці теми, та введемо інші теми, що не які тут не було натяку.
+
