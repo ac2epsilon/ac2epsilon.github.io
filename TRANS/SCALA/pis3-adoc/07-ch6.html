@@ -798,521 +798,500 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>Chapter 6
-Functional Objects
-With the understanding of Scala basics you&#8217;ve gained from previous chapters, you&#8217;re ready to design
-more full-featured classes in Scala. In this chapter, the emphasis is on classes that define functional
-objects, or objects that do not have any mutable state. As a running example, we&#8217;ll create several
-variants of a class that models rational numbers as immutable objects. Along the way, we&#8217;ll show you
-more aspects of object-oriented programming in Scala: class parameters and constructors, methods and
-operators, private members, overriding, checking preconditions, overloading, and self references.
-6.1 A SPECIFICATION FOR CLASS RATIONAL
-A rational number is a number that can be expressed as a ratio n/d, where n and d are integers, except
-that d cannot be zero. n is called the numerator and d the denominator. Examples of rational numbers
-are 1/2, 2/3, 112/239, and 2/1. Compared to floating-point numbers, rational numbers have the
-advantage that fractions are represented exactly, without rounding or approximation.
-The class we&#8217;ll design in this chapter must model the behavior of rational numbers, including allowing
-them to be added, subtracted, multiplied, and divided. To add two rationals, you must first obtain a
-common denominator, then add the two numerators. For example, to add1/2 + 2/3, you multiply both
-parts of the left operand by 3 and both parts of the right operand by 2, which gives you 3/6 + 4/6.
-Adding the two numerators yields the result, 7/6. To multiply two rational numbers, you can simply
-multiply their numerators and multiply their denominators. Thus, 1/2 * 2/5 gives 2/10, which can be
-represented more compactly in its "normalized" form as 1/5. You divide by swapping the numerator
-and denominator of the right operand and then multiplying. For instance 1/2 / 3/5 is the same
-as 1/2 * 5/3, or 5/6.
-One, maybe rather trivial, observation is that in mathematics, rational numbers do not have mutable
-state. You can add one rational number to another, but the result will be a new rational number. The
-original numbers will not have "changed." The immutable Rational class we&#8217;ll design in this chapter
-will have the same property. Each rational number will be represented by one Rational object. When
-you add two Rational objects, you&#8217;ll create a newRational object to hold the sum.
-This chapter will give you a glimpse of some of the ways Scala enables you to write libraries that feel
-like native language support. For example, at the end of this chapter you&#8217;ll be able to do this with
-class Rational:
-scala&gt; val oneHalf = new Rational(1, 2)
-oneHalf: Rational = 1/2
-scala&gt; val twoThirds = new Rational(2, 3)
-twoThirds: Rational = 2/3
-scala&gt; (oneHalf / 7) + (1 - twoThirds)
-res0: Rational = 17/426.2 CONSTRUCTING A RATIONAL
-A good place to start designing class Rational is to consider how client programmers will create a
-new Rational object. Given we&#8217;ve decided to make Rational objects immutable, we&#8217;ll require that
-clients provide all data needed by an instance (in this case, a numerator and a denominator) when they
-construct the instance. Thus, we will start the design with this:
-class Rational(n: Int, d: Int)
-One of the first things to note about this line of code is that if a class doesn&#8217;t have a body, you don&#8217;t
-need to specify empty curly braces (though you could, of course, if you wanted to). The
-identifiers n and d in the parentheses after the class name, Rational, are called class parameters. The
-Scala compiler will gather up these two class parameters and create aprimary constructor that takes the
-same two parameters.
-IMMUTABLE OBJECT TRADE-OFFS
-Immutable objects offer several advantages over mutable objects, and one potential disadvantage. First,
-immutable objects are often easier to reason about than mutable ones, because they do not have
-complex state spaces that change over time. Second, you can pass immutable objects around quite
-freely, whereas you may need to make defensive copies of mutable objects before passing them to other
-code. Third, there is no way for two threads concurrently accessing an immutable to corrupt its state
-once it has been properly constructed, because no thread can change the state of an immutable. Fourth,
-immutable objects make safe hash table keys. If a mutable object is mutated after it is placed into
-a HashSet, for example, that object may not be found the next time you look into the HashSet.
-The main disadvantage of immutable objects is that they sometimes require that a large object graph be
-copied, whereas an update could be done in its place. In some cases this can be awkward to express and
-might also cause a performance bottleneck. As a result, it is not uncommon for libraries to provide
-mutable alternatives to immutable classes. For example, class StringBuilder is a mutable alternative to
-the immutable String. We&#8217;ll give you more information on designing mutable objects in Scala
-in Chapter 18.
-Note
-This initial Rational example highlights a difference between Java and Scala. In Java, classes have
-constructors, which can take parameters; whereas in Scala, classes can take parameters directly. The
-Scala notation is more concise—class parameters can be used directly in the body of the class; there&#8217;s
-no need to define fields and write assignments that copy constructor parameters into fields. This can
-yield substantial savings in boilerplate code, especially for small classes.
-The Scala compiler will compile any code you place in the class body, which isn&#8217;t part of a field or a
-method definition, into the primary constructor. For example, you could print a debug message like
-this:
-class Rational(n: Int, d: Int) {}
-println("Created " + n + "/" + d)
-Given this code, the Scala compiler would place the call to println into Rational&#8217;s primary constructor.
-The println call will, therefore, print its debug message whenever you create a new Rational instance:
-scala&gt; new Rational(1, 2)
-Created 1/2
-res0: Rational = <a href="mailto:Rational@2591e0c9">Rational@2591e0c9</a>
-6.3 REIMPLEMENTING THE TOSTRING METHOD
-When we created an instance of Rational in the previous example, the interpreter printed
-"Rational@90110a". The interpreter obtained this somewhat funny looking string by callingtoString on
-the Rational object. By default, class Rational inherits the implementation oftoString defined in
-class java.lang.Object, which just prints the class name, an @ sign, and a hexadecimal number. The
-result of toString is primarily intended to help programmers by providing information that can be used
-in debug print statements, log messages, test failure reports, and interpreter and debugger output. The
-result currently provided by toString is not especially helpful because it doesn&#8217;t give any clue about the
-rational number&#8217;s value. A more useful implementation of toString would print out the values of
-the Rational&#8217;s numerator and denominator. You can override the default implementation by adding a
-method toString to class Rational, like this:
-class Rational(n: Int, d: Int) {
-override def toString = n + "/" + d
-}
-The override modifier in front of a method definition signals that a previous method definition is
-overridden (more on this in Chapter 10). Since Rational numbers will display nicely now, we removed
-the debug println statement we put into the body of previous version of classRational. You can test the
-new behavior of Rational in the interpreter:
-scala&gt; val x = new Rational(1, 3)
-x: Rational = 1/3
-scala&gt; val y = new Rational(5, 7)
-y: Rational = 5/7
-6.4 CHECKING PRECONDITIONS
-As a next step, we will turn our attention to a problem with the current behavior of the primary
-constructor. As mentioned at the beginning of this chapter, rational numbers may not have a zero in the
-denominator. Currently, however, the primary constructor accepts a zero passed as d:
-scala&gt; new Rational(5, 0)
-res1: Rational = 5/0
-One of the benefits of object-oriented programming is that it allows you to encapsulate data inside
-objects so that you can ensure the data is valid throughout its lifetime. In the case of an immutableobject such as Rational, this means that you should ensure the data is valid when the object is
-constructed. Given that a zero denominator is an invalid state for a Rationalnumber, you should not let
-a Rational be constructed if a zero is passed in the d parameter.
-The best way to approach this problem is to define as a precondition of the primary constructor
-that d must be non-zero. A precondition is a constraint on values passed into a method or constructor, a
-requirement which callers must fulfill. One way to do that is to userequire,<span class="footnote"><br />[The require method is defined in standalone object, Predef. As mentioned in Section 4.4,Predef&#8217;s members are imported automatically into every Scala source file.]<br /></span> like this:
-class Rational(n: Int, d: Int) {
-require(d != 0)
-override def toString = n + "/" + d
-}
-The require method takes one boolean parameter. If the passed value is true, require will return
-normally. Otherwise, require will prevent the object from being constructed by throwing
-an IllegalArgumentException.
-6.5 ADDING FIELDS
-Now that the primary constructor is properly enforcing its precondition, we will turn our attention to
-supporting addition. To do so, we&#8217;ll define a public add method on class Rationalthat takes
-another Rational as a parameter. To keep Rational immutable, the add method must not add the passed
-rational number to itself. Rather, it must create and return a new Rationalthat holds the sum. You might
-think you could write add this way:
-class Rational(n: Int, d: Int) { // This won&#8217;t compile
-require(d != 0)
-override def toString = n + "/" + d
-def add(that: Rational): Rational =
+<div class="sect1">
+<h2 id="__6">Глава 6</h2>
+<div class="sectionbody">
+</div>
+</div>
+<h1 id="___">Функціональні об'єкти</h1>
+<div class="paragraph"><p>З розумінням основ Scala, яке ви отримали від попередніх глав, ви готові до розробки більш наповнених можливістями класів в Scala. В цій главі ми зробимо наголос не класах, що визначають функціональні об'єкти, або об'єкти, що не мають жодного змінного стану. В якості роблячого прикладу, ми створимо декілька варіантів класу, що моделює раціональні числа як незмінні об'єкти. По ходу дії ми покажемо вам більше аспектів об'єктно-орієнтовного програмування в Scala: параметри класів та конструктори, методи та оператори, приватні члени, перекриття, перевірку передумов, перевантаження та посилання на себе.</p></div>
+<div class="sect1">
+<h2 id="_6_1___rational">6.1 Специфікація класа Rational</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><em>Раціональне число</em> є таке, що може бути виражене як відношеня <code>n/d</code>, де <code>n</code> та <code>d</code> є цілі, за винятком того, що <code>d</code> не може бути нулем. <code>n</code> називається чисельником, та <code>d</code> знаменником. Приклади раціональних чисел є 1/2, 2/3, 112/239, та 2/1. Порівняно з числами з плаваючою крапкою, раціональні числа мають перевагу в тому, що дробі представлені точно, без округлення або апроксимації.</p></div>
+<div class="paragraph"><p>Клас, який ми будемо розробляти в цей главі, має моделювати поведінку раціональних чисел, включаючи можливіть додавати їх, віднімати, множити та ділити. Щоб додати двоє раціональних числа, вам треба зпочатку отримати загальний знаменник, потім додати два чисельника. Наприклад, щоб додати <code>1/2 + 2/3</code>, ви множите обі частини лівого операнда на 3, та обі частини правого операнда на 2, що дає вам <code>3/6 + 4/6</code>. Додавання двох чисельників дає вам результат, <code>7/6</code>. Щоб помножити два раціональні числа, ви просто множите їх чисельники, та множите їх займенники. Таким чином, <code>1/2 * 2/5</code> дає <code>2/10</code>, що може бути представлено більш компактно в "нормалізованій" формі як <code>1/5</code>. Ви ділите обмінюючи чисельник та займенник правого операнда, та потім виконуєте множення. Наприклад, <code>1/2 / 3/5</code> є те саме, що <code>1/2 * 5/3</code>, або <code>5/6</code>.</p></div>
+<div class="paragraph"><p>Одне, можливо тривіальне, спостереження полягає в тому, що раціональні числа не мають змінного стану. Ви можете дадати одне раціональне до іншого, але результат буде новим раціональним числом. Оригінальні числа не будуть "змінені". Незмінний клас <code>Rational</code>, що ми будемо розробляти в цій главі, буде мати ту саму властивість. Кожне раціональне число буде представлене одним об'єктом <code>Rational</code>. Коли ми додаємо два об'єкти <code>Rational</code>, ви будете створювати новий об'єкт <code>Rational</code> щоб утримувати суму. Ця глава надасть вам  побіжне враження, як Scala дозволяє вам писати бібліотеки, що відчуваються як природна підтримка мови. Наприклад, в кінці цієї глави ви будете в змозі зробити це з класом <code>Rational</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">oneHalf</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">oneHalf</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">twoThirds</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">twoThirds</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">(</span><span class="n">oneHalf</span> <span class="o">/</span> <span class="mi">7</span><span class="o">)</span> <span class="o">+</span> <span class="o">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">twoThirds</span><span class="o">)</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">17</span><span class="o">/</span><span class="mi">42</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_2__rational">6.2 Конструювання Rational</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Гарне місце почати розробку класа <code>Rational</code> є вирішити, як програмісти клієнти будуть створювати новий об'єкт <code>Rational</code>. Зважаючи, що ми приняли рішення зробити об'єкти <code>Rational</code> незмінними, ми потребуємо, щоб клієнти надали всі дані, що треба для примірника (в цьому випадку чисельник та займенник), коли вони конструюють примірник. Таким чином, ми почнемо розробку з такого:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Одна з перших речей, що треба зауважити щодо цього рядка кода, це те, що якщо клас не має тіла, вам не треба вказувати порожні фігурні дужки (хоча ви можете, звичайно, якщо бажаєте). Ідентифікатори <code>n</code> та <code>d</code> в дужках після імені класу <code>Rational</code>, називаються параметрами класу. Компілятор Scala збере докупи ці параметри класу, та створить первинний конструктор, що матиме саме два параметри.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="____">Компроміс незмінних об'єктів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Незмінні об'єкти пропонують декілька переваг над змінним об'єктами, та один потенційний недолік. Перше, незмінні об'єкти часто простіше продумуються, ніж змінні, бо вони не мають складних просторів стану, що змінюються з часом. Друге, ви можете передавати незмінні об'екти довкола досить вільно, тоді як вам може знадобитись робити захисні копії змінних об'єктів, перед тим, як передаватий їх в інший код. Третє, немає способу для двох потоків, що одночасно отримують доступ до незмінного об'єкту, пошкодити його стан, коли він вже відповідно створений, бо потік взагалі не може змінити стан незмінного. Четверте, незмінні об'єкти роблять безпечними ключі хеш таблиць. Якщо змінний об'єкт зміниться після того, як він покладений, наприклад, в <code>HashSet</code>, цей об'єкт може бути не знайдений наступний раз, коли ви шукаєте в <code>HashSet</code>.</p></div>
+<div class="paragraph"><p>Головний недолік незмінних об'єктів в тому, що вони іноді потребують копіювання великого об'єктного графа, тоді як оновлення може бути зроблене на місці. В деяких випадках це може бути незручно виразити, і також може стати вузьким місцем продуктивності. Як результат, не нє рідкістю для бібліотек провадити змінні альтернативи до незмінних класів. Наприклад, клас <code>StringBuilder</code> є змінною альтернативою до незмінного  <code>String</code>. Ми надамо вам більше інформації щодо розробки змінних класів в Scala в Главі 18.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Цей початковий приклад <code>Rational</code> підкреслює різницю між Java та Scala. В Java класи мають конструктори, що можуть приймати параметри; тоді як в Scala класи самі можуть приймати параметри. Нотація Scala більше стисла — параметри класу можуть бути використані напряму в тілі класу; немає потреби визначати поля та писати присвоєння, що копіюють параметри конструктора в поля. Це може дати значну економію в шаблонному коді, особливо для малих класів.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>Компілятор Scala буде компілювати любий код, який ви покладете в тіло класа, що не є частиною поля або визначення метода, в первинний конструктор. Наприклад, ви можете надрукувати повідомлення зневадження таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;Created &quot;</span> <span class="o">+</span> <span class="n">n</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">d</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Беручи цей код, компілятор Scala покладе виклик до <code>println</code> в первинний конструктор <code>Rational</code>. Таким чином, виклик <code>println</code> буде друкувати своє повідолениня зпевадження, коли ви будете створювати новий примірник <code>Rational</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="nc">Created</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="nc">Rational</span><span class="k">@</span><span class="mi">2591</span><span class="n">e0c9</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_3___tostring">6.3 Реалізація метода toString</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Коли ви створили примірник <code>Rational</code> в попередньому прикладі, інтерпретатор надрукував <code>Rational@90110a</code>. Інтерпретатор отримав цей, дещо дивно вигладаючий, рядок викликаючи <code>toString</code> на об'єкті <code>Rational</code>. По замовченню клас <code>Rational</code> наслідує реалізацію <code>toString</code>, визначену в класі <code>java.lang.Object</code>, що просто друкує ім'я класу, символ <code>@</code>, та шістнадцятирічне число. Метод <code>toString</code> початково призначений для допомоги програмістам, провадячи інформацію, що може використовуватись для друкування повідомлень зневадження, журналювання повідомлень, звітів про збій тестів, та виводу інтерпретатора та знаваджувача. Результат, що наразі провадиться <code>toString</code>, не особливо корисний, бо він не надає жодного натяку щодо значення раціонального числа. Більш корисна реалізація <code>toString</code> може друкувати значення чисельника та займенника Rational. Ви можете <em>перекрити</em> реалізацію по замовчанню, через додавання метода <code>toString</code> до класу <code>Rational</code>, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">n</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">d</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Модифікатор <code>override</code> попереду визначення метода сигналить, що попереднє визначення перекривається (більше про це в Главі 10). Оскільки числа <code>Rational</code> тепер будуть гарно відображатись, ми видалили твердження  <code>println</code>, що ми поклали в тіло попередньої версії класа <code>Rational</code>. Ви можете протестувати нову поведінку  <code>Rational</code> в інтерпретаторі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">7</span><span class="o">)</span>
+<span class="n">y</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">5</span><span class="o">/</span><span class="mi">7</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_4__">6.4 Перевірка передумов</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як наступний крок, ми звернемо нашу увагу на проблему з поточною поведінкою первинного конструктора. Як зазначалось на початку цієї глави, раціональні числа не можуть мати нуль в якості займенника. Однак зараз первинний конструктор приймає нуль, переданий для <code>d</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">5</span><span class="o">/</span><span class="mi">0</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Одна з переваг об'єктно-орієнтовного програмування є те, що воно дозволяє вам інкапсулювати дані в об'єкті, так що ви можете бути впевнені, що дані валідні на протязі його життя. В випадку незмінних об'єктів, таких як <code>Rational</code>, це означає, що вам треба переконатись, що дані валідні при конструюванні об'єкта. Зважаючи, що нульовий займенник є невілідним станом для числа Rational, вам не слідує дозволити конструювання  <code>Rational</code>, якщо нуль передається в параметрі <code>d</code>.</p></div>
+<div class="paragraph"><p>Кращий шлях підійти до цієї проблеми є визначити передумову в первинному конструкторі, що <code>d</code> не має бути нулем. Передумова є обмеження на значення, передані в метод або конструктор, вимога, якій має задовільняти вікликаюча сторона. Один спосіб зробити це є використанян <code>require</code>,<span class="footnote"><br />[Метод <code>require</code> визначений в окремому об'єкті <code>Predef</code>. Як зазначено в Главі 4.4, члени <code>Predef</code> імпортуються автоматично в кожний файл Scala.]<br /></span> таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">n</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">d</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>require</code> приймає один логічний параметр. Якщо передане значення є <code>true</code>, <code>require</code> поверне керування звичайно. Інакше <code>require</code> буде запобігати створенню об'єкта, через виклик <code>IllegalArgumentException</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_5__">6.5 Додавання полів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Тепер, коли первинний конструктор відповідно перевіряє виконання передумови, ми звернемо нашу увагу на підтримку додавання. Щоб зробити це, ми визначимо публічний метод <code>add</code> на класі <code>Rational</code>, що приймає інше <code>Rational</code> як параметр. Щоб утримувати <code>Rational</code> незмінним, метод <code>add</code> не має додавати передане раціональне число до себе. Скоріше, він має створити та повернути нове <code>Rational</code>, що міститиме суму. Ви можете подумати, що можете написати <code>add</code> таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// Не буде компілюватись</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">n</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">d</span>
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">d</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">n</span> <span class="o">*</span> <span class="n">d</span><span class="o">,</span> <span class="n">d</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">d</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак, маючи цей код, компілятор буде скаржитись:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>&lt;console&gt;:11: error: value d is not a member of Rational
 new Rational(n * that.d + that.n * d, d * that.d)
-}
-However, given this code the compiler will complain:
-&lt;console&gt;:11: error: value d is not a member of Rational
-new Rational(n * that.d + that.n * d, d * that.d)
-<sup>
-&lt;console&gt;:11: error: value d is not a member of Rational
-new Rational(n * that.d + that.n * d, d * that.d)
-</sup>
-Although class parameters n and d are in scope in the code of your add method, you can only access
-their value on the object on which add was invoked. Thus, when you say n or d in add&#8217;s
-implementation, the compiler is happy to provide you with the values for these class parameters. But it
-won&#8217;t let you say that.n or that.d because that does not refer to the Rationalobject on which add was
-invoked.<span class="footnote"><br />[Actually, you could add a Rational to itself, in which case that would refer to the object on which add was invoked. But because you can pass any Rational object to add, the compiler still won&#8217;t let you say that.n.]<br /></span> To access the numerator and denominator on that, you&#8217;ll need to make them into
-fields. Listing 6.1 shows how you could add these fields to classRational.<span class="footnote"><br />[In Section 10.6 you&#8217;ll find out about parametric fields, which provide a shorthand for writing the same code.]<br /></span>
-class Rational(n: Int, d: Int) {
-require(d != 0)
-val numer: Int = n}
-val denom: Int = d
-override def toString = numer + "/" + denom
-def add(that: Rational): Rational =
-new Rational(
-numer * that.denom + that.numer * denom,
-denom * that.denom
-)
-Listing 6.1 - Rational with fields.
-In the version of Rational shown in Listing 6.1, we added two fields named numer and denom, and
-initialized them with the values of class parameters n and d.<span class="footnote"><br />[Even though n and d are used in the body of the class, given they are only used inside constructors, the Scala compiler will not emit fields for them. Thus, given this code the Scala compiler will generate a class with two Int fields, one for numer and one for denom.]<br /></span> We also changed the implementation
-of toString and add so that they use the fields, not the class parameters. This version of
-class Rational compiles. You can test it by adding some rational numbers:
-scala&gt; val oneHalf = new Rational(1, 2)
-oneHalf: Rational = 1/2
-scala&gt; val twoThirds = new Rational(2, 3)
-twoThirds: Rational = 2/3
-scala&gt; oneHalf add twoThirds
-res2: Rational = 7/6
-One other thing you can do now that you couldn&#8217;t do before is access the numerator and denominator
-values from outside the object. Simply access the public numer and denom fields, like this:
-scala&gt; val r = new Rational(1, 2)
-r: Rational = 1/2
-scala&gt; r.numer
-res3: Int = 1
-scala&gt; r.denom
-res4: Int = 2
-6.6 SELF REFERENCES
-The keyword this refers to the object instance on which the currently executing method was invoked, or
-if used in a constructor, the object instance being constructed. As an example, consider adding a
-method, lessThan, which tests whether the given Rational is smaller than a parameter:
-def lessThan(that: Rational) =
-this.numer * that.denom &lt; that.numer * this.denom
-Here, this.numer refers to the numerator of the object on which lessThan was invoked. You can also
-leave off the this prefix and write just numer; the two notations are equivalent.
-As an example of where you can&#8217;t do without this, consider adding a max method to classRational that
-returns the greater of the given rational number and an argument:
-def max(that: Rational) =
-if (this.lessThan(that)) that else thisHere, the first this is redundant. You could have left it off and written: lessThan(that). But the
-second this represents the result of the method in the case where the test returns false; were you to omit
-it, there would be nothing left to return!
-6.7 AUXILIARY CONSTRUCTORS
-Sometimes you need multiple constructors in a class. In Scala, constructors other than the primary
-constructor are called auxiliary constructors. For example, a rational number with a denominator of 1
-can be written more succinctly as simply the numerator. Instead of 5/1, for example, you can just write
-5. It might be nice, therefore, if instead of writingnew Rational(5, 1), client programmers could simply
-write new Rational(5). This would require adding an auxiliary constructor to Rational that takes only
-one argument, the numerator, with the denominator predefined to be 1. Listing 6.2 shows what that
-would look like.
-class Rational(n: Int, d: Int) {
-require(d != 0)
-val numer: Int = n
-val denom: Int = d
-def this(n: Int) = this(n, 1) // auxiliary constructor
-override def toString = numer + "/" + denom
-def add(that: Rational): Rational =
-new Rational(
-numer * that.denom + that.numer * denom,
-denom * that.denom
-)
-}
-Listing 6.2 - Rational with an auxiliary constructor.
-Auxiliary constructors in Scala start with def this(&#8230;). The body of Rational&#8217;s auxiliary constructor
-merely invokes the primary constructor, passing along its lone argument, n, as the numerator and 1 as
-the denominator. You can see the auxiliary constructor in action by typing the following into the
-interpreter:
-scala&gt; val y = new Rational(3)
-y: Rational = 3/1
-In Scala, every auxiliary constructor must invoke another constructor of the same class as its first
-action. In other words, the first statement in every auxiliary constructor in every Scala class will have
-the form "this(&#8230;)". The invoked constructor is either the primary constructor (as in
-the Rational example), or another auxiliary constructor that comes textually before the calling
-constructor. The net effect of this rule is that every constructor invocation in Scala will end up
-eventually calling the primary constructor of the class. The primary constructor is thus the single point
-of entry of a class.Note
-If you&#8217;re familiar with Java, you may wonder why Scala&#8217;s rules for constructors are a bit more
-restrictive than Java&#8217;s. In Java, a constructor must either invoke another constructor of the same class,
-or directly invoke a constructor of the superclass, as its first action. In a Scala class, only the primary
-constructor can invoke a superclass constructor. The increased restriction in Scala is really a design
-trade-off that needed to be paid in exchange for the greater conciseness and simplicity of Scala&#8217;s
-constructors compared to Java&#8217;s. Superclasses and the details of how constructor invocation and
-inheritance interact will be explained in Chapter 10.
-6.8 PRIVATE FIELDS AND METHODS
-In the previous version of Rational, we simply initialized numer with n and denom with d. As a result,
-the numerator and denominator of a Rational can be larger than needed. For example, the
-fraction 66/42 could be normalized to an equivalent reduced form, 11/7, but Rational&#8217;s primary
-constructor doesn&#8217;t currently do this:
-scala&gt; new Rational(66, 42)
-res5: Rational = 66/42
-To normalize in this way, you need to divide the numerator and denominator by theirgreatest common
-divisor. For example, the greatest common divisor of 66 and 42 is 6. (In other words, 6 is the largest
-integer that divides evenly into both 66 and 42.) Dividing both the numerator and denominator
-of 66/42 by 6 yields its reduced form, 11/7. Listing 6.3 shows one way to do this:
-class Rational(n: Int, d: Int) {
-require(d != 0)
-private val g = gcd(n.abs, d.abs)
-val numer = n / g
-val denom = d / g
-def this(n: Int) = this(n, 1)
-def add(that: Rational): Rational =
-new Rational(
-numer * that.denom + that.numer * denom,
-denom * that.denom
-)
-override def toString = numer + "/" + denom
-private def gcd(a: Int, b: Int): Int =
-if (b == 0) a else gcd(b, a % b)
-}
-Listing 6.3 - Rational with a private field and method.
-In this version of Rational, we added a private field, g, and modified the initializers
-for numerand denom. (An initializer is the code that initializes a variable; for example, the "n / g" that
-initializes numer.) Because g is private, it can be accessed inside the body of the class, but not outside.We also added a private method, gcd, which calculates the greatest common divisor of two passed Ints.
-For example, gcd(12, 8) is 4. As you saw in Section 4.1, to make a field or method private you simply
-place the private keyword in front of its definition. The purpose of the private "helper method" gcd is to
-factor out code needed by some other part of the class, in this case, the primary constructor. To
-ensure g is always positive, we pass the absolute value of n and d, which we obtain by invoking abs on
-them, a method you can invoke on any Int to get its absolute value.
-The Scala compiler will place the code for the initializers of Rational&#8217;s three fields into the primary
-constructor in the order in which they appear in the source code. Thus, g&#8217;s initializer,gcd(n.abs, d.abs),
-will execute before the other two, because it appears first in the source. Fieldg will be initialized with
-the result, the greatest common divisor of the absolute value of the class parameters, n and d. Field g is
-then used in the initializers of numer and denom. By dividingn and d by their greatest common
-divisor, g, every Rational will be constructed in its normalized form:
-scala&gt; new Rational(66, 42)
-res6: Rational = 11/7
-6.9 DEFINING OPERATORS
-The current implementation of Rational addition is OK, but could be made more convenient to use. You
-might ask yourself why you can write:
-x + y
-if x and y are integers or floating-point numbers, but you have to write:
-x.add(y)
-or at least:
-x add y
-if they are rational numbers. There&#8217;s no convincing reason why this should be so. Rational numbers are
-numbers just like other numbers. In a mathematical sense they are even more natural than, say,
-floating-point numbers.
-Why should you not use the natural arithmetic operators on them? In Scala you can do this. In the rest
-of this chapter, we&#8217;ll show you how.
-The first step is to replace add by the usual mathematical symbol. This is straightforward, as <code>is a legal
-identifier in Scala. We can simply define a method with + as its name. While we&#8217;re at it, we may as well
-implement a method named * that performs multiplication. The result is shown in Listing 6.4:
-class Rational(n: Int, d: Int) {
-require(d != 0)
-private val g = gcd(n.abs, d.abs)
-val numer = n / g
-val denom = d / gdef this(n: Int) = this(n, 1)
-def + (that: Rational): Rational =
-new Rational(
-numer * that.denom + that.numer * denom,
-denom * that.denom
-)
-def * (that: Rational): Rational =
-new Rational(numer * that.numer, denom * that.denom)
-override def toString = numer + "/" + denom
-private def gcd(a: Int, b: Int): Int =
-if (b == 0) a else gcd(b, a % b)
-}
-Listing 6.4 - Rational with operator methods.
-With class Rational defined in this manner, you can now write:
-scala&gt; val x = new Rational(1, 2)
-x: Rational = 1/2
-scala&gt; val y = new Rational(2, 3)
-y: Rational = 2/3
-scala&gt; x + y
-res7: Rational = 7/6
-As always, the operator syntax on the last input line is equivalent to a method call. You could also
-write:
-scala&gt; x.</code>(y)
-res8: Rational = 7/6
-but this is not as readable.
-Another thing to note is that given Scala&#8217;s rules for operator precedence, which were described
-in Section 5.9, the * method will bind more tightly than the + method for Rationals. In other words,
-expressions involving + and * operations on Rationals will behave as expected.For
-example, x + x * y will execute as x + (x * y), not (x + x) * y:
-scala&gt; x + x * y
-res9: Rational = 5/6
-scala&gt; (x + x) * y
-res10: Rational = 2/3
-scala&gt; x + (x * y)
-res11: Rational = 5/66.10 IDENTIFIERS IN SCALA
-You have now seen the two most important ways to form an identifier in Scala: alphanumeric and
-operator. Scala has very flexible rules for forming identifiers. Besides the two forms you have seen
-there are also two others. All four forms of identifier formation are described in this section.
-An alphanumeric identifier starts with a letter or underscore, which can be followed by further letters,
-digits, or underscores. The &#8216;$&#8217; character also counts as a letter; however, it is reserved for identifiers
-generated by the Scala compiler. Identifiers in user programs should not contain &#8216;$&#8217; characters, even
-though it will compile; if they do, this might lead to name clashes with identifiers generated by the
-Scala compiler.
-Scala follows Java&#8217;s convention of using camel-case identifiers,<span class="footnote"><br />[This style of naming identifiers is called camel case because the identifiersHaveHumps consisting of the embedded capital letters.]<br /></span> such
-as toString andHashSet. Although underscores are legal in identifiers, they are not used that often in
-Scala programs, in part to be consistent with Java, but also because underscores have many other non-
-identifier uses in Scala code. As a result, it is best to avoid identifiers like to_string,<em>init</em>, or name_.
-Camel-case names of fields, method parameters, local variables, and functions should start with a lower
-case letter, for example: length, flatMap, and s. Camel-case names of classes and traits should start with
-an upper case letter, for example: BigInt, List, and UnbalancedTreeMap.<span class="footnote"><br />[In Section 16.5, you&#8217;ll see that sometimes you may want to give a special kind of class known as a case class a name consisting solely of operator characters. For example, the Scala API contains a class named ::, which facilitates pattern matching on Lists.]<br /></span>
-Note
-One consequence of using a trailing underscore in an identifier is that if you attempt, for example, to
-write a declaration like this, "val name_: Int = 1", you&#8217;ll get a compiler error. The compiler will think
-you are trying to declare a val named "name_:". To get this to compile, you would need to insert an
-extra space before the colon, as in: "val name_ : Int = 1".
-One way in which Scala&#8217;s conventions depart from Java&#8217;s involves constant names. In Scala, the
-word constant does not just mean val. Even though a val does remain constant after it is initialized, it is
-still a variable. For example, method parameters are vals, but each time the method is called those vals
-can hold different values. A constant is more permanent. For example, scala.math.Pi is defined to be the
-double value closest to the real value of π, the ratio of a circle&#8217;s circumference to its diameter. This
-value is unlikely to change ever; thus, Pi is clearly a constant. You can also use constants to give names
-to values that would otherwise bemagic numbers in your code: literal values with no explanation,
-which in the worst case appear in multiple places. You may also want to define constants for use in
-pattern matching, a use case that will be described in Section 15.2. In Java, the convention is to give
-constants names that are all upper case, with underscores separating the words, such
-as MAX_VALUE or PI. In Scala, the convention is merely that the first character should be upper case.
-Thus, constants named in the Java style, such as X_OFFSET, will work as Scala constants, but the
-Scala convention is to use camel case for constants, such as XOffset.
-An operator identifier consists of one or more operator characters. Operator characters are printable
-ASCII characters such as +, :, ?, ~ or #.<span class="footnote"><br />[More precisely, an operator character belongs to the Unicode set of mathematical symbols(Sm) or other symbols(So), or to the 7-bit ASCII characters that are not letters, digits, parentheses, square brackets, curly braces, single or double quote, or an underscore, period, semi-colon, comma, or back tick character.]<br /></span> Here are some examples of operator identifiers:</p></div>
-<div class="paragraph"><p>+
-<code>+
-::: &lt;?&gt;
-:&#8594;The Scala compiler will internally "mangle" operator identifiers to turn them into legal Java identifiers
-with embedded $ characters. For instance, the identifier :&#8594; would be represented internally
-as $colon$minus$greater. If you ever wanted to access this identifier from Java code, you&#8217;d need to use
-this internal representation.
-Because operator identifiers in Scala can become arbitrarily long, there is a small difference between
-Java and Scala. In Java, the input x&#8592;y would be parsed as four lexical symbols, so it would be
-equivalent to x &lt; - y. In Scala, &#8592; would be parsed as a single identifier, giving x &#8592; y. If you want the
-first interpretation, you need to separate the &lt; and the - characters by a space. This is unlikely to be a
-problem in practice, as very few people would write x&#8592;y in Java without inserting spaces or
-parentheses between the operators.
-A mixed identifier consists of an alphanumeric identifier, which is followed by an underscore and an
-operator identifier. For example, unary_</code> used as a method name defines a unary <code>operator.
-Or, myvar_= used as method name defines an assignment operator. In addition, the mixed identifier
-form myvar_= is generated by the Scala compiler to support properties (more on that in Chapter 18).
-A literal identifier is an arbitrary string enclosed in back ticks (` &#8230;<code>). Some examples of literal
-identifiers are:
-`x</code>
-<code>&lt;clinit&gt;</code>
-<code>yield</code>
-The idea is that you can put any string that&#8217;s accepted by the runtime as an identifier between back
-ticks. The result is always a Scala identifier. This works even if the name contained in the back ticks
-would be a Scala reserved word. A typical use case is accessing the static yieldmethod in
-Java&#8217;s Thread class. You cannot write Thread.yield() because yield is a reserved word in Scala.
-However, you can still name the method in back ticks, e.g., Thread.<code>yield</code>().
-6.11 METHOD OVERLOADING
-Back to class Rational. With the latest changes, you can now do addition and multiplication operations
-in a natural style on rational numbers. But one thing still missing is mixed arithmetic. For instance, you
-cannot multiply a rational number by an integer because the operands of * always have to be Rationals.
-So for a rational number r you can&#8217;t write r * 2. You must write r * new Rational(2), which is not as
-nice.
-To make Rational even more convenient, we&#8217;ll add new methods to the class that perform mixed
-addition and multiplication on rational numbers and integers. While we&#8217;re at it, we&#8217;ll add methods for
-subtraction and division too. The result is shown in Listing 6.5.
-class Rational(n: Int, d: Int) {
-require(d != 0)
-private val g = gcd(n.abs, d.abs)
-val numer = n / g
-val denom = d / gdef this(n: Int) = this(n, 1)
-def + (that: Rational): Rational =
-new Rational(
-numer * that.denom + that.numer * denom,
-denom * that.denom
-)
-def + (i: Int): Rational =
-new Rational(numer + i * denom, denom)
-def - (that: Rational): Rational =
-new Rational(
-numer * that.denom - that.numer * denom,
-denom * that.denom
-)
-def - (i: Int): Rational =
-new Rational(numer - i * denom, denom)
-def * (that: Rational): Rational =
-new Rational(numer * that.numer, denom * that.denom)
-def * (i: Int): Rational =
-new Rational(numer * i, denom)
-def / (that: Rational): Rational =
-new Rational(numer * that.denom, denom * that.numer)
-def / (i: Int): Rational =
-new Rational(numer, denom * i)
-override def toString = numer + "/" + denom
-private def gcd(a: Int, b: Int): Int =
-if (b == 0) a else gcd(b, a % b)
-}
-Listing 6.5 - Rational with overloaded methods.
-There are now two versions each of the arithmetic methods: one that takes a rational as its argument
-and another that takes an integer. In other words, each of these method names isoverloaded because
-each name is now being used by multiple methods. For example, the name + is used by one method
-that takes a Rational and another that takes an Int. In a method call, the compiler picks the version of an
-overloaded method that correctly matches the types of the arguments. For instance, if the
-argument y in x.</code>(y) is a Rational, the compiler will pick the method + that takes a Rational parameter.
-But if the argument is an integer, the compiler will pick the method + that takes an Int parameter
-instead. If you try this:
-scala&gt; val x = new Rational(2, 3)
-x: Rational = 2/3
-scala&gt; x * x
-res12: Rational = 4/9
-scala&gt; x * 2res13: Rational = 4/3
-You&#8217;ll see that the * method invoked is determined in each case by the type of the right operand.
-Note
-Scala&#8217;s process of overloaded method resolution is very similar to Java&#8217;s. In every case, the chosen
-overloaded version is the one that best matches the static types of the arguments. Sometimes there is no
-unique best matching version; in that case the compiler will give you an "ambiguous reference" error.
-6.12 IMPLICIT CONVERSIONS
-Now that you can write r * 2, you might also want to swap the operands, as in 2 * r. Unfortunately this
-does not work yet:
-scala&gt; 2 * r
-&lt;console&gt;:10: error: overloaded method value * with
-alternatives:
-(x: Double)Double &lt;and&gt;
-(x: Float)Float &lt;and&gt;
-(x: Long)Long &lt;and&gt;
-(x: Int)Int &lt;and&gt;
-(x: Char)Int &lt;and&gt;
-(x: Short)Int &lt;and&gt;
-(x: Byte)Int
-cannot be applied to (Rational)
-2 * r
 ^
-The problem here is that 2 * r is equivalent to 2.*(r), so it is a method call on the number 2, which is an
-integer. But the Int class contains no multiplication method that takes a Rationalargument—it couldn&#8217;t
-because class Rational is not a standard class in the Scala library.
-However, there is another way to solve this problem in Scala: You can create an implicit conversion
-that automatically converts integers to rational numbers when needed. Try adding this line in the
-interpreter:
-scala&gt; implicit def intToRational(x: Int) = new Rational(x)
-This defines a conversion method from Int to Rational. The implicit modifier in front of the method
-tells the compiler to apply it automatically in a number of situations. With the conversion defined, you
-can now retry the example that failed before:
-scala&gt; val r = new Rational(2,3)
-r: Rational = 2/3
-scala&gt; 2 * r
-res15: Rational = 4/3
-For an implicit conversion to work, it needs to be in scope. If you place the implicit method definition
-inside class Rational, it won&#8217;t be in scope in the interpreter. For now, you&#8217;ll need to define it directly in
-the interpreter.As you can glimpse from this example, implicit conversions are a very powerful technique for making
-libraries more flexible and more convenient to use. Because they are so powerful, they can also be
-easily misused. You&#8217;ll find out more on implicit conversions, including ways to bring them into scope
-where they are needed, in Chapter 21.
-6.13 A WORD OF CAUTION
-As this chapter has demonstrated, creating methods with operator names and defining implicit
-conversions can help you design libraries for which client code is concise and easy to understand. Scala
-gives you a great deal of power to design such easy-to-use libraries. But please bear in mind that with
-power comes responsibility.
-If used unartfully, both operator methods and implicit conversions can give rise to client code that is
-hard to read and understand. Because implicit conversions are applied implicitly by the compiler, not
-explicitly written down in the source code, it can be non-obvious to client programmers what implicit
-conversions are being applied. And although operator methods will usually make client code more
-concise, they will only make it more readable to the extent client programmers will be able to recognize
-and remember the meaning of each operator.
-The goal you should keep in mind as you design libraries is not merely enabling concise client code,
-but readable, understandable client code. Conciseness will often be a big part of that readability, but
-you can take conciseness too far. By designing libraries that enable tastefully concise and at the same
-time understandable client code, you can help those client programmers work productively.
-6.14 CONCLUSION
-In this chapter, you saw more aspects of classes in Scala. You saw how to add parameters to a class,
-define several constructors, define operators as methods, and customize classes so that they are natural
-to use. Maybe most importantly, you saw that defining and using immutable objects is a quite natural
-way to code in Scala.
-Although the final version of Rational shown in this chapter fulfills the requirements set forth at the
-beginning of the chapter, it could still be improved. We will in fact return to this example later in the
-book. For example, in Chapter 30, you&#8217;ll learn how to override equals andhashcode to allow Rationals
-to behave better when compared with == or placed into hash tables. In Chapter 21, you&#8217;ll learn how to
-place implicit method definitions in a companion object forRational, so they can be more easily placed
-into scope when client programmers are working with Rationals.</p></div>
+&lt;console&gt;:11: error: value d is not a member of Rational
+new Rational(n * that.d + that.n * d, d * that.d)
+^</code></pre>
+</div></div>
+<div class="paragraph"><p>Хоча параметри класу <code>n</code> та <code>d</code> в полі зору коду вашого метода <code>add</code>, ви можете отримувати доступ до їх значень тільки для об'єкта, на якому був викликаний метод <code>add</code>. Таким чином, коли ви кажете <code>n</code> або <code>d</code> в реалізцаії <code>add</code>, компілятор буде щасливий провадити значення для ціх параметрів класу. Але він не дає вам казати <code>that.n</code> або <code>that.d</code>, оскільки це не посилається на об'єкт <code>Rational</code>, на якому був визваний <code>add</code>.<span class="footnote"><br />[Насправді, ви можете додати Rational до себе, в якому випадку це буде посилатись на об'єкт, на якому викликається <code>add</code>. Але оскільки ви можете передати любий об'єкт <code>Rational</code> до <code>add</code>, компілятор все ще не дає вам сказати <code>that.n</code>.]<br /></span> Щоб отримати чисельник та займенник на <code>that</code>, вам треба перетворити їх на поля. Лістинг 6.1 показує, як ви можете додати ці поля до класу <code>Rational</code>.<span class="footnote"><br />[В Розділі 10.6 ви прочитаєте щодо параметричних полів, що провадять скорочення для написання того самого кода.]<br /></span></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">numer</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">n</span>
+  <span class="k">val</span> <span class="n">denom</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">d</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">denom</span>
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span>
+      <span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span>
+      <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+    <span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 6.1 - Rational з полями.</p></div>
+<div class="paragraph"><p>В версії <code>Rational</code>, показаній в Лістингу 6.1 ми дадали два поля на ім'я <code>numer</code> та <code>denom</code>, та ініціалізували їх значеннями параметрів класу, <code>n</code> та <code>d</code>.<span class="footnote"><br />[Навіть якщо <code>n</code> та <code>d</code> використовуються в тілі класу, виходячи з того, що вони використовуються тільки в конструкторах, компілятор Scala не буде створювати поля для них. Таким чином, маючи цей код компілятор Scala буде генерувати клас з двома полями <code>Int</code>, одне для <code>numer</code> та одне для <code>denom</code>.]<br /></span> Ми змінили реалізацію <code>toString</code> та <code>add</code>, так що вони використовують поля, а не параметри класу. Ця версія <code>Rational</code> компілюється. Ви можете протестувати її, додавши деякі раціональні числа:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">oneHalf</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">oneHalf</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">twoThirds</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">twoThirds</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">oneHalf</span> <span class="n">add</span> <span class="n">twoThirds</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">7</span><span class="o">/</span><span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Інша річ, яку ви можете зробити тепер, але не могли раніше, є доступ до значень чисельника та займенника з поза меж об'єкта. Просто отримайте доступ до публічних полів <code>numer</code> та <code>denom</code>, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">r</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">numer</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">r</span><span class="o">.</span><span class="n">denom</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">2</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_6___">6.6 Посилання на себе</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ключове слово <code>this</code> посилається на примірник об'єкту, на якому був визваний метод, який наразі виконується, або в випадку конструктора - примірник об'єкта, що створюється. Як приклад, розглянемо додавання метода  <code>lessThan</code>, що перевіряє, що дане Rational меньше ніж параметр:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">lessThan</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">this</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">&lt;</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="k">this</span><span class="o">.</span><span class="n">denom</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут <code>this.numer</code> посилається на чисельник об'єкта, на якому викликане <code>lessThan</code>. Ви також можете облишити цей префікс, та записати тільки <code>numer</code>; дві нотифікації є еквівалентними. Як приклад того, що ви не можете робити без <code>this</code>, розглянемо додавання метода <code>max</code> до класу <code>Rational</code>, що повертає більше з даного раціонального та аргумента:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">max</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">lessThan</span><span class="o">(</span><span class="n">that</span><span class="o">))</span> <span class="n">that</span> <span class="k">else</span> <span class="k">this</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут перше <code>this</code> є надлишковим. Ви можете відкинути його, та записати: <code>lessThan(that)</code>. Але друге <code>this</code> представляє результат метода, в випадку, коли перевірка поверне <code>false</code>; коли ми оминемо його, нам нічого не залишиться повертати!</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_7__">6.7 Додаткові конструктори</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Іноді вам треба декілька конструкторів класу. В Scala конструктори, крім первинного, називаються додатковими конструкторами. Наприклад, раціональне число з займенником 1 може бути записане більш лаконічно як один чисельник. Наприклад, замість <code>5/1</code>, ви можете записати лише 5. Таким чином, це було б гарно, якщо замість запису <code>Rational(5, 1)</code>, програмісти клієнти могли просто писати <code>new Rational(5)</code>. Це буде потребувати додавання додаткового конструктора до <code>Rational</code>, що приймає лише один аргумент, чисельник, з займенником передвизначеним як 1. Лістинг 6.2 показує, на що це може бути схоже.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+
+  <span class="k">val</span> <span class="n">numer</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">n</span>
+  <span class="k">val</span> <span class="n">denom</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">d</span>
+
+  <span class="k">def</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span> <span class="c1">// додатковий конструктор</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">denom</span>
+
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span>
+      <span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span>
+      <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+    <span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 6.2 - Rational з додатковим конструктором.</p></div>
+<div class="paragraph"><p>Додаткові конструктори в Scala починаються з <code>def this(...)</code>. Тіло додаткового конструктора <code>Rational</code> просто викликає первинний конструктор, передаючи йому всій єдиний аргумент, <code>n</code>, як чисельник, та 1 як займенник. Ви можете бачити додатковий конструктор в дії, написавши таке в інтерпретаторі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">3</span><span class="o">)</span>
+<span class="n">y</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">3</span><span class="o">/</span><span class="mi">1</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В Scala кожний зовнішінй конструктор має викликати інший конструктор того самого класу в якості першої дії. Іншими словами, перше твердження в кожному додатковому конструкторі кожного класа Scala буде мати форму <code>this(...)</code>. Викликаний конструктор є або первинним конструктором (як в прикладі <code>Rational</code>), або інший додатковий конструктор, що текстуально іде перед викликаючим конструктором. Нетто ефект з цього правила в тому, що кожний виклик конструктора в Scala згодом буде закінчувати викликом первинного конструктора класу. Первинний конструктор, таким чином, є єдиною точкою входу класу.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Якщо ви знакомі з Java, ви можете здивуватись, чому правила Scala для конструкторів трохи більш обмежуючі, ніж в Java. В Java конструктор в якості першой дії має або викликати інший конструктор того самого класу, або напряму викликати конструктор суперкласу. В класах Scala тільки первинний конструктор може викликати конструктор суперкласу. Збільшення обмеження в Scala насправді є компроміс дизайну, який треба заплатити за більшу стислість та простоту констуркторів Scala, порівняно з Java. Суперкласи та деталі, як взаємодіють виклики конструкторів та наслідування, пояснені в Главі 10.</td>
+</tr></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_8____">6.8 Приватні поля та методи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В попередній версії <code>Rational</code> ми просто ініціалізували <code>numer</code> як <code>n</code> та <code>denom</code> як <code>d</code>. Як результат, чисельник та займенник <code>Rational</code> можуть бути більші, ніж треба. Наприклад, дріб <code>66/42</code> може бути нормалізована до екввалентної скороченої форми, <code>11/7</code>, але первинний конструктор <code>Rational</code> наразі не робить цього:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">66</span><span class="o">,</span> <span class="mi">42</span><span class="o">)</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">66</span><span class="o">/</span><span class="mi">42</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб нормалізувати число і такий спосіб, нам треба розділити чисельник та займенник на їх спільний дільник. Наприклад, найбільший дільник для <code>66</code> та <code>42</code> є <code>6</code>. (Іншими словами, 6 є більшим цілим, що рівно ділить обоє, 66 та 42.) Ділення обох, чисельника та займенника <code>66/42</code> на <code>6</code> дає скорочену форму, 11/7. Лістинг 6.3 показує спосіб, як зробити це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="n">g</span> <span class="k">=</span> <span class="n">gcd</span><span class="o">(</span><span class="n">n</span><span class="o">.</span><span class="n">abs</span><span class="o">,</span> <span class="n">d</span><span class="o">.</span><span class="n">abs</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">numer</span> <span class="k">=</span> <span class="n">n</span> <span class="o">/</span> <span class="n">g</span>
+  <span class="k">val</span> <span class="n">denom</span> <span class="k">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">g</span>
+
+  <span class="k">def</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">add</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span>
+      <span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span>
+      <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+  <span class="o">)</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">denom</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">gcd</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="n">a</span> <span class="k">else</span> <span class="n">gcd</span><span class="o">(</span><span class="n">b</span><span class="o">,</span> <span class="n">a</span> <span class="o">%</span> <span class="n">b</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 6.3 - Rational з приватним полем та методом.</p></div>
+<div class="paragraph"><p>В цій версії Rational ми додали приватне поле <code>g</code>, та модифікували ініціалізатори для <code>numer</code> та <code>denom</code>. (Ініціалізатор є код, що ініціалізує змінну; наприклад, <code>n / g</code>, що ініціалізує <code>numer</code>.) Оскільки <code>g</code> є приватним, доступ до неї може відбуватись тільки з тіла класу, але не ззовні. Ми також додали приватний метод, <code>gcd</code>, що обчислює найбільший загальний дільник двох переданих <code>Int</code>. Наприклад, <code>gcd(12, 8)</code> є <code>4</code>. Як ви бачили в Розділі 4.1, щоб зробити поле або метод приватними, ви просто можете покласти ключове слово <code>private</code> перед його визначенням. Призначення приватного "допоміжного метода" <code>gcd</code> є виділити код, потрібний для якоїсь іншої частини класу, в цьому випадку первинному конструктору. Щоб переконатись, що <code>g</code> завжди додатнє, ми передаємо абсолютні значення <code>n</code> та <code>d</code>, що ми отримали через виклик на них метода <code>abs</code>, метод, що ви можете викликати на кожному <code>Int</code> щоб отримати його абсолютне значення.</p></div>
+<div class="paragraph"><p>Компілятор Scala буде покладати код для ініціалізаторів трьох полів <code>Rational</code> в первинний конструктор, в порядку як вони з'являються в джерельному коді. Таким чином, ініціалізатор <code>g</code>, <code>gcd(n.abs, d.abs)</code>, буде виконуватись перед іншими двома, оскільки він іде першим в тексті. Поле <code>g</code> буде ініціалізоване результатом, найбільшим загальним дільником абсолютних значень параметрів класу, <code>n</code> та <code>d</code>. Поле <code>g</code> потім використовується в ініціалізаторах <code>numer</code> та <code>denom</code>. Після ділення <code>n</code> та <code>d</code> на їх найбільший загальний дільник, <code>g</code>, кожний <code>Rational</code> буде сконструйований в його нармалізованій формі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">66</span><span class="o">,</span> <span class="mi">42</span><span class="o">)</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">11</span><span class="o">/</span><span class="mi">7</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_9__">6.9 Визначення операцій</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Поточна реалізація додавання <code>Rational</code> є OK, але може бути зроблене зручнішим в роботі. Ви можете спитати себе, чому ви можете записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+</pre></div></div></div>
+<div class="paragraph"><p>якщо <code>x</code> та <code>y</code> є цілі або з плаваючою крапкою, але ви маєте писати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">x</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">y</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>або щонайменше:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">x</span> <span class="n">add</span> <span class="n">y</span>
+</pre></div></div></div>
+<div class="paragraph"><p>якщо вони раціональні числа. Немає переконливої причини, чому має бути саме так. Раціональні числа є числами, як любі інші числа. В математичному сенсі вони навіть більш природні, ніж, скажімо, числа з плаваючою крапкою.</p></div>
+<div class="paragraph"><p>Чому ми не повинні використовувати природні арифметичні оператори для них? В Scala ви можете робити це. В залишку глави ми покажемо вам як.</p></div>
+<div class="paragraph"><p>Перший крок є замінити <code>add</code> на звичайний математичний символ. Це прямолінійне, бо <code>+</code> є легальним ідентифікатором в Scala. Ми можемо просто визначили метод з <code>+</code> в якості імені. Поки ми вже в цьому, ми можемо також реалізувати метод на ім'я <code>*</code>, що виконує множення. Результат показаний в Лістингу 6.4:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="n">g</span> <span class="k">=</span> <span class="n">gcd</span><span class="o">(</span><span class="n">n</span><span class="o">.</span><span class="n">abs</span><span class="o">,</span> <span class="n">d</span><span class="o">.</span><span class="n">abs</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">numer</span> <span class="k">=</span> <span class="n">n</span> <span class="o">/</span> <span class="n">g</span>
+  <span class="k">val</span> <span class="n">denom</span> <span class="k">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">gdef</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">+</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span>
+      <span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span>
+      <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+    <span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">*</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span><span class="o">,</span> <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span><span class="o">)</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">denom</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">gcd</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="n">a</span> <span class="k">else</span> <span class="n">gcd</span><span class="o">(</span><span class="n">b</span><span class="o">,</span> <span class="n">a</span> <span class="o">%</span> <span class="n">b</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 6.4 - Rational з операторними методами.</p></div>
+<div class="paragraph"><p>Коли клас <code>Rational</code> визначений в цей спосіб, тепер ви можете записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">y</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">7</span><span class="o">/</span><span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як завжди, операторний синтаксис в останньому рядку еквівалентний до викликуу метода. Ви можете також записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span><span class="o">.+(</span><span class="n">y</span><span class="o">)</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">7</span><span class="o">/</span><span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>але це не читабельне.</p></div>
+<div class="paragraph"><p>Інша річ, що треба зауважити, є приймаючи до уваги правила Scala для преоритетів операторів, описані в Розділі 5.9, метод <code>*</code> буде притулятись більш тісно, ніж метод <code>+</code> для <code>Rationals</code>. Іншими словами, вираз, що включає операції <code>+</code> та <code>*</code> на <code>Rationals</code> буде поводитись як очікується. Наприклад, <code>x + x * y</code> буде виконуватись як <code>x + (x * y)</code>, не <code>(x + x) * y</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">5</span><span class="o">/</span><span class="mi">6</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">x</span><span class="o">)</span> <span class="o">*</span> <span class="n">y</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="o">(</span><span class="n">x</span> <span class="o">*</span> <span class="n">y</span><span class="o">)</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">5</span><span class="o">/</span><span class="mf">66.10</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="___scala">Ідентифікатори в Scala</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Тепер ви бачили два найбільш важливі способи сформувати ідентифікатор в Scala: алфавітно-цифрові та оператори. Scala має дуже гнучки правила для формування ідентифікаторів. Кірм двох форм ви також бачили тут дві інші. Всі чотири форми створенні ідентифікатоірв описані і цьому розділі. Алфавітно-цифрові ідентифікатори починаються з літери або підкреслення, за яким можуть далі слідувати літери, цифри або підкреслення. Символ <code>$</code> також рахується як літера; однак, вона зарезервована для ідентифікатором, згенерованих компілятором Scala. Ідентифікатори в користувацьких програмах по повинні містити символи <code>$</code>, навіть якщо це і буде компілюватись; якщо вони будуть, це може призвести до стикання імен з ідентифікаторами, згенерованих компілятором Scala.</p></div>
+<div class="paragraph"><p>Scala слідує домовленості Java використання кемел-кейсу в ідентифікаторах,<span class="footnote"><br />[Цей стиль іменування ідентифікаторів названий кемел-кейс (верблюжий реєстр), оскільки ідентифікатори HaveHumps мають вбудовані великі літери.]<br /></span> такі як <code>toString</code> та <code>HashSet</code>. Хоча підкреслення є легальні в ідентифікаторах, вони не використовуються так часто в Scala програмах, частково щоб бути узгодженою з Java, але також оскільки підкреслення мають багато інших не-ідентифікаторних використань в Scala коді. Як результат, накраще уникати ідентифікаторів, як <code>to_string</code>, <code>__init__</code>, або <code>name_</code>.</p></div>
+<div class="paragraph"><p>Кемел-кейс імена полів, параметрів методів, локальних змінних та функцій повинні починатись з літери в нижньому реєстрі, наприклад: <code>length</code>, <code>flatMap</code> та <code>s</code>. Кемел-кейс імена класів та трейтів повинні починатись з літери в верхньому реєстрі, наприклад: <code>BigInt</code>, <code>List</code> та <code>UnbalancedTreeMap</code>.<span class="footnote"><br />[В Розділі 16.5 ви побачите, що іноді ви бажаєте надати спеціальному типу класу, відомому як кейс клас, ім'я, що повністю складається з символів операторів. Наприклад, Scala API має клас на ім'я <code>::</code>, що спрощує співпадіння шаблонів для List.]<br /></span></p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Один наслідок з використання заключного підкреслення в ідентифікаторі є в тому, що якщо ви спробуєте, наприклад, написати декларацію, як цю: <code>val name_: Int = 1</code>, ви отримаєте помилку компілятора. Компілятор буде думати, що ви намагаєтесь декларувати <code>val</code> на ім'я <code>name_:</code>. Щоб змісити це компілюватись, вам треба вставити додатковий проміжок перед двокрапкою, як тут: <code>val name_ : Int = 1</code>.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>Один шлях, в який домовленості Scala відходять від Java включають імена констант. В Scala слово <code>constant</code> означає на просто <code>val</code>. Навіть якщо <code>val</code> має залишатись сталою після ініціалізації, це все ще змінна. Наприклад, параметри методів є <code>vals</code>, але кожний раз, коли визивається метод, ці <code>val</code> може містити різні значення. <code>constant</code> більш стійкі. Наприклад, <code>scala.math.Pi</code> визначена щоб бути значенням подвійної точності, найближчим до дійсного значення <code>π</code>, відношення довжини кола до його диаметру. Це значення навряд чи зміниться будь-коли; таким чином, <code>Pi</code> явно є константою. Ви можете також використовувати константи для надання імен значенням, що інакше були б магічними числами в коді: літеральні значення без пояснення, що в гіршому випадку з'являються в декількох місцях. Ви можете також побажати визначити константи для використання в співпадінні шаблонів, приклади використання яких описані в Розділі 15.2. В Java домовленість полягає в використанні імен констант з великих літер, з підкресленнями в якості роздільнииків слів, таких як <code>MAX_VALUE</code> або <code>PI</code>. В Scala домовленість просто така, щоб перша літера була великою. Таким чином, константи, названі в стилі Java, такі як <code>X_OFFSET</code>, будуть робити як Scala константи, але домовленість Scala використовувати кемел-кейс для констант, такі як <code>XOffset</code>.</p></div>
+<div class="paragraph"><p>Операторний ідентифікатор складається з одного або більше операторних символів. Операторні символи є друковані ASCII символи, такі як <code>+</code>, <code>:</code>, <code>?</code>, <code>~</code> або <code>#</code>.<span class="footnote"><br />[Більш точно, операторний символ належить до множини Unicode математичних символів (Sm) або інших символів (So), або до 7-бітних ASCII символів, що не є літерами, цифрами, дужками, прямокутними дужками, фігурними дужками, поодинокими та подвійними лапками, або підкресленням, крапкою, крапкою з комою, комою, або апострофом.]<br /></span> Ось деякі приклади операторних ідентифікаторів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">+</span>
+<span class="o">++</span>
+<span class="o">:::</span> <span class="o">&lt;?&gt;</span>
+<span class="o">:-&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Компілятор Scala буде всредині "колдувати" з операторними ідентифікаторами, щоб перетворити їх на легальні  Java ідентифікатори з вбудованими символами <code>$</code>. Наприклад, ідентифкатор <code>:-&gt;</code> внутрішньо буде представлений як <code>$colon$minus$greater</code>. Якщо ви колись побажаєте отримати доступ до цього ідентифікатора з Java кода, вам знадобиться використовувати цю внутрішню репрезентацію.</p></div>
+<div class="paragraph"><p>Оскільки операторні ідентифікатори в Scala можуть стати довільно довгі, існує мала різниця між Java та Scala. В Java ввод <code>x&lt;-y</code> буде розібране як чотири лексичні символі, так що це буде еквівалентне до <code>x &lt; - y</code>. В Scala <code>&lt;-</code> буде розібране як єдиний ідентифікатор, даючи <code>x &lt;- y</code>. Якщо ви бажаєте першу інтерпретацію, вам треба відокремити символи <code>&lt;</code> та <code>-</code> проміжками. Це навряд чи буде проблемою на практиці, бо дуже мало людей пишуть <code>x&lt;-y</code> в Java, без вставлення проміжків або дужок між операторами.</p></div>
+<div class="paragraph"><p>Змішений ідентифікатор складається з алфавітно-цифрового ідентифікатора, за яким слідує підкреслення, та операторний ідентифікатор. Наприклад, <code>unary_+</code> використовується як ім'я метода, що визначає унарний оператор <code>+</code>. Або <code>myvar_=</code>, що використовується як ім'я метода, що визначає оператор присвоєння. На додаток, змішані ідентифікатори в формі <code>myvar_=</code> генеруються компілятором Scala для підтримки властивостей (більше про це в Главі 18).</p></div>
+<div class="paragraph"><p>Літеральний ідентифікатор є довільним рядком, оточений зворотніми апострофами `&#8230;\`. Деякі приклади літеральних ідентифікатоірв:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">`x`</span>
+<span class="n">`&lt;clinit&gt;`</span>
+<span class="n">`yield`</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ідея в тому, що ви покладаєте любий рядок, що допустимий під час виконання, як ідентифікатор між апострофами. Результат завжди є Scala ідентифікатор. Це робить навіть якщо ім'я в апострофах буде зарезервованим словом Scala. Типове використання є доступ до статичного метода <code>yield</code> в класі Java Thread. Ви не можете писати <code>Thread.yield()</code>, оскільки <code>yield</code> є зарезервованим словом Scala. Однак ви можете все ще назвати метод в апострофах, тобто <code>Thread.`yield</code>()`.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_11__">6.11 Перевантаження методів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Повернемось до класу <code>Rational</code>. З останніми змінами ви тепер можете робити операції додавання та множення в природний спосіб на раціональних числах. Але одна річ все ще відсутня - це змішана арифметика. Наприклад, ви не можете множити раціональне число на ціле, оскільки операнди <code>*</code> завжди мають бути <code>Rational</code>. Так що для раціонального числа <code>r</code> ви не можете написати <code>r * 2</code>. Ви маєте писати <code>r * new Rational(2)</code>, що не таке гарне.</p></div>
+<div class="paragraph"><p>Щоб зробити <code>Rational</code> навіть ще зручнішим, ми додаємо методи до класу, що виконують змішане додавання та множення на раціональних числах та цілих. Доки ми тут, ми також додаємо методи для віднімання та ділення. Результат показаний на Лістингу 6.5.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="n">g</span> <span class="k">=</span> <span class="n">gcd</span><span class="o">(</span><span class="n">n</span><span class="o">.</span><span class="n">abs</span><span class="o">,</span> <span class="n">d</span><span class="o">.</span><span class="n">abs</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">numer</span> <span class="k">=</span> <span class="n">n</span> <span class="o">/</span> <span class="n">g</span>
+  <span class="k">val</span> <span class="n">denom</span> <span class="k">=</span> <span class="n">d</span> <span class="o">/</span> <span class="n">g</span>
+
+  <span class="k">def</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="k">this</span><span class="o">(</span><span class="n">n</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">+</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span>
+      <span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span>
+      <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+    <span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">+</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span> <span class="n">denom</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">-</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span>
+      <span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span> <span class="o">-</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span>
+      <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+    <span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">-</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span> <span class="o">-</span> <span class="n">i</span> <span class="o">*</span> <span class="n">denom</span><span class="o">,</span> <span class="n">denom</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">*</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span><span class="o">,</span> <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">*</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span> <span class="o">*</span> <span class="n">i</span><span class="o">,</span> <span class="n">denom</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">/</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span><span class="o">,</span> <span class="n">denom</span> <span class="o">*</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="o">/</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">numer</span><span class="o">,</span> <span class="n">denom</span> <span class="o">*</span> <span class="n">i</span><span class="o">)</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">numer</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">denom</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">gcd</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="n">a</span> <span class="k">else</span> <span class="n">gcd</span><span class="o">(</span><span class="n">b</span><span class="o">,</span> <span class="n">a</span> <span class="o">%</span> <span class="n">b</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 6.5 - Rational з перевантаженими методами.</p></div>
+<div class="paragraph"><p>Тепер є дві версії для кожного арифметичного метода: одна що приймає раціональне в якості аргумента, та інша, що приймає ціле. Іншими словами, ім'я кожного з ціх методів перевантажене, оскільки кожне ім'я може використовуватись для декількох методів. Наприклад, ім'я <code>+</code> використовується одним методом, що приймає <code>Rational</code>, та інший, що приймає <code>Int</code>. В виклику метода компілятор обирає версію перевантаженого методу, що коректно співпадає з типами аргументів. Наприклад, якщо аргумент <code>y</code> в <code>x.+(y)</code> є <code>Rational</code>, компілятор буде обирати метод <code>+</code>, що приймає параметр <code>Rational</code>. Але якщо аргумент є цілим, компілятор обере метод <code>+</code>, що приймає параметр <code>Int</code>. Якщо ви спробуєте це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">*</span> <span class="n">x</span>
+<span class="n">res12</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">4</span><span class="o">/</span><span class="mi">9</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">*</span> <span class="mi">2</span>
+<span class="n">res13</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">4</span><span class="o">/</span><span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви побачите, що викликаний метод <code>*</code> визначений в кожному випадку по типу правого операнду.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">процес Scala з розрішення перевантажених методів дуже подібний до Java. В жодному разі обрана перевантажена версія є однією, що найкраще співпадає зі статичними типами аргументів. Іноді немає версії для унікального кращого співпадіння; в такому випадку компілятор видасть вам помилку "ambiguous reference".</td>
+</tr></table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_12__">6.12 Неявні перетворення</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Тепер, коли ви можете написати <code>r * 2</code>, ви можете також побажати обміняти операнди, як <code>2 * r</code>. Нажаль, це все ще не робить:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">r</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">10</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">overloaded</span> <span class="kt">method</span> <span class="kt">value</span> <span class="kt">*</span> <span class="kt">with</span>
+<span class="n">alternatives</span><span class="k">:</span>
+<span class="o">(</span><span class="kt">x:</span> <span class="kt">Double</span><span class="o">)</span><span class="kt">Double</span> <span class="kt">&lt;and&gt;</span>
+<span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Float</span><span class="o">)</span><span class="nc">Float</span> <span class="o">&lt;</span><span class="n">and</span><span class="o">&gt;</span>
+<span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="nc">Long</span> <span class="o">&lt;</span><span class="n">and</span><span class="o">&gt;</span>
+<span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="nc">Int</span> <span class="o">&lt;</span><span class="n">and</span><span class="o">&gt;</span>
+<span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Char</span><span class="o">)</span><span class="nc">Int</span> <span class="o">&lt;</span><span class="n">and</span><span class="o">&gt;</span>
+<span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Short</span><span class="o">)</span><span class="nc">Int</span> <span class="o">&lt;</span><span class="n">and</span><span class="o">&gt;</span>
+<span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Byte</span><span class="o">)</span><span class="nc">Int</span>
+<span class="n">cannot</span> <span class="n">be</span> <span class="n">applied</span> <span class="n">to</span> <span class="o">(</span><span class="nc">Rational</span><span class="o">)</span>
+<span class="mi">2</span> <span class="o">*</span> <span class="n">r</span>
+<span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Проблема тут в тому, що <code>2 * r</code> еквівалентне до <code>2.*(r)</code>, так що це виклик метода на числі 2, що є цілим. Але клас <code>Int</code> не містить метода множення, що приймає аргумент <code>Rational</code> — він не може, бо клас <code>Rational</code> не є стандартним класом в бібліотеці Scala.</p></div>
+<div class="paragraph"><p>Однак є інший шлях вирішити цю проблему в Scala: ви можете створити неявне перетворення, що автоматично конвертує цілі на раціональні числа в разі потреби. Спробуйте додавання цього рядка в інтерпретатор:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">implicit</span> <span class="k">def</span> <span class="n">intToRational</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це викликає метод перетвоерння з <code>Int</code> до <code>Rational</code>. Модифікатор <code>implicit</code> попереду метода каже компілятору застосувати його автоматично в декількох ситуаціях. З визначеним перетворенням, ви можете повторити спробу приклада, що схибив до цього:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span><span class="mi">3</span><span class="o">)</span>
+<span class="n">r</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">2</span><span class="o">/</span><span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">r</span>
+<span class="n">res15</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">4</span><span class="o">/</span><span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб неявне перетворення працювало, воно має бути в полі зору. Якщо ми покладемо визначення неявного метода в клас <code>Rational</code>, він не буде в полі зору інтерпретатора. Поки ви повинні визначати його прямо в інтерпретаторі. Як ви здогадались з цього приклада, неявні перетворення дуже потужний прийом, щоб зробити бібліотеки більш гнучкими та більш зручними для використання. Оскільки вони такі потужні, вони можуть бути легко невірно використані. Ви побачите більше щодо неявних перетворень, включаючи шляхи занести їх в поле зору коли треба, в Главі 21.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_13__">6.13 Слово попередження</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як демонструє ця глава, створення методів з іменами операторів та визначення неявних перетворень може допомогти вам розробляти бібліотеки, для яких клієнтськіій код є стислим та легко зрозумілим. Scala дає вам велику пропозицію щодо потужності, щоб розробляти такі прості-в-використанні бібліотеки. Але майте на увазі, що з силою іде відповідальність.</p></div>
+<div class="paragraph"><p>Використані без майстерності, обоє, операторні методи та неявні перетворення можуть дати поштовх клієнтському коду, що складно читати та розуміти. Оскільки неявні перетворення застосовуються неявно компілятором, не явно прописані в коді, може бути неочевидним для програмістів клієнтів, що невні перетворення були застосовані. Та хоча операторні методи будуть звичайно робити клієнтський код більш стислим, вони будуть робити його краще читаємим тільки в тій мірі, в якій програмісти клієнітв будуть здатні розпізнавати та запам'ятовувати значення кожного оператора. Ціль, яку ви маєте тримати в голові, коли розробляєте бібліотеки, це не просто зрообити можливим підвищити стислість клієнтського кода, але також читабельний, зрозумілий клієнтський код. Стислість часто буде великою часткою читабельності, але ви можете зайти в стислості дуже далеко. Розробляючі бібліотеки, що дозволяють стислість зі смаком, та в той же час зрозумілий клієнтський код, ви можете допомогти програмістам клієнтів робити продуктивно.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_6_14_">6.14 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В цій главі ви бачили багато аспектів класів в Scala. Ви бачили, як додавати параметри до класу, визначати декілька конструкторів, визначати оператори як методи, та налаштовувати класи, так щоб користування їми було природним. Можливо, більш важливо, ви побачили, що визначення та використання незмінних об'єктів є досить натуральним шляхом кодувати в Scala.</p></div>
+<div class="paragraph"><p>Хоча фінальна версія <code>Rational</code>, показана в цій главі, задовільняє всім вимогам, встановленим напочатку глави, він все ще може покращений. Ми будемо фактично повертатись до цього прикладу пізніше в цій книзі. Наприклад, в Главі 30 ми вивчемо, як перекривати <code>equals</code> та <code>hashcode</code>, щоб дозволити <code>Rationals</code> краще поводитись при порівнянні за допомогою <code>==</code> або покладаючись в хеш таблиці. В Главі 21 ви навчитесь, як покласти визначення неявних методів в об'єкт компанйон <code>Rational</code>, так що вони можуть бути більш легко покладені в поле зору, коли програмісти клієнтів роблять з <code>Rationals</code>.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-29 08:11:17 EET
+ 2019-01-30 07:23:01 EET
 </div>
 </div>
 </body>
