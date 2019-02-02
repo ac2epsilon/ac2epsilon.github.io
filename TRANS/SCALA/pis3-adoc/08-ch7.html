@@ -798,628 +798,553 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>Chapter 7
-Built-in Control Structures
-Scala has only a handful of built-in control structures. The only control structures
-are if,while, for, try, match, and function calls. The reason Scala has so few is that it has included
-function literals since its inception. Instead of accumulating one higher-level control structure after
-another in the base syntax, Scala accumulates them in libraries. (Chapter 9will show precisely how that
-is done.) This chapter will show those few control structures that are built in.
-One thing you will notice is that almost all of Scala&#8217;s control structures result in some value. This is the
-approach taken by functional languages, where programs are viewed as computing a value, thus the
-components of a program should also compute values. You can also view this approach as the logical
-conclusion of a trend already present in imperative languages. In imperative languages, function calls
-can return a value, even though having the called function update an output variable passed as an
-argument would work just as well. In addition, imperative languages often have a ternary operator
-(such as the ?: operator of C, C<code>, and Java), which behaves exactly like if, but results in a value. Scala
-adopts this ternary operator model, but calls it if. In other words, Scala&#8217;s if can result in a value. Scala
-then continues this trend by having for, try, and match also result in values.
-Programmers can use these result values to simplify their code, just as they use return values of
-functions. Without this facility, the programmer must create temporary variables just to hold results that
-are calculated inside a control structure. Removing these temporary variables makes the code a little
-simpler, and it also prevents many bugs where you set the variable in one branch but forget to set it in
-another.
-Overall, Scala&#8217;s basic control structures, minimal as they are, provide all of the essentials from
-imperative languages. Further, they allow you to shorten your code by consistently having result
-values. To show you how this works, we&#8217;ll take a closer look at each of Scala&#8217;s basic control structures.
-7.1 IF EXPRESSIONS
-Scala&#8217;s if works just like in many other languages. It tests a condition and then executes one of two
-code branches depending on whether the condition holds true. Here is a common example, written in an
-imperative style:
-var filename = "default.txt"
-if (!args.isEmpty)
-filename = args(0)
-This code declares a variable, filename, and initializes it to a default value. It then uses an ifexpression
-to check whether any arguments were supplied to the program. If so, it changes the variable to hold the
-value specified in the argument list. If no arguments were supplied, it leaves the variable set to the
-default value.This code can be written more nicely because, as mentioned in Step 3 in Chapter 2, Scala&#8217;s ifis an
-expression that results in a value. Listing 7.1 shows how you can accomplish the same effect as the
-previous example, without using any vars:
-val filename =
-if (!args.isEmpty) args(0)
-else "default.txt"
-Listing 7.1 - Scala&#8217;s idiom for conditional initialization.
-This time, the if has two branches. If args is not empty, the initial element, args(0), is chosen;
-otherwise, the default value is chosen. The if expression results in the chosen value, and
-thefilename variable is initialized with that value. This code is slightly shorter, but its real advantage is
-that it uses a val instead of a var. Using a val is the functional style, and it helps you in much the same
-way as a final variable in Java. It tells readers of the code that the variable will never change, saving
-them from scanning all code in the variable&#8217;s scope to see if it ever changes.
-A second advantage to using a val instead of a var is that it better supports equational reasoning. The
-introduced variable is equal to the expression that computes it, assuming that expression has no side
-effects. Thus, any time you are about to write the variable name, you could instead write the
-expression. Instead of println(filename), for example, you could just write this:
-println(if (!args.isEmpty) args(0) else "default.txt")
-The choice is yours. You can write it either way. Using vals helps you safely make this kind of
-refactoring as your code evolves over time.
-Look for opportunities to use vals. They can make your code both easier to read and easier to refactor.
-7.2 WHILE LOOPS
-Scala&#8217;s while loop behaves as in other languages. It has a condition and a body, and the body is
-executed over and over as long as the condition holds true. Listing 7.2 shows an example:
-def gcdLoop(x: Long, y: Long): Long = {
-var a = x
-var b = y
-while (a != 0) {
-val temp = a
-a = b % a
-b = temp
-}
-b
-}
-Listing 7.2 - Calculating greatest common divisor with a while loop.
-Scala also has a do-while loop. This works like the while loop except that it tests the condition after the
-loop body instead of before. Listing 7.3 shows a Scala script that uses a do-while to echo lines read
-from the standard input, until an empty line is entered:var line = ""
-do {
-line = readLine()
-println("Read: " + line)
-} while (line != "")
-Listing 7.3 - Reading from the standard input with do-while.
-The while and do-while constructs are called "loops," not expressions, because they don&#8217;t result in an
-interesting value. The type of the result is Unit. It turns out that a value (and in fact, only one value)
-exists whose type is Unit. It is called the unit value and is written (). The existence of () is how
-Scala&#8217;s Unit differs from Java&#8217;s void. Try this in the interpreter:
-scala&gt; def greet() = { println("hi") }
-greet: ()Unit
-scala&gt; () == greet()
-hi
-res0: Boolean = true
-Because no equals sign precedes its body, greet is defined to be a procedure with a result type of Unit.
-Therefore, greet returns the unit value, (). This is confirmed in the next line: comparing the greet&#8217;s
-result for equality with the unit value, (), yields true.
-One other construct that results in the unit value, which is relevant here, is reassignment tovars. For
-example, were you to attempt to read lines in Scala using the following while loop idiom from Java
-(and C and C</code>), you&#8217;ll run into trouble:
-var line = ""
-while line = readLine( != "") // This doesn&#8217;t work!
-println("Read: " + line)
-When you compile this code, Scala will give you a warning that comparing values of
-type Unitand String using != will always yield true. Whereas in Java, assignment results in the value
-assigned (in this case a line from the standard input), in Scala assignment always results in the unit
-value, (). Thus, the value of the assignment "line = readLine()" will always be () and never be "". As a
-result, this while loop&#8217;s condition will never be false, and the loop will, therefore, never terminate.
-Because the while loop results in no value, it is often left out of pure functional languages. Such
-languages have expressions, not loops. Scala includes the while loop nonetheless because sometimes an
-imperative solution can be more readable, especially to programmers with a predominantly imperative
-background. For example, if you want to code an algorithm that repeats a process until some condition
-changes, a while loop can express it directly while the functional alternative, which likely uses
-recursion, may be less obvious to some readers of the code.
-For example, Listing 7.4 shows an alternate way to determine a greatest common divisor of two
-numbers.<span class="footnote"><br />[The gcd function shown in Listing 7.4 uses the same approach used by the like-named function, first shown in Listing 6.3, to calculate greatest common divisors for class Rational. The main difference is that instead of Ints the gcd of Listing 7.4 works with Longs.]<br /></span> Given the same two values for x and y, the gcd function shown in Listing 7.4will return
-the same result as the gcdLoop function, shown in Listing 7.2. The difference between these two
-approaches is that gcdLoop is written in an imperative style, using vars and and a while loop,whereas gcd is written in a more functional style that involves recursion (gcdcalls itself) and requires
-no vars.
-def gcd(x: Long, y: Long): Long =
-if (y == 0) x else gcd(y, x % y)
-Listing 7.4 - Calculating greatest common divisor with recursion.
-In general, we recommend you challenge while loops in your code in the same way you challenge vars.
-In fact, while loops and vars often go hand in hand. Because while loops don&#8217;t result in a value, to make
-any kind of difference to your program, a while loop will usually either need to update vars or perform
-I/O. You can see this in action in the gcdLoop example shown previously. As that while loop does its
-business, it updates vars a and b. Thus, we suggest you be a bit suspicious of while loops in your code.
-If there isn&#8217;t a good justification for a particular while or do-while loop, try to find a way to do the same
-thing without it.
-7.3 FOR EXPRESSIONS
-Scala&#8217;s for expression is a Swiss army knife of iteration. It lets you combine a few simple ingredients in
-different ways to express a wide variety of iterations. Simple uses enable common tasks such as
-iterating through a sequence of integers. More advanced expressions can iterate over multiple
-collections of different kinds, filter out elements based on arbitrary conditions, and produce new
-collections.
-Iteration through collections
-The simplest thing you can do with for is to iterate through all the elements of a collection. For
-example, Listing 7.5 shows some code that prints out all files in the current directory. The I/O is
-performed using the Java API. First, we create a java.io.File on the current directory,".", and call
-its listFiles method. This method returns an array of File objects, one per directory and file contained in
-the current directory. We store the resulting array in thefilesHere variable.
-val filesHere = (new java.io.File(".")).listFiles
-for (file &#8592; filesHere)
-println(file)
-Listing 7.5 - Listing files in a directory with a for expression.
-With the "file &#8592; filesHere" syntax, which is called a generator, we iterate through the elements
-of filesHere. In each iteration, a new val named file is initialized with an element value. The compiler
-infers the type of file to be File, because filesHere is an Array[File]. For each iteration, the body of
-the for expression, println(file), will be executed. Because File&#8217;stoString method yields the name of the
-file or directory, the names of all the files and directories in the current directory will be printed.
-The for expression syntax works for any kind of collection, not just arrays.<span class="footnote"><br />[To be precise, the expression to the right of the &#8592; symbol in a for expression can be any type that has certain methods (in this case foreach) with appropriate signatures. Details on how the Scala compiler processes for expressions are described in Chapter 23.]<br /></span> One convenient special
-case is the Range type, which you briefly saw in Table 5.4 here. You can create Ranges using syntax
-like "1 to 5" and can iterate through them with a for. Here is a simple example:scala&gt; for (i &#8592; 1 to 4)
-println("Iteration " + i)
-Iteration 1
-Iteration 2
-Iteration 3
-Iteration 4
-If you don&#8217;t want to include the upper bound of the range in the values that are iterated over,
-use until instead of to:
-scala&gt; for (i &#8592; 1 until 4)
-println("Iteration " + i)
-Iteration 1
-Iteration 2
-Iteration 3
-Iterating through integers like this is common in Scala, but not nearly as much as in other languages. In
-other languages, you might use this facility to iterate through an array, like this:
+<div class="sect1">
+<h2 id="__7">Глава 7</h2>
+<div class="sectionbody">
+</div>
+</div>
+<h1 id="___">Вбудовані керівні структури</h1>
+<div class="paragraph"><p>Scala має тілько декілька вбудованих керівних структур. Все що є тільки: <code>if</code>, <code>while</code>, <code>for</code>, <code>try</code>, <code>match</code>, та виклики функцій. Причина, з якої Scala має їх так мало, включає функціональні літерали з моменту свого створення. Замість накопичення в своєму синтаксисі однієї за одною високорівневих керівних структір, Scala накопичує їх в бібліотеках. (Глава 9 покаже в точності, як це зроблене.) Ця глава покаже ті декілька керівних структур, що є вбудованими.</p></div>
+<div class="paragraph"><p>Одна річ, що ви помітите, це що майже всі керівні структури в Scala призводять до деякого результату. Цей підхід взятий від функціональних мов, де програми розглядаються як обчислення значення, так що компоненти програми також повинні обчислювати значення. Ви також можете розглядати цей підхід як логічний висновок з тренду, що вже присутній в імперативних мовах. В імперативних мовах виклики функцій можуть повертати значення, навіть коли викликана функція так само гарно може просто оновити значення вихідної змінної, переданої як аргумент. На додаток, імперативні мови часто мають тримісний оператор (такий як оператор <code>?:</code> в C, C++ та Java), що ефективно поводиться як <code>if</code>, але результатом є значення. Scala адаптує цю модель тримісного оператора, але називає його <code>if</code>. Іншими словами,в Scala <code>if</code> може повертати значення. Потім Scala продовжує цей тренд, маючи <code>for</code>, <code>try</code> та <code>match</code>, що також повертають значення.</p></div>
+<div class="paragraph"><p>Програмісти можуть використовувати ці значення для спрощення свого коду, так само, якби вони використовували значення повернуті з функцій. Без цієї можливості програміст має створювати тимчасові змінні, тільки щоб зберігати результати, що обчислюються всередині керівної структури. Видалення ціх змінних робить код  трохи простішим, та він також запобігає багатьом вадам, коли ви встановлюєте змінну в одній гілці, але забуваєте встановити в іншому.</p></div>
+<div class="paragraph"><p>Загалом, базові керівні структури Scala, мінімальні як вони є, провадяться всі основи з імперативних мов. Більше того, вони дозволяють скоротити ваш код, узгоджена маючі значення результату. Щоб показати, як це робить, давайте подивимось на базові керівні структури Scala.</p></div>
+<div class="sect1">
+<h2 id="_7_1__em_if_em">7.1 Вирази <em>if</em></h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В Scala <code>if</code> робить так само, як і в багатьох інших мовах. Він перевіряє умову, і потім виконує одну з двох гілок коду, в залежності чи умова виконується. Ось загальний приклад, написаний в імперативному стилі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">filename</span> <span class="k">=</span> <span class="s">&quot;default.txt&quot;</span>
+<span class="k">if</span> <span class="o">(!</span><span class="n">args</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span>
+  <span class="n">filename</span> <span class="k">=</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей код декларує змінну <code>filename</code>, та ініціалізує її значенням по замовчанню. Потім він виконує вираз <code>if</code>, щоб перевірити, чи програмі були надані якісь аргументи. Якщо це так, значення змінної змінюється, щоб вона містила значення, вказане в списку аргументів. Якщо аргументи не надані, змінна залішається встановленою в значення по замовчанню.</p></div>
+<div class="paragraph"><p>Цей код може бути записаний краще, оскільки, як зазначалось в Кроці 3 в Главі 2, в Scala <code>if</code> є виразом, що повертає значення. Лістинг 7.1 показує, як ви можете досягти того самого ефекту, що і в попередньому прикладі, без використання жодних <code>var</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">filename</span> <span class="k">=</span>
+<span class="k">if</span> <span class="o">(!</span><span class="n">args</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+  <span class="k">else</span> <span class="s">&quot;default.txt&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.1 - Ідіома Scala для умовної ініціалізації.</p></div>
+<div class="paragraph"><p>На цей раз <code>if</code> має дві гілки. Якщо аргументи не порожні, буде обраний перший елемент, <code>args(0)</code>; інакше буде обране значення по замовчанню. Вираз <code>if</code> має результат в вигляді обраного значення, і змінна <code>filename</code> ініціалізується цім значенням. Цей код трохи коротший, але його справжня перевага в тому, що він використовує <code>val</code> замість <code>var</code>. Використання <code>val</code> є функціональним стилем, і це допомагає вам майже в той спосіб, що і використання фінальних змінних в Java. Це каже читачам коду, що змінна ніколи не буде змінюватись, вберігаючи їх від сканування всього коду в полі зору змінної, дивлячись, чи вона не змінилась.</p></div>
+<div class="paragraph"><p>Друга перевага використовувати <code>val</code> замість <code>var</code> в тому, що вони краще підтримують розуміння рівнянь. Введене значення еквівалентне до виразу, що обчислює його, припускаючи, що вираз не має побічних ефектів. Таким чином, кожного разу, коли ви збираєтесь записати ім'я змінної, замість нього ви можете записати вираз. Наприклад, замість <code>println(filename)</code>, ви можете просто записати це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">println</span><span class="o">(</span><span class="k">if</span> <span class="o">(!</span><span class="n">args</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="k">else</span> <span class="s">&quot;default.txt&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Вибір за вами. Ви можете записати це любим способом. Використання <code>vals</code> допомагає вам безпечно робити цей тип рефакторингу, по мірі того, як ваш код буде розвиватись з часом. Шукайте можливості використовувати <code>val</code>. Вони можуть зробити ваш код більш простим для читання, та простішим для рефакторингу.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_2__while">7.2 Цикли while</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala&#8217;s while loop behaves as in other languages. It has a condition and a body, and the body is executed over and over as long as the condition holds true. Listing 7.2 shows an example:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">gcdLoop</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="k">:</span> <span class="kt">Long</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">a</span> <span class="k">=</span> <span class="n">x</span>
+  <span class="k">var</span> <span class="n">b</span> <span class="k">=</span> <span class="n">y</span>
+  <span class="k">while</span> <span class="o">(</span><span class="n">a</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">temp</span> <span class="k">=</span> <span class="n">a</span>
+    <span class="n">a</span> <span class="k">=</span> <span class="n">b</span> <span class="o">%</span> <span class="n">a</span>
+    <span class="n">b</span> <span class="k">=</span> <span class="n">temp</span>
+  <span class="o">}</span>
+  <span class="n">b</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.2 - Обчислення найбільшого загального дільника за допомогою цикла <code>while</code>.</p></div>
+<div class="paragraph"><p>Scala також має цикл <code>do-while</code>. Він робить як цикл <code>while</code>, за винятком того, що він перевіряє умову після тіла циклу, а не до. Лістинг 7.3 показує скрипт Scala, що використовує <code>do-while</code> для відлуння рядків, введених в стандартний вивід, докі не буде введений порожній рядок:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">line</span> <span class="k">=</span> <span class="s">&quot;&quot;</span>
+<span class="k">do</span> <span class="o">{</span>
+  <span class="n">line</span> <span class="k">=</span> <span class="n">readLine</span><span class="o">()</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;Read: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="o">)</span>
+<span class="o">}</span> <span class="k">while</span> <span class="o">(</span><span class="n">line</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.3 - Читання зі стандартного вводу за допомогою do-while.</p></div>
+<div class="paragraph"><p>Конструкції <code>while</code> та <code>do-while</code> називаються "циклами", а не виразами, оскільки вони не продукують цікавого значення. Тип результата є <code>Unit</code>. Існує одне значення цього (та загалом тільки одне) типу <code>Unit</code>. Воно називається юніт значенням, та записується <code>()</code>. Існування <code>()</code> є тим, як Scala <code>Unit</code> відрізняється від Java <code>void</code>. Спробуйте це в інтерпретаторі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">greet</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;hi&quot;</span><span class="o">)</span> <span class="o">}</span>
+<span class="n">greet</span><span class="k">:</span> <span class="o">()</span><span class="kt">Unit</span>
 
-for (i &#8592; 0 to filesHere.length - 1)
-println(filesHere(i))
-This for expression introduces a variable i, sets it in turn to each integer
-between 0 andfilesHere.length - 1, and executes the body of the for expression for each setting of i. For
-each setting of i, the i&#8217;th element of filesHere is extracted and processed.
-The reason this kind of iteration is less common in Scala is that you can just iterate over the collection
-directly. When you do, your code becomes shorter and you sidestep many of the off-by-one errors that
-can arise when iterating through arrays. Should you start at 0 or 1? Should you add -1, +1, or nothing to
-the final index? Such questions are easily answered, but also easily answered wrong. It is safer to avoid
-such questions entirely.
-Filtering
-Sometimes you don&#8217;t want to iterate through a collection in its entirety; you want to filter it down to
-some subset. You can do this with a for expression by adding a filter, an if clause inside the for&#8217;s
-parentheses. For example, the code shown in Listing 7.6 lists only those files in the current directory
-whose names end with ".scala":
-val filesHere = (new java.io.File(".")).listFiles
-for (file &#8592; filesHere if file.getName.endsWith(".scala"))
-println(file)
-Listing 7.6 - Finding .scala files using a for with a filter.
-You could alternatively accomplish the same goal with this code:
-for (file &#8592; filesHere)
-if (file.getName.endsWith(".scala"))
-println(file)This code yields the same output as the previous code, and likely looks more familiar to programmers
-with an imperative background. The imperative form, however, is only an option because this
-particular for expression is executed for its printing side-effects and results in the unit value (). As
-demonstrated later in this section, the for expression is called an "expression" because it can result in an
-interesting value, a collection whose type is determined by the for expression&#8217;s &#8592; clauses.
-You can include more filters if you want. Just keep adding if clauses. For example, to be extra
-defensive, the code in Listing 7.7 prints only files and not directories. It does so by adding a filter that
-checks the file&#8217;s isFile method.
-for (
-file &#8592; filesHere
-if file.isFile
-if file.getName.endsWith(".scala")
-) println(file)
-Listing 7.7 - Using multiple filters in a for expression.
-Nested iteration
-If you add multiple &#8592; clauses, you will get nested "loops." For example, the for expression shown
-in Listing 7.8 has two nested loops. The outer loop iterates through filesHere, and the inner loop
-iterates through fileLines(file) for any file that ends with .scala.
-def fileLines(file: java.io.File) =
-scala.io.Source.fromFile(file).getLines().toList
-def grep(pattern: String) =
-for (
-file &#8592; filesHere
-if file.getName.endsWith(".scala");
-line &#8592; fileLines(file)
-if line.trim.matches(pattern)
-) println(file + ": " + line.trim)
-grep(".<strong>gcd.</strong>")
-Listing 7.8 - Using multiple generators in a for expression.
-If you prefer, you can use curly braces instead of parentheses to surround the generators and filters.
-One advantage to using curly braces is that you can leave off some of the semicolons that are needed
-when you use parentheses because, as explained in Section 4.2, the Scala compiler will not infer
-semicolons while inside parentheses.
-Mid-stream variable bindings
-Note that the previous code repeats the expression line.trim. This is a non-trivial computation, so you
-might want to only compute it once. You can do this by binding the result to a new variable using an
-equals sign (=). The bound variable is introduced and used just like a val, only with the val keyword
-left out. Listing 7.9 shows an example.
-def grep(pattern: String) =for {
-file &#8592; filesHere
-if file.getName.endsWith(".scala")
-line &#8592; fileLines(file)
-trimmed = line.trim
-if trimmed.matches(pattern)
-} println(file + ": " + trimmed)
-grep(".<strong>gcd.</strong>")
-Listing 7.9 - Mid-stream assignment in a for expression.
-In Listing 7.9, a variable named trimmed is introduced halfway through the for expression. That
-variable is initialized to the result of line.trim. The rest of the for expression then uses the new variable
-in two places, once in an if and once in println.
-Producing a new collection
-While all of the examples so far have operated on the iterated values and then forgotten them, you can
-also generate a value to remember for each iteration. To do so, you prefix the body of the for expression
-by the keyword yield. For example, here is a function that identifies the.scala files and stores them in
-an array:
-def scalaFiles =
-for {
-file &#8592; filesHere
-if file.getName.endsWith(".scala")
-} yield file
-Each time the body of the for expression executes, it produces one value, in this case simplyfile. When
-the for expression completes, the result will include all of the yielded values contained in a single
-collection. The type of the resulting collection is based on the kind of collections processed in the
-iteration clauses. In this case the result is an Array[File], becausefilesHere is an array and the type of
-the yielded expression is File.
-Be careful, by the way, where you place the yield keyword. The syntax of a for-yield expression is like
-this:
-for clauses yield body
-The yield goes before the entire body. Even if the body is a block surrounded by curly braces, put
-the yield before the first curly brace, not before the last expression of the block. Avoid the temptation to
-write things like this:
-for (file &#8592; filesHere if file.getName.endsWith(".scala")) {
-yield file // Syntax error!
-}
-For example, the for expression shown in Listing 7.10 first transforms the Array[File] namedfilesHere,
-which contains all files in the current directory, to one that contains only .scala files. For each of these
-it generates an Iterator[String], the result of the fileLines method, whose definition is shown in Listing7.8. An Iterator offers methods next and hasNext that allow you to iterate over a collection of elements.
-This initial iterator is transformed into anotherIterator[String] containing only trimmed lines that
-include the substring "for". Finally, for each of these, an integer length is yielded. The result of
-this for expression is an Array[Int]containing those lengths.
-val forLineLengths =
-for {
-file &#8592; filesHere
-if file.getName.endsWith(".scala")
-line &#8592; fileLines(file)
-trimmed = line.trim
-if trimmed.matches(".<strong>for.</strong>")
-} yield trimmed.length
-Listing 7.10 - Transforming an Array[File] to Array[Int] with a for.
-At this point, you have seen all the major features of Scala&#8217;s for expression, but we went through them
-rather quickly. A more thorough coverage of for expressions is given in Chapter 23.
-7.4 EXCEPTION HANDLING WITH TRY EXPRESSIONS
-Scala&#8217;s exceptions behave just like in many other languages. Instead of returning a value in the normal
-way, a method can terminate by throwing an exception. The method&#8217;s caller can either catch and handle
-that exception, or it can itself simply terminate, in which case the exception propagates to the caller&#8217;s
-caller. The exception propagates in this way, unwinding the call stack, until a method handles it or there
-are no more methods left.
-Throwing exceptions
-Throwing an exception in Scala looks the same as in Java. You create an exception object and then
-throw it with the throw keyword:
-throw new IllegalArgumentException
-Although it may seem somewhat paradoxical, in Scala, throw is an expression that has a result
-type. Here&#8217;s an example where result type matters:
-val half =
-if (n % 2 == 0)
-n / 2
-else
-throw new RuntimeException("n must be even")
-What happens here is that if n is even, half will be initialized to half of n. If n is not even, an exception
-will be thrown before half can be initialized to anything at all. Because of this, it is safe to treat a
-thrown exception as any kind of value whatsoever. Any context that tries to use the return from
-a throw will never get to do so, and thus no harm will come.
-Technically, an exception throw has type Nothing. You can use a throw as an expression even though it
-will never actually evaluate to anything. This little bit of technical gymnastics might sound weird, butis frequently useful in cases like the previous example. One branch of an ifcomputes a value, while the
-other throws an exception and computes Nothing. The type of the whole if expression is then the type
-of that branch which does compute something. TypeNothing is discussed further in Section 11.3.
-Catching exceptions
-You catch exceptions using the syntax shown in Listing 7.11 The syntax for catch clauses was chosen
-for its consistency with an important part of Scala: pattern matching. Pattern matching, a powerful
-feature, is described briefly in this chapter and in more detail inChapter 15.
-import java.io.FileReader
-import java.io.FileNotFoundException
-import java.io.IOException
-try {
-val f = new FileReader("input.txt")
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">()</span> <span class="o">==</span> <span class="n">greet</span><span class="o">()</span>
+<span class="n">hi</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки перед тілом немає знаку рівняння, <code>greet</code> визначене як процедура з типом результата <code>Unit</code>. Таким чином, <code>greet</code> повертає юніт значення <code>()</code>. Це підтверджується в наступному рядку: порівнюючи результат <code>greet</code> на рівність з юніт значенням <code>()</code>, що дає <code>true</code>.</p></div>
+<div class="paragraph"><p>Одна інша конструкція, що має результат в вигляді юніт значення, що релевантне тут, є переприсвоєння до <code>vars</code>. Наприклад, коли ви намагаєтесь читати рядки в Scala, використовуючи наступну ідіому Java, цикл <code>while</code> (та C і C++), ви потрапите в небезпеку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">line</span> <span class="k">=</span> <span class="s">&quot;&quot;</span>
+<span class="k">while</span> <span class="o">((</span><span class="n">line</span> <span class="k">=</span> <span class="n">readLine</span><span class="o">())</span> <span class="o">!=</span> <span class="s">&quot;&quot;</span><span class="o">)</span> <span class="c1">// Це не робить!</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;Read: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Коли ви компілюєте цей код, Scala надасть вам попередження, що порівняння значень типів <code>Unit</code> та <code>String</code> з використанням <code>!=</code> буде завжди давати <code>true</code>. Тоді як в Java присвоєння скінчиться присвоєнням значення (в цьому випадку рядка зі стандартного вводу), в Scala присвоєння завжди зкінчиться юніт значенням, <code>()</code>. Таким чином, значення присвоєння <code>line = readLine()</code> завжди буде <code>()</code>, та ніколи не буде <code>""</code>. Як результат, умова цього цикла <code>while</code> ніколи не буде <code>false</code>, і, таким чином, цикл ніколи не завершиться.</p></div>
+<div class="paragraph"><p>Оскікльки цикл <code>while</code> не призводить до значення, він часто відсутній в чисто функціональних мовах. Такі мови мають вирази, а не цикли. Тим не менш, Scala включає цикл <code>while</code>, оскільки деякі імперативні рішення можуть бути більш читабельні, особливо для програмістів з переважно імперативним досвідом. Наприклад, якщо ви бажаєте закодувати алгоритм, що продовжує процес докі деяка умова не зміниться, цикл <code>while</code> може виразити це напряму, тоді як функціональна альтернатива, що вірогідно використовуватиме рекурсію, може бути менш очевидною для деяких читачів коду.</p></div>
+<div class="paragraph"><p>Наприклад, Лістинг 7.4 показує альтернативний шлях визначити найбільший загальний дільник двох чисел.<span class="footnote"><br />[Функція gcd, показана в Лістингу 7.4, використовує той самий підхід, що використовується в подібно-названій функції, спершу показаній в Лістингу 6.3, щоб обчислювати найбільший загальний дільник для класу Rational. Головна різниця в тому, що замість Int, gcd з Лістингу 7.4 робить з Long.]<br /></span> Беручи деякі два значення для <code>x</code> та <code>y</code>, функція <code>gcd</code>, показана в Лістингу 7.4 буде повертати той самий результат, що і <code>gcdLoop</code> функція, показана в Лістингу 7.2. Різниця між ціма двома підходами а тому, що <code>gcdLoop</code> написана в імперативному стилі, використовуючи <code>var</code> та цикл <code>while</code>, тоді як <code>gcd</code> написане в більш функціональному стилі, що включає рекурсію (<code>gcd</code> викликає себе), та не потребує <code>var</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">gcd</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="k">:</span> <span class="kt">Long</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">y</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="n">x</span> <span class="k">else</span> <span class="n">gcd</span><span class="o">(</span><span class="n">y</span><span class="o">,</span> <span class="n">x</span> <span class="o">%</span> <span class="n">y</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.4 - Обчислення найбільшого загального дільника за допомогою рекурсії.</p></div>
+<div class="paragraph"><p>Загалом, ми рекомендуємо вас кидати виклик циклам <code>while</code> в вашому коді, так само, як ви кидаєте виклик <code>var</code>. Фактично, цикли <code>while</code> та <code>var</code> часто ідуть рука об руку. Оскільки цикли <code>while</code> не видають результату, щоб призвести до якіхось змін в вашій програмі, цикл  <code>while</code> буде звичайно оновлювати <code>var</code> або виконувати I/O. Ви можете бачити це в дії в <code>gcdLoop</code>, показаному раніше. По мірі того, як цикл <code>while</code> робить свою справу, він оновлює <code>var</code> <code>a</code> та <code>b</code>. Таким чином, ми радимо вам бути трохи підозрілим щодо циклів <code>while</code> в вашому коді. Якщо немає гарного обгрунтування для окремого використання циклів <code>while</code> або <code>do-while</code>, спробуйте знайти спосіб зробити те саме без них.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_3__for">7.3 Вирази for</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Вираз <code>for</code> в Scala є швейцарським розкладним ножем ітерації. Він дозволяє комбінувати декілька простих інструментів в різний спосіб, щоб виразити широку різноманітність ітерацій. Прості використання дозволяють вирішувати загальні завдання, такі, як ітерація по послідовності цілих. Більш розвинені вирази можуть ітерувати по декількох колекціях різних типів, фільтрувати елементи на основі довільних умов, та продукувати нові колекції.</p></div>
+<div class="sect2">
+<h3 id="____2">Ітерації по колекціях</h3>
+<div class="paragraph"><p>Простіша річ, що ви можете зробити за допомогою <code>for</code> це ітерувати по всіх елементах колекції. Наприклад, Лістинг 7.5 показує деякий код, що друкує всі файли в поточній директорії. I/O виконується з використанням Java API. Зпочатку ми створюємо <code>java.io.File</code> на поточній директорії,".", та викликаємо його метод <code>listFiles</code>. Цей метод повертає масив з об'єктів <code>File</code>, по одному для кожної директорії та файлу, що містяться в поточній директорії. Ми зберігаємо отриманий масив в змінній <code>filesHere</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">filesHere</span> <span class="k">=</span> <span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="nc">File</span><span class="o">(</span><span class="s">&quot;.&quot;</span><span class="o">)).</span><span class="n">listFiles</span>
 
-} catch {
-case ex: FileNotFoundException &#8658; // Handle missing file
-case ex: IOException &#8658; // Handle other I/O error
-}
-Listing 7.11 - A try-catch clause in Scala.
-The behavior of this try-catch expression is the same as in other languages with exceptions. The body is
-executed, and if it throws an exception, each catch clause is tried in turn. In this example, if the
-exception is of type FileNotFoundException, the first clause will execute. If it is of type IOException,
-the second clause will execute. If the exception is of neither type, the try-catchwill terminate and the
-exception will propagate further.
-Note
-One difference you&#8217;ll quickly notice in Scala is that, unlike Java, Scala does not require you to catch
-checked exceptions or declare them in a throws clause. You can declare a throws clause if you wish
-with the @throwsannotation, but it is not required. See Section 31.2 for more information <a href="mailto:on@throws">on@throws</a>.
-The finally clause
-You can wrap an expression with a finally clause if you want to cause some code to execute no matter
-how the expression terminates. For example, you might want to be sure an open file gets closed even if
-a method exits by throwing an exception. Listing 7.12 shows an example.<span class="footnote"><br />[Although you must always surround the case statements of a catch clause in parentheses,try and finally do not require parentheses if they contain only one expression. For example, you could write: try t() catch { case e: Exception &#8658; &#8230; } finally f().]<br /></span>
-import java.io.FileReader
-val file = new FileReader("input.txt")
-try {
+<span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.5 - Перелічує файли в поточній директорії за допомогою вираза <code>for</code>.</p></div>
+<div class="paragraph"><p>За допомогою синтаксиса <code>file &lt;- filesHere</code>, що називається <em>генератором</em>, ми ітеруємо по елементах <code>filesHere</code>. В кожній ітерації ініціалізується нова <code>val</code> на ім'я <code>file</code> зі значенням елемента. Компілятор виводить тип <code>file</code> як <code>File</code>, оскільки <code>filesHere</code> має тип <code>Array[File]</code>. Для кожної ітерації буде виконане тіло вираза, <code>println(file)</code>. Оскільки в <code>File</code> метод <code>toString</code> видає ім'я файла або директорії, будуть роздруковані імена всіх файлів та директорій в поточній директорі.</p></div>
+<div class="paragraph"><p>Синтаксис виразу <code>for</code> робить для любого типу колекції, не тільки для масивів.<span class="footnote"><br />[Щоб бути точним, вираз зправа від символа <code>&lt;-</code> в виразі for може бути любого типу, що має певні методи (в цьому випадку foreach) з відповідними сигнатурами. Деталі щодо того, як компілятор Scala обробляє вирази <code>for</code> описані в Главі 23.]<br /></span> Один зручний особливий випадок є тип <code>Range</code>, що ви похопцем бачили в Таблиці 5.4. Ви можете створити <code>Range</code> з використанням синтаксису як <code>1 to 5</code>, та можете ітерувати по ньому за допомогою <code>for</code>. Ось простий приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">1</span> <span class="n">to</span> <span class="mi">4</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;Iteration &quot;</span> <span class="o">+</span> <span class="n">i</span><span class="o">)</span>
+<span class="nc">Iteration</span> <span class="mi">1</span>
+<span class="nc">Iteration</span> <span class="mi">2</span>
+<span class="nc">Iteration</span> <span class="mi">3</span>
+<span class="nc">Iteration</span> <span class="mi">4</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви не бажаєте включати верхню межу диапазона в значення, по яких піде ітерація використовуйте <code>until</code> замість <code>to</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">1</span> <span class="n">until</span> <span class="mi">4</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;Iteration &quot;</span> <span class="o">+</span> <span class="n">i</span><span class="o">)</span>
+<span class="nc">Iteration</span> <span class="mi">1</span>
+<span class="nc">Iteration</span> <span class="mi">2</span>
+<span class="nc">Iteration</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ітерація по цілим, як ця, є загальною в Scala, але не так сильно, як в інших мовах. В інших мовах ви можете використати цю можливість для ітерації по масиву, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Не загальне в Scala...</span>
+<span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">to</span> <span class="n">filesHere</span><span class="o">.</span><span class="n">length</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="n">filesHere</span><span class="o">(</span><span class="n">i</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей вираз <code>for</code> вводить змінну <code>i</code>, встановлює її по черзі в коже ціле між <code>0</code> та <code>filesHere.length - 1</code>, та виконує тіло виразу для кожного встановленого <code>i</code>. Для кожного встановленого <code>i</code>, <code>i`тий елемент `filesHere</code> отримується та обробляється.</p></div>
+<div class="paragraph"><p>Причина, з якої цей тип ітерації менш загальний в Scala в тому, що ви можете ітерувати по колекції напряму. Коли ви робите це, ваш код стає коротшим, та ви обходите багато "помилкових помилок", що можуть виникати, коли ви ітеруєте по масивах. Маєте ви почати з 0 або 1? Маєте ви додавати -1, +1, або нічого до фінального значення? На такі запитання легко відповісти, але також легко відповісти помилково. Безпечніше взагалі повністю уникати таких запитань.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_">Фільтрація</h3>
+<div class="paragraph"><p>Іноді ви не бажаєте ітерувати по повній колекції; ви бажаєте відфільтрувати її до деякої підмножини. Ви можете зробити це за допомогою вираза <code>for</code> через додавання фільтра, твердження <code>if</code> всередині дужок <code>for</code>. Наприклад, код, показаний в Лістингу 7.6, перелічує тільки ті файли в поточній директорії, чиї імена закінчуються на <code>.scala</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">filesHere</span> <span class="k">=</span> <span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="nc">File</span><span class="o">(</span><span class="s">&quot;.&quot;</span><span class="o">)).</span><span class="n">listFiles</span>
+<span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">))</span>
+  <span class="n">println</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.6 - Пошук файлів <code>.scala</code> використовуючи <code>for</code> з фільтром.</p></div>
+<div class="paragraph"><p>Ви можете альтернативно досягти тієї самої цілі за допомогою цього коду:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">)</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">))</span>
+<span class="n">println</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей код дає той самий вихід, що і попередній код, та, можливо, виглядає більш знайомим для програмістів з імперативним підгрунтям. Однак імперативна форма є тільки цибулиною, оскільки цей часний вираз <code>for</code> викликається тільки для побічного ефекту друкування, і має результатом юніт значення <code>()</code>. Як буде показано далі в цьому розділі, вираз <code>for</code> названий "виразом", оскільки він може давати в результаті цікаве значення, колекцію, тип якої визначається твердженням <code>&lt;-</code> виразу <code>for</code>.</p></div>
+<div class="paragraph"><p>Ви можете включити більше фільтрів, якщо ви бажаєте. Просто продовжуйте додавати фільтри <code>if</code>. Наприклад, щоб бути екстра захищеним, код в Лістингу 7.7 друкує тільки файли, але не директорії. Він робить це через додавання фільтрів, що перевіряють метод <code>isFile</code> для файлів.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="o">(</span>
+  <span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span>
+    <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">isFile</span>
+  <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">)</span>
+<span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.7 - Використання декількох фільтрів в виразі <code>for</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__">Вкладена ітерація</h3>
+<div class="paragraph"><p>Якщо ви додасте декілька тверджень <code>&lt;-</code>, ви отримаєте вкладені "цикли". Наприклад, вираз <code>for</code>, показаний в Лістингу 7.8 має два вкладених цикли. Зовнішній цикл ітерує по <code>filesHere</code>, та внутрішній ітерує по <code>fileLines(file)</code> для кожного файлу, що закінчується на <code>.scala</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">fileLines</span><span class="o">(</span><span class="n">file</span><span class="k">:</span> <span class="kt">java.io.File</span><span class="o">)</span> <span class="k">=</span>
+  <span class="n">scala</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="nc">Source</span><span class="o">.</span><span class="n">fromFile</span><span class="o">(</span><span class="n">file</span><span class="o">).</span><span class="n">getLines</span><span class="o">().</span><span class="n">toList</span>
+<span class="k">def</span> <span class="n">grep</span><span class="o">(</span><span class="n">pattern</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">(</span>
+    <span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span>
+    <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">);</span>
+    <span class="n">line</span> <span class="k">&lt;-</span> <span class="n">fileLines</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+    <span class="k">if</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span><span class="o">.</span><span class="n">matches</span><span class="o">(</span><span class="n">pattern</span><span class="o">)</span>
+  <span class="o">)</span> <span class="n">println</span><span class="o">(</span><span class="n">file</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span><span class="o">)</span>
+<span class="n">grep</span><span class="o">(</span><span class="s">&quot;.*gcd.*&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.8 - Використання декількох генераторів в виразі <code>for</code>.</p></div>
+<div class="paragraph"><p>Якщо ви бажаєте, ви можете використовувати фігурні дужки замість звичайних дужок щоб оточити генератори та фільтри. Одна з переваг використання фігурних дужок в тому, що ви можете відкинути деякі з крапок з комою, що потрібні вам, коли ви використовуєте дужки, бо, як пояснено в Розділі 4.2, компілятор Scala не буде виводити коми з крапками, коли знаходиться в дужках.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____">Серед-поточні прикріплення змінних</h3>
+<div class="paragraph"><p>Зауважте, що в попередньому коді повторюється вираз <code>line.trim</code>. Це нетривіальне обчислення, так що ви можете побажати обчислити його тільки один раз. Ви можете зробити це, прикріпивши результат до нової змінної, використовуючи знак рівності (=). Прикріплена змінна буде створена, та використовується як звичайна <code>val</code>, тільки без ключового слова <code>val</code>. Лістинг 7.9 показує приклад.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">grep</span><span class="o">(</span><span class="n">pattern</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+  <span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span>
+  <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">)</span>
+  <span class="n">line</span> <span class="k">&lt;-</span> <span class="n">fileLines</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+  <span class="n">trimmed</span> <span class="k">=</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span>
+  <span class="k">if</span> <span class="n">trimmed</span><span class="o">.</span><span class="n">matches</span><span class="o">(</span><span class="n">pattern</span><span class="o">)</span>
+<span class="o">}</span> <span class="n">println</span><span class="o">(</span><span class="n">file</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">trimmed</span><span class="o">)</span>
+<span class="n">grep</span><span class="o">(</span><span class="s">&quot;.*gcd.*&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.9 - Серед-поточне присвоєння в виразі <code>for</code>.</p></div>
+<div class="paragraph"><p>В Лістингу 7.9 змінна на ім'я <code>trimmed</code> вводиться посеред виразу <code>for</code>. Ця змінна ініціалізована результатом <code>line.trim</code>. Потім залишок виразу використовує її в двох місцях, один раз в <code>if</code>, та ще раз в <code>println</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____3">Продукування нової колекції</h3>
+<div class="paragraph"><p>Хоча доки всі приклади тільки оперували з ітерованими значеннями, та потім забували їх, ви також можете генерувати значення, що буде запам'ятовуватись на кожній ітерації. Щоб зробити це, ви ставите перед тілом виразу <code>for</code> ключове слово <code>yield</code>. Наприклад, ось функція, що ідентифікує файли <code>.scala</code>, та зберігає їх в масиві:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">scalaFiles</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span>
+    <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">)</span>
+<span class="o">}</span> <span class="k">yield</span> <span class="n">file</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Кожний раз, коли виконується тіло виразу, воно продукує одне значення, в цьому разі просто <code>file</code>. Коли вираз <code>for</code> завершується, результат буде включати всі з отриманих значень, що міститимуться в одній колекції. Тип отриманої колекції базується на типі колекцій, оброблених в твердженнях ітерації. В цьому випадку результат буде  <code>Array[File]</code>, оскільки <code>filesHere</code> є масивом, і тип отриманого виразу є <code>File</code>.</p></div>
+<div class="paragraph"><p>Будьте уважні, поміж всього, коли ви розташовуєте ключове слово <code>yield</code>. Синтаксис виразу <code>for-yield</code> виглядає так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">clauses</span> <span class="k">yield</span> <span class="n">body</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>yield</code> іде перед всім тілом. Навіть якщо тіло є блок, оточений фігурними дужками, покладіть <code>yield</code> перед першою фігурною дужкою, не перед останнім виразом в блоці. Уникайте спокуси писати речі, подібні до цього:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">))</span> <span class="o">{</span>
+  <span class="k">yield</span> <span class="n">file</span> <span class="c1">// Синтаксична помилка!</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Наприклад, вираз <code>for</code>, показаний в Лістингу 7.10 спочатку трансформує <code>Array[File]</code> на ім'я <code>filesHere</code>, що містить всі файли в поточній директорії, до такого, що містить тільки файли <code>.scala</code>. Для кожного з них він генерує <code>Iterator[String]</code>, результат метода <code>fileLines</code>, чиє визначення показане в Лістингу 7.8. <code>Iterator</code> пропонує методи <code>next</code> та <code>hasNext</code>, що дозволяють вам ітерувати по колекції елементів. Цей внутрішній ітератор трансформується в інший ітератор ` Iterator[String]<code>, який містить тільки обрізані рядки, що містять субрядок `"for"</code>. Нарешті, для кожного з них, видається ціла довжина. Результатом цього виразу <code>for</code> є <code>Array[Int]</code>, що містить довжини.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">forLineLengths</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span>
+    <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">)</span>
+    <span class="n">line</span> <span class="k">&lt;-</span> <span class="n">fileLines</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+    <span class="n">trimmed</span> <span class="k">=</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span>
+    <span class="k">if</span> <span class="n">trimmed</span><span class="o">.</span><span class="n">matches</span><span class="o">(</span><span class="s">&quot;.*for.*&quot;</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">trimmed</span><span class="o">.</span><span class="n">length</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.10 - Трансформування <code>Array[File]</code> на <code>Array[Int]</code> з допомогою <code>for</code>.</p></div>
+<div class="paragraph"><p>В цій точці ви бачили всі головні функції виразів Scala <code>for</code>, але ми пройшли по них дуже швидко. Більш докладне покриття виразів <code>for</code> надається в Главі 23.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_4______try">7.4 Обробка виключень за допомогою виразів try</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Виключення Scala поводяться як в багатьох інших мовах. Замість повернення значення в в нормальний спосіб, метод може завершитись викликом виключення. Викликач метода може або перехопити та обробити це виключення, або він може сам по собі завершитись, що спричинить поширення виключення до викликача викликача. Виключення розповсюджується в такий спосіб, розкручуючи стек викликів, доки метод не обробить його, або доки не залишиться методів.</p></div>
+<div class="sect2">
+<h3 id="___2">Виклик виключень</h3>
+<div class="paragraph"><p>Виклик виключення в Scala виглядає так само, як і в Java. Ви створюєте об'єкт виключення, та потім закидаєте його ключовим словом <code>throw</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalArgumentException</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Хоча це може виглядати трохи парадоксальним, в Scala <code>throw</code> є виразом, що має тип результа. Ось приклад, коли тип результата має значення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">half</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">n</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+    <span class="n">n</span> <span class="o">/</span> <span class="mi">2</span>
+  <span class="k">else</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">(</span><span class="s">&quot;n must be even&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що тут трапиться, коли <code>n</code> є парним - <code>half</code> буде ініціалізоване до половини <code>n</code>. Якщо воно не парне, буде викликане виключення перед тим, як <code>half</code> взагалі зможе бути ініціалізоване. Через це, безпечно трактувати закидання виключення як взагалі будь-який тип. Любий контекст, що намагатиметься використовувати повернення з <code>throw</code>, ніколи не зможе цього зробити, так що не слід чекати ніякої шкоди.</p></div>
+<div class="paragraph"><p>Технічно <code>throw</code> виключення має тип <code>Nothing</code>. Ви можете використовувати <code>throw</code> як вираз, навіть якщо він ніколи нічого не обчислює. Цей невеликий шматок технічної гімнастики може виглядати збоченим, але часто корисний в випадках, як попередній приклад. Одна з гілок <code>if</code> обчислює значення, тоді як інша закидає виключення, та обчислює <code>Nothing</code>. Тип цілого виразу <code>if</code> після цього є типом тієї гілки, що щось обчислює. Тип <code>Nothing</code> дискутується далі в Розділі 11.3.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___3">Перехоплення виключень</h3>
+<div class="paragraph"><p>Ви перехоплюєте виключення, використовуючи синтаксис, показаний в Лістингу 7.11 Синтаксис для тверджень <code>catch</code> був обраний за його узгодженість з важливою частиною Scala: співпадінням шаблонів. Співпадіння шаблонів, потужна можливість, коротко описана в цій главі, та в більших деталях в Главі 15.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">java.io.FileReader</span>
+<span class="k">import</span> <span class="nn">java.io.FileNotFoundException</span>
+<span class="k">import</span> <span class="nn">java.io.IOException</span>
+<span class="k">try</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">f</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="s">&quot;input.txt&quot;</span><span class="o">)</span>
+<span class="c1">// Використовуємо та зачиняємо файл</span>
+<span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">ex</span><span class="k">:</span> <span class="kt">FileNotFoundException</span> <span class="o">=&gt;</span> <span class="c1">// Обробляємо відсутній файл</span>
+  <span class="k">case</span> <span class="n">ex</span><span class="k">:</span> <span class="kt">IOException</span> <span class="o">=&gt;</span> <span class="c1">// Обробляємо помилки I/O</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.11 - Твердження <code>try-catch</code> clause in Scala.</p></div>
+<div class="paragraph"><p>Поведінка цього виразу <code>try-catch</code> така сама, як і інших мов з виключенями. Тіло виконується, та якщо виникає виключення, кожне твердження <code>catch</code> викликається по черзі. В цьому прикладі, якщо виникає включення типу <code>FileNotFoundException</code>, буде виконане перше твердження. Якщо тип виключення <code>IOException</code>, виконується друге твердження. Якщо виключення не одного з ціх типів, <code>try-catch</code> завершиться, та виключення розповсюдиться далі.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Одна різниця, що ви швидко зауважите, в тому, що на відміну від Java, Scala не вимагає від вас перехоплювати перевірені виключення, або декларувати їх в твердженні <code>throws</code>. Ви можете декларувати <code>throws</code>, якщо бажатєте, за допомогою анотації <code>@throws</code>, але це не вимагається. Дивіться Розділ 31.2 для додаткової інформації щодо <code>@throws</code>.</td>
+</tr></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="__finally">Твердження finally</h3>
+<div class="paragraph"><p>Ви можете огорнути вираз за допомогою твердження <code>finally</code>, якщо ви бажаєте виконати деякий код, не важливо як скінчиться вираз. Наприклад, ви можете побажати переконатись, що відкритий файл буде закритий, навіть якщо метод завершується виникненням виключення. Лістинг 7.12 показує приклад.<span class="footnote"><br />[Хоча ви маєте завжди оточувати твердження case в catch в дужки, try та finally не потребують дужок, якщо вони містять тільки один вираз. Наприклад, ви можете написати: try t() catch { case e: Exception &#8658; &#8230; } finally f().]<br /></span></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">java.io.FileReader</span>
+<span class="k">val</span> <span class="n">file</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">FileReader</span><span class="o">(</span><span class="s">&quot;input.txt&quot;</span><span class="o">)</span>
+<span class="k">try</span> <span class="o">{</span>
+<span class="c1">// Використовуємо файл</span>
+<span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+  <span class="n">file</span><span class="o">.</span><span class="n">close</span><span class="o">()</span> <span class="c1">// Переконуємось що зачинили файл</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.12 - Твердження <code>try-finally</code> в Scala.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Лістинг 7.12 показує ідиоматичний спосіб переконатись, що об'єкт не-з-пам'яті, такий як файл, сокет або з'єднання з базою даних, є зачинений. Спочатку ви захоплюєте ресурс. Потім ви починаєте блок <code>try</code>, в якому ви використовуєте ресурс. Нарешті, ви зачиняєте ресурс в блоці <code>finally</code>. Ця ідіома є тою самою в Scala, як в Java; альтернативно, в Scala ви можете задіяти прийом з назвою <em>шаблон позичання</em>, щоб досягти цієї цілі більш стисло. Шаблон позичання буде описаний в Розділі 9.4.</td>
+</tr></table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="___4">Отримання значення</h3>
+<div class="paragraph"><p>Як і з багатьма іншими керівними структурами Scala, <code>try-catch-finally</code> повертає значення. Наприклад, Лістинг 7.13 показує, як ви можете спробувати розібрати URL, але використати значення по замовчанню, якщо URL погано сформований. Результатом є те, що полишає твердження <code>try</code>, якщо не виникло виключення, або відповідний код <code>catch</code>, якщо виключення виникло і було перехоплене. Якщо виключення було закинуте, але не перехоплене, вираз взагалі не має результату. Значення, обчислене в твердженні <code>finally</code>, якщо таке є, відкидається. Звичайно в <code>finally</code> робиться деякий різновид очищення, такий як закриття файлів. Звичайно, вони не мають змінювати значення, обчислене в головному тілі або блоці <code>catch</code> твердження <code>try</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">java.net.URL</span>
+<span class="k">import</span> <span class="nn">java.net.MalformedURLException</span>
+<span class="k">def</span> <span class="n">urlFor</span><span class="o">(</span><span class="n">path</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="k">new</span> <span class="nc">URL</span><span class="o">(</span><span class="n">path</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">catch</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">e</span><span class="k">:</span> <span class="kt">MalformedURLException</span> <span class="o">=&gt;</span>
+      <span class="k">new</span> <span class="nc">URL</span><span class="o">(</span><span class="s">&quot;http://www.scala-lang.org&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.13 - Твердження <code>catch</code>, що надає значення.</p></div>
+<div class="paragraph"><p>Якщо ви знайомі з Java, вам зрозуміло, що поведінка Scala відрізняється від Java <code>try-finally</code> тільки в тій частині, що остання не повертає значення. Як і в Java, якщо твердження <code>finally</code> включає явне твердження <code>return</code>, або закидає виключення, значення повернення або виключення буде "анулювати" любі попередні значення, що походять з блоку <code>try</code> або з одного з його тверджень <code>catch</code>. Наприклад, маючи таке, скоріше надумане, визначення функції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">f</span><span class="o">()</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="k">try</span> <span class="k">return</span> <span class="mi">1</span> <span class="k">finally</span> <span class="k">return</span> <span class="mi">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>виклик f() дає 2. Для контрасту, маючи:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">g</span><span class="o">()</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="k">try</span> <span class="mi">1</span> <span class="k">finally</span> <span class="mi">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>виклик g() дає 1. Обоє з ціх функцій показують поведінку, що може здивувати багатьох програмістів, так що зазвичай краще уникати повернення значень з твердження <code>finally</code>. Кращий спосіб думати про блок <code>finally</code>, як про спосіб переконатись, що відбувся деякий побічний ефект, такий як зачинення відкритого файлу.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_5__match">7.5 Вирази match</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В Scala вираз <code>match</code> дозволяють вам обрати з декількох альтернатив, так само, як твердження <code>switch</code> в інших мовах. Загалом, вираз <code>match</code> дозволяє вам зробити вибір, використовуючі довільні шаблони, що будуть описані в Главі 15. Загальна форма може почекати. Доки розглянемо тільки використання <code>match</code> для обрання між декількома альтернативами.</p></div>
+<div class="paragraph"><p>Як приклад, скрипт в Лістингу 7.14 читає назву їжі зі списку аргументів, та друкує додаток до цієї їжі. Цей вираз <code>match</code> перевіряє <code>firstArg</code>, що була встановлена в перший аргумент зі списку аргументів. Якщо рядок є <code>"salt"</code>, друкується <code>"pepper"</code>, та якщо рядок <code>"chips"</code>, друкується <code>"salsa"</code>, і так далі. Випадок по замовчанню вказаний підкресленням (<code>_</code>), підстановочним символом, що часто використовується в Scala як заміщувач для повністю невідомого значення.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">firstArg</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>
+<span class="n">firstArg</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">`&quot;salt&quot;`</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;pepper&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="s">&quot;chips&quot;</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;salsa&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="s">&quot;eggs&quot;</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;bacon&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;huh?&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.14 - Вираз <code>match</code> з побічними ефектами.</p></div>
+<div class="paragraph"><p>Існує декілька важливих відмінностей від твердження Java <code>switch</code>. Одна в тому, що любий різновид констант, так само як і інших речей, може використовуватись в <code>case</code> в Scala, не тільки цілі типи, enum, та константи рядків в твердженнях Java <code>case</code>. В Лістингу 7.14 альтернативами є рядки. Інша відмінність в тому, що нема переривань <code>break</code> в кінці кожної альтернативи. Замість цього, <code>break</code> є неявним, і немає провалювання від однієї альтернативи до іншої. Загальний випадок — відсутність провалювання — стає коротший, та уникається джерело помилок, оскільки програмісти більше не провалюватимуться випадково.</p></div>
+<div class="paragraph"><p>Однак найбільш значуща різниця з Java <code>switch</code> може полягати в тому, що вирази <code>match</code> повертають значення. В попередньому прикладі кожна з альтернатив в виразі <code>match</code> друкує значення. Також гарно буде робити повернення значення, ніж його друк, як показано в Лістингу  7.15. Значення, що є результатом цього виразу <code>match</code>, зберігається в змінній <code>friend</code>. Крім того, що код став коротший (в любому випадку за числом токенів), код тепер розрізняє дві різні турботи: спочатку він обирає їжу, та потім друкує її.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">firstArg</span> <span class="k">=</span> <span class="k">if</span> <span class="o">(!</span><span class="n">args</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="k">else</span> <span class="s">&quot;&quot;</span>
+<span class="k">val</span> <span class="n">friend</span> <span class="k">=</span>
+  <span class="n">firstArg</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="s">&quot;salt&quot;</span> <span class="k">=&gt;</span> <span class="s">&quot;pepper&quot;</span>
+    <span class="k">case</span> <span class="s">&quot;chips&quot;</span> <span class="k">=&gt;</span> <span class="s">&quot;salsa&quot;</span>
+    <span class="k">case</span> <span class="s">&quot;eggs&quot;</span> <span class="k">=&gt;</span> <span class="s">&quot;bacon&quot;</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;huh?&quot;</span>
+  <span class="o">}</span>
+<span class="n">println</span><span class="o">(</span><span class="n">friend</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.15 - Вираз <code>match</code>, що продукує значення.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_6___break__continue">7.6 Життя без break та continue</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ви, можливо, помітили, що ми не споминули <code>break</code> або <code>continue</code>. Scala полишила ці дві команди, оскільки вони не дуже гарно перетинаються з функціональними літералами, можливістю, описаною в наступній главі. Ясно, що значить <code>continue</code> означає в циклі <code>while</code>,але що воно може значити в функціональному літералі? Хоча Scala підтримує обоє, імперативний та функціональний стилі програмування, в цьому випадку вона трохи схиляється до функціонального програмування, в обмін на спрощення мови. Однак не турбуйтесь. Існує багато шляхів програмувати без <code>break</code> та <code>continue</code>, та якщо ви отримаєте переваги функціональних літералів, ці альтернативи можуть часто бути коротші, ніж оригінальний код.</p></div>
+<div class="paragraph"><p>Найпростіший підхід є замінити кожний <code>continue</code> на <code>if</code>, та кожний <code>break</code> на логічну змінну. Логічна змінна вказує, чи оточуючий цикл має продовжуватись. Наприклад, уявімо, що ви шукаєте в списку аргументів рядок, що закінчується на <code>".scala"</code> але не починається на дефіс. В Java ви можете — якщо ви великий прихильник циклів <code>while</code>, <code>break</code> та <code>continue</code> — написати наступне:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="kt">int</span> <span class="n">i</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+<span class="c1">// Це Java</span>
+<span class="kt">boolean</span> <span class="n">foundIt</span> <span class="o">=</span> <span class="kc">false</span><span class="o">;</span>
+<span class="k">while</span> <span class="o">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="n">args</span><span class="o">.</span><span class="na">length</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">[</span><span class="n">i</span><span class="o">].</span><span class="na">startsWith</span><span class="o">(</span><span class="s">&quot;-&quot;</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+        <span class="k">continue</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">[</span><span class="n">i</span><span class="o">].</span><span class="na">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">))</span> <span class="o">{</span>
+        <span class="n">foundIt</span> <span class="o">=</span> <span class="kc">true</span><span class="o">;</span>
+        <span class="k">break</span><span class="o">;</span>
+    <span class="o">}</span>
+    <span class="n">i</span> <span class="o">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="o">;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб перекласти цей Java код прямо на Scala, замість робити <code>if</code> та потім <code>continue</code>, ви можете написати <code>if</code>, що оточує весь залишок цикла <code>while</code>. Щоб позбавитись <code>break</code>, ви можете звичайно додати логічну змінну, що вказує, чи варто продовжувати, але в цьому випадку ми можемо повторно використати <code>foundIt</code>. Викорисистовуючи обоє з ціх трюків, код приходить до вигляду, як показано на Лістингу 7.16.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">i</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="k">var</span> <span class="n">foundIt</span> <span class="k">=</span> <span class="kc">false</span>
 
-} finally {
-file.close() // Be sure to close the file
-}Listing 7.12 - A try-finally clause in Scala.
-Note
-Listing 7.12 shows the idiomatic way to ensure a non-memory resource, such as a file, socket, or
-database connection, is closed. First you acquire the resource. Then you start a try block in which you
-use the resource. Lastly, you close the resource in a finally block. This idiom is the same in Scala as in
-Java; alternatively, in Scala you can employ a technique called the loan pattern to achieve the same
-goal more concisely. The loan pattern will be described in Section 9.4.
-Yielding a value
-As with most other Scala control structures, try-catch-finally results in a value. For example,Listing
-7.13 shows how you can try to parse a URL but use a default value if the URL is badly formed. The
-result is that of the try clause if no exception is thrown, or the relevant catchclause if an exception is
-thrown and caught. If an exception is thrown but not caught, the expression has no result at all. The
-value computed in the finally clause, if there is one, is dropped. Usually finally clauses do some kind of
-clean up, such as closing a file. Normally, they should not change the value computed in the main body
-or a catch clause of the try.
-import java.net.URL
-import java.net.MalformedURLException
-def urlFor(path: String) =
-try {
-new URL(path)
-} catch {
-case e: MalformedURLException &#8658;
-new URL("http://www.scala-lang.org")
-}
-Listing 7.13 - A catch clause that yields a value.
-If you&#8217;re familiar with Java, it&#8217;s worth noting that Scala&#8217;s behavior differs from Java only because
-Java&#8217;s try-finally does not result in a value. As in Java, if a finally clause includes an explicit return
-statement, or throws an exception, that return value or exception will "overrule" any previous one that
-originated in the try block or one of its catch clauses. For example, given this, rather contrived,
-function definition:
-def f(): Int = try return 1 finally return 2
-calling f() results in 2. By contrast, given:
-def g(): Int = try 1 finally 2
-calling g() results in 1. Both of these functions exhibit behavior that could surprise most programmers,
-so it&#8217;s usually best to avoid returning values from finally clauses. The best way to think
-of finally clauses is as a way to ensure some side effect happens, such as closing an open file.7.5 MATCH EXPRESSIONS
-Scala&#8217;s match expression lets you select from a number of alternatives, just like switchstatements in
-other languages. In general a match expression lets you select using arbitrarypatterns, which will be
-described in Chapter 15. The general form can wait. For now, just consider using match to select
-among a number of alternatives.
-As an example, the script in Listing 7.14 reads a food name from the argument list and prints a
-companion to that food. This match expression examines firstArg, which has been set to the first
-argument out of the argument list. If it is the string "salt", it prints "pepper", while if it is the
-string "chips", it prints "salsa", and so on. The default case is specified with an underscore (<em>), a
-wildcard symbol frequently used in Scala as a placeholder for a completely unknown value.
-val firstArg = if (args.length &gt; 0) args(0) else ""
-firstArg match {
-case "salt" &#8658; println("pepper")
-case "chips" &#8658; println("salsa")
-case "eggs" &#8658; println("bacon")
-case _ &#8658; println("huh?")
-}
-Listing 7.14 - A match expression with side effects.
-There are a few important differences from Java&#8217;s switch statement. One is that any kind of constant, as
-well as other things, can be used in cases in Scala, not just the integer-type, enum, and string constants
-of Java&#8217;s case statements. In Listing 7.14, the alternatives are strings. Another difference is that there
-are no breaks at the end of each alternative. Instead the break is implicit, and there is no fall through
-from one alternative to the next. The common case—not falling through—becomes shorter, and a
-source of errors is avoided because programmers can no longer fall through by accident.
-The most significant difference from Java&#8217;s switch, however, may be that match expressions result in a
-value. In the previous example, each alternative in the match expression prints out a value. It would
-work just as well to yield the value rather than print it, as shown in Listing 7.15. The value that results
-from this match expression is stored in the friend variable. Aside from the code getting shorter (in
-number of tokens anyway), the code now disentangles two separate concerns: first it chooses a food
-and then prints it.
-val firstArg = if (!args.isEmpty) args(0) else ""
-val friend =
-firstArg match {
-case "salt" &#8658; "pepper"
-case "chips" &#8658; "salsa"
-case "eggs" &#8658; "bacon"
-case _ &#8658; "huh?"
-}
-println(friend)Listing 7.15 - A match expression that yields a value.
-7.6 LIVING WITHOUT BREAK AND CONTINUE
-You may have noticed that there has been no mention of break or continue. Scala leaves out these
-commands because they do not mesh well with function literals, a feature described in the next chapter.
-It is clear what continue means inside a while loop, but what would it mean inside a function literal?
-While Scala supports both imperative and functional styles of programming, in this case it leans
-slightly towards functional programming in exchange for simplifying the language. Do not worry,
-though. There are many ways to program withoutbreak and continue, and if you take advantage of
-function literals, those alternatives can often be shorter than the original code.
-The simplest approach is to replace every continue by an if and every break by a boolean variable. The
-boolean variable indicates whether the enclosing while loop should continue. For example, suppose
-you are searching through an argument list for a string that ends with ".scala" but does not start with a
-hyphen. In Java you could—if you were quite fond of whileloops, break, and continue—write the
-following:
-int i = 0;
+<span class="k">while</span> <span class="o">(</span><span class="n">i</span> <span class="o">&lt;</span> <span class="n">args</span><span class="o">.</span><span class="n">length</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">foundIt</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(!</span><span class="n">args</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="n">startsWith</span><span class="o">(</span><span class="s">&quot;-&quot;</span><span class="o">))</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">))</span>
+      <span class="n">foundIt</span> <span class="k">=</span> <span class="kc">true</span>
+  <span class="o">}</span>
+  <span class="n">i</span> <span class="k">=</span> <span class="n">i</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.16 - Цикл без <code>break</code> або <code>continue</code>.</p></div>
+<div class="paragraph"><p>Цей Scala код в Лістингу 7.16 досить подібний до оригінального Java коду. Всі базові частини все ще тут, і в тому ж порядку. Є дві переприсвоювані змінні та цикл <code>while</code>. В циклі є перевірка, що <code>i</code> менше ніж <code>args.length</code>, перевірка на <code>"-"</code>, та перевірка на <code>".scala"</code>.</p></div>
+<div class="paragraph"><p>Якщо ви бажаєте позбутись <code>var</code> в Лістингу 7.16, один підхід, що ви можете спробувати, це переписати цикл як рекурсивну функцію. Ви можете, наприклад, визначити функцію <code>searchFrom</code>, що приймає ціле на вході, шукає з цього місця, та потім повертає індекс потрібного аргументу. Використовуючи цей прийом, код буде виглядати, як показано в Лістингу 7.17:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">searchFrom</span><span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">i</span> <span class="o">&gt;=</span> <span class="n">args</span><span class="o">.</span><span class="n">length</span><span class="o">)</span> <span class="o">-</span><span class="mi">1</span>
+  <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="n">startsWith</span><span class="o">(</span><span class="s">&quot;-&quot;</span><span class="o">))</span> <span class="n">searchFrom</span><span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+  <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">args</span><span class="o">(</span><span class="n">i</span><span class="o">).</span><span class="n">endsWith</span><span class="o">(</span><span class="s">&quot;.scala&quot;</span><span class="o">))</span> <span class="n">i</span>
+  <span class="k">else</span> <span class="n">searchFrom</span><span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">i</span> <span class="k">=</span> <span class="n">searchFrom</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 7.17 - Рекурсивна альтернатива до циклів з <code>var</code>.</p></div>
+<div class="paragraph"><p>Версія в Лістингу 7.17 дає змістовне ім'я тому, що робить функція, та вона використовує рекурсію для заміни циклу. Кожне <code>continue</code> замінюється рекурсивним викликом з аргументом <code>i + 1</code>, що ефективно просуває до наступного аргументу. Багато людей знаходять, що цей стиль програмування простіший для розуміння, як тільки вони переходять до використання рекурсії.</p></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Компілятор Scala насправді не видасть рекурсивну функцію для коду, показаному на Лістингу 7.17. Оскільки всі рекурсівні виклики в позиції хвостового-виклику, компілятор буде генерувати код, подібний до циклу <code>while</code>. Кожний рекурсивний виклик буде реалізований як стрибок в зворотньому напрямку на початок функції. Оптимізація хвостового виклику обговорюється в Розділі 8.9.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>If after all this discussion you still feel the need to use break, there&#8217;s help in Scala&#8217;s standard library. Class Breaks in package scala.util.control offers a break method, which can be used to exit an enclosing block that&#8217;s marked with breakable. Here is an example how this library-supplied break method could be applied:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">scala.util.control.Breaks._</span>
+<span class="k">import</span> <span class="nn">java.io._</span>
 
-boolean foundIt = false;
-while (i &lt; args.length) {
-if (args[i].startsWith("-")) {
-i = i + 1;
-continue;
-}
-if (args[i].endsWith(".scala")) {
-foundIt = true;
-break;
-}
-i = i + 1;
-}
-To transliterate this Java code directly to Scala, instead of doing an if and then a continue, you could
-write an if that surrounds the entire remainder of the while loop. To get rid of the break, you would
-normally add a boolean variable indicating whether to keep going, but in this case you can
-reuse foundIt. Using both of these tricks, the code ends up looking as shown in Listing 7.16.
-var i = 0
-var foundIt = false
-while (i &lt; args.length &amp;&amp; !foundIt) {
-if (!args(i).startsWith("-")) {
-if (args(i).endsWith(".scala"))
-foundIt = true
-}
-i = i + 1
-}Listing 7.16 - Looping without break or continue.
-This Scala code in Listing 7.16 is quite similar to the original Java code. All the basic pieces are still
-there and in the same order. There are two reassignable variables and a while loop. Inside the loop,
-there is a test that i is less than args.length, a check for "-", and a check for".scala".
-If you wanted to get rid of the vars in Listing 7.16, one approach you could try is to rewrite the loop as
-a recursive function. You could, for example, define a searchFrom function that takes an integer as an
-input, searches forward from there, and then returns the index of the desired argument. Using this
-technique the code would look as shown in Listing 7.17:
-def searchFrom(i: Int): Int =
-if (i &gt;= args.length) -1
-else if (args(i).startsWith("-")) searchFrom(i + 1)
-else if (args(i).endsWith(".scala")) i
-else searchFrom(i + 1)
-val i = searchFrom(0)
-Listing 7.17 - A recursive alternative to looping with vars.
-The version in Listing 7.17 gives a human-meaningful name to what the function does, and it uses
-recursion to substitute for looping. Each continue is replaced by a recursive call with i + 1as the
-argument, effectively skipping to the next integer. Many people find this style of programming easier to
-understand, once they get used to the recursion.
-Note
-The Scala compiler will not actually emit a recursive function for the code shown inListing 7.17.
-Because all of the recursive calls are in tail-call position, the compiler will generate code similar to
-a while loop. Each recursive call will be implemented as a jump back to the beginning of the function.
-Tail-call optimization is discussed inSection 8.9.
-If after all this discussion you still feel the need to use break, there&#8217;s help in Scala&#8217;s standard library.
-Class Breaks in package scala.util.control offers a break method, which can be used to exit an enclosing
-block that&#8217;s marked with breakable. Here is an example how this library-supplied break method could
-be applied:
-import scala.util.control.Breaks.</em>
-import java.io._
-val in = new BufferedReader(new InputStreamReader(System.in))
-breakable {
-while (true) {
-println("? ")
-if (in.readLine() == "") break
-}
-}
-This will repeatedly read non-empty lines from the standard input. Once the user enters an empty line,
-control flow exits from the enclosing breakable, and with it the while loop.The Breaks class implements break by throwing an exception that is caught by an enclosing application
-of the breakable method. Therefore, the call to break does not need to be in the same method as the call
-to breakable.
-7.7 VARIABLE SCOPE
-Now that you&#8217;ve seen Scala&#8217;s built-in control structures, we&#8217;ll use them in this section to explain how
-scoping works in Scala.
-FAST TRACK FOR JAVA PROGRAMMERS
-If you&#8217;re a Java programmer, you&#8217;ll find that Scala&#8217;s scoping rules are almost identical to Java&#8217;s. One
-difference between Java and Scala is that Scala allows you to define variables of the same name in
-nested scopes. So if you&#8217;re a Java programmer, you may wish to at least skim this section.
-Variable declarations in Scala programs have a scope that defines where you can use the name. The
-most common example of scoping is that curly braces generally introduce a newscope, so anything
-defined inside curly braces leaves scope after the final closing brace.<span class="footnote"><br />[There are a few exceptions to this rule because in Scala you can sometimes use curly braces in place of parentheses. One example of this kind of curly-brace use is the alternativefor expression syntax described in Section 7.3.]<br /></span> As an illustration, consider the
-function shown in Listing 7.18.
-def printMultiTable() = {
-var i = 1
+<span class="k">val</span> <span class="n">in</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">BufferedReader</span><span class="o">(</span><span class="k">new</span> <span class="nc">InputStreamReader</span><span class="o">(</span><span class="nc">System</span><span class="o">.</span><span class="n">in</span><span class="o">))</span>
 
-while (i &#8656; 10) {
-var j = 1
+<span class="n">breakable</span> <span class="o">{</span>
+  <span class="k">while</span> <span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;? &quot;</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">in</span><span class="o">.</span><span class="n">readLine</span><span class="o">()</span> <span class="o">==</span> <span class="s">&quot;&quot;</span><span class="o">)</span> <span class="n">break</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>This will repeatedly read non-empty lines from the standard input. Once the user enters an empty line, control flow exits from the enclosing breakable, and with it the while loop.The Breaks class implements break by throwing an exception that is caught by an enclosing application of the breakable method. Therefore, the call to break does not need to be in the same method as the call to breakable.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_7___">7.7 Поле зору змінної</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Now that you&#8217;ve seen Scala&#8217;s built-in control structures, we&#8217;ll use them in this section to explain how scoping works in Scala.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="____java_">Швидкий шлях для Java програмістів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>If you&#8217;re a Java programmer, you&#8217;ll find that Scala&#8217;s scoping rules are almost identical to Java&#8217;s. One difference between Java and Scala is that Scala allows you to define variables of the same name in nested scopes. So if you&#8217;re a Java programmer, you may wish to at least skim this section.</p></div>
+<div class="paragraph"><p>Variable declarations in Scala programs have a scope that defines where you can use the name. The most common example of scoping is that curly braces generally introduce a newscope, so anything defined inside curly braces leaves scope after the final closing brace.<span class="footnote"><br />[There are a few exceptions to this rule because in Scala you can sometimes use curly braces in place of parentheses. One example of this kind of curly-brace use is the alternativefor expression syntax described in Section 7.3.]<br /></span> As an illustration, consider the function shown in Listing 7.18.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">printMultiTable</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
 
-while (j &#8656; 10) {
-val prod = (i * j).toString
+  <span class="k">var</span> <span class="n">i</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="c1">// в полі зору тільки i</span>
+  <span class="k">while</span> <span class="o">(</span><span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">var</span> <span class="n">j</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="c1">// в полі зору i та j</span>
+    <span class="k">while</span> <span class="o">(</span><span class="n">j</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">prod</span> <span class="k">=</span> <span class="o">(</span><span class="n">i</span> <span class="o">*</span> <span class="n">j</span><span class="o">).</span><span class="n">toString</span>
+<span class="c1">// в полі зору  i, j, prod</span>
+      <span class="k">var</span> <span class="n">k</span> <span class="k">=</span> <span class="n">prod</span><span class="o">.</span><span class="n">length</span>
+<span class="c1">// в полі зору i, j, prod, k</span>
+      <span class="k">while</span> <span class="o">(</span><span class="n">k</span> <span class="o">&lt;</span> <span class="mi">4</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">print</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">)</span>
+        <span class="n">k</span> <span class="o">+=</span> <span class="mi">1</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+    <span class="n">print</span><span class="o">(</span><span class="n">prod</span><span class="o">)</span>
+    <span class="n">j</span> <span class="o">+=</span> <span class="mi">1</span>
+ <span class="c1">// в полі зору i та j; prod та k вийшли</span>
+  <span class="o">}</span>
+  <span class="n">println</span><span class="o">()</span>
+  <span class="n">i</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="c1">// в полі зору все ще i; j, prod, k вийшли</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Listing 7.18 - Variable scoping when printing a multiplication table.</p></div>
+<div class="paragraph"><p>The printMultiTable function shown in Listing 7.18 prints out a multiplication table.<span class="footnote"><br />[The printMultiTable function shown in Listing 7.18 is written in an imperative style. We&#8217;ll refactor it into a functional style in the next section.]<br /></span> The first statement of this function introduces a variable named i and initializes it to the integer 1. You can then use the name i for the remainder of the function.</p></div>
+<div class="paragraph"><p>The next statement in printMultiTable is a while loop:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">while</span> <span class="o">(</span><span class="n">i</span> <span class="o">&lt;=</span> <span class="mi">10</span><span class="o">)</span> <span class="o">{</span>
+<span class="k">var</span> <span class="n">j</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>You can use i here because it is still in scope. In the first statement inside that while loop, you introduce another variable, this time named j, and again initialize it to 1. Because the variablej was defined inside the open curly brace of the while loop, it can be used only within thatwhile loop. If you were to attempt to do something with j after the closing curly brace of thiswhile loop, after the comment that says j, prod, and k are out of scope, your program would not compile.</p></div>
+<div class="paragraph"><p>All variables defined in this example—i, j, prod, and k—are local variables. Such variables are "local" to the function in which they are defined. Each time a function is invoked, a new set of its local variables is used.</p></div>
+<div class="paragraph"><p>Once a variable is defined, you can&#8217;t define a new variable with the same name in the same scope. For example, the following script with two variables named a in the same scope would not compile:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">2</span> <span class="c1">// Не компілюється</span>
+<span class="n">println</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>You can, on the other hand, define a variable in an inner scope that has the same name as a variable in an outer scope. The following script would compile and run:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">1</span><span class="o">;</span>
+<span class="o">{</span>
+  <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">2</span> <span class="c1">// Чудово компілюється</span>
+  <span class="n">println</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="n">println</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>When executed, the script shown previously would print 2 then 1, because the a defined inside the curly braces is a different variable, which is in scope only until the closing curly brace.<span class="footnote"><br />[By the way, the semicolon is required in this case after the first definition of a because Scala&#8217;s semicolon inference mechanism will not place one there.]<br /></span> One difference to note between Scala and Java is that Java will not let you create a variable in an inner scope that has the same name as a variable in an outer scope. In a Scala program, an inner variable is said to shadow a like-named outer variable, because the outer variable becomes invisible in the inner scope.</p></div>
+<div class="paragraph"><p>You might have already noticed something that looks like shadowing in the interpreter:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="n">a</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span>
 
-var k = prod.length
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">2</span>
+<span class="n">a</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">2</span>
 
-while (k &lt; 4) {
-print(" ")
-k += 1
-}
-}
-print(prod)
-j += 1
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+<span class="mi">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>In the interpreter, you can reuse variable names to your heart&#8217;s content. Among other things, this allows you to change your mind if you made a mistake when you defined a variable the first time in the interpreter. You can do this because conceptually the interpreter creates a new nested scope for each new statement you type in. Thus, you could visualize the previous interpreted code like this:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">1</span><span class="o">;</span>
+<span class="o">{</span>
+  <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="mi">2</span><span class="o">;</span>
+  <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>This code will compile and run as a Scala script, and like the code typed into the interpreter, will print 2. Keep in mind that such code can be very confusing to readers, because variable names adopt new meanings in nested scopes. It is usually better to choose a new, meaningful variable name rather than to shadow an outer variable.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_8_____">7.8 Рефакторинг коду в імперативному стилі</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>To help you gain insight into the functional style, in this section we&#8217;ll refactor the imperative approach to printing a multiplication table shown in Listing 7.18. Our functional alternative is shown in Listing 7.19.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Returns a row as a sequence</span>
+<span class="k">def</span> <span class="n">makeRowSeq</span><span class="o">(</span><span class="n">row</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">col</span> <span class="k">&lt;-</span> <span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="o">)</span> <span class="k">yield</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">prod</span> <span class="k">=</span> <span class="o">(</span><span class="n">row</span> <span class="o">*</span> <span class="n">col</span><span class="o">).</span><span class="n">toString</span>
+    <span class="k">val</span> <span class="n">padding</span> <span class="k">=</span> <span class="s">&quot; &quot;</span> <span class="o">*</span> <span class="o">(</span><span class="mi">4</span> <span class="o">-</span> <span class="n">prod</span><span class="o">.</span><span class="n">length</span><span class="o">)</span>
+    <span class="n">padding</span> <span class="o">+</span> <span class="n">prod</span>
+  <span class="o">}</span>
 
-}
-println()
-i += 1
+<span class="c1">// Returns a row as a string</span>
+<span class="k">def</span> <span class="n">makeRow</span><span class="o">(</span><span class="n">row</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">makeRowSeq</span><span class="o">(</span><span class="n">row</span><span class="o">).</span><span class="n">mkString</span>
 
-Listing 7.18 - Variable scoping when printing a multiplication table.
-The printMultiTable function shown in Listing 7.18 prints out a multiplication table.<span class="footnote"><br />[The printMultiTable function shown in Listing 7.18 is written in an imperative style. We&#8217;ll refactor it into a functional style in the next section.]<br /></span> The first
-statement of this function introduces a variable named i and initializes it to the integer 1. You can then
-use the name i for the remainder of the function.
-The next statement in printMultiTable is a while loop:
-while (i &#8656; 10) {
-}
-var j = 1
-&#8230;
-You can use i here because it is still in scope. In the first statement inside that while loop, you introduce
-another variable, this time named j, and again initialize it to 1. Because the variablej was defined inside
-the open curly brace of the while loop, it can be used only within thatwhile loop. If you were to attempt
-to do something with j after the closing curly brace of thiswhile loop, after the comment that
-says j, prod, and k are out of scope, your program would not compile.
-All variables defined in this example—i, j, prod, and k—are local variables. Such variables are "local"
-to the function in which they are defined. Each time a function is invoked, a new set of its local
-variables is used.
-Once a variable is defined, you can&#8217;t define a new variable with the same name in the same scope. For
-example, the following script with two variables named a in the same scope would not compile:
-val a = 1
-val a = 2 // Does not compile
-println(a)
-You can, on the other hand, define a variable in an inner scope that has the same name as a variable in
-an outer scope. The following script would compile and run:
-val a = 1;
-{
-val a = 2 // Compiles just fine
-println(a)
-}
-println(a)
-When executed, the script shown previously would print 2 then 1, because the a defined inside the
-curly braces is a different variable, which is in scope only until the closing curly brace.<span class="footnote"><br />[By the way, the semicolon is required in this case after the first definition of a because Scala&#8217;s semicolon inference mechanism will not place one there.]<br /></span> One
-difference to note between Scala and Java is that Java will not let you create a variable in an inner
-scope that has the same name as a variable in an outer scope. In a Scala program, an inner variable is
-said to shadow a like-named outer variable, because the outer variable becomes invisible in the inner
-scope.
-You might have already noticed something that looks like shadowing in the interpreter:scala&gt; val a = 1
-a: Int = 1
-scala&gt; val a = 2
-a: Int = 2
-scala&gt; println(a)
-2
-In the interpreter, you can reuse variable names to your heart&#8217;s content. Among other things, this allows
-you to change your mind if you made a mistake when you defined a variable the first time in the
-interpreter. You can do this because conceptually the interpreter creates a new nested scope for each
-new statement you type in. Thus, you could visualize the previous interpreted code like this:
-val a = 1;
-{
-val a = 2;
-{
-println(a)
-}
-}
-This code will compile and run as a Scala script, and like the code typed into the interpreter, will print
-2. Keep in mind that such code can be very confusing to readers, because variable names adopt new
-meanings in nested scopes. It is usually better to choose a new, meaningful variable name rather than to
-shadow an outer variable.
-7.8 REFACTORING IMPERATIVE-STYLE CODE
-To help you gain insight into the functional style, in this section we&#8217;ll refactor the imperative approach
-to printing a multiplication table shown in Listing 7.18. Our functional alternative is shown in Listing
-7.19.
+<span class="c1">// Returns table as a string with one row per line</span>
+<span class="k">def</span> <span class="n">multiTable</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">tableSeq</span> <span class="k">=</span> <span class="c1">// a sequence of row strings</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">row</span> <span class="k">&lt;-</span> <span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="o">)</span>
+      <span class="k">yield</span> <span class="n">makeRow</span><span class="o">(</span><span class="n">row</span><span class="o">)</span>
+  <span class="o">}</span>
 
-def makeRowSeq(row: Int) =
-for (col &#8592; 1 to 10) yield {
-val prod = (row * col).toString
-val padding = " " * (4 - prod.length)
-padding + prod
-}
-
-def makeRow(row: Int) = makeRowSeq(row).mkString
-
-def multiTable() = {
-val tableSeq = // a sequence of row strings
-for (row &#8592; 1 to 10)
-yield makeRow(row)
-}
-tableSeq.mkString("\n")Listing 7.19 - A functional way to create a multiplication table.
-The imperative style reveals itself in Listing 7.18 in two ways. First, invoking printMultiTablehas a
-side effect: printing a multiplication table to the standard output. In Listing 7.19, we refactored the
-function so that it returns the multiplication table as a string. Since the function no longer prints, we
-renamed it multiTable. As mentioned previously, one advantage of side-effect-free functions is they are
-easier to unit test. To test printMultiTable, you would need to somehow redefine print and println so
-you could check the output for correctness. You could test multiTable more easily by checking its string
-result.
-The other telltale sign of the imperative style in printMultiTable is its while loop and vars. By contrast,
-the multiTable function uses vals, for expressions, helper functions, and calls tomkString.
-We factored out the two helper functions, makeRow and makeRowSeq, to make the code easier to read.
-Function makeRowSeq uses a for expression whose generator iterates through column numbers 1
-through 10. The body of this for calculates the product of row and column, determines the padding
-needed for the product, and yields the result of concatenating the padding and product strings. The
-result of the for expression will be a sequence (some subclass of scala.Seq) containing these yielded
-strings as elements. The other helper function,makeRow, simply invokes mkString on the result
-returned by makeRowSeq. mkString will concatenate the strings in the sequence and return them as one
-string.
-The multiTable method first initializes tableSeq with the result of a for expression whose generator
-iterates through row numbers 1 to 10, and for each calls makeRow to get the string for that row. This
-string is yielded; thus the result of this for expression will be a sequence of row strings. The only
-remaining task is to convert the sequence of strings into a single string. The call
-to mkString accomplishes this, and because we pass "\n", we get an end of line character inserted
-between each string. If you pass the string returned by multiTable to println, you&#8217;ll see the same output
-that&#8217;s produced by calling printMultiTable.
-1 2 3 4 5 6 7 8 9 10
+  <span class="n">tableSeq</span><span class="o">.</span><span class="n">mkString</span><span class="o">(</span><span class="s">&quot;\n&quot;</span><span class="o">)</span><span class="nc">Listing</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>7.19 - A functional way to create a multiplication table.</p></div>
+<div class="paragraph"><p>The imperative style reveals itself in Listing 7.18 in two ways. First, invoking printMultiTablehas a side effect: printing a multiplication table to the standard output. In Listing 7.19, we refactored the function so that it returns the multiplication table as a string. Since the function no longer prints, we renamed it multiTable. As mentioned previously, one advantage of side-effect-free functions is they are easier to unit test. To test printMultiTable, you would need to somehow redefine print and println so you could check the output for correctness. You could test multiTable more easily by checking its string result.</p></div>
+<div class="paragraph"><p>The other telltale sign of the imperative style in printMultiTable is its while loop and vars. By contrast, the multiTable function uses vals, for expressions, helper functions, and calls tomkString.</p></div>
+<div class="paragraph"><p>We factored out the two helper functions, makeRow and makeRowSeq, to make the code easier to read. Function makeRowSeq uses a for expression whose generator iterates through column numbers 1 through 10. The body of this for calculates the product of row and column, determines the padding needed for the product, and yields the result of concatenating the padding and product strings. The result of the for expression will be a sequence (some subclass of scala.Seq) containing these yielded strings as elements. The other helper function,makeRow, simply invokes mkString on the result returned by makeRowSeq. mkString will concatenate the strings in the sequence and return them as one string.</p></div>
+<div class="paragraph"><p>The multiTable method first initializes tableSeq with the result of a for expression whose generator iterates through row numbers 1 to 10, and for each calls makeRow to get the string for that row. This string is yielded; thus the result of this for expression will be a sequence of row strings. The only remaining task is to convert the sequence of strings into a single string. The call to mkString accomplishes this, and because we pass "\n", we get an end of line character inserted between each string. If you pass the string returned by multiTable to println, you&#8217;ll see the same output that&#8217;s produced by calling printMultiTable.</p></div>
+<div class="paragraph"><p>1 2 3 4 5 6 7 8 9 10
 2 4 6 8 10 12 14 16 18 20
 3 6 9 12 15 18 21 24 27 30
 4 8 12 16 20 24 28 32 36 40
@@ -1428,17 +1353,21 @@ that&#8217;s produced by calling printMultiTable.
 7 14 21 28 35 42 49 56 63 70
 8 16 24 32 40 48 56 64 72 80
 9 18 27 36 45 54 63 72 81 90
-10 20 30 40 50 60 70 80 90 100
-7.9 CONCLUSION
-Scala&#8217;s built-in control structures are minimal, but they do the job. They act much like their imperative
-equivalents, but because they tend to result in a value, they support a functional style, too. Just asimportant, they are careful in what they omit, thus leaving room for one of Scala&#8217;s most powerful
-features, the function literal, which will be described in the next chapter.</p></div>
+10 20 30 40 50 60 70 80 90 100</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_7_9_">7.9 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Вбудовані керівні структури Scala є мінімальними, але вони роблять свою справу. Вони роблять подібно до своїх імперативних еквівалентів, але оскільки вони схильні повертати значення, вони також підтримують функціональний стиль. Що також важливо, вони уважні щодо того, що вони оминають, таким чином лишаючи простір для однієї з найбільш потужних можливостей Scala, функціональних літералів, що будуть описані в наступній главі.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-30 17:37:27 EET
+ 2019-02-02 08:11:07 EET
 </div>
 </div>
 </body>
