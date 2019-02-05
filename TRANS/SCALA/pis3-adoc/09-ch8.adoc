@@ -1,148 +1,152 @@
 include::headers.adoc[]
 
-Chapter 8
-Functions and Closures
-When programs get larger, you need some way to divide them into smaller, more manageable pieces.
-For dividing up control flow, Scala offers an approach familiar to all experienced programmers: divide
-the code into functions. In fact, Scala offers several ways to define functions that are not present in
-Java. Besides methods, which are functions that are members of some object, there are also functions
-nested within functions, function literals, and function values. This chapter takes you on a tour through
-all of these flavors of functions in Scala.
-8.1 METHODS
-The most common way to define a function is as a member of some object; such a function is called
-a method. As an example, Listing 8.1 shows two methods that together read a file with a given name
-and print out all lines whose length exceeds a given width. Every printed line is prefixed with the name
-of the file it appears in.
+Глава 8
+-------
+
+Функції та замикання
+====================
+
+Коли програма стає більшою, вам треба якийсь спосіб поділити її на меньші, більш керовані частини. Щоб поділити поток керування, Scala пропонує підхід, знайомий всім досвідченим програмістам: поділення коду на функції. Фактично, Scala пропонує декілька способів визначити фінкції, які не присутні в Java. Крім методів, що є функціями, що є членами деякого об'єкту, також є функції, що вкладені в функції, функціональні літерали, та функціональні значення. Ця глава бере вас в тур по всім цім різновидам функцій в Scala.
+
+8.1 Методи
+----------
+Найбільш загальний спосіб визначити функцію є член деякого об'єкта; така функція називається методом. Наприклад, Лістинг 8.1 показує два методи, що разом читають файл з заданим ім'ям, та друкують всі рядки, чия довжина перевищує задану довжину. Кожний надрукований рядок має префікс з імені файлу, де він з'являєтья.
+[source,scala]
+----
 import scala.io.Source
+
 object LongLines {
-def processFile(filename: String, width: Int) = {
-val source = Source.fromFile(filename)
-for (line <- source.getLines())
-processLine(filename, width, line)
+
+  def processFile(filename: String, width: Int) = {
+    val source = Source.fromFile(filename)
+    for (line <- source.getLines())
+      processLine(filename, width, line)
+  }
+
+  private def processLine(filename: String,
+      width: Int, line: String) = {
+    if (line.length > width)
+      println(filename + ": " + line.trim)
+  }
 }
-private def processLine(filename: String,
-width: Int, line: String) = {
-if (line.length > width)
-println(filename + ": " + line.trim)
+----
+Лістинг 8.1 - `LongLines` з приватним методом `processLine`.
+
+Метод `processFile` приймає ім'я файлу та ширину як параметри. Він створює об'єкт `Source` з файла, в генераторі виразу `for`, викликає `getLines` на `source`. Як зазначається на Кроці 12 в Главі 3, `getLines` повертає ітератор, що провадить один рядок з файла на кожній ітерації, виключаючи символ нового рядка. Вираз `for` обробляє кожний з ціх рядків, викликаючи допоміжний метод `processLine`. Метод `processLine` приймає три параметри: ім'я файлу, ширину та рядок. Він перевіряє, чи довжина рядка більша, ніж задана довжина, і якщо це так, друкує ім'я файла, дві крапки та рядок.
+
+Щоб використовувати `LongLines` з командного рядка, ми створимо застосування, що очікує довжину рядка в якості свого першого аргументу командного рядка, та інтерпретує подальші аргументи як імена файлів:footnote:[І цій книжці ми зазвичай не будемо перевіряти аргументи командного рядка на валідність в застосування-прикладах, обоє, щоб зберігти дерева, та зменшити шаблонний код, що може затьмарити важливий код приклада. Компромісом є те, що замість продукувати корисне повідомлення про помилку, коли отриманий поганий ввід, наше приклад застосування буде закидати виключення.]
+[source,scala]
+----
+object FindLongLines {
+  def main(args: Array[String]) = {
+    val width = args(0).toInt
+    for (arg <- args.drop(1))
+      LongLines.processFile(arg, width)
+  }
 }
-}
-Listing 8.1 - LongLines with a private processLine method.
-The processFile method takes a filename and width as parameters. It creates a Source object from the
-file name and, in the generator of the for expression, calls getLines on the source. As mentioned in Step
-12 of Chapter 3, getLines returns an iterator that provides one line from the file on each iteration,
-excluding the end-of-line character. The for expression processes each of these lines by calling the
-helper method, processLine. The processLine method takes three parameters: a filename, a width, and
-a line. It tests whether the length of the line is greater than the given width, and, if so, it prints the
-filename, a colon, and the line.
-To use LongLines from the command line, we'll create an application that expects the line width as the
-first command-line argument, and interprets subsequent arguments as filenames:footnote:[In this book, we usually won't check command-line arguments for validity in example applications, both to save trees and reduce boilerplate code that can obscure the example's important code. The trade-off is that instead of producing a helpful error message when given bad input, our example applications will throw an exception.]object FindLongLines {
-def main(args: Array[String]) = {
-val width = args(0).toInt
-for (arg <- args.drop(1))
-LongLines.processFile(arg, width)
-}
-}
-Here's how you'd use this application to find the lines in LongLines.scala that are over 45 characters in
-length (there's just one):
+----
+Ось як ви використовуєте це застосування для пошуку рядків в `LongLines.scala`, що понад 45 символів в довжину (такий тільки один):
+----
 $ scala FindLongLines 45 LongLines.scala
 LongLines.scala: def processFile(filename: String, width: Int) = {
-So far, this is very similar to what you would do in any object-oriented language. However, the concept
-of a function in Scala is more general than a method. Scala's other ways to express functions will be
-explained in the following sections.
-8.2 LOCAL FUNCTIONS
-The construction of the processFile method in the previous section demonstrated an important design
-principle of the functional programming style: programs should be decomposed into many small
-functions that each do a well-defined task. Individual functions are often quite small. The advantage of
-this style is that it gives a programmer many building blocks that can be flexibly composed to do more
-difficult things. Each building block should be simple enough to be understood individually.
-One problem with this approach is that all the helper function names can pollute the program
-namespace. In the interpreter this is not so much of a problem, but once functions are packaged in
-reusable classes and objects, it's desirable to hide the helper functions from clients of a class. They
-often do not make sense individually, and you often want to keep enough flexibility to delete the helper
-functions if you later rewrite the class a different way.
-In Java, your main tool for this purpose is the private method. This private-method approach works in
-Scala as well, as demonstrated in Listing 8.1, but Scala offers an additional approach: you can define
-functions inside other functions. Just like local variables, such local functions are visible only in their
-enclosing block. Here's an example:
+----
+Доки все це дуже подібне до того, що ми робити в любій об'єктно-орієнтовній мові. Однак концепція функції в  Scala є більш загальною, ніж метод. Інші шляхи Scala для вираженян функцій будуть пояснені в наступних розділах.
+
+8.2 Локальні функції
+--------------------
+Конструкція метода `processFile` в попередньму розділі демонструє важливий принцип розробки в стилі функціонального програмування: програми мають бути розкладені на багато малих функцій, кожна з яких робить добре визначене завдання. Окремі функції часто досить малі. Перевага цього стилю в тому, що він дає програмісту багато будівельних блоків, що можуть бути гнучко скомпоновані для виконання більш складних речей. Кожний будівельний блок має бути досить простим, щоб бути індивідуально зрозумілим.
+
+Одна проблема з цім підходом в тому, що всі імена допоміжних функцій можуть заповнити простір імен програми. В інтерпретаторі це невелика проблема, але коли функції запаковані в повторно використовувані класи та об'єкти, бажано приховати допоміжні функції від клієнтів класу. Вони часто не мають сенсу окремо, та ви часто бажаєте зберігти досить гнучкості видалити допомжіну функцію, якщо потім перепишете клас в інший спосіб.
+
+В Java ваш головний інструмент для цієї цілі є приватний метод. Підхід приватних методів робить в Scala також, як демонструє Лістинг 8.1, але Scala пропонує додатковий підхід: ви можете визначити функцію всередині іншої функції. Так само, як локальні змінні, такі локальні функції видимі тільки в своєму оточуючому блоці. Ось приклад:
+[source,scala]
+----
 def processFile(filename: String, width: Int) = {
-def processLine(filename: String,
-width: Int, line: String) = {
+
+  def processLine(filename: String,
+      width: Int, line: String) = {
+    if (line.length > width)
+      println(filename + ": " + line.trim)
+  }
+
+  val source = Source.fromFile(filename)
+  for (line <- source.getLines()) {
+    processLine(filename, width, line)
+  }
 }
-}
-if (line.length > width)
-println(filename + ": " + line.trim)
-val source = Source.fromFile(filename)
-for (line <- source.getLines()) {
-processLine(filename, width, line)
-}In this example, we refactored the original LongLines version, shown in Listing 8.1, by transforming
-private method, processLine, into a local function of processFile. To do so we removed
-the private modifier, which can only be applied (and is only needed) for members, and placed the
-definition of processLine inside the definition of processFile. As a local function,processLine is in
-scope inside processFile, but inaccessible outside.
-Now that processLine is defined inside processFile, however, another improvement becomes possible.
-Notice how filename and width are passed unchanged into the helper function? This is not necessary
-because local functions can access the parameters of their enclosing function. You can just use the
-parameters of the outer processLine function, as shown in Listing 8.2.
+----
+В цьому прикладі ми зробили рефакторинг оригінальної версії `LongLines`, показаної в Лістингу 8.1, трансформуючи приватний метод `processLine` в локальну функцію `processFile`. Щоб зробити це, ми видалили модифікатор `private`, який може бути застосований (і тілько коли потрібно) тільки для методів, та поклали визначення `processLine` всередину визначення `processFile`. Як локальна функція, `processLine` в полі зору `processFile`, але недоступна ззовні. Однак тепер, коли `processLine` визначена всередині `processFile`, стає можливим ще одне покращення. Зауважте, як `filename` та `width` передаються незмінними до допоміжної функції? Це не є необхідним, бо локальні функції можуть отримувати доступ до параметрів оточуючої їх функції. Ви можете просто використовувати параметри зовнішньої функції `processLine`, як показане в Лістингу 8.2.
+[source,scala]
+----
 import scala.io.Source
+
 object LongLines {
-def processFile(filename: String, width: Int) = {
-def processLine(line: String) = {
-if (line.length > width)
-println(filename + ": " + line.trim)
+  def processFile(filename: String, width: Int) = {
+
+    def processLine(line: String) = {
+      if (line.length > width)
+        println(filename + ": " + line.trim)
+    }
+
+    val source = Source.fromFile(filename)
+    for (line <- source.getLines())
+      processLine(line)
+  }
 }
-}
-val source = Source.fromFile(filename)
-for (line <- source.getLines())
-processLine(line)
-}
-Listing 8.2 - LongLines with a local processLine function.
-Simpler, isn't it? This use of an enclosing function's parameters is a common and useful example of the
-general nesting Scala provides. The nesting and scoping described in Section 7.7 applies to all Scala
-constructs, including functions. It's a simple principle, but very powerful, especially in a language with
-first-class functions.
-8.3 FIRST-CLASS FUNCTIONS
-Scala has first-class functions. Not only can you define functions and call them, but you can write
-down functions as unnamed literals and then pass them around as values. We introduced function
-literals in Chapter 2 and showed the basic syntax in Figure 2.2 here.
-A function literal is compiled into a class that when instantiated at runtime is a function value.footnote:[Every function value is an instance of some class that extends one of several FunctionNtraits in package scala, such as Function0 for functions with no parameters, Function1 for functions with one parameter, and so on. Each FunctionN trait has an apply method used to invoke the function.] Thus
-the distinction between function literals and values is that function literals exist in the source code,
-whereas function values exist as objects at runtime. The distinction is much like that between classes
-(source code) and objects (runtime).
-Here is a simple example of a function literal that adds one to a number:
-(x: Int) => x + 1The => designates that this function converts the thing on the left (any integer x) to the thing on the
-right (x + 1). So, this is a function mapping any integer x to x + 1.
-Function values are objects, so you can store them in variables if you like. They are functions, too, so
-you can invoke them using the usual parentheses function-call notation. Here is an example of both
-activities:
+----
+Лістинг 8.2 - `LongLines` з локальною функцією `processLine`.
+
+Простіше, чи не так? Це використання параметрів оточуючою функції є загальним та корисним прикладом загального вкладання, яке провадить Scala. Вкладання та поле зору, описані в Розділі 7.7, стосуються всіх конструкцій Scala, включаючи функції. Це простий принцип, але дуже потужний, особливо в мові з першокласними функціями.
+
+8.3 Першокласні функції
+-----------------------
+Scala має першокласні функції. Не тільки вона визначає функції та викликає їх, але ви можете писати функції як неіменовані літерали, та потім передавати їх як значення. Ми ввели функціональні літерали в Главі 2, та показані в базовому синтаксисі на Малюнку 2.2.
+
+Функціональний літерал компілюється в клас, екземпляр якого створюється під час виконання, що і є значенням функції.footnote:[Кожне функціональне значення є примірником деякого класу, що розширює один з `FunctionNtraits` в пакунку `scala`, такий як `Function0` для функцій без параметрів, `Function1` для функцій з одним параметром, і так далі. Кожний трейт `FunctionN` має метод `apply`, що використовується для виклику функції.] Таким чином, різниця між функціональними літералами і значеннями в тому, що функціональні літерали існують в джерельному коді, тоді як значення функцій існують як об'єкт під час виконання. Різниця в основному така, як між класами (джерельний код) та об'єктами (час виконання).
+
+Ось простий приклад функціонального літерала, що додає одиницю до числа:
+[source,scala]
+----
+(x: Int) => x + 1
+----
+`=>` означає, що ця функція конвертує річ зліва (любе ціле `x`) на річ зправа `(x + 1)`. Так що ця функція конвертує любе ціле `x` на `x + 1`. Значення функцій є об'єктами, так що ви можете зберігати їх в змінних, якщо бажаєте. Вони також функції, так що ви можете викликати їх, використовуючи звичайну нотацію виклику функцій з дужками. Ось приклад того і іншого:
+[source,scala]
+----
 scala> var increase = (x: Int) => x + 1
 increase: Int => Int = <function1>
+
 scala> increase(10)
 res0: Int = 11
-Because increase, in this example, is a var, you can assign a different function value to it later on.
+----
+Оскільки в цьому прикладі `increase` є `var`, пізніше ви можете присвоїти їй інше функціональне значення.
+[source,scala]
+----
 scala> increase = (x: Int) => x + 9999
 increase: Int => Int = <function1>
+
 scala> increase(10)
 res1: Int = 10009
-If you want to have more than one statement in the function literal, surround its body by curly braces
-and put one statement per line, thus forming a block. Just like a method, when the function value is
-invoked, all of the statements will be executed, and the value returned from the function is whatever
-results from evaluating the last expression.
+----
+Якщо ви бажаєте більше ніж одне твердження в функціональному літералі, оточіть його тіло в фігурні дужки, та покладіть твердження по одному на рядок, таким чином формуючи блок. Так само, як в методі, коли обчислюється функціональний літерал всі твердження будуть обчислені, та буде повернуте значення з функції, що відповідає обчисленню останнього виразу.
+[source,scala]
+----
 scala> increase = (x: Int) => {
-println("We")
-println("are")
-println("here!")
-x + 1
+  println("We")
+  println("are")
+  println("here!")
+  x + 1
 }
+
 increase: Int => Int = <function1>
 scala> increase(10)
 We
 are
 here!
 res2: Int = 11
-So now you have seen the nuts and bolts of function literals and function values. Many Scala libraries
-give you opportunities to use them. For example, a foreach method is available for all collections.footnote:[A foreach method is defined in trait Traversable, a common supertrait of List, Set, Array, andMap. See Chapter 17 for the details.] It
-takes a function as an argument and invokes that function on each of its elements. Here is how it can be
-used to print out all of the elements of a list:
+----
+Тепер ви бачили всі принаддя функціональних літералів та функціональних значень. Багато Scala бібліотек дають вам можливіть використовувати їх. Наприклад, метод `foreach` доступний для всіх колекцій.footnote:[Метод `foreach` визначений в трейті `Traversable`, це загальний супертрейт для `List`, `Set`, `Array`, та `Map`. Дивіться Главу 17 щодо деталей.] Він приймає функцію як аргумент, та викликає цю функцію для кожного елемента. Ось як він може використовуватись для друку всіх елементів списка:
+[source,scala]
+----
 scala> val someNumbers = List(-11, -10, -5, 0, 5, 10)
 someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
 scala> someNumbers.foreach((x: Int) => println(x))
@@ -150,129 +154,133 @@ scala> someNumbers.foreach((x: Int) => println(x))
 -10
 -5
 0
-510
-As another example, collection types also have a filter method. This method selects those elements of a
-collection that pass a test the user supplies. That test is supplied using a function. For example, the
-function (x: Int) => x > 0 could be used for filtering. This function maps positive integers to true and all
-others to false. Here is how to use it with filter:
+5
+10
+----
+Як інший приклад, типи колекцій мають метод `filter`. Цей метод відбирає елементи колекції, що проходять наданий користувачем тест. Цей тест надається використовуючи функцію. Наприклад, функція `function (x: Int) => x > 0` може використовуватись для фільтрації. Ця функція відзеркалює додатні цілі на `true`, та всі інші на `false`. Ось як використовувати її з фільтром:
+[source,scala]
+----
 scala> someNumbers.filter((x: Int) => x > 0)
 res4: List[Int] = List(5, 10)
-Methods like foreach and filter are described further later in the book. Chapter 16 talks about their use
-in class List. Chapter 17 discusses their use with other collection types.
-8.4 SHORT FORMS OF FUNCTION LITERALS
-Scala provides a number of ways to leave out redundant information and write function literals more
-briefly. Keep your eyes open for these opportunities, because they allow you to remove clutter from
-your code.
-One way to make a function literal more brief is to leave off the parameter types. Thus, the previous
-example with filter could be written like this:
+----
+Методи, як `foreach` та `filter` описані далі в цій книжці. Глава 16 каже про їх використання в класі `List`. Глава 17 обговорює їх використання з іншими типами колекцій.
+
+8.4 Короткі форми функціональних літералів
+------------------------------------------
+Scala провадить декілька шляхів для відкидання надлишкової інформації, та написання функціональних літералів більш скорочено. Придивіться краще до ціх можливостей, оскільки вони дозволяють вам видалити безлад з вашого кода.
+
+Один шлях зробити функціональні літерали більш короткими, це відкинути типи парамертів. Такім чином, попередній приклад з `filter` може бути записаний таким чином:
+[source,scala]
+----
 scala> someNumbers.filter((x) => x > 0)
 res5: List[Int] = List(5, 10)
-The Scala compiler knows that x must be an integer, because it sees that you are immediately using the
-function to filter a list of integers (referred to by someNumbers). This is called target typing because
-the targeted usage of an expression (in this case, an argument tosomeNumbers.filter()) is allowed to
-influence the typing of that expression (in this case to determine the type of the x parameter). The
-precise details of target typing are not important. You can simply start by writing a function literal
-without the argument type, and if the compiler gets confused, add in the type. Over time you'll get a
-feel for which situations the compiler can and cannot puzzle out.
-A second way to remove useless characters is to leave out parentheses around a parameter whose type
-is inferred. In the previous example, the parentheses around x are unnecessary:
+----
+Компілятор Scala знає, що `x` має бути цілим, оскільки він бачить, що ви безпосередньо фикористовуєте функцію для фільтрації списку цілих (на який посилається `someNumbers`). Це називається цільовий тип, оскільки цільове використання виразу (в цьому випадку аргумент до `someNumbers.filter()`) може впливати на тип цього виразу (в цьому випадку для визначення типу параметра `x`). Точні деталі цільової типізації не є важливі. Ви можете просто почати написання функціонального літералу без типу аргументу, та якщо компілятор збентежений додайте тип. З часом ви набудете відчуття, в яких ситуаціях компілятор може або не може вирішити загадку.
+
+Другий шлях видалити непотрібні символи, це прибрати дужки коло параметра, чий тип виведений. В попередньому прикладі дужки коло `x` непотрібні:
+[source,scala]
+----
 scala> someNumbers.filter(x => x > 0)
 res6: List[Int] = List(5, 10)
-8.5 PLACEHOLDER SYNTAX
-To make a function literal even more concise, you can use underscores as placeholders for one or more
-parameters, so long as each parameter appears only one time within the function literal. For
-example, _ > 0 is very short notation for a function that checks whether a value is greater than zero:
+----
+8.5 Синтаксис замінника
+-----------------------
+Щоб зробити функціональний функціонал ще більш стислим, ви можете використовувати підкреслення для одного або більше параметрів, доки кожний параметр з'являється тільки один раз в функціональному літералі. Наприклад, `_ > 0` є дуже коротка нотація для функції, що перевіряє, чи значення більше за нуль:
+[source,scala]
+----
 scala> someNumbers.filter(_ > 0)
-res7: List[Int] = List(5, 10)You can think of the underscore as a "blank" in the expression that needs to be "filled in." This blank
-will be filled in with an argument to the function each time the function is invoked. For example, given
-that someNumbers was initialized here to the valueList(-11, -10, -5, 0, 5, 10), the filter method will
-replace the blank in _ > 0 first with -11, as in-11 > 0, then with -10, as in -10 > 0, then with -5, as in -
-5 > 0, and so on to the end of the List. The function literal _ > 0, therefore, is equivalent to the slightly
-more verbose x => x > 0, as demonstrated here:
+res7: List[Int] = List(5, 10)
+----
+Ви можете думати про підкреслення як про "порожнє місце" в виразі, що треба "заповнити". Пусте місце буде заповнене аргументом функції, кожний раз, коли функція викликається. Наприклад, приймаючи, що `someNumbers` було тут ініціалізоване як `valueList(-11, -10, -5, 0, 5, 10)`, метод `filter` буде замінювати порожнє місце в `_ > 0` спочатку на `-11`, як в `-11 > 0`, потім на `-10`, як в `-10 > 0`, потім на `-5`, як в `- 5 > 0`, і так далі, до кінця `List`. Таким чином, функція `literal _ > 0`, еквівалентна до трохи більш балакучої `x => x > 0`, як продемонстроване тут:
+[source,scala]
+----
 scala> someNumbers.filter(x => x > 0)
 res8: List[Int] = List(5, 10)
-Sometimes when you use underscores as placeholders for parameters, the compiler might not have
-enough information to infer missing parameter types. For example, suppose you write_ + _ by itself:
+----
+Іноді, коли ви використовуєте підкреслення як замінники для параметрів, компілятор може не мати досить інформації, щоб вивести відсутні типи параметрів. Наприклад, уявімо, що ви пишете окреме  `_ + _`:
+[source,scala]
+----
 scala> val f = _ + _
 <console>:7: error: missing parameter type for expanded
 function ((x$1, x$2) => x$1.$plus(x$2))
-val f = _ + _
-^
+       val f = _ + _
+               ^
+----
 In such cases, you can specify the types using a colon, like this:
+[source,scala]
+----
 scala> val f = (_: Int) + (_: Int)
 f: (Int, Int) => Int = <function2>
+
 scala> f(5, 10)
 res9: Int = 15
-Note that _ + _ expands into a literal for a function that takes two parameters. This is why you can use
-this short form only if each parameter appears in the function literal exactly once. Multiple underscores
-mean multiple parameters, not reuse of a single parameter repeatedly. The first underscore represents
-the first parameter, the second underscore the second parameter, the third underscore the third
-parameter, and so on.
-8.6 PARTIALLY APPLIED FUNCTIONS
-Although the previous examples substitute underscores in place of individual parameters, you can also
-replace an entire parameter list with an underscore. For example, rather than writing println(_), you
-could write println _. Here's an example:
+----
+Зауважте, що `_ + _` розширюється до літерала для функції, що приймає два параметри. Ось чому ви можете писати цю коротку форму, тільки якщо кожний параметр з'являється в функціональному літералі рівно один раз. Декілька підкреслень означають декілька параметрі, не повторне використання одного параметра. Перше підкреслення представляє перший параметр, друге підкреслення - другий параметр, третє підкреслення третій параметр, і так далі.
+
+8.6 Частково застосовані функції
+--------------------------------
+Хоча попередні приклади замінюють підкреслення на окремі параметри, ви також можете замітити цілий список параметрів на підкреслення. Наприклад, скоріше, ніж писати `println(_)`, ви можете написати `println _`. Ось приклад:
+[source,scala]
+----
 someNumbers.foreach(println _)
-Scala treats this short form exactly as if you had written the following:
+----
+Scala розглядає цю коротку форму так, якби ми написали наступне:
+[source,scala]
+----
 someNumbers.foreach(x => println(x))
-Thus, the underscore in this case is not a placeholder for a single parameter. It is a placeholder for an
-entire parameter list. Remember that you need to leave a space between the function name and the
-underscore; otherwise, the compiler will think you are referring to a different symbol, such as, for
-example, a method named println_, which likely does not exist.When you use an underscore in this way, you are writing a partially applied function. In Scala, when
-you invoke a function, passing in any needed arguments, you apply that functionto the arguments. For
-example, given the following function:
+----
+Таким чином, підкреслення в цьому випадку не є замінником для одного параметру. Це замінник для цілого списку параметрів. Пам'ятайте, що вам треба залишити один проміжок між ім'ям функції та підкресленням; інакше компілятор буде думати, що ви посилаєтесь на інший символ, як, наприклад, мето на ім'я `println_`, що навряд чи існує.
+
+Коли ви використовуєте підкреслення в цей спосіб, ви пишете частково застосовану функцію. В Scala, коли ви викликаєте функцію, передаючи любі необхідні аргументи, ви застосовуєте цю функцію до аргументів. Наприклад, маючи наступну функцію:
+[source,scala]
+----
 scala> def sum(a: Int, b: Int, c: Int) = a + b + c
 sum: (a: Int, b: Int, c: Int)Int
-You could apply the function sum to the arguments 1, 2, and 3 like this:
+----
+Ви можете застосувати функцію `sum` до аргументів `1`, `2`, та `3` ось так:
+[source,scala]
+----
 scala> sum(1, 2, 3)
 res10: Int = 6
-A partially applied function is an expression in which you don't supply all of the arguments needed by
-the function. Instead, you supply some, or none, of the needed arguments. For example, to create a
-partially applied function expression involving sum, in which you supply none of the three required
-arguments, you just place an underscore after "sum". The resulting function can then be stored in a
-variable. Here's an example:
+----
+ЧАстково застосована функція є вираз, до якого ви не застосували всі аргументи, потрібні для функції. Замість цього ви надаєте деякі, або жодних з потрібних аргументів. Наприклад, щоб створити вираз частково застосованої функції, що включає `sum`, якій ви не надаєте жодної з трьох потрібних аргументів, ви просто ставите підкреслення після `sum`. Результуюча функція потім може бути збережена в змінній. Ось приклад:
+[source,scala]
+----
 scala> val a = sum _
 a: (Int, Int, Int) => Int = <function3>
-Given this code, the Scala compiler instantiates a function value that takes the three integer parameters
-missing from the partially applied function expression, sum _, and assigns a reference to that new
-function value to the variable a. When you apply three arguments to this new function value, it will turn
-around and invoke sum, passing in those same three arguments:
+----
+Маючи цей код, компілятор Scala створює примірник функції, що приймає три цілі параметри, відсутні в виразі частково застосованої функції `sum _`, та присвоює посилання на значення цієї нової функції до змінної `a`. Потім ви застосовуєте три аргументи до значення цієї нової функції, яка в свою чергу викликає `sum`, передаючи ті самі три параметри:
+[source,scala]
+----
 scala> a(1, 2, 3)
 res11: Int = 6
-Here's what just happened: The variable named a refers to a function value object. This function value
-is an instance of a class generated automatically by the Scala compiler from sum _, the partially applied
-function expression. The class generated by the compiler has an applymethod that takes three
-arguments.footnote:[The generated class extends trait Function3, which declares a three-arg apply method.] The generated class's apply method takes three arguments because three is the number of
-arguments missing in the sum _ expression. The Scala compiler translates the expression a(1, 2, 3) into
-an invocation of the function value'sapply method, passing in the three arguments 1, 2, and 3.
-Thus, a(1, 2, 3) is a short form for:
+----
+Ось що тільки но тут відбулось: змінна на ім'я `a` посилається на об'єкт з функціональним значенням. Це функціональне значення є примірником класу, згенерованого автоматично компілятором Scala з `sum _`, вираза частково застосованої функції. Згенерований компілятором клас має метод `apply`, що приймає три аргументи.footnote:[Згенерований клас розширює трейт `Function3`, що декларує метод `apply` з трьома аргументами.] Метод `apply` згенерованого класу приймає три аргументи, оскільки рівно стільки аргументів не вистачає в виразі `sum _`. Компілтор Scala транслює вираз `a(1, 2, 3)` на виклик меетода значення `apply`, передаючи три аргументи, `1`, `2`, та `3`. Таким чином, `a(1, 2, 3)` є скороченням для:
+[source,scala]
+----
 scala> a.apply(1, 2, 3)
 res12: Int = 6
-This apply method, defined in the class generated automatically by the Scala compiler from the
-expression sum _, simply forwards those three missing parameters to sum, and returns the result. In this
-case apply invokes sum(1, 2, 3), and returns what sum returns, which is 6.
-Another way to think about this kind of expression, in which an underscore is used to represent an
-entire parameter list, is as a way to transform a def into a function value. For example, if you have a
-local function, such as sum(a: Int, b: Int, c: Int): Int, you can "wrap" it in a function value
-whose apply method has the same parameter list and result types. When you apply this function valueto some arguments, it in turn applies sum to those same arguments and returns the result. Although you
-can't assign a method or nested function to a variable, or pass it as an argument to another function, you
-can do these things if you wrap the method or nested function in a function value by placing an
-underscore after its name.
-Now, although sum _ is indeed a partially applied function, it may not be obvious to you why it is
-called this. It has this name because you are not applying that function to all of its arguments. In the
-case of sum _, you are applying it to none of its arguments. But you can also express a partially applied
-function by supplying only some of the required arguments. Here's an example:
+----
+Цей метод `apply`, визначений в автоматично згенерованому класі компілятором Scala з виразу `sum _`, просто пересилає ці три невистачаючі параметри до `sum`, та повертає результат. В цьому випадку, `apply` викликає `sum(1, 2, 3)`, та повертає те, що повертає `sum`, наразі `6`. Інший спосіб думати про цей різновид виразів, в яких підкреслення використовується для представлення цілого списку параметрів, як про шлях перетворити `def` в функціональне значення. Наприклад, якщо ви маєте локальну функцію, таку як `sum(a: Int, b: Int, c: Int): Int`, ви можете "огорнути" її в функціональне значення, чий метод `apply` матиме той самий список параметрів та типи результата. Потім ви застосовуєте `apply` цього функціонального значення до деяких аргументів, який, в свою чергу, застосовує `sum` до тих самих аргументів, та повертає повернутий результат. Хоча ви не можете присвоїти метод або вкладену функцію до змінної, або передати її як аргумент до іншої функції, ви можете робити ці речі, якщо ви огорнете метод або вкладену функцію в функціональне значення, поставивши підкреслення після її імені.
+
+Тепер, хоча `sum _` безумовно частково застосована функція, в такий спосіб вам може не виглядати очевидним, чому вона названа саме так. Вона має це ім'я, оскільки ви не застосовуєте цю функцію до всіх аргументів. В випадку `sum _`, ви не застосували її до жодного її аргументу. Але ви також можете виразити частково застосовану функцію, надавши тільки деякі з потрібних аргументів. Ось приклад:
+[source,scala]
+----
 scala> val b = sum(1, _: Int, 3)
 b: Int => Int = <function1>
-In this case, you've supplied the first and last argument to sum, but not the middle argument. Since only
-one argument is missing, the Scala compiler generates a new function class whoseapply method takes
-one argument. When invoked with that one argument, this generated function's apply method
-invokes sum, passing in 1, the argument passed to the function, and 3. Here are some examples:
+----
+In this case, you've supplied the first and last argument to sum, but not the middle argument. Since only one argument is missing, the Scala compiler generates a new function class whoseapply method takes one argument. When invoked with that one argument, this generated function's apply method invokes sum, passing in 1, the argument passed to the function, and 3. Here are some examples:
+[source,scala]
+----
 scala> b(2)
 res13: Int = 6
+----
 In this case, b.apply invoked sum(1, 2, 3).
+[source,scala]
+----
 scala> b(5)
 res14: Int = 9
+----
 And in this case, b.apply invoked sum(1, 5, 3).
 If you are writing a partially applied function expression in which you leave off all parameters, such
 as println _ or sum _, you can express it more concisely by leaving off the underscore if a function is

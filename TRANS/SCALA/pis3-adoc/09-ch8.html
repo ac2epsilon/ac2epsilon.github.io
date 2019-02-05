@@ -798,282 +798,265 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>Chapter 8
-Functions and Closures
-When programs get larger, you need some way to divide them into smaller, more manageable pieces.
-For dividing up control flow, Scala offers an approach familiar to all experienced programmers: divide
-the code into functions. In fact, Scala offers several ways to define functions that are not present in
-Java. Besides methods, which are functions that are members of some object, there are also functions
-nested within functions, function literals, and function values. This chapter takes you on a tour through
-all of these flavors of functions in Scala.
-8.1 METHODS
-The most common way to define a function is as a member of some object; such a function is called
-a method. As an example, Listing 8.1 shows two methods that together read a file with a given name
-and print out all lines whose length exceeds a given width. Every printed line is prefixed with the name
-of the file it appears in.
-import scala.io.Source
-object LongLines {
-def processFile(filename: String, width: Int) = {
-val source = Source.fromFile(filename)
-for (line &#8592; source.getLines())
-processLine(filename, width, line)
-}
-private def processLine(filename: String,
-width: Int, line: String) = {
-if (line.length &gt; width)
-println(filename + ": " + line.trim)
-}
-}
-Listing 8.1 - LongLines with a private processLine method.
-The processFile method takes a filename and width as parameters. It creates a Source object from the
-file name and, in the generator of the for expression, calls getLines on the source. As mentioned in Step
-12 of Chapter 3, getLines returns an iterator that provides one line from the file on each iteration,
-excluding the end-of-line character. The for expression processes each of these lines by calling the
-helper method, processLine. The processLine method takes three parameters: a filename, a width, and
-a line. It tests whether the length of the line is greater than the given width, and, if so, it prints the
-filename, a colon, and the line.
-To use LongLines from the command line, we&#8217;ll create an application that expects the line width as the
-first command-line argument, and interprets subsequent arguments as filenames:<span class="footnote"><br />[In this book, we usually won&#8217;t check command-line arguments for validity in example applications, both to save trees and reduce boilerplate code that can obscure the example&#8217;s important code. The trade-off is that instead of producing a helpful error message when given bad input, our example applications will throw an exception.]<br /></span>object FindLongLines {
-def main(args: Array[String]) = {
-val width = args(0).toInt
-for (arg &#8592; args.drop(1))
-LongLines.processFile(arg, width)
-}
-}
-Here&#8217;s how you&#8217;d use this application to find the lines in LongLines.scala that are over 45 characters in
-length (there&#8217;s just one):
-$ scala FindLongLines 45 LongLines.scala
-LongLines.scala: def processFile(filename: String, width: Int) = {
-So far, this is very similar to what you would do in any object-oriented language. However, the concept
-of a function in Scala is more general than a method. Scala&#8217;s other ways to express functions will be
-explained in the following sections.
-8.2 LOCAL FUNCTIONS
-The construction of the processFile method in the previous section demonstrated an important design
-principle of the functional programming style: programs should be decomposed into many small
-functions that each do a well-defined task. Individual functions are often quite small. The advantage of
-this style is that it gives a programmer many building blocks that can be flexibly composed to do more
-difficult things. Each building block should be simple enough to be understood individually.
-One problem with this approach is that all the helper function names can pollute the program
-namespace. In the interpreter this is not so much of a problem, but once functions are packaged in
-reusable classes and objects, it&#8217;s desirable to hide the helper functions from clients of a class. They
-often do not make sense individually, and you often want to keep enough flexibility to delete the helper
-functions if you later rewrite the class a different way.
-In Java, your main tool for this purpose is the private method. This private-method approach works in
-Scala as well, as demonstrated in Listing 8.1, but Scala offers an additional approach: you can define
-functions inside other functions. Just like local variables, such local functions are visible only in their
-enclosing block. Here&#8217;s an example:
-def processFile(filename: String, width: Int) = {
-def processLine(filename: String,
-width: Int, line: String) = {
-}
-}
-if (line.length &gt; width)
-println(filename + ": " + line.trim)
-val source = Source.fromFile(filename)
-for (line &#8592; source.getLines()) {
-processLine(filename, width, line)
-}In this example, we refactored the original LongLines version, shown in Listing 8.1, by transforming
-private method, processLine, into a local function of processFile. To do so we removed
-the private modifier, which can only be applied (and is only needed) for members, and placed the
-definition of processLine inside the definition of processFile. As a local function,processLine is in
-scope inside processFile, but inaccessible outside.
-Now that processLine is defined inside processFile, however, another improvement becomes possible.
-Notice how filename and width are passed unchanged into the helper function? This is not necessary
-because local functions can access the parameters of their enclosing function. You can just use the
-parameters of the outer processLine function, as shown in Listing 8.2.
-import scala.io.Source
-object LongLines {
-def processFile(filename: String, width: Int) = {
-def processLine(line: String) = {
-if (line.length &gt; width)
-println(filename + ": " + line.trim)
-}
-}
-val source = Source.fromFile(filename)
-for (line &#8592; source.getLines())
-processLine(line)
-}
-Listing 8.2 - LongLines with a local processLine function.
-Simpler, isn&#8217;t it? This use of an enclosing function&#8217;s parameters is a common and useful example of the
-general nesting Scala provides. The nesting and scoping described in Section 7.7 applies to all Scala
-constructs, including functions. It&#8217;s a simple principle, but very powerful, especially in a language with
-first-class functions.
-8.3 FIRST-CLASS FUNCTIONS
-Scala has first-class functions. Not only can you define functions and call them, but you can write
-down functions as unnamed literals and then pass them around as values. We introduced function
-literals in Chapter 2 and showed the basic syntax in Figure 2.2 here.
-A function literal is compiled into a class that when instantiated at runtime is a function value.<span class="footnote"><br />[Every function value is an instance of some class that extends one of several FunctionNtraits in package scala, such as Function0 for functions with no parameters, Function1 for functions with one parameter, and so on. Each FunctionN trait has an apply method used to invoke the function.]<br /></span> Thus
-the distinction between function literals and values is that function literals exist in the source code,
-whereas function values exist as objects at runtime. The distinction is much like that between classes
-(source code) and objects (runtime).
-Here is a simple example of a function literal that adds one to a number:
-(x: Int) &#8658; x + 1The &#8658; designates that this function converts the thing on the left (any integer x) to the thing on the
-right (x + 1). So, this is a function mapping any integer x to x + 1.
-Function values are objects, so you can store them in variables if you like. They are functions, too, so
-you can invoke them using the usual parentheses function-call notation. Here is an example of both
-activities:
-scala&gt; var increase = (x: Int) &#8658; x + 1
-increase: Int &#8658; Int = &lt;function1&gt;
-scala&gt; increase(10)
-res0: Int = 11
-Because increase, in this example, is a var, you can assign a different function value to it later on.
-scala&gt; increase = (x: Int) &#8658; x + 9999
-increase: Int &#8658; Int = &lt;function1&gt;
-scala&gt; increase(10)
-res1: Int = 10009
-If you want to have more than one statement in the function literal, surround its body by curly braces
-and put one statement per line, thus forming a block. Just like a method, when the function value is
-invoked, all of the statements will be executed, and the value returned from the function is whatever
-results from evaluating the last expression.
-scala&gt; increase = (x: Int) &#8658; {
-println("We")
-println("are")
-println("here!")
-x + 1
-}
-increase: Int &#8658; Int = &lt;function1&gt;
-scala&gt; increase(10)
-We
-are
-here!
-res2: Int = 11
-So now you have seen the nuts and bolts of function literals and function values. Many Scala libraries
-give you opportunities to use them. For example, a foreach method is available for all collections.<span class="footnote"><br />[A foreach method is defined in trait Traversable, a common supertrait of List, Set, Array, andMap. See Chapter 17 for the details.]<br /></span> It
-takes a function as an argument and invokes that function on each of its elements. Here is how it can be
-used to print out all of the elements of a list:
-scala&gt; val someNumbers = List(-11, -10, -5, 0, 5, 10)
-someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
-scala&gt; someNumbers.foreachx: Int) &#8658; println(x
--11
--10
--5
-0
-510
-As another example, collection types also have a filter method. This method selects those elements of a
-collection that pass a test the user supplies. That test is supplied using a function. For example, the
-function (x: Int) &#8658; x &gt; 0 could be used for filtering. This function maps positive integers to true and all
-others to false. Here is how to use it with filter:
-scala&gt; someNumbers.filter((x: Int) &#8658; x &gt; 0)
-res4: List[Int] = List(5, 10)
-Methods like foreach and filter are described further later in the book. Chapter 16 talks about their use
-in class List. Chapter 17 discusses their use with other collection types.
-8.4 SHORT FORMS OF FUNCTION LITERALS
-Scala provides a number of ways to leave out redundant information and write function literals more
-briefly. Keep your eyes open for these opportunities, because they allow you to remove clutter from
-your code.
-One way to make a function literal more brief is to leave off the parameter types. Thus, the previous
-example with filter could be written like this:
-scala&gt; someNumbers.filter((x) &#8658; x &gt; 0)
-res5: List[Int] = List(5, 10)
-The Scala compiler knows that x must be an integer, because it sees that you are immediately using the
-function to filter a list of integers (referred to by someNumbers). This is called target typing because
-the targeted usage of an expression (in this case, an argument tosomeNumbers.filter()) is allowed to
-influence the typing of that expression (in this case to determine the type of the x parameter). The
-precise details of target typing are not important. You can simply start by writing a function literal
-without the argument type, and if the compiler gets confused, add in the type. Over time you&#8217;ll get a
-feel for which situations the compiler can and cannot puzzle out.
-A second way to remove useless characters is to leave out parentheses around a parameter whose type
-is inferred. In the previous example, the parentheses around x are unnecessary:
-scala&gt; someNumbers.filter(x &#8658; x &gt; 0)
-res6: List[Int] = List(5, 10)
-8.5 PLACEHOLDER SYNTAX
-To make a function literal even more concise, you can use underscores as placeholders for one or more
-parameters, so long as each parameter appears only one time within the function literal. For
-example, _ &gt; 0 is very short notation for a function that checks whether a value is greater than zero:
-scala&gt; someNumbers.filter(_ &gt; 0)
-res7: List[Int] = List(5, 10)You can think of the underscore as a "blank" in the expression that needs to be "filled in." This blank
-will be filled in with an argument to the function each time the function is invoked. For example, given
-that someNumbers was initialized here to the valueList(-11, -10, -5, 0, 5, 10), the filter method will
-replace the blank in _ &gt; 0 first with -11, as in-11 &gt; 0, then with -10, as in -10 &gt; 0, then with -5, as in -
-5 &gt; 0, and so on to the end of the List. The function literal _ &gt; 0, therefore, is equivalent to the slightly
-more verbose x &#8658; x &gt; 0, as demonstrated here:
-scala&gt; someNumbers.filter(x &#8658; x &gt; 0)
-res8: List[Int] = List(5, 10)
-Sometimes when you use underscores as placeholders for parameters, the compiler might not have
-enough information to infer missing parameter types. For example, suppose you write_ + _ by itself:
-scala&gt; val f = _ + _
-&lt;console&gt;:7: error: missing parameter type for expanded
-function x$1
-val f = _ + _
-<sup>
-In such cases, you can specify the types using a colon, like this:
-scala&gt; val f = (<em>: Int) + (</em>: Int)
-f: (Int, Int) &#8658; Int = &lt;function2&gt;
-scala&gt; f(5, 10)
-res9: Int = 15
-Note that _ + _ expands into a literal for a function that takes two parameters. This is why you can use
-this short form only if each parameter appears in the function literal exactly once. Multiple underscores
-mean multiple parameters, not reuse of a single parameter repeatedly. The first underscore represents
-the first parameter, the second underscore the second parameter, the third underscore the third
-parameter, and so on.
-8.6 PARTIALLY APPLIED FUNCTIONS
-Although the previous examples substitute underscores in place of individual parameters, you can also
-replace an entire parameter list with an underscore. For example, rather than writing println(<em>), you
-could write println _. Here&#8217;s an example:
-someNumbers.foreach(println _)
-Scala treats this short form exactly as if you had written the following:
-someNumbers.foreach(x &#8658; println(x))
-Thus, the underscore in this case is not a placeholder for a single parameter. It is a placeholder for an
-entire parameter list. Remember that you need to leave a space between the function name and the
-underscore; otherwise, the compiler will think you are referring to a different symbol, such as, for
-example, a method named println</em>, which likely does not exist.When you use an underscore in this way, you are writing a partially applied function. In Scala, when
-you invoke a function, passing in any needed arguments, you apply that functionto the arguments. For
-example, given the following function:
-scala&gt; def sum(a: Int, b: Int, c: Int) = a + b + c
-sum: (a: Int, b: Int, c: Int)Int
-You could apply the function sum to the arguments 1, 2, and 3 like this:
-scala&gt; sum(1, 2, 3)
-res10: Int = 6
-A partially applied function is an expression in which you don&#8217;t supply all of the arguments needed by
-the function. Instead, you supply some, or none, of the needed arguments. For example, to create a
-partially applied function expression involving sum, in which you supply none of the three required
-arguments, you just place an underscore after "sum". The resulting function can then be stored in a
-variable. Here&#8217;s an example:
-scala&gt; val a = sum _
-a: (Int, Int, Int) &#8658; Int = &lt;function3&gt;
-Given this code, the Scala compiler instantiates a function value that takes the three integer parameters
-missing from the partially applied function expression, sum <em>, and assigns a reference to that new
-function value to the variable a. When you apply three arguments to this new function value, it will turn
-around and invoke sum, passing in those same three arguments:
-scala&gt; a(1, 2, 3)
-res11: Int = 6
-Here&#8217;s what just happened: The variable named a refers to a function value object. This function value
-is an instance of a class generated automatically by the Scala compiler from sum _, the partially applied
-function expression. The class generated by the compiler has an applymethod that takes three
-arguments.<span class="footnote"><br />[The generated class extends trait Function3, which declares a three-arg apply method.]<br /></span> The generated class&#8217;s apply method takes three arguments because three is the number of
-arguments missing in the sum _ expression. The Scala compiler translates the expression a(1, 2, 3) into
-an invocation of the function value&#8217;sapply method, passing in the three arguments 1, 2, and 3.
-Thus, a(1, 2, 3) is a short form for:
-scala&gt; a.apply(1, 2, 3)
-res12: Int = 6
-This apply method, defined in the class generated automatically by the Scala compiler from the
-expression sum _, simply forwards those three missing parameters to sum, and returns the result. In this
-case apply invokes sum(1, 2, 3), and returns what sum returns, which is 6.
-Another way to think about this kind of expression, in which an underscore is used to represent an
-entire parameter list, is as a way to transform a def into a function value. For example, if you have a
-local function, such as sum(a: Int, b: Int, c: Int): Int, you can "wrap" it in a function value
-whose apply method has the same parameter list and result types. When you apply this function valueto some arguments, it in turn applies sum to those same arguments and returns the result. Although you
-can&#8217;t assign a method or nested function to a variable, or pass it as an argument to another function, you
-can do these things if you wrap the method or nested function in a function value by placing an
-underscore after its name.
-Now, although sum _ is indeed a partially applied function, it may not be obvious to you why it is
-called this. It has this name because you are not applying that function to all of its arguments. In the
-case of sum _, you are applying it to none of its arguments. But you can also express a partially applied
-function by supplying only some of the required arguments. Here&#8217;s an example:
-scala&gt; val b = sum(1, _: Int, 3)
-b: Int &#8658; Int = &lt;function1&gt;
-In this case, you&#8217;ve supplied the first and last argument to sum, but not the middle argument. Since only
-one argument is missing, the Scala compiler generates a new function class whoseapply method takes
-one argument. When invoked with that one argument, this generated function&#8217;s apply method
-invokes sum, passing in 1, the argument passed to the function, and 3. Here are some examples:
-scala&gt; b(2)
-res13: Int = 6
-In this case, b.apply invoked sum(1, 2, 3).
-scala&gt; b(5)
-res14: Int = 9
-And in this case, b.apply invoked sum(1, 5, 3).
+<div class="sect1">
+<h2 id="__8">Глава 8</h2>
+<div class="sectionbody">
+</div>
+</div>
+<h1 id="___">Функції та замикання</h1>
+<div class="paragraph"><p>Коли програма стає більшою, вам треба якийсь спосіб поділити її на меньші, більш керовані частини. Щоб поділити поток керування, Scala пропонує підхід, знайомий всім досвідченим програмістам: поділення коду на функції. Фактично, Scala пропонує декілька способів визначити фінкції, які не присутні в Java. Крім методів, що є функціями, що є членами деякого об'єкту, також є функції, що вкладені в функції, функціональні літерали, та функціональні значення. Ця глава бере вас в тур по всім цім різновидам функцій в Scala.</p></div>
+<div class="sect1">
+<h2 id="_8_1_">8.1 Методи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Найбільш загальний спосіб визначити функцію є член деякого об'єкта; така функція називається методом. Наприклад, Лістинг 8.1 показує два методи, що разом читають файл з заданим ім'ям, та друкують всі рядки, чия довжина перевищує задану довжину. Кожний надрукований рядок має префікс з імені файлу, де він з'являєтья.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">scala.io.Source</span>
+
+<span class="k">object</span> <span class="nc">LongLines</span> <span class="o">{</span>
+
+  <span class="k">def</span> <span class="n">processFile</span><span class="o">(</span><span class="n">filename</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">source</span> <span class="k">=</span> <span class="nc">Source</span><span class="o">.</span><span class="n">fromFile</span><span class="o">(</span><span class="n">filename</span><span class="o">)</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">line</span> <span class="k">&lt;-</span> <span class="n">source</span><span class="o">.</span><span class="n">getLines</span><span class="o">())</span>
+      <span class="n">processLine</span><span class="o">(</span><span class="n">filename</span><span class="o">,</span> <span class="n">width</span><span class="o">,</span> <span class="n">line</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">processLine</span><span class="o">(</span><span class="n">filename</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+      <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">line</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">line</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="n">width</span><span class="o">)</span>
+      <span class="n">println</span><span class="o">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 8.1 - <code>LongLines</code> з приватним методом <code>processLine</code>.</p></div>
+<div class="paragraph"><p>Метод <code>processFile</code> приймає ім'я файлу та ширину як параметри. Він створює об'єкт <code>Source</code> з файла, в генераторі виразу <code>for</code>, викликає <code>getLines</code> на <code>source</code>. Як зазначається на Кроці 12 в Главі 3, <code>getLines</code> повертає ітератор, що провадить один рядок з файла на кожній ітерації, виключаючи символ нового рядка. Вираз <code>for</code> обробляє кожний з ціх рядків, викликаючи допоміжний метод <code>processLine</code>. Метод <code>processLine</code> приймає три параметри: ім'я файлу, ширину та рядок. Він перевіряє, чи довжина рядка більша, ніж задана довжина, і якщо це так, друкує ім'я файла, дві крапки та рядок.</p></div>
+<div class="paragraph"><p>Щоб використовувати <code>LongLines</code> з командного рядка, ми створимо застосування, що очікує довжину рядка в якості свого першого аргументу командного рядка, та інтерпретує подальші аргументи як імена файлів:<span class="footnote"><br />[І цій книжці ми зазвичай не будемо перевіряти аргументи командного рядка на валідність в застосування-прикладах, обоє, щоб зберігти дерева, та зменшити шаблонний код, що може затьмарити важливий код приклада. Компромісом є те, що замість продукувати корисне повідомлення про помилку, коли отриманий поганий ввід, наше приклад застосування буде закидати виключення.]<br /></span></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">FindLongLines</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">width</span> <span class="k">=</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">toInt</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">arg</span> <span class="k">&lt;-</span> <span class="n">args</span><span class="o">.</span><span class="n">drop</span><span class="o">(</span><span class="mi">1</span><span class="o">))</span>
+      <span class="nc">LongLines</span><span class="o">.</span><span class="n">processFile</span><span class="o">(</span><span class="n">arg</span><span class="o">,</span> <span class="n">width</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось як ви використовуєте це застосування для пошуку рядків в <code>LongLines.scala</code>, що понад 45 символів в довжину (такий тільки один):</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ scala FindLongLines 45 LongLines.scala
+LongLines.scala: def processFile(filename: String, width: Int) = {</code></pre>
+</div></div>
+<div class="paragraph"><p>Доки все це дуже подібне до того, що ми робити в любій об'єктно-орієнтовній мові. Однак концепція функції в  Scala є більш загальною, ніж метод. Інші шляхи Scala для вираженян функцій будуть пояснені в наступних розділах.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_2__">8.2 Локальні функції</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Конструкція метода <code>processFile</code> в попередньму розділі демонструє важливий принцип розробки в стилі функціонального програмування: програми мають бути розкладені на багато малих функцій, кожна з яких робить добре визначене завдання. Окремі функції часто досить малі. Перевага цього стилю в тому, що він дає програмісту багато будівельних блоків, що можуть бути гнучко скомпоновані для виконання більш складних речей. Кожний будівельний блок має бути досить простим, щоб бути індивідуально зрозумілим.</p></div>
+<div class="paragraph"><p>Одна проблема з цім підходом в тому, що всі імена допоміжних функцій можуть заповнити простір імен програми. В інтерпретаторі це невелика проблема, але коли функції запаковані в повторно використовувані класи та об'єкти, бажано приховати допоміжні функції від клієнтів класу. Вони часто не мають сенсу окремо, та ви часто бажаєте зберігти досить гнучкості видалити допомжіну функцію, якщо потім перепишете клас в інший спосіб.</p></div>
+<div class="paragraph"><p>В Java ваш головний інструмент для цієї цілі є приватний метод. Підхід приватних методів робить в Scala також, як демонструє Лістинг 8.1, але Scala пропонує додатковий підхід: ви можете визначити функцію всередині іншої функції. Так само, як локальні змінні, такі локальні функції видимі тільки в своєму оточуючому блоці. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">processFile</span><span class="o">(</span><span class="n">filename</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+
+  <span class="k">def</span> <span class="n">processLine</span><span class="o">(</span><span class="n">filename</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+      <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">line</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">line</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="n">width</span><span class="o">)</span>
+      <span class="n">println</span><span class="o">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">val</span> <span class="n">source</span> <span class="k">=</span> <span class="nc">Source</span><span class="o">.</span><span class="n">fromFile</span><span class="o">(</span><span class="n">filename</span><span class="o">)</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">line</span> <span class="k">&lt;-</span> <span class="n">source</span><span class="o">.</span><span class="n">getLines</span><span class="o">())</span> <span class="o">{</span>
+    <span class="n">processLine</span><span class="o">(</span><span class="n">filename</span><span class="o">,</span> <span class="n">width</span><span class="o">,</span> <span class="n">line</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому прикладі ми зробили рефакторинг оригінальної версії <code>LongLines</code>, показаної в Лістингу 8.1, трансформуючи приватний метод <code>processLine</code> в локальну функцію <code>processFile</code>. Щоб зробити це, ми видалили модифікатор <code>private</code>, який може бути застосований (і тілько коли потрібно) тільки для методів, та поклали визначення <code>processLine</code> всередину визначення <code>processFile</code>. Як локальна функція, <code>processLine</code> в полі зору <code>processFile</code>, але недоступна ззовні. Однак тепер, коли <code>processLine</code> визначена всередині <code>processFile</code>, стає можливим ще одне покращення. Зауважте, як <code>filename</code> та <code>width</code> передаються незмінними до допоміжної функції? Це не є необхідним, бо локальні функції можуть отримувати доступ до параметрів оточуючої їх функції. Ви можете просто використовувати параметри зовнішньої функції <code>processLine</code>, як показане в Лістингу 8.2.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">scala.io.Source</span>
+
+<span class="k">object</span> <span class="nc">LongLines</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">processFile</span><span class="o">(</span><span class="n">filename</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+
+    <span class="k">def</span> <span class="n">processLine</span><span class="o">(</span><span class="n">line</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">line</span><span class="o">.</span><span class="n">length</span> <span class="o">&gt;</span> <span class="n">width</span><span class="o">)</span>
+        <span class="n">println</span><span class="o">(</span><span class="n">filename</span> <span class="o">+</span> <span class="s">&quot;: &quot;</span> <span class="o">+</span> <span class="n">line</span><span class="o">.</span><span class="n">trim</span><span class="o">)</span>
+    <span class="o">}</span>
+
+    <span class="k">val</span> <span class="n">source</span> <span class="k">=</span> <span class="nc">Source</span><span class="o">.</span><span class="n">fromFile</span><span class="o">(</span><span class="n">filename</span><span class="o">)</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">line</span> <span class="k">&lt;-</span> <span class="n">source</span><span class="o">.</span><span class="n">getLines</span><span class="o">())</span>
+      <span class="n">processLine</span><span class="o">(</span><span class="n">line</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 8.2 - <code>LongLines</code> з локальною функцією <code>processLine</code>.</p></div>
+<div class="paragraph"><p>Простіше, чи не так? Це використання параметрів оточуючою функції є загальним та корисним прикладом загального вкладання, яке провадить Scala. Вкладання та поле зору, описані в Розділі 7.7, стосуються всіх конструкцій Scala, включаючи функції. Це простий принцип, але дуже потужний, особливо в мові з першокласними функціями.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_3__">8.3 Першокласні функції</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala має першокласні функції. Не тільки вона визначає функції та викликає їх, але ви можете писати функції як неіменовані літерали, та потім передавати їх як значення. Ми ввели функціональні літерали в Главі 2, та показані в базовому синтаксисі на Малюнку 2.2.</p></div>
+<div class="paragraph"><p>Функціональний літерал компілюється в клас, екземпляр якого створюється під час виконання, що і є значенням функції.<span class="footnote"><br />[Кожне функціональне значення є примірником деякого класу, що розширює один з <code>FunctionNtraits</code> в пакунку <code>scala</code>, такий як <code>Function0</code> для функцій без параметрів, <code>Function1</code> для функцій з одним параметром, і так далі. Кожний трейт <code>FunctionN</code> має метод <code>apply</code>, що використовується для виклику функції.]<br /></span> Таким чином, різниця між функціональними літералами і значеннями в тому, що функціональні літерали існують в джерельному коді, тоді як значення функцій існують як об'єкт під час виконання. Різниця в основному така, як між класами (джерельний код) та об'єктами (час виконання).</p></div>
+<div class="paragraph"><p>Ось простий приклад функціонального літерала, що додає одиницю до числа:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>=&gt;</code> означає, що ця функція конвертує річ зліва (любе ціле <code>x</code>) на річ зправа <code>(x + 1)</code>. Так що ця функція конвертує любе ціле <code>x</code> на <code>x + 1</code>. Значення функцій є об'єктами, так що ви можете зберігати їх в змінних, якщо бажаєте. Вони також функції, так що ви можете викликати їх, використовуючи звичайну нотацію виклику функцій з дужками. Ось приклад того і іншого:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">var</span> <span class="n">increase</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">increase</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">increase</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">11</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки в цьому прикладі <code>increase</code> є <code>var</code>, пізніше ви можете присвоїти їй інше функціональне значення.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">increase</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">9999</span>
+<span class="n">increase</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">increase</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">10009</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви бажаєте більше ніж одне твердження в функціональному літералі, оточіть його тіло в фігурні дужки, та покладіть твердження по одному на рядок, таким чином формуючи блок. Так само, як в методі, коли обчислюється функціональний літерал всі твердження будуть обчислені, та буде повернуте значення з функції, що відповідає обчисленню останнього виразу.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">increase</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">{</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;We&quot;</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;are&quot;</span><span class="o">)</span>
+  <span class="n">println</span><span class="o">(</span><span class="s">&quot;here!&quot;</span><span class="o">)</span>
+  <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">}</span>
+
+<span class="n">increase</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">increase</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="nc">We</span>
+<span class="n">are</span>
+<span class="n">here</span><span class="o">!</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">11</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер ви бачили всі принаддя функціональних літералів та функціональних значень. Багато Scala бібліотек дають вам можливіть використовувати їх. Наприклад, метод <code>foreach</code> доступний для всіх колекцій.<span class="footnote"><br />[Метод <code>foreach</code> визначений в трейті <code>Traversable</code>, це загальний супертрейт для <code>List</code>, <code>Set</code>, <code>Array</code>, та <code>Map</code>. Дивіться Главу 17 щодо деталей.]<br /></span> Він приймає функцію як аргумент, та викликає цю функцію для кожного елемента. Ось як він може використовуватись для друку всіх елементів списка:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">someNumbers</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(-</span><span class="mi">11</span><span class="o">,</span> <span class="o">-</span><span class="mi">10</span><span class="o">,</span> <span class="o">-</span><span class="mi">5</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+<span class="n">someNumbers</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(-</span><span class="mi">11</span><span class="o">,</span> <span class="o">-</span><span class="mi">10</span><span class="o">,</span> <span class="o">-</span><span class="mi">5</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">foreach</span><span class="o">((</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">x</span><span class="o">))</span>
+<span class="o">-</span><span class="mi">11</span>
+<span class="o">-</span><span class="mi">10</span>
+<span class="o">-</span><span class="mi">5</span>
+<span class="mi">0</span>
+<span class="mi">5</span>
+<span class="mi">10</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як інший приклад, типи колекцій мають метод <code>filter</code>. Цей метод відбирає елементи колекції, що проходять наданий користувачем тест. Цей тест надається використовуючи функцію. Наприклад, функція <code>function (x: Int) =&gt; x &gt; 0</code> може використовуватись для фільтрації. Ця функція відзеркалює додатні цілі на <code>true</code>, та всі інші на <code>false</code>. Ось як використовувати її з фільтром:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">filter</span><span class="o">((</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Методи, як <code>foreach</code> та <code>filter</code> описані далі в цій книжці. Глава 16 каже про їх використання в класі <code>List</code>. Глава 17 обговорює їх використання з іншими типами колекцій.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_4____">8.4 Короткі форми функціональних літералів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala провадить декілька шляхів для відкидання надлишкової інформації, та написання функціональних літералів більш скорочено. Придивіться краще до ціх можливостей, оскільки вони дозволяють вам видалити безлад з вашого кода.</p></div>
+<div class="paragraph"><p>Один шлях зробити функціональні літерали більш короткими, це відкинути типи парамертів. Такім чином, попередній приклад з <code>filter</code> може бути записаний таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">filter</span><span class="o">((</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Компілятор Scala знає, що <code>x</code> має бути цілим, оскільки він бачить, що ви безпосередньо фикористовуєте функцію для фільтрації списку цілих (на який посилається <code>someNumbers</code>). Це називається цільовий тип, оскільки цільове використання виразу (в цьому випадку аргумент до <code>someNumbers.filter()</code>) може впливати на тип цього виразу (в цьому випадку для визначення типу параметра <code>x</code>). Точні деталі цільової типізації не є важливі. Ви можете просто почати написання функціонального літералу без типу аргументу, та якщо компілятор збентежений додайте тип. З часом ви набудете відчуття, в яких ситуаціях компілятор може або не може вирішити загадку.</p></div>
+<div class="paragraph"><p>Другий шлях видалити непотрібні символи, це прибрати дужки коло параметра, чий тип виведений. В попередньому прикладі дужки коло <code>x</code> непотрібні:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="n">x</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_5__">8.5 Синтаксис замінника</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Щоб зробити функціональний функціонал ще більш стислим, ви можете використовувати підкреслення для одного або більше параметрів, доки кожний параметр з'являється тільки один раз в функціональному літералі. Наприклад, <code>_ &gt; 0</code> є дуже коротка нотація для функції, що перевіряє, чи значення більше за нуль:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="k">_</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете думати про підкреслення як про "порожнє місце" в виразі, що треба "заповнити". Пусте місце буде заповнене аргументом функції, кожний раз, коли функція викликається. Наприклад, приймаючи, що <code>someNumbers</code> було тут ініціалізоване як <code>valueList(-11, -10, -5, 0, 5, 10)</code>, метод <code>filter</code> буде замінювати порожнє місце в <code>_ &gt; 0</code> спочатку на <code>-11</code>, як в <code>-11 &gt; 0</code>, потім на <code>-10</code>, як в <code>-10 &gt; 0</code>, потім на <code>-5</code>, як в <code>- 5 &gt; 0</code>, і так далі, до кінця <code>List</code>. Таким чином, функція <code>literal _ &gt; 0</code>, еквівалентна до трохи більш балакучої <code>x =&gt; x &gt; 0</code>, як продемонстроване тут:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="n">x</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Іноді, коли ви використовуєте підкреслення як замінники для параметрів, компілятор може не мати досить інформації, щоб вивести відсутні типи параметрів. Наприклад, уявімо, що ви пишете окреме  <code>_ + _</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">f</span> <span class="k">=</span> <span class="k">_</span> <span class="o">+</span> <span class="k">_</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">7</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">missing</span> <span class="kt">parameter</span> <span class="k">type</span> <span class="kt">for</span> <span class="kt">expanded</span>
+<span class="n">function</span> <span class="o">((</span><span class="n">x$1</span><span class="o">,</span> <span class="n">x$2</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x$1</span><span class="o">.</span><span class="nc">$plus</span><span class="o">(</span><span class="n">x$2</span><span class="o">))</span>
+       <span class="k">val</span> <span class="n">f</span> <span class="k">=</span> <span class="k">_</span> <span class="o">+</span> <span class="k">_</span>
+               <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>In such cases, you can specify the types using a colon, like this:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">f</span> <span class="k">=</span> <span class="o">(</span><span class="k">_:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">+</span> <span class="o">(</span><span class="k">_:</span> <span class="kt">Int</span><span class="o">)</span>
+<span class="n">f</span><span class="k">:</span> <span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function2</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">f</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">15</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що <code>_ + _</code> розширюється до літерала для функції, що приймає два параметри. Ось чому ви можете писати цю коротку форму, тільки якщо кожний параметр з'являється в функціональному літералі рівно один раз. Декілька підкреслень означають декілька параметрі, не повторне використання одного параметра. Перше підкреслення представляє перший параметр, друге підкреслення - другий параметр, третє підкреслення третій параметр, і так далі.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_6___">8.6 Частково застосовані функції</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Хоча попередні приклади замінюють підкреслення на окремі параметри, ви також можете замітити цілий список параметрів на підкреслення. Наприклад, скоріше, ніж писати <code>println(_)</code>, ви можете написати <code>println _</code>. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">someNumbers</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">println</span> <span class="k">_</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Scala розглядає цю коротку форму так, якби ми написали наступне:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">someNumbers</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">x</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">x</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Таким чином, підкреслення в цьому випадку не є замінником для одного параметру. Це замінник для цілого списку параметрів. Пам'ятайте, що вам треба залишити один проміжок між ім'ям функції та підкресленням; інакше компілятор буде думати, що ви посилаєтесь на інший символ, як, наприклад, мето на ім'я <code>println_</code>, що навряд чи існує.</p></div>
+<div class="paragraph"><p>Коли ви використовуєте підкреслення в цей спосіб, ви пишете частково застосовану функцію. В Scala, коли ви викликаєте функцію, передаючи любі необхідні аргументи, ви застосовуєте цю функцію до аргументів. Наприклад, маючи наступну функцію:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">sum</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">c</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span> <span class="o">+</span> <span class="n">c</span>
+<span class="n">sum</span><span class="k">:</span> <span class="o">(</span><span class="kt">a:</span> <span class="kt">Int</span><span class="o">,</span> <span class="kt">b:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">c</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="nc">Int</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете застосувати функцію <code>sum</code> до аргументів <code>1</code>, <code>2</code>, та <code>3</code> ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">sum</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ЧАстково застосована функція є вираз, до якого ви не застосували всі аргументи, потрібні для функції. Замість цього ви надаєте деякі, або жодних з потрібних аргументів. Наприклад, щоб створити вираз частково застосованої функції, що включає <code>sum</code>, якій ви не надаєте жодної з трьох потрібних аргументів, ви просто ставите підкреслення після <code>sum</code>. Результуюча функція потім може бути збережена в змінній. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="n">sum</span> <span class="k">_</span>
+<span class="n">a</span><span class="k">:</span> <span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">,</span> <span class="nc">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function3</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи цей код, компілятор Scala створює примірник функції, що приймає три цілі параметри, відсутні в виразі частково застосованої функції <code>sum _</code>, та присвоює посилання на значення цієї нової функції до змінної <code>a</code>. Потім ви застосовуєте три аргументи до значення цієї нової функції, яка в свою чергу викликає <code>sum</code>, передаючи ті самі три параметри:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">a</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось що тільки но тут відбулось: змінна на ім'я <code>a</code> посилається на об'єкт з функціональним значенням. Це функціональне значення є примірником класу, згенерованого автоматично компілятором Scala з <code>sum _</code>, вираза частково застосованої функції. Згенерований компілятором клас має метод <code>apply</code>, що приймає три аргументи.<span class="footnote"><br />[Згенерований клас розширює трейт <code>Function3</code>, що декларує метод <code>apply</code> з трьома аргументами.]<br /></span> Метод <code>apply</code> згенерованого класу приймає три аргументи, оскільки рівно стільки аргументів не вистачає в виразі <code>sum _</code>. Компілтор Scala транслює вираз <code>a(1, 2, 3)</code> на виклик меетода значення <code>apply</code>, передаючи три аргументи, <code>1</code>, <code>2</code>, та <code>3</code>. Таким чином, <code>a(1, 2, 3)</code> є скороченням для:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">a</span><span class="o">.</span><span class="n">apply</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">res12</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей метод <code>apply</code>, визначений в автоматично згенерованому класі компілятором Scala з виразу <code>sum _</code>, просто пересилає ці три невистачаючі параметри до <code>sum</code>, та повертає результат. В цьому випадку, <code>apply</code> викликає <code>sum(1, 2, 3)</code>, та повертає те, що повертає <code>sum</code>, наразі <code>6</code>. Інший спосіб думати про цей різновид виразів, в яких підкреслення використовується для представлення цілого списку параметрів, як про шлях перетворити <code>def</code> в функціональне значення. Наприклад, якщо ви маєте локальну функцію, таку як <code>sum(a: Int, b: Int, c: Int): Int</code>, ви можете "огорнути" її в функціональне значення, чий метод <code>apply</code> матиме той самий список параметрів та типи результата. Потім ви застосовуєте <code>apply</code> цього функціонального значення до деяких аргументів, який, в свою чергу, застосовує <code>sum</code> до тих самих аргументів, та повертає повернутий результат. Хоча ви не можете присвоїти метод або вкладену функцію до змінної, або передати її як аргумент до іншої функції, ви можете робити ці речі, якщо ви огорнете метод або вкладену функцію в функціональне значення, поставивши підкреслення після її імені.</p></div>
+<div class="paragraph"><p>Тепер, хоча <code>sum _</code> безумовно частково застосована функція, в такий спосіб вам може не виглядати очевидним, чому вона названа саме так. Вона має це ім'я, оскільки ви не застосовуєте цю функцію до всіх аргументів. В випадку <code>sum _</code>, ви не застосували її до жодного її аргументу. Але ви також можете виразити частково застосовану функцію, надавши тільки деякі з потрібних аргументів. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">b</span> <span class="k">=</span> <span class="n">sum</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="k">_:</span> <span class="kt">Int</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">b</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>In this case, you&#8217;ve supplied the first and last argument to sum, but not the middle argument. Since only one argument is missing, the Scala compiler generates a new function class whoseapply method takes one argument. When invoked with that one argument, this generated function&#8217;s apply method invokes sum, passing in 1, the argument passed to the function, and 3. Here are some examples:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">b</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">res13</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
+</pre></div></div></div>
+<div class="paragraph"><p>In this case, b.apply invoked sum(1, 2, 3).</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">b</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">res14</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">9</span>
+</pre></div></div></div>
+<div class="paragraph"><p>And in this case, b.apply invoked sum(1, 5, 3).
 If you are writing a partially applied function expression in which you leave off all parameters, such
-as println _ or sum _, you can express it more concisely by leaving off the underscore if a function is
+as println _ or sum <em>, you can express it more concisely by leaving off the underscore if a function is
 required at that point in the code. For example, instead of printing out each of the numbers
 in someNumbers (defined here) like this:
 someNumbers.foreach(println _)
@@ -1088,7 +1071,7 @@ scala&gt; val c = sum
 follow this method with &#8216;</em>&#8217; if you want to treat it as a
 partially applied function
 val c = sum
-</sup>
+<sup>
 scala&gt; val d = sum <em>d: (Int, Int, Int) &#8658; Int = &lt;function3&gt;
 scala&gt; d(10, 20, 30)
 res14: Int = 60
@@ -1106,7 +1089,7 @@ itself, without any more defined in its scope, the compiler will complain:
 scala&gt; (x: Int) &#8658; x + more
 &lt;console&gt;:8: error: not found: value more
 (x: Int) &#8658; x + more
-<sup>
+</sup>
 WHY THE TRAILING UNDERSCORE?
 Scala&#8217;s syntax for partially applied functions highlights a difference in the design trade-offs of Scala
 and classical functional languages, such as Haskell or ML. In these languages, partially applied
@@ -1222,7 +1205,7 @@ found
 : Array[String]
 required: String
 echo(arr)
-</sup>
+^
 To accomplish this, you&#8217;ll need to append the array argument with a colon and an _* symbol,like this:
 scala&gt; echo(arr: _*)
 What&#8217;s
@@ -1401,11 +1384,13 @@ calls are implemented as optimized tail calls, and thus many nice-looking recurs
 as quickly as hand-optimized versions that use whileloops. The next chapter will build on these
 foundations and show how Scala&#8217;s rich support for functions helps you abstract over control.</p></div>
 </div>
+</div>
+</div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-28 00:12:43 EET
+ 2019-02-05 05:14:34 EET
 </div>
 </div>
 </body>
