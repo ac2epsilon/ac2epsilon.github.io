@@ -263,264 +263,286 @@ res12: Int = 6
 ----
 Цей метод `apply`, визначений в автоматично згенерованому класі компілятором Scala з виразу `sum _`, просто пересилає ці три невистачаючі параметри до `sum`, та повертає результат. В цьому випадку, `apply` викликає `sum(1, 2, 3)`, та повертає те, що повертає `sum`, наразі `6`. Інший спосіб думати про цей різновид виразів, в яких підкреслення використовується для представлення цілого списку параметрів, як про шлях перетворити `def` в функціональне значення. Наприклад, якщо ви маєте локальну функцію, таку як `sum(a: Int, b: Int, c: Int): Int`, ви можете "огорнути" її в функціональне значення, чий метод `apply` матиме той самий список параметрів та типи результата. Потім ви застосовуєте `apply` цього функціонального значення до деяких аргументів, який, в свою чергу, застосовує `sum` до тих самих аргументів, та повертає повернутий результат. Хоча ви не можете присвоїти метод або вкладену функцію до змінної, або передати її як аргумент до іншої функції, ви можете робити ці речі, якщо ви огорнете метод або вкладену функцію в функціональне значення, поставивши підкреслення після її імені.
 
-Тепер, хоча `sum _` безумовно частково застосована функція, в такий спосіб вам може не виглядати очевидним, чому вона названа саме так. Вона має це ім'я, оскільки ви не застосовуєте цю функцію до всіх аргументів. В випадку `sum _`, ви не застосували її до жодного її аргументу. Але ви також можете виразити частково застосовану функцію, надавши тільки деякі з потрібних аргументів. Ось приклад:
+Тепер, хоча `sum _` безумовно частково застосована функція, в такий спосіб вам може не виглядати очевидним, чому вона названа саме так. Вона має це ім'я, оскільки ви не застосовуєте цю функцію до всіх аргументів. В випадку `sum _`, ви не застосували її до жодного аргументу. Але ви також можете виразити частково застосовану функцію, надавши тільки деякі з потрібних аргументів. Ось приклад:
 [source,scala]
 ----
 scala> val b = sum(1, _: Int, 3)
 b: Int => Int = <function1>
 ----
-In this case, you've supplied the first and last argument to sum, but not the middle argument. Since only one argument is missing, the Scala compiler generates a new function class whoseapply method takes one argument. When invoked with that one argument, this generated function's apply method invokes sum, passing in 1, the argument passed to the function, and 3. Here are some examples:
+В цьому випадку ви надали перший та останній аргумент до `sum`, але не до середнього аргументу. Оскікльки один аргумент відсутній, компілятор Scala генерує функціональний клас, чий метод `apply` приймає один аргумент. Коли викликаний з одним аргументом, метод `apply` цієї згенерованої функції викликає `sum`, передаючи `1`, аргумент, переданий до функції, та `3`. Ось деякі приклади:
 [source,scala]
 ----
 scala> b(2)
 res13: Int = 6
 ----
-In this case, b.apply invoked sum(1, 2, 3).
+В цьому випадку `b.apply` викликає `sum(1, 2, 3)`.
 [source,scala]
 ----
 scala> b(5)
 res14: Int = 9
 ----
-And in this case, b.apply invoked sum(1, 5, 3).
-If you are writing a partially applied function expression in which you leave off all parameters, such
-as println _ or sum _, you can express it more concisely by leaving off the underscore if a function is
-required at that point in the code. For example, instead of printing out each of the numbers
-in someNumbers (defined here) like this:
+І в цьому випадку `b.apply` викликає `sum(1, 5, 3)`.
+
+Якщо ви пишете частково застосовану функцію, в якій ви залишаєте всі параметри, таку як `println _` або `sum _`, ви можете виразити її більш стисло, відкинувши підкреслення, коли функція потрібна в цьому місці в коді. Наприклад, замість друкувати кожне число в `someNumbers` (визначена тут) ось так:
+[source,scala]
+----
 someNumbers.foreach(println _)
-You could just write:
+----
+Ви можете просто записати:
+[source,scala]
+----
 someNumbers.foreach(println)
-This last form is allowed only in places where a function is required, such as the invocation
-offoreach in this example. The compiler knows a function is required in this case,
-becauseforeach requires that a function be passed as an argument. In situations where a function is not
-required, attempting to use this form will cause a compilation error. Here's an example:
+----
+Ця остання форма дозволяється тільки в місціх, де потрібна функція, таких, як виклик  `foreach` в цьому прикладі. В цьому випадку компілятор знає що потрібна функція, оскільки `foreach` вимагає, щоб в якості аргумента була передана функція. В ситуаціях, коли функція не вимагається, спроба використати цю форму спричинить помилку компіляції. Ось приклад:
+[source,scala]
+----
 scala> val c = sum
 <console>:8: error: missing arguments for method sum;
 follow this method with `_' if you want to treat it as a
 partially applied function
-val c = sum
-^
-scala> val d = sum _d: (Int, Int, Int) => Int = <function3>
+       val c = sum
+               ^
+
+scala> val d = sum _
+d: (Int, Int, Int) => Int = <function3>
+
 scala> d(10, 20, 30)
 res14: Int = 60
-8.7 CLOSURES
-So far in this chapter, all the examples of function literals have referred only to passed parameters. For
-example, in (x: Int) => x > 0, the only variable used in the function body, x > 0, is x, which is defined
-as a parameter to the function. You can, however, refer to variables defined elsewhere:
-(x: Int) => x + more
-// how much more?
-This function adds "more" to its argument, but what is more? From the point of view of this
-function, more is a free variable because the function literal does not itself give a meaning to it.
-The x variable, by contrast, is a bound variable because it does have a meaning in the context of the
-function: it is defined as the function's lone parameter, an Int. If you try using this function literal by
-itself, without any more defined in its scope, the compiler will complain:
+----
+
+8.7 Замикання
+-------------
+Докі в цій главі всі приклади функціональних літералів посилались тільки для переданих параметрів. Наприклад, в `(x: Int) => x > 0`, єдиною змінною, що використовується в тілі функції, `x > 0`, `x`, що визначається як параметр функції. Однак ви можете посилатись на змінні, визначені деінде:
+[source,scala]
+----
+(x: Int) => x + more // наскільки much?
+----
+Ця функція додає `more` до свого аргументу, але що таке `more`? З точки зору цієї функції, `more` є _вільна змінна_, оскільки сам функціональний літерал сам по собі не надає їй значення. На відміну, змінна `x` є _прив'язаною змінною_, оскільки вона має значення в контексті функції: вона визначена як єдиний параметр функції, `Int`. Якщо ви спробуєте використати цей функціональний літера сам по собі, без деякого `more`, визначеного в полі зору, компілятор буде скаржитись:
+[source,scala]
+----
 scala> (x: Int) => x + more
 <console>:8: error: not found: value more
-(x: Int) => x + more
-^
-WHY THE TRAILING UNDERSCORE?
-Scala's syntax for partially applied functions highlights a difference in the design trade-offs of Scala
-and classical functional languages, such as Haskell or ML. In these languages, partially applied
-functions are considered the normal case. Furthermore, these languages have a fairly strict static type
-system that will usually highlight every error with partial applications that you can make. Scala bears a
-much closer relation to imperative languages, such as Java, where a method that's not applied to all its
-arguments is considered an error. Furthermore, the object-oriented tradition of subtyping and a
-universal root type accepts some programs that would be considered erroneous in classical functional
-languages.
-For instance, say you mistook the drop(n: Int) method of List for tail(), and therefore forgot you need to
-pass a number to drop. You might write, "println(drop)". Had Scala adopted the classical functional
-tradition that partially applied functions are OK everywhere, this code would type check. However, you
-might be surprised to find out that the output printed by this println statement would always
-be <function>! What would have happened is that the expression drop would have been treated as a
-function object. Because println takes objects of any type, this would have compiled OK, but it would
-have given an unexpected result.
-To avoid situations like this, Scala normally requires you to specify function arguments that are left out
-explicitly, even if the indication is as simple as a `_'. Scala allows you to leave off even the _ only when
-a function type is expected.On the other hand, the same function literal will work fine so long as there is something available
-named more:
+               (x: Int) => x + more
+                               ^
+----
+
+Чому завершуюче підкреслення?
+-----------------------------
+Синтаксис Scala для частково застосованих функцій підкреслює різницю між компромісами дизайну Scala, та класичних функціональних мов, таких як `Haskell` або `ML`. В ціх мовах, частково застосовані функції розглядаються як звичайний випадок. Більше того, ці мови мають досить сувору статичну систему типів, що зазвичай буде підкреслювати кожну помилку з частковим застосуванням, що ви можете зробити. Scala дотримується значно блищого відношення до імперативних мов, таких як Java, де метод, що не застосовується до всіх своїх аргументів розглядається як помилка. Більше того, об'єктно-орієнтовні традиції субтипізації і універсального кореневого типу приймає деякі програми, що мали б розглядатись як помилкові в класичних функціональних мовах.
+
+Наприклад, скажімо, ви переплутали метод `drop(n: Int)` в `List` з `tail()`, і, таким чином, забули, що вам треба передати число до `drop`. Ви можете записати `println(drop)`. Коли б Scala приймала класичну функціональну традицію, що частково застосовані функції гарні будь-де, цей код пройшов би перевірку типів. Однак ви можете бути здивовані знайти, що результат, який буде друкувати це твердження `println`, буде завжди `<function>`! Що відбуєеться, це те, що вираз `drop` буде трактуватись як функціональний об'єкт. Оскільки  `println` приймає об'єкти любого типу, це буде компілюватись OK, але це матиме непередбачуваний результат.
+
+Щоб уникати ситуацій як така, Scala звичайно потребує, щоб ви вказували аргументи функцій, що зщалишились, явно, навіть якщо вони вказані так просто, як символом `_`. Scala дозволяє вам відкинути `_` тільки коли очікується функціональний тип. З іншого боку, той же функціональний літерал буде робити добре, доки доступне дещо на ім'я `more`:
+[source,scala]
+----
 scala> var more = 1
 more: Int = 1
+
 scala> val addMore = (x: Int) => x + more
 addMore: Int => Int = <function1>
+
 scala> addMore(10)
 res16: Int = 11
-The function value (the object) that's created at runtime from this function literal is called aclosure. The
-name arises from the act of "closing" the function literal by "capturing" the bindings of its free
-variables. A function literal with no free variables, such as (x: Int) => x + 1, is called a closed term,
-where a term is a bit of source code. Thus a function value created at runtime from this function literal
-is not a closure in the strictest sense, because (x: Int) => x + 1is already closed as written. But any
-function literal with free variables, such as(x: Int) => x + more, is an open term. Therefore, any
-function value created at runtime from(x: Int) => x + more will, by definition, require that a binding for
-its free variable, more, be captured. The resulting function value, which will contain a reference to the
-captured morevariable, is called a closure because the function value is the end product of the act of
-closing the open term, (x: Int) => x + more.
-This example brings up a question: What happens if more changes after the closure is created? In Scala,
-the answer is that the closure sees the change. For example:
+----
+Функціональне значення (об'єкт), що створений під час виконання з цього функціонального літерала, називається _замиканням_. Назва походить з дії "замикання" функціонального літерала, через "захоплення" прив'язок його вільних змінних. Функціональний літерал без вільних змінних, такий як `(x: Int) => x + 1`, називається _замкненим термом_, де _терм_ це фрагмент джерельного коду. Таким чином, функціональне значення, створене під час виконання з цього функціонального літерала не є замиканням в суворішому сенсі, оскікльи `(x: Int) => x + 1` вже замкнений як є написаний. Але кожний функціональний літерал з вільними змінними, як `(x: Int) => x + more`, є _відкритим термом_. Таким чином, любе функціональне значення, створене під час виконання з `(x: Int) => x + more` буде, по визначення, потребувати, щоб прив'язка до вільної змінної  `more` була захоплена. Отримане функціональне значення, що буде містити посилання на захоплену змінну `more`, називається замиканням, оскільки значення функції є кінцевим продуктом дії замикання відкритого терму `(x: Int) => x + more`.
+
+This example brings up a question: What happens if more changes after the closure is created? In Scala, the answer is that the closure sees the change. For example:
+[source,scala]
+----
 scala> more = 9999
 more: Int = 9999
+
 scala> addMore(10)
 res17: Int = 10009
-Intuitively, Scala's closures capture variables themselves, not the value to which variables refer.footnote:[By contrast, Java's inner classes do not allow you to access modifiable variables in surrounding scopes at all, so there is no difference between capturing a variable and capturing its currently held value.] As
-the previous example shows, the closure created for (x: Int) => x + more sees the change to more made
-outside the closure. The same is true in the opposite direction. Changes made by a closure to a captured
-variable are visible outside the closure. Here's an example:
+----
+Інтуітивно, замикання Scala захоплюють самі змінні, не значення, на які посилаються змінні.footnote:[На відміну, внутрішні класи Java взагалі не дозволяють вам отримувати доступ до непостійних змінних в оточуючому полі зору, так що немає різниці між захопленням змінної, та захопленням її поточного значення.] Як показує попередній приклад, замикання, створене для `(x: Int) => x + more` бачить зміни в `more`, зроблені за межами замикання. Те саме вірно в зворотньому напрямку. Зміни, зроблені в замиканні до захопленої змінної, видимі за межами замикання. Ось приклад:
+[source,scala]
+----
 scala> val someNumbers = List(-11, -10, -5, 0, 5, 10)
 someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
+
 scala> var sum = 0
 sum: Int = 0
-scala> someNumbers.foreach(sum +=
+
+scala> someNumbers.foreach(sum += _)
+
 scala> sum
 res19: Int = -11
-_)This example uses a roundabout way to sum the numbers in a List. Variable sum is in a surrounding
-scope from the function literal sum += _, which adds numbers to sum. Even though it is the closure
-modifying sum at runtime, the resulting total, -11, is still visible outside the closure.
-What if a closure accesses some variable that has several different copies as the program runs? For
-example, what if a closure uses a local variable of some function, and the function is invoked many
-times? Which instance of that variable gets used at each access?
-Only one answer is consistent with the rest of the language: the instance used is the one that was active
-at the time the closure was created. For example, here is a function that creates and returns "increase"
-closures:
+----
+Цей приклад використовує обхідний шлях до підрахунку суми чисел в `List`. Змінна `sum` знаходиться в оточуючому полі зору відносно функціонального літерала `sum += _`, що додає числа до `sum`. Навіть зважаючи, що це замикання модифікує `sum` під час виконання, результуючий загал, `-11`, все ще видимий за межами замикання.
+
+Що буде, якщо замикання має доступ до деякої змінної, що має декілька різних копій по мірі роботи програми? Наприклад, якщо замикання використовує локальну змінну деякої функції, та функція викликається декілька раз? ЯКий примірник цієї змінної буде використовуватись при кожному доступі?
+
+Тільки одна відповідь узгоджена з залишком мови: використовується той примірник, що був активний під час створення замикання. Наприклад, ось функція, що створює та повертає замикання "збільшити":
+[source,scala]
+----
 def makeIncreaser(more: Int) = (x: Int) => x + more
-Each time this function is called it will create a new closure. Each closure will access the morevariable
-that was active when the closure was created.
+----
+Кожний раз, коли викликається ця функція, вона буде створювати нове замикання. Кожне замикання буде отримувати доступ до змінної `more`, що була активною під час створення змінної.
+[source,scala]
+----
 scala> val inc1 = makeIncreaser(1)
 inc1: Int => Int = <function1>
+
 scala> val inc9999 = makeIncreaser(9999)
 inc9999: Int => Int = <function1>
-When you call makeIncreaser(1), a closure is created and returned that captures the value 1 as the
-binding for more. Similarly, when you call makeIncreaser(9999), a closure that captures the
-value 9999 for more is returned. When you apply these closures to arguments (in this case, there's just
-one argument, x, which must be passed in), the result that comes back depends on how more was
-defined when the closure was created:
+----
+Коли ви викликаєте `makeIncreaser(1)`, створюється та повертається замикання, що захоплює значення `1` як прив'язку для `more`. Подібним чином, коли ви викликаєте `makeIncreaser(9999)`, повертається замикання, що захоплює значення `9999` для `more`. Коли ви застосовуєте ці замикання для аргументів (в цьому випадку є тільки один аргумент, `x`, що має бути переданий), результат, що повертається, залежить від того, як було визначене `more` при створенні замикання:
+[source,scala]
+----
 scala> inc1(10)
 res20: Int = 11
+
 scala> inc9999(10)
 res21: Int = 10009
-It makes no difference that the more in this case is a parameter to a method call that has already
-returned. The Scala compiler rearranges things in cases like these so that the captured parameter lives
-out on the heap, instead of the stack, and thus can outlive themethod call that created it. This
-rearrangement is all taken care of automatically, so you don't have to worry about it. Capture any
-variable you like: val, var, or parameter.
-8.8 SPECIAL FUNCTION CALL FORMS
-Most functions and function calls you encounter will be as you have seen so far in this chapter. The
-function will have a fixed number of parameters, the call will have an equal number of arguments, and
-the arguments will be specified in the same order and number as the parameters.Since function calls are so central to programming in Scala, however, a few special forms of function
-definitions and function calls have been added to the language to address some special needs. Scala
-supports repeated parameters, named arguments, and default arguments.
+----
+Немає різниці, що `more` в цьому випадку є параметром до виклику метода, який вже завершився. Компілятор Scala переставляє речі в випадках як цей, так що захоплений параметр живе в кіпі, замість стеку, і, таким чином, може пережити виклик метода, що створює його. Ця перестановка турботливо виконується автоматично, так що вам не треба про це турбуватись. Обчислюйте любу змінну, яку побажаєте: `val`, `var`, або параметр.
+
+8.8 Спеціальні форми виклику функцій
+------------------------------------
+Більшість функцій та викликів функцій, які вам трапляться, будуть такі, які ви вже бачили в цій главі. Функція буде мати фіксоване число параметрів, виклик буде мати так же число аргументів, та аргументи будуть вказані в такому ж порядку та числі, що і параметри.
+
+Одонак, оскільки виклики функцій є такими центральними для програмування в Scala, були додані декілька особливих форм визначення та викликів функцій, що націлені на вирішення особливих потреб. Scala підтримує повторювані параметри, іменовані аргументи та значення по замовчанню.
+
 Repeated parameters
-Scala allows you to indicate that the last parameter to a function may be repeated. This allows clients to
-pass variable length argument lists to the function. To denote a repeated parameter, place an asterisk
-after the type of the parameter. For example:
+~~~~~~~~~~~~~~~~~~~
+Scala дозволяє вам вказати, що вписок параметрів до функції може бути повторений. Це дозволяє клієнтам передати до функції список аргументів змінної довжини. Щоб позначити повторюваний параметр, поставьте зірочку після типу параметру. Наприклад:
+[source,scala]
+----
 scala> def echo(args: String*) =
 for (arg <- args) println(arg)
 echo: (args: String*)Unit
-Defined this way, echo can be called with zero to many String arguments:
+----
+Визначений таким чином, `echo` може бути викликаний з нулем або багатьма аргументів `String`:
+[source,scala]
+----
 scala> echo()
+
 scala> echo("one")
 one
+
 scala> echo("hello", "world!")
 hello
 world!
-Inside the function, the type of the repeated parameter is an Array of the declared type of the parameter.
-Thus, the type of args inside the echo function, which is declared as type "String*" is
-actually Array[String]. Nevertheless, if you have an array of the appropriate type, and you attempt to
-pass it as a repeated parameter, you'll get a compiler error:
+----
+Всередині функції тип повторюваного параметру є `Array` декларованого типу параметру. Таким чином, тип `args` всередині функції `echo`, що декларований як тип `String*` насправді є `Array[String]`. Тим не менш, якщо ви маєте масив відповідного типу, ви можете спробувати передати його як повторюваний параметр, але отримаєте помилку компіляції:
+[source,scala]
+----
 scala> val arr = Array("What's", "up", "doc?")
 arr: Array[String] = Array(What's, up, doc?)
+
 scala> echo(arr)
 <console>:10: error: type mismatch;
-found
-: Array[String]
-required: String
-echo(arr)
-^
-To accomplish this, you'll need to append the array argument with a colon and an _* symbol,like this:
+found    : Array[String]
+required : String
+              echo(arr)
+              ^
+----
+Щоб досягти цього, вам треба додати аргумент масиву з двокрапкою, та символ `_*`, ось так:
+[source,scala]
+----
 scala> echo(arr: _*)
 What's
 up
 doc?
-This notation tells the compiler to pass each element of arr as its own argument to echo, rather than all
-of it as a single argument.Named arguments
-In a normal function call, the arguments in the call are matched one by one in the order of the
-parameters of the called function:
+----
+ЦЯ нотація каже компілятору передати кожний елемент `arr` як окремий аргумент, ніж всі разом як один аргумент.
+
+Іменовані аргументи
+~~~~~~~~~~~~~~~~~~~
+В звичайному виклику функції аргументи в виклику співпадають один до одного в порядку параметрів викликаної функції:
+[source,scala]
+----
 scala> def speed(distance: Float, time: Float): Float =
-distance / time
+         distance / time
 speed: (distance: Float, time: Float)Float
+
 scala> speed(100, 10)
 res27: Float = 10.0
-In this call, the 100 is matched to distance and the 10 to time. The 100 and 10 are matched in the same
-order as the formal parameters are listed.
-Named arguments allow you to pass arguments to a function in a different order. The syntax is simply
-that each argument is preceded by a parameter name and an equals sign. For example, the following
-call to speed is equivalent to speed(100,10):
+----
+В цьому виклику `100` відповідає до `distance`, та `10` до `time`. `100` та `10` співпадають в тому ж порядку, в якому перелічені формальні параметри.
+
+Іменовані аргументи дозволяють передати вам аргументи в функцію в іншому порядку. Синтаксис просто полягає в тому, що перед кожним аргументом стоіть ім'я параметру та знак рівності. Наприклад, наступний виклик до `speed` еквівалентний до `speed(100,10)`:
+[source,scala]
+----
 scala> speed(distance = 100, time = 10)
 res28: Float = 10.0
+----
 Called with named arguments, the arguments can be reversed without changing the meaning:
+----
 scala> speed(time = 10, distance = 100)
 res29: Float = 10.0
-It is also possible to mix positional and named arguments. In that case, the positional arguments come
-first. Named arguments are most frequently used in combination with default parameter values.
-Default parameter values
-Scala lets you specify default values for function parameters. The argument for such a parameter can
-optionally be omitted from a function call, in which case the corresponding argument will be filled in
-with the default.
-An example is shown in Listing 8.3. Function printTime has one parameter, out, and it has a default
-value of Console.out.
-def printTime(out: java.io.PrintStream = Console.out) =
-out.println("time = " + System.currentTimeMillis())
-Listing 8.3 - A parameter with a default value.
-If you call the function as printTime(), thus specifying no argument to be used for out, then outwill be
-set to its default value of Console.out. You could also call the function with an explicit output stream.
-For example, you could send logging to the standard error output by calling the function
-as printTime(Console.err).
-Default parameters are especially helpful when used in combination with named parameters. In Listing
-8.4, function printTime2 has two optional parameters. The out parameter has a default of Console.out,
-and the divisor parameter has a default value of 1.def printTime2(out: java.io.PrintStream = Console.out,
-divisor: Int = 1) =
+----
+Також можливо змішувати позиційні та іменовані аргументи. В цьому випадку позщиційні аргументи ідуть першими. Іменовані аргументи найбільш часто використовуються в комбінації зі заначеннями параметрів по замовчанню.
+
+Значення параметрів по замовчанню
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Scala дозволяє вам вказувати значення по замовчанню для параметрів функцій. Аргумент для кожного такого параметру може бути опціонально пропущений в виклику функції, та в такому випадку відповідний аргумент буде заповнений значенням по замовчанню.
+
+Приклад показаний в Лістингу 8.3. Функція `printTime` маж один параметр, `out`, і він має значення по замовчанню `Console.out`.
+[source,scala]
+----
+def printTime(out: java.io.PrintStream = `Console.out`) =
+  out.println("time = " + System.currentTimeMillis())
+----
+Listing 8.3 - Параметр зі значенням по замовчанню.
+
+Якщо ви викличете функцію як `printTime()`, таким чином не вказуючи аргумента, що буде вказувати на пристрій виводу `out`, тоді `out` буде встановлений в його значення по замовчанню, `Console.out`. Ви можете також викликати функцію з явним потоком виводу. Наприклад, ви можете надіслати журналювання до стандарного виводу помилок, викликавши функцію як `printTime(Console.err)`. Параметри по замовчанню особливо корисні, коли використовуються в комбінації з іменованими параметрами. В Лістигу 8.4 функція `printTime2` має два опціональні параметри. Параметр `out` має по замовчанню значення `Console.out`, та параметр `divisor` має значення по замовчанню `1`.
+[source,scala]
+----
+def printTime2(out: java.io.PrintStream = Console.out,
+               divisor: Int = 1) =
 out.println("time = " + System.currentTimeMillis()/divisor)
-Listing 8.4 - A function with two parameters that have defaults.
-Function printTime2 can be called as printTime2() to have both parameters filled in with their default
-values. Using named arguments, however, either one of the parameters can be specified while leaving
-the other as the default. To specify the output stream, call it like this:
+----
+Лістинг 8.4 - Функція з двома параметрами, що мають значення по замовчанню.
+
+Функція `printTime2` може бути викликана як `printTime2()` щоб мати обоє свої параметри заповненими їх значеннями по замовчанню. Однак через іменовані аргументи один з параметрів може бути заданий, коли інший буде встановлений по замовчанню. Щоб вказати вихідний потік, викличте функцію таким чином:
+[source,scala]
+----
 printTime2(out = Console.err)
-To specify the time divisor, call it like this:
+----
+Щоб задати дільник часу, викличте його так:
+[source,scala]
+----
 printTime2(divisor = 1000)
-8.9 TAIL RECURSION
-In Section 7.2, we mentioned that to transform a while loop that updates vars into a more functional
-style that uses only vals, you may sometimes need to use recursion. Here's an example of a recursive
-function that approximates a value by repeatedly improving a guess until it is good enough:
+----
+8.9 Хвостова рекурсія
+---------------------
+В розділі 7.2 ми згадували, що для трансформації цикла `while`, що оновлює `var`, на більш функціональний стиль, що використовує тільки `val`, ви можете іноді потребувати використання рекурсії. Ось приклад рекурсивоної функції, що апроксимує значення, постійно покращуючи здогадку, доки вона не стане досить гарною:
+[source,scala]
+----
 def approximate(guess: Double): Double =
-if (isGoodEnough(guess)) guess
-else approximate(improve(guess))
-A function like this is often used in search problems, with appropriate implementations
-forisGoodEnough and improve. If you want the approximate function to run faster, you might be
-tempted to write it with a while loop to try and speed it up, like this:
+  if (isGoodEnough(guess)) guess
+  else approximate(improve(guess))
+----
+Функція як ця часто використовується в проблемах пошуку, з відповідними реалізаціями `isGoodEnough` та `improve`. Якщо ви бажаєте, щоб функція `approximate` виконувались скоріше, ви можете підпасти в спокусу написати цикл `while`, що спробувати пришвидшити її, ось так:
+[source,scala]
+----
 def approximateLoop(initialGuess: Double): Double = {
-var guess = initialGuess
-while (!isGoodEnough(guess))
-guess = improve(guess)
-guess
+  var guess = initialGuess
+  while (!isGoodEnough(guess))
+    guess = improve(guess)
+  guess
 }
-Which of the two versions of approximate is preferable? In terms of brevity and var avoidance, the
-first, functional one wins. But is the imperative approach perhaps more efficient? In fact, if we measure
-execution times, it turns out that they are almost exactly the same!
-This might seem surprising because a recursive call looks much more "expansive" than a simple jump
-from the end of a loop to its beginning. However, in the case of approximate above, the Scala compiler
-is able to apply an important optimization. Note that the recursive call is the last thing that happens in
-the evaluation of function approximate's body. Functions likeapproximate, which call themselves as
-their last action, are called tail recursive. The Scala compiler detects tail recursion and replaces it with
-a jump back to the beginning of the function, after updating the function parameters with the new
-values.The moral is that you should not shy away from using recursive algorithms to solve your problem.
-Often, a recursive solution is more elegant and concise than a loop-based one. If the solution is tail
-recursive, there won't be any runtime overhead to be paid.
-Tracing tail-recursive functions
-A tail-recursive function will not build a new stack frame for each call; all calls will execute in a single
-frame. This may surprise a programmer inspecting a stack trace of a program that failed. For example,
-this function calls itself some number of times then throws an exception:
+----
+Яка з двох версій `approximate` переважає? В термінах краткості та уникнення `var` перша, функціональна, перемагає. Але імперативний підхід, можливо, більш ефективний? Фактично, якщо заміряти час виконання, з'ясується, що вони майже ідеально однакові!
+
+Це може виглядати несподіванкою, оскільки рекурсивний виклик виглядає значно більш "коштовним", чи простий стрибок з кінця циклу на початок. Однак в випадку `approximate` вище компілятор Scala здатний застосувати важливу оптимізацію. Зверніть увагу, що рекурсивний виклик є останєю річчю, що трапляється в обчисленні тіла функції `approximate`. Функції як `approximate`, що викликають себе як свою останню дію, називаються хвостово рекурсивними. Компілятор Scala детектує хвостову рекурсію, та замінює його на стрибок назад, на початок функції, після оновлення параметрів функції новими значеннями.
+
+Мораль цього в том, що ви не повинні цураитсь використання рекурсивних алгоритмів для вирішення ваших проблем. Часто рекурсивне рішення є більш елегантним та стислим, ніж базований на циклі. Як рішення має хвостову рекурсію, не виникне ніякого навантаження часу виконання, що треба сплачувати.
+
+Трасування функцій з хвостовою рекурсією
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Функція з хвостовою рекорсією не буде будувати новий фрейм стека для кожного виклика; всі виклики будуть викликатись в одному фреймі. Це може бути несподіванкою для програмістів, коли вони переглядатимуть трасу стеку програми, що схибила. Наприклад, ця функція викликає сама себе деяке число разів, та потім закидає виключення:
+[source,scala]
+----
 def boom(x: Int): Int =
-if (x == 0) throw new Exception("boom!")
-else boom(x - 1) + 1
-This function is not tail recursive, because it performs an increment operation after the recursive call.
-You'll get what you expect when you run it:
+  if (x == 0) throw new Exception("boom!")
+  else boom(x - 1) + 1
+----
+Ця функція не має хвостової рекурсії, оскільки вона виконує операцію інкремента після рекурсивного виклику. Ви отримаєте те що очікували, якщо запустите цю програму:
+[source,scala]
+----
 scala> boom(3)
 java.lang.Exception: boom!
 at .boom(<console>:5)
@@ -529,51 +551,49 @@ at .boom(<console>:6)
 at .boom(<console>:6)
 at .<init>(<console>:6)
 ...
-TAIL CALL OPTIMIZATION
-The compiled code for approximate is essentially the same as the compiled code forapproximateLoop.
-Both functions compile down to the same thirteen instructions of Java bytecodes. If you look through
-the bytecodes generated by the Scala compiler for the tail recursive method, approximate, you'll see
-that although both isGoodEnough and improveare invoked in the body of the method, approximate is
-not. The Scala compiler optimized away the recursive call:
+
+Оптимізаця хвостової рекурсії
+-----------------------------
+Скомпільований код для `approximate` в основному є те саме, що і скомпільований код для `approximateLoop`. Обоє функції компілюються до тих самих тринадцяти інструкцій байткоду Java. Якщо ви подивитесь на байткод, згенерований компілятором Scala для метода з хвостовою рекурсією, `approximate`, ви побачите, що хоча обоє, `isGoodEnough` та `improveare` викликаються в тілі метода, `approximate` - ні. Компілятор Scala оптимізував геть рекурсивний виклик:
+[source,scala]
+----
 public double approximate(double);
-Code:
-0:
-aload_0
-1:
-astore_3
-2:
-aload_0
-3:
-dload_1
-4:
-invokevirtual
-#24; //Method isGoodEnough:(D)Z
-7:
-ifeq
-12
-10: dload_1
-11: dreturn
-12: aload_0
-13: dload_1
-14: invokevirtual
-#27; //Method improve:(D)D
-17: dstore_1
-18: goto
-2
-If you now modify boom so that it does become tail recursive:
+  Code:
+  0:    aload_0
+  1:    astore_3
+  2:    aload_0
+  3:    dload_1
+  4:    invokevirtual #24; //Method isGoodEnough:(D)Z
+  7:    ifeq  12
+  10:   dload_1
+  11:   dreturn
+  12:   aload_0
+  13:   dload_1 
+  14:   invokevirtual #27; //Method improve:(D)D
+  17:   dstore_1
+  18:   goto 2
+----
+Якщо ви тепер модифікуєте `boom`, так, щоб вона тепер стала хвостово рекурсивною:
+[source,scala]
+----
 def bang(x: Int): Int =if (x == 0) throw new Exception("bang!")
-else bang(x - 1)
-You'll get:
+  else bang(x - 1)
+----
+Ви отримаєте:
+[source,scala]
+----
 scala> bang(5)
 java.lang.Exception: bang!
 at .bang(<console>:5)
 at .<init>(<console>:6) ...
-This time, you see only a single stack frame for bang. You might think that bang crashed before it
-called itself, but this is not the case. If you think you might be confused by tail-call optimizations when
-looking at a stack trace, you can turn them off by giving the following argument to the scala shell or to
-the scalac compiler:
--g:notailcalls
-With that option specified, you will get a longer stack trace:
+----
+НА цей раз ви бачите тільки один фрейм стеку для `bang`. Ви можете думати, що `bang` впала до того, як викликати себе, але це не той випадок. Якщо ви думаєте, що ви можете бути збентежені через хвостовою оптимізацією, коли переглядаєте на трасу стеку, ви можете відключити її, надавши наступний аргумент до оболонки `scala` або компілятору `scalac`: 
+----
+-g:notailcalls 
+----
+Коли вказана ця опція ви знову отримаєте довшу трасу стеку:
+[source,scala]
+----
 scala> bang(5)
 java.lang.Exception: bang!
 at .bang(<console>:5)
@@ -583,30 +603,28 @@ at .bang(<console>:5)
 at .bang(<console>:5)
 at .bang(<console>:5)
 at .<init>(<console>:6) ...
-Limits of tail recursion
-The use of tail recursion in Scala is fairly limited because the JVM instruction set makes implementing
-more advanced forms of tail recursion very difficult. Scala only optimizes directly recursive calls back
-to the same function making the call. If the recursion is indirect, as in the following example of two
-mutually recursive functions, no optimization is possible:
+----
+Обмеження хвостової рекурсії
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Використання хвостової рекурсії в Scala є досить обмеженої, оскільки набір інструкцій JVM робить реалізацію більш розвинених форм хвостової рекурсії дуже складною. Scala тільки оптимізує прямі рекурсивні виклики назад, до тої самої функції, що робить виклики. Якщо рекурсія непряма, оптимізація неможлива:
+[source,scala]
+----
 def isEven(x: Int): Boolean =
-if (x == 0) true else isOdd(x - 1)
+  if (x == 0) true else isOdd(x - 1)
+
 def isOdd(x: Int): Boolean =
-if (x == 0) false else isEven(x - 1)
-You also won't get a tail-call optimization if the final call goes to a function value. Consider for
-instance the following recursive code:
+  if (x == 0) false else isEven(x - 1)
+----
+Ви також не отримаєте хвостову оптимізацію, якщо фінальний виклик іде до функціонального значення. Розгляньте наприклад наступний рекурсивний код:
+[source,scala]
+----
 val funValue = nestedFun _
 def nestedFun(x: Int) : Unit = {
-if (x != 0) { println(x); funValue(x - 1) }
+  if (x != 0) { println(x); funValue(x - 1) }
 }
-The funValue variable refers to a function value that essentially wraps a call to nestedFun. When you
-apply the function value to an argument, it turns around and applies nestedFun to that same argument,
-and returns the result. Therefore, you might hope the Scala compiler would perform a tail-calloptimization, but in this case it would not. Tail-call optimization is limited to situations where a method
-or nested function calls itself directly as its last operation, without going through a function value or
-some other intermediary. (If you don't fully understand tail recursion yet, see Section 8.9).
-8.10 CONCLUSION
-This chapter has given you a grand tour of functions in Scala. In addition to methods, Scala provides
-local functions, function literals, and function values. In addition to normal function calls, Scala
-provides partially applied functions and functions with repeated parameters. When possible, function
-calls are implemented as optimized tail calls, and thus many nice-looking recursive functions run just
-as quickly as hand-optimized versions that use whileloops. The next chapter will build on these
-foundations and show how Scala's rich support for functions helps you abstract over control.
+----
+Значення змінної `funValue` посилається на функціональне значення, що в основному огортає виклик до `nestedFun`. Коли ви застосовуєте функціональне значення до аргументу, він робить свій хід, застосовує `nestedFun` до того самого аргументу, та повертає результат. Таким чином, ви маєте надію, що компілятор Scala буде робити хвостову оптимізацію, але в цьому випадку цього не буде. Оптимізація хвостового виклику обмежена до ситуацій, коли метод або вкладена функція викликає себе напряму в якості своєї останньої операції, без проходженню через функціональне значення, або деякий інший посередник. (Якщо ви досі не повністю розумієте хвостову рекурсію, дивіться Розділ 8.9).
+
+8.10 Висновок
+-------------
+Ця глава надала вам гранд тур по функціях в Scala. На додаток до методів, Scala провадить локальні функції, функціональні літерали та функціональні значення. На додаток до нормальних функціональних викликів Scala провадить частково застосовані функції, та функції з повторюваними параметрами. Коли можливо, функціональні виклики реалізовані як оптимізовані хвостові виклики, і, таким чином, багато гарно виглядаючих рекурсивних функцій роблять так само швидко, як і оптимізовані вручну версії, що використовують цикли `while`. Наступна глава буде будуватись на ціх засадах, та покаже, як багата підтримка функцій в Scala допомагає вам абстрогуватись над керуванням.

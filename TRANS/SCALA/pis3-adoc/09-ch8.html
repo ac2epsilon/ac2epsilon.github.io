@@ -1039,350 +1039,338 @@ LongLines.scala: def processFile(filename: String, width: Int) = {</code></pre>
 <span class="n">res12</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
 </pre></div></div></div>
 <div class="paragraph"><p>Цей метод <code>apply</code>, визначений в автоматично згенерованому класі компілятором Scala з виразу <code>sum _</code>, просто пересилає ці три невистачаючі параметри до <code>sum</code>, та повертає результат. В цьому випадку, <code>apply</code> викликає <code>sum(1, 2, 3)</code>, та повертає те, що повертає <code>sum</code>, наразі <code>6</code>. Інший спосіб думати про цей різновид виразів, в яких підкреслення використовується для представлення цілого списку параметрів, як про шлях перетворити <code>def</code> в функціональне значення. Наприклад, якщо ви маєте локальну функцію, таку як <code>sum(a: Int, b: Int, c: Int): Int</code>, ви можете "огорнути" її в функціональне значення, чий метод <code>apply</code> матиме той самий список параметрів та типи результата. Потім ви застосовуєте <code>apply</code> цього функціонального значення до деяких аргументів, який, в свою чергу, застосовує <code>sum</code> до тих самих аргументів, та повертає повернутий результат. Хоча ви не можете присвоїти метод або вкладену функцію до змінної, або передати її як аргумент до іншої функції, ви можете робити ці речі, якщо ви огорнете метод або вкладену функцію в функціональне значення, поставивши підкреслення після її імені.</p></div>
-<div class="paragraph"><p>Тепер, хоча <code>sum _</code> безумовно частково застосована функція, в такий спосіб вам може не виглядати очевидним, чому вона названа саме так. Вона має це ім'я, оскільки ви не застосовуєте цю функцію до всіх аргументів. В випадку <code>sum _</code>, ви не застосували її до жодного її аргументу. Але ви також можете виразити частково застосовану функцію, надавши тільки деякі з потрібних аргументів. Ось приклад:</p></div>
+<div class="paragraph"><p>Тепер, хоча <code>sum _</code> безумовно частково застосована функція, в такий спосіб вам може не виглядати очевидним, чому вона названа саме так. Вона має це ім'я, оскільки ви не застосовуєте цю функцію до всіх аргументів. В випадку <code>sum _</code>, ви не застосували її до жодного аргументу. Але ви також можете виразити частково застосовану функцію, надавши тільки деякі з потрібних аргументів. Ось приклад:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">b</span> <span class="k">=</span> <span class="n">sum</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="k">_:</span> <span class="kt">Int</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
 <span class="n">b</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
 </pre></div></div></div>
-<div class="paragraph"><p>In this case, you&#8217;ve supplied the first and last argument to sum, but not the middle argument. Since only one argument is missing, the Scala compiler generates a new function class whoseapply method takes one argument. When invoked with that one argument, this generated function&#8217;s apply method invokes sum, passing in 1, the argument passed to the function, and 3. Here are some examples:</p></div>
+<div class="paragraph"><p>В цьому випадку ви надали перший та останній аргумент до <code>sum</code>, але не до середнього аргументу. Оскікльки один аргумент відсутній, компілятор Scala генерує функціональний клас, чий метод <code>apply</code> приймає один аргумент. Коли викликаний з одним аргументом, метод <code>apply</code> цієї згенерованої функції викликає <code>sum</code>, передаючи <code>1</code>, аргумент, переданий до функції, та <code>3</code>. Ось деякі приклади:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">b</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
 <span class="n">res13</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
 </pre></div></div></div>
-<div class="paragraph"><p>In this case, b.apply invoked sum(1, 2, 3).</p></div>
+<div class="paragraph"><p>В цьому випадку <code>b.apply</code> викликає <code>sum(1, 2, 3)</code>.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">b</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
 <span class="n">res14</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">9</span>
 </pre></div></div></div>
-<div class="paragraph"><p>And in this case, b.apply invoked sum(1, 5, 3).
-If you are writing a partially applied function expression in which you leave off all parameters, such
-as println _ or sum <em>, you can express it more concisely by leaving off the underscore if a function is
-required at that point in the code. For example, instead of printing out each of the numbers
-in someNumbers (defined here) like this:
-someNumbers.foreach(println _)
-You could just write:
-someNumbers.foreach(println)
-This last form is allowed only in places where a function is required, such as the invocation
-offoreach in this example. The compiler knows a function is required in this case,
-becauseforeach requires that a function be passed as an argument. In situations where a function is not
-required, attempting to use this form will cause a compilation error. Here&#8217;s an example:
-scala&gt; val c = sum
-&lt;console&gt;:8: error: missing arguments for method sum;
-follow this method with &#8216;</em>&#8217; if you want to treat it as a
-partially applied function
-val c = sum
-<sup>
-scala&gt; val d = sum <em>d: (Int, Int, Int) &#8658; Int = &lt;function3&gt;
-scala&gt; d(10, 20, 30)
-res14: Int = 60
-8.7 CLOSURES
-So far in this chapter, all the examples of function literals have referred only to passed parameters. For
-example, in (x: Int) &#8658; x &gt; 0, the only variable used in the function body, x &gt; 0, is x, which is defined
-as a parameter to the function. You can, however, refer to variables defined elsewhere:
-(x: Int) &#8658; x + more
+<div class="paragraph"><p>І в цьому випадку <code>b.apply</code> викликає <code>sum(1, 5, 3)</code>.</p></div>
+<div class="paragraph"><p>Якщо ви пишете частково застосовану функцію, в якій ви залишаєте всі параметри, таку як <code>println _</code> або <code>sum _</code>, ви можете виразити її більш стисло, відкинувши підкреслення, коли функція потрібна в цьому місці в коді. Наприклад, замість друкувати кожне число в <code>someNumbers</code> (визначена тут) ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">someNumbers</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">println</span> <span class="k">_</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете просто записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">someNumbers</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">println</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця остання форма дозволяється тільки в місціх, де потрібна функція, таких, як виклик  <code>foreach</code> в цьому прикладі. В цьому випадку компілятор знає що потрібна функція, оскільки <code>foreach</code> вимагає, щоб в якості аргумента була передана функція. В ситуаціях, коли функція не вимагається, спроба використати цю форму спричинить помилку компіляції. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">c</span> <span class="k">=</span> <span class="n">sum</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">8</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">missing</span> <span class="kt">arguments</span> <span class="kt">for</span> <span class="kt">method</span> <span class="kt">sum</span><span class="o">;</span>
+<span class="n">follow</span> <span class="k">this</span> <span class="n">method</span> <span class="k">with</span> <span class="err">`</span><span class="k">_</span><span class="err">&#39;</span> <span class="k">if</span> <span class="n">you</span> <span class="n">want</span> <span class="n">to</span> <span class="n">treat</span> <span class="n">it</span> <span class="n">as</span> <span class="n">a</span>
+<span class="n">partially</span> <span class="n">applied</span> <span class="n">function</span>
+       <span class="k">val</span> <span class="n">c</span> <span class="k">=</span> <span class="n">sum</span>
+               <span class="o">^</span>
 
-This function adds "more" to its argument, but what is more? From the point of view of this
-function, more is a free variable because the function literal does not itself give a meaning to it.
-The x variable, by contrast, is a bound variable because it does have a meaning in the context of the
-function: it is defined as the function&#8217;s lone parameter, an Int. If you try using this function literal by
-itself, without any more defined in its scope, the compiler will complain:
-scala&gt; (x: Int) &#8658; x + more
-&lt;console&gt;:8: error: not found: value more
-(x: Int) &#8658; x + more
-</sup>
-WHY THE TRAILING UNDERSCORE?
-Scala&#8217;s syntax for partially applied functions highlights a difference in the design trade-offs of Scala
-and classical functional languages, such as Haskell or ML. In these languages, partially applied
-functions are considered the normal case. Furthermore, these languages have a fairly strict static type
-system that will usually highlight every error with partial applications that you can make. Scala bears a
-much closer relation to imperative languages, such as Java, where a method that&#8217;s not applied to all its
-arguments is considered an error. Furthermore, the object-oriented tradition of subtyping and a
-universal root type accepts some programs that would be considered erroneous in classical functional
-languages.
-For instance, say you mistook the drop(n: Int) method of List for tail(), and therefore forgot you need to
-pass a number to drop. You might write, "println(drop)". Had Scala adopted the classical functional
-tradition that partially applied functions are OK everywhere, this code would type check. However, you
-might be surprised to find out that the output printed by this println statement would always
-be &lt;function&gt;! What would have happened is that the expression drop would have been treated as a
-function object. Because println takes objects of any type, this would have compiled OK, but it would
-have given an unexpected result.
-To avoid situations like this, Scala normally requires you to specify function arguments that are left out
-explicitly, even if the indication is as simple as a &#8216;</em>&#8217;. Scala allows you to leave off even the _ only when
-a function type is expected.On the other hand, the same function literal will work fine so long as there is something available
-named more:
-scala&gt; var more = 1
-more: Int = 1
-scala&gt; val addMore = (x: Int) &#8658; x + more
-addMore: Int &#8658; Int = &lt;function1&gt;
-scala&gt; addMore(10)
-res16: Int = 11
-The function value (the object) that&#8217;s created at runtime from this function literal is called aclosure. The
-name arises from the act of "closing" the function literal by "capturing" the bindings of its free
-variables. A function literal with no free variables, such as (x: Int) &#8658; x + 1, is called a closed term,
-where a term is a bit of source code. Thus a function value created at runtime from this function literal
-is not a closure in the strictest sense, because (x: Int) &#8658; x + 1is already closed as written. But any
-function literal with free variables, such as(x: Int) &#8658; x + more, is an open term. Therefore, any
-function value created at runtime from(x: Int) &#8658; x + more will, by definition, require that a binding for
-its free variable, more, be captured. The resulting function value, which will contain a reference to the
-captured morevariable, is called a closure because the function value is the end product of the act of
-closing the open term, (x: Int) &#8658; x + more.
-This example brings up a question: What happens if more changes after the closure is created? In Scala,
-the answer is that the closure sees the change. For example:
-scala&gt; more = 9999
-more: Int = 9999
-scala&gt; addMore(10)
-res17: Int = 10009
-Intuitively, Scala&#8217;s closures capture variables themselves, not the value to which variables refer.<span class="footnote"><br />[By contrast, Java&#8217;s inner classes do not allow you to access modifiable variables in surrounding scopes at all, so there is no difference between capturing a variable and capturing its currently held value.]<br /></span> As
-the previous example shows, the closure created for (x: Int) &#8658; x + more sees the change to more made
-outside the closure. The same is true in the opposite direction. Changes made by a closure to a captured
-variable are visible outside the closure. Here&#8217;s an example:
-scala&gt; val someNumbers = List(-11, -10, -5, 0, 5, 10)
-someNumbers: List[Int] = List(-11, -10, -5, 0, 5, 10)
-scala&gt; var sum = 0
-sum: Int = 0
-scala&gt; someNumbers.foreach(sum +=
-scala&gt; sum
-res19: Int = -11
-_)This example uses a roundabout way to sum the numbers in a List. Variable sum is in a surrounding
-scope from the function literal sum += _, which adds numbers to sum. Even though it is the closure
-modifying sum at runtime, the resulting total, -11, is still visible outside the closure.
-What if a closure accesses some variable that has several different copies as the program runs? For
-example, what if a closure uses a local variable of some function, and the function is invoked many
-times? Which instance of that variable gets used at each access?
-Only one answer is consistent with the rest of the language: the instance used is the one that was active
-at the time the closure was created. For example, here is a function that creates and returns "increase"
-closures:
-def makeIncreaser(more: Int) = (x: Int) &#8658; x + more
-Each time this function is called it will create a new closure. Each closure will access the morevariable
-that was active when the closure was created.
-scala&gt; val inc1 = makeIncreaser(1)
-inc1: Int &#8658; Int = &lt;function1&gt;
-scala&gt; val inc9999 = makeIncreaser(9999)
-inc9999: Int &#8658; Int = &lt;function1&gt;
-When you call makeIncreaser(1), a closure is created and returned that captures the value 1 as the
-binding for more. Similarly, when you call makeIncreaser(9999), a closure that captures the
-value 9999 for more is returned. When you apply these closures to arguments (in this case, there&#8217;s just
-one argument, x, which must be passed in), the result that comes back depends on how more was
-defined when the closure was created:
-scala&gt; inc1(10)
-res20: Int = 11
-scala&gt; inc9999(10)
-res21: Int = 10009
-It makes no difference that the more in this case is a parameter to a method call that has already
-returned. The Scala compiler rearranges things in cases like these so that the captured parameter lives
-out on the heap, instead of the stack, and thus can outlive themethod call that created it. This
-rearrangement is all taken care of automatically, so you don&#8217;t have to worry about it. Capture any
-variable you like: val, var, or parameter.
-8.8 SPECIAL FUNCTION CALL FORMS
-Most functions and function calls you encounter will be as you have seen so far in this chapter. The
-function will have a fixed number of parameters, the call will have an equal number of arguments, and
-the arguments will be specified in the same order and number as the parameters.Since function calls are so central to programming in Scala, however, a few special forms of function
-definitions and function calls have been added to the language to address some special needs. Scala
-supports repeated parameters, named arguments, and default arguments.
-Repeated parameters
-Scala allows you to indicate that the last parameter to a function may be repeated. This allows clients to
-pass variable length argument lists to the function. To denote a repeated parameter, place an asterisk
-after the type of the parameter. For example:
-scala&gt; def echo(args: String*) =
-for (arg &#8592; args) println(arg)
-echo: (args: String*)Unit
-Defined this way, echo can be called with zero to many String arguments:
-scala&gt; echo()
-scala&gt; echo("one")
-one
-scala&gt; echo("hello", "world!")
-hello
-world!
-Inside the function, the type of the repeated parameter is an Array of the declared type of the parameter.
-Thus, the type of args inside the echo function, which is declared as type "String*" is
-actually Array[String]. Nevertheless, if you have an array of the appropriate type, and you attempt to
-pass it as a repeated parameter, you&#8217;ll get a compiler error:
-scala&gt; val arr = Array("What&#8217;s", "up", "doc?")
-arr: Array[String] = Array(What&#8217;s, up, doc?)
-scala&gt; echo(arr)
-&lt;console&gt;:10: error: type mismatch;
-found
-: Array[String]
-required: String
-echo(arr)
-^
-To accomplish this, you&#8217;ll need to append the array argument with a colon and an _* symbol,like this:
-scala&gt; echo(arr: _*)
-What&#8217;s
-up
-doc?
-This notation tells the compiler to pass each element of arr as its own argument to echo, rather than all
-of it as a single argument.Named arguments
-In a normal function call, the arguments in the call are matched one by one in the order of the
-parameters of the called function:
-scala&gt; def speed(distance: Float, time: Float): Float =
-distance / time
-speed: (distance: Float, time: Float)Float
-scala&gt; speed(100, 10)
-res27: Float = 10.0
-In this call, the 100 is matched to distance and the 10 to time. The 100 and 10 are matched in the same
-order as the formal parameters are listed.
-Named arguments allow you to pass arguments to a function in a different order. The syntax is simply
-that each argument is preceded by a parameter name and an equals sign. For example, the following
-call to speed is equivalent to speed(100,10):
-scala&gt; speed(distance = 100, time = 10)
-res28: Float = 10.0
-Called with named arguments, the arguments can be reversed without changing the meaning:
-scala&gt; speed(time = 10, distance = 100)
-res29: Float = 10.0
-It is also possible to mix positional and named arguments. In that case, the positional arguments come
-first. Named arguments are most frequently used in combination with default parameter values.
-Default parameter values
-Scala lets you specify default values for function parameters. The argument for such a parameter can
-optionally be omitted from a function call, in which case the corresponding argument will be filled in
-with the default.
-An example is shown in Listing 8.3. Function printTime has one parameter, out, and it has a default
-value of Console.out.
-def printTime(out: java.io.PrintStream = Console.out) =
-out.println("time = " + System.currentTimeMillis())
-Listing 8.3 - A parameter with a default value.
-If you call the function as printTime(), thus specifying no argument to be used for out, then outwill be
-set to its default value of Console.out. You could also call the function with an explicit output stream.
-For example, you could send logging to the standard error output by calling the function
-as printTime(Console.err).
-Default parameters are especially helpful when used in combination with named parameters. In Listing
-8.4, function printTime2 has two optional parameters. The out parameter has a default of Console.out,
-and the divisor parameter has a default value of 1.def printTime2(out: java.io.PrintStream = Console.out,
-divisor: Int = 1) =
-out.println("time = " + System.currentTimeMillis()/divisor)
-Listing 8.4 - A function with two parameters that have defaults.
-Function printTime2 can be called as printTime2() to have both parameters filled in with their default
-values. Using named arguments, however, either one of the parameters can be specified while leaving
-the other as the default. To specify the output stream, call it like this:
-printTime2(out = Console.err)
-To specify the time divisor, call it like this:
-printTime2(divisor = 1000)
-8.9 TAIL RECURSION
-In Section 7.2, we mentioned that to transform a while loop that updates vars into a more functional
-style that uses only vals, you may sometimes need to use recursion. Here&#8217;s an example of a recursive
-function that approximates a value by repeatedly improving a guess until it is good enough:
-def approximate(guess: Double): Double =
-if (isGoodEnough(guess)) guess
-else approximate(improve(guess))
-A function like this is often used in search problems, with appropriate implementations
-forisGoodEnough and improve. If you want the approximate function to run faster, you might be
-tempted to write it with a while loop to try and speed it up, like this:
-def approximateLoop(initialGuess: Double): Double = {
-var guess = initialGuess
-while (!isGoodEnough(guess))
-guess = improve(guess)
-guess
-}
-Which of the two versions of approximate is preferable? In terms of brevity and var avoidance, the
-first, functional one wins. But is the imperative approach perhaps more efficient? In fact, if we measure
-execution times, it turns out that they are almost exactly the same!
-This might seem surprising because a recursive call looks much more "expansive" than a simple jump
-from the end of a loop to its beginning. However, in the case of approximate above, the Scala compiler
-is able to apply an important optimization. Note that the recursive call is the last thing that happens in
-the evaluation of function approximate&#8217;s body. Functions likeapproximate, which call themselves as
-their last action, are called tail recursive. The Scala compiler detects tail recursion and replaces it with
-a jump back to the beginning of the function, after updating the function parameters with the new
-values.The moral is that you should not shy away from using recursive algorithms to solve your problem.
-Often, a recursive solution is more elegant and concise than a loop-based one. If the solution is tail
-recursive, there won&#8217;t be any runtime overhead to be paid.
-Tracing tail-recursive functions
-A tail-recursive function will not build a new stack frame for each call; all calls will execute in a single
-frame. This may surprise a programmer inspecting a stack trace of a program that failed. For example,
-this function calls itself some number of times then throws an exception:
-def boom(x: Int): Int =
-if (x == 0) throw new Exception("boom!")
-else boom(x - 1) + 1
-This function is not tail recursive, because it performs an increment operation after the recursive call.
-You&#8217;ll get what you expect when you run it:
-scala&gt; boom(3)
-java.lang.Exception: boom!
-at .boom(&lt;console&gt;:5)
-at .boom(&lt;console&gt;:6)
-at .boom(&lt;console&gt;:6)
-at .boom(&lt;console&gt;:6)
-at .&lt;init&gt;(&lt;console&gt;:6)
-&#8230;
-TAIL CALL OPTIMIZATION
-The compiled code for approximate is essentially the same as the compiled code forapproximateLoop.
-Both functions compile down to the same thirteen instructions of Java bytecodes. If you look through
-the bytecodes generated by the Scala compiler for the tail recursive method, approximate, you&#8217;ll see
-that although both isGoodEnough and improveare invoked in the body of the method, approximate is
-not. The Scala compiler optimized away the recursive call:
-public double approximate(double);
-Code:
-0:
-aload_0
-1:
-astore_3
-2:
-aload_0
-3:
-dload_1
-4:
-invokevirtual
-#24; //Method isGoodEnough:(D)Z
-7:
-ifeq
-12
-10: dload_1
-11: dreturn
-12: aload_0
-13: dload_1
-14: invokevirtual
-#27; //Method improve:(D)D
-17: dstore_1
-18: goto
-2
-If you now modify boom so that it does become tail recursive:
-def bang(x: Int): Int =if (x == 0) throw new Exception("bang!")
-else bang(x - 1)
-You&#8217;ll get:
-scala&gt; bang(5)
-java.lang.Exception: bang!
-at .bang(&lt;console&gt;:5)
-at .&lt;init&gt;(&lt;console&gt;:6) &#8230;
-This time, you see only a single stack frame for bang. You might think that bang crashed before it
-called itself, but this is not the case. If you think you might be confused by tail-call optimizations when
-looking at a stack trace, you can turn them off by giving the following argument to the scala shell or to
-the scalac compiler:
--g:notailcalls
-With that option specified, you will get a longer stack trace:
-scala&gt; bang(5)
-java.lang.Exception: bang!
-at .bang(&lt;console&gt;:5)
-at .bang(&lt;console&gt;:5)
-at .bang(&lt;console&gt;:5)
-at .bang(&lt;console&gt;:5)
-at .bang(&lt;console&gt;:5)
-at .bang(&lt;console&gt;:5)
-at .&lt;init&gt;(&lt;console&gt;:6) &#8230;
-Limits of tail recursion
-The use of tail recursion in Scala is fairly limited because the JVM instruction set makes implementing
-more advanced forms of tail recursion very difficult. Scala only optimizes directly recursive calls back
-to the same function making the call. If the recursion is indirect, as in the following example of two
-mutually recursive functions, no optimization is possible:
-def isEven(x: Int): Boolean =
-if (x == 0) true else isOdd(x - 1)
-def isOdd(x: Int): Boolean =
-if (x == 0) false else isEven(x - 1)
-You also won&#8217;t get a tail-call optimization if the final call goes to a function value. Consider for
-instance the following recursive code:
-val funValue = nestedFun _
-def nestedFun(x: Int) : Unit = {
-if (x != 0) { println(x); funValue(x - 1) }
-}
-The funValue variable refers to a function value that essentially wraps a call to nestedFun. When you
-apply the function value to an argument, it turns around and applies nestedFun to that same argument,
-and returns the result. Therefore, you might hope the Scala compiler would perform a tail-calloptimization, but in this case it would not. Tail-call optimization is limited to situations where a method
-or nested function calls itself directly as its last operation, without going through a function value or
-some other intermediary. (If you don&#8217;t fully understand tail recursion yet, see Section 8.9).
-8.10 CONCLUSION
-This chapter has given you a grand tour of functions in Scala. In addition to methods, Scala provides
-local functions, function literals, and function values. In addition to normal function calls, Scala
-provides partially applied functions and functions with repeated parameters. When possible, function
-calls are implemented as optimized tail calls, and thus many nice-looking recursive functions run just
-as quickly as hand-optimized versions that use whileloops. The next chapter will build on these
-foundations and show how Scala&#8217;s rich support for functions helps you abstract over control.</p></div>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">d</span> <span class="k">=</span> <span class="n">sum</span> <span class="k">_</span>
+<span class="n">d</span><span class="k">:</span> <span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">Int</span><span class="o">,</span> <span class="nc">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function3</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">d</span><span class="o">(</span><span class="mi">10</span><span class="o">,</span> <span class="mi">20</span><span class="o">,</span> <span class="mi">30</span><span class="o">)</span>
+<span class="n">res14</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">60</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_7_">8.7 Замикання</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Докі в цій главі всі приклади функціональних літералів посилались тільки для переданих параметрів. Наприклад, в <code>(x: Int) =&gt; x &gt; 0</code>, єдиною змінною, що використовується в тілі функції, <code>x &gt; 0</code>, <code>x</code>, що визначається як параметр функції. Однак ви можете посилатись на змінні, визначені деінде:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">more</span> <span class="c1">// наскільки much?</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця функція додає <code>more</code> до свого аргументу, але що таке <code>more</code>? З точки зору цієї функції, <code>more</code> є <em>вільна змінна</em>, оскільки сам функціональний літерал сам по собі не надає їй значення. На відміну, змінна <code>x</code> є <em>прив'язаною змінною</em>, оскільки вона має значення в контексті функції: вона визначена як єдиний параметр функції, <code>Int</code>. Якщо ви спробуєте використати цей функціональний літера сам по собі, без деякого <code>more</code>, визначеного в полі зору, компілятор буде скаржитись:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">more</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">8</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">not</span> <span class="kt">found:</span> <span class="kt">value</span> <span class="kt">more</span>
+               <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">more</span>
+                               <span class="o">^</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="____2">Чому завершуюче підкреслення?</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Синтаксис Scala для частково застосованих функцій підкреслює різницю між компромісами дизайну Scala, та класичних функціональних мов, таких як <code>Haskell</code> або <code>ML</code>. В ціх мовах, частково застосовані функції розглядаються як звичайний випадок. Більше того, ці мови мають досить сувору статичну систему типів, що зазвичай буде підкреслювати кожну помилку з частковим застосуванням, що ви можете зробити. Scala дотримується значно блищого відношення до імперативних мов, таких як Java, де метод, що не застосовується до всіх своїх аргументів розглядається як помилка. Більше того, об'єктно-орієнтовні традиції субтипізації і універсального кореневого типу приймає деякі програми, що мали б розглядатись як помилкові в класичних функціональних мовах.</p></div>
+<div class="paragraph"><p>Наприклад, скажімо, ви переплутали метод <code>drop(n: Int)</code> в <code>List</code> з <code>tail()</code>, і, таким чином, забули, що вам треба передати число до <code>drop</code>. Ви можете записати <code>println(drop)</code>. Коли б Scala приймала класичну функціональну традицію, що частково застосовані функції гарні будь-де, цей код пройшов би перевірку типів. Однак ви можете бути здивовані знайти, що результат, який буде друкувати це твердження <code>println</code>, буде завжди <code>&lt;function&gt;</code>! Що відбуєеться, це те, що вираз <code>drop</code> буде трактуватись як функціональний об'єкт. Оскільки  <code>println</code> приймає об'єкти любого типу, це буде компілюватись OK, але це матиме непередбачуваний результат.</p></div>
+<div class="paragraph"><p>Щоб уникати ситуацій як така, Scala звичайно потребує, щоб ви вказували аргументи функцій, що зщалишились, явно, навіть якщо вони вказані так просто, як символом <code>_</code>. Scala дозволяє вам відкинути <code>_</code> тільки коли очікується функціональний тип. З іншого боку, той же функціональний літерал буде робити добре, доки доступне дещо на ім'я <code>more</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">var</span> <span class="n">more</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="n">more</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">addMore</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">more</span>
+<span class="n">addMore</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">addMore</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="n">res16</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">11</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Функціональне значення (об'єкт), що створений під час виконання з цього функціонального літерала, називається <em>замиканням</em>. Назва походить з дії "замикання" функціонального літерала, через "захоплення" прив'язок його вільних змінних. Функціональний літерал без вільних змінних, такий як <code>(x: Int) =&gt; x + 1</code>, називається <em>замкненим термом</em>, де <em>терм</em> це фрагмент джерельного коду. Таким чином, функціональне значення, створене під час виконання з цього функціонального літерала не є замиканням в суворішому сенсі, оскікльи <code>(x: Int) =&gt; x + 1</code> вже замкнений як є написаний. Але кожний функціональний літерал з вільними змінними, як <code>(x: Int) =&gt; x + more</code>, є <em>відкритим термом</em>. Таким чином, любе функціональне значення, створене під час виконання з <code>(x: Int) =&gt; x + more</code> буде, по визначення, потребувати, щоб прив'язка до вільної змінної  <code>more</code> була захоплена. Отримане функціональне значення, що буде містити посилання на захоплену змінну <code>more</code>, називається замиканням, оскільки значення функції є кінцевим продуктом дії замикання відкритого терму <code>(x: Int) =&gt; x + more</code>.</p></div>
+<div class="paragraph"><p>This example brings up a question: What happens if more changes after the closure is created? In Scala, the answer is that the closure sees the change. For example:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">more</span> <span class="k">=</span> <span class="mi">9999</span>
+<span class="n">more</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">9999</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">addMore</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="n">res17</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">10009</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Інтуітивно, замикання Scala захоплюють самі змінні, не значення, на які посилаються змінні.<span class="footnote"><br />[На відміну, внутрішні класи Java взагалі не дозволяють вам отримувати доступ до непостійних змінних в оточуючому полі зору, так що немає різниці між захопленням змінної, та захопленням її поточного значення.]<br /></span> Як показує попередній приклад, замикання, створене для <code>(x: Int) =&gt; x + more</code> бачить зміни в <code>more</code>, зроблені за межами замикання. Те саме вірно в зворотньому напрямку. Зміни, зроблені в замиканні до захопленої змінної, видимі за межами замикання. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">someNumbers</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(-</span><span class="mi">11</span><span class="o">,</span> <span class="o">-</span><span class="mi">10</span><span class="o">,</span> <span class="o">-</span><span class="mi">5</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+<span class="n">someNumbers</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(-</span><span class="mi">11</span><span class="o">,</span> <span class="o">-</span><span class="mi">10</span><span class="o">,</span> <span class="o">-</span><span class="mi">5</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="n">sum</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">someNumbers</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">sum</span> <span class="o">+=</span> <span class="k">_</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">sum</span>
+<span class="n">res19</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">11</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей приклад використовує обхідний шлях до підрахунку суми чисел в <code>List</code>. Змінна <code>sum</code> знаходиться в оточуючому полі зору відносно функціонального літерала <code>sum += _</code>, що додає числа до <code>sum</code>. Навіть зважаючи, що це замикання модифікує <code>sum</code> під час виконання, результуючий загал, <code>-11</code>, все ще видимий за межами замикання.</p></div>
+<div class="paragraph"><p>Що буде, якщо замикання має доступ до деякої змінної, що має декілька різних копій по мірі роботи програми? Наприклад, якщо замикання використовує локальну змінну деякої функції, та функція викликається декілька раз? ЯКий примірник цієї змінної буде використовуватись при кожному доступі?</p></div>
+<div class="paragraph"><p>Тільки одна відповідь узгоджена з залишком мови: використовується той примірник, що був активний під час створення замикання. Наприклад, ось функція, що створює та повертає замикання "збільшити":</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">makeIncreaser</span><span class="o">(</span><span class="n">more</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">more</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Кожний раз, коли викликається ця функція, вона буде створювати нове замикання. Кожне замикання буде отримувати доступ до змінної <code>more</code>, що була активною під час створення змінної.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">inc1</span> <span class="k">=</span> <span class="n">makeIncreaser</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+<span class="n">inc1</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">inc9999</span> <span class="k">=</span> <span class="n">makeIncreaser</span><span class="o">(</span><span class="mi">9999</span><span class="o">)</span>
+<span class="n">inc9999</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Коли ви викликаєте <code>makeIncreaser(1)</code>, створюється та повертається замикання, що захоплює значення <code>1</code> як прив'язку для <code>more</code>. Подібним чином, коли ви викликаєте <code>makeIncreaser(9999)</code>, повертається замикання, що захоплює значення <code>9999</code> для <code>more</code>. Коли ви застосовуєте ці замикання для аргументів (в цьому випадку є тільки один аргумент, <code>x</code>, що має бути переданий), результат, що повертається, залежить від того, як було визначене <code>more</code> при створенні замикання:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">inc1</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="n">res20</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">11</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">inc9999</span><span class="o">(</span><span class="mi">10</span><span class="o">)</span>
+<span class="n">res21</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">10009</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Немає різниці, що <code>more</code> в цьому випадку є параметром до виклику метода, який вже завершився. Компілятор Scala переставляє речі в випадках як цей, так що захоплений параметр живе в кіпі, замість стеку, і, таким чином, може пережити виклик метода, що створює його. Ця перестановка турботливо виконується автоматично, так що вам не треба про це турбуватись. Обчислюйте любу змінну, яку побажаєте: <code>val</code>, <code>var</code>, або параметр.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_8____">8.8 Спеціальні форми виклику функцій</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Більшість функцій та викликів функцій, які вам трапляться, будуть такі, які ви вже бачили в цій главі. Функція буде мати фіксоване число параметрів, виклик буде мати так же число аргументів, та аргументи будуть вказані в такому ж порядку та числі, що і параметри.</p></div>
+<div class="paragraph"><p>Одонак, оскільки виклики функцій є такими центральними для програмування в Scala, були додані декілька особливих форм визначення та викликів функцій, що націлені на вирішення особливих потреб. Scala підтримує повторювані параметри, іменовані аргументи та значення по замовчанню.</p></div>
+<div class="sect2">
+<h3 id="_repeated_parameters">Repeated parameters</h3>
+<div class="paragraph"><p>Scala дозволяє вам вказати, що вписок параметрів до функції може бути повторений. Це дозволяє клієнтам передати до функції список аргументів змінної довжини. Щоб позначити повторюваний параметр, поставьте зірочку після типу параметру. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">echo</span><span class="o">(</span><span class="n">args</span><span class="k">:</span> <span class="kt">String*</span><span class="o">)</span> <span class="k">=</span>
+<span class="k">for</span> <span class="o">(</span><span class="n">arg</span> <span class="k">&lt;-</span> <span class="n">args</span><span class="o">)</span> <span class="n">println</span><span class="o">(</span><span class="n">arg</span><span class="o">)</span>
+<span class="n">echo</span><span class="k">:</span> <span class="o">(</span><span class="kt">args:</span> <span class="kt">String*</span><span class="o">)</span><span class="kt">Unit</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Визначений таким чином, <code>echo</code> може бути викликаний з нулем або багатьма аргументів <code>String</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">echo</span><span class="o">()</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">echo</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">)</span>
+<span class="n">one</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">echo</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="s">&quot;world!&quot;</span><span class="o">)</span>
+<span class="n">hello</span>
+<span class="n">world</span><span class="o">!</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Всередині функції тип повторюваного параметру є <code>Array</code> декларованого типу параметру. Таким чином, тип <code>args</code> всередині функції <code>echo</code>, що декларований як тип <code>String*</code> насправді є <code>Array[String]</code>. Тим не менш, якщо ви маєте масив відповідного типу, ви можете спробувати передати його як повторюваний параметр, але отримаєте помилку компіляції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">arr</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="s">&quot;What&#39;s&quot;</span><span class="o">,</span> <span class="s">&quot;up&quot;</span><span class="o">,</span> <span class="s">&quot;doc?&quot;</span><span class="o">)</span>
+<span class="n">arr</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="nc">What</span><span class=" -Symbol">&#39;s</span><span class="o">,</span> <span class="n">up</span><span class="o">,</span> <span class="n">doc</span><span class="o">?)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">echo</span><span class="o">(</span><span class="n">arr</span><span class="o">)</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">10</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+<span class="n">found</span>    <span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+<span class="n">required</span> <span class="k">:</span> <span class="kt">String</span>
+              <span class="n">echo</span><span class="o">(</span><span class="n">arr</span><span class="o">)</span>
+              <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб досягти цього, вам треба додати аргумент масиву з двокрапкою, та символ <code>_*</code>, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">echo</span><span class="o">(</span><span class="n">arr</span><span class="k">:</span> <span class="k">_</span><span class="kt">*</span><span class="o">)</span>
+<span class="nc">What</span><span class=" -Symbol">&#39;s</span>
+<span class="n">up</span>
+<span class="n">doc</span><span class="o">?</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ЦЯ нотація каже компілятору передати кожний елемент <code>arr</code> як окремий аргумент, ніж всі разом як один аргумент.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__">Іменовані аргументи</h3>
+<div class="paragraph"><p>В звичайному виклику функції аргументи в виклику співпадають один до одного в порядку параметрів викликаної функції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">speed</span><span class="o">(</span><span class="n">distance</span><span class="k">:</span> <span class="kt">Float</span><span class="o">,</span> <span class="n">time</span><span class="k">:</span> <span class="kt">Float</span><span class="o">)</span><span class="k">:</span> <span class="kt">Float</span> <span class="o">=</span>
+         <span class="n">distance</span> <span class="o">/</span> <span class="n">time</span>
+<span class="n">speed</span><span class="k">:</span> <span class="o">(</span><span class="kt">distance:</span> <span class="kt">Float</span><span class="o">,</span> <span class="kt">time:</span> <span class="kt">Float</span><span class="o">)</span><span class="nc">Float</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">speed</span><span class="o">(</span><span class="mi">100</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
+<span class="n">res27</span><span class="k">:</span> <span class="kt">Float</span> <span class="o">=</span> <span class="mf">10.0</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому виклику <code>100</code> відповідає до <code>distance</code>, та <code>10</code> до <code>time</code>. <code>100</code> та <code>10</code> співпадають в тому ж порядку, в якому перелічені формальні параметри.</p></div>
+<div class="paragraph"><p>Іменовані аргументи дозволяють передати вам аргументи в функцію в іншому порядку. Синтаксис просто полягає в тому, що перед кожним аргументом стоіть ім'я параметру та знак рівності. Наприклад, наступний виклик до <code>speed</code> еквівалентний до <code>speed(100,10)</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">speed</span><span class="o">(</span><span class="n">distance</span> <span class="k">=</span> <span class="mi">100</span><span class="o">,</span> <span class="n">time</span> <span class="k">=</span> <span class="mi">10</span><span class="o">)</span>
+<span class="n">res28</span><span class="k">:</span> <span class="kt">Float</span> <span class="o">=</span> <span class="mf">10.0</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Called with named arguments, the arguments can be reversed without changing the meaning:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>scala&gt; speed(time = 10, distance = 100)
+res29: Float = 10.0</code></pre>
+</div></div>
+<div class="paragraph"><p>Також можливо змішувати позиційні та іменовані аргументи. В цьому випадку позщиційні аргументи ідуть першими. Іменовані аргументи найбільш часто використовуються в комбінації зі заначеннями параметрів по замовчанню.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____">Значення параметрів по замовчанню</h3>
+<div class="paragraph"><p>Scala дозволяє вам вказувати значення по замовчанню для параметрів функцій. Аргумент для кожного такого параметру може бути опціонально пропущений в виклику функції, та в такому випадку відповідний аргумент буде заповнений значенням по замовчанню.</p></div>
+<div class="paragraph"><p>Приклад показаний в Лістингу 8.3. Функція <code>printTime</code> маж один параметр, <code>out</code>, і він має значення по замовчанню <code>Console.out</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">printTime</span><span class="o">(</span><span class="n">out</span><span class="k">:</span> <span class="kt">java.io.PrintStream</span> <span class="o">=</span> <span class="n">`Console.out`</span><span class="o">)</span> <span class="k">=</span>
+  <span class="n">out</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="s">&quot;time = &quot;</span> <span class="o">+</span> <span class="nc">System</span><span class="o">.</span><span class="n">currentTimeMillis</span><span class="o">())</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Listing 8.3 - Параметр зі значенням по замовчанню.</p></div>
+<div class="paragraph"><p>Якщо ви викличете функцію як <code>printTime()</code>, таким чином не вказуючи аргумента, що буде вказувати на пристрій виводу <code>out</code>, тоді <code>out</code> буде встановлений в його значення по замовчанню, <code>Console.out</code>. Ви можете також викликати функцію з явним потоком виводу. Наприклад, ви можете надіслати журналювання до стандарного виводу помилок, викликавши функцію як <code>printTime(Console.err)</code>. Параметри по замовчанню особливо корисні, коли використовуються в комбінації з іменованими параметрами. В Лістигу 8.4 функція <code>printTime2</code> має два опціональні параметри. Параметр <code>out</code> має по замовчанню значення <code>Console.out</code>, та параметр <code>divisor</code> має значення по замовчанню <code>1</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">printTime2</span><span class="o">(</span><span class="n">out</span><span class="k">:</span> <span class="kt">java.io.PrintStream</span> <span class="o">=</span> <span class="nc">Console</span><span class="o">.</span><span class="n">out</span><span class="o">,</span>
+               <span class="n">divisor</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span><span class="o">)</span> <span class="k">=</span>
+<span class="n">out</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="s">&quot;time = &quot;</span> <span class="o">+</span> <span class="nc">System</span><span class="o">.</span><span class="n">currentTimeMillis</span><span class="o">()/</span><span class="n">divisor</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 8.4 - Функція з двома параметрами, що мають значення по замовчанню.</p></div>
+<div class="paragraph"><p>Функція <code>printTime2</code> може бути викликана як <code>printTime2()</code> щоб мати обоє свої параметри заповненими їх значеннями по замовчанню. Однак через іменовані аргументи один з параметрів може бути заданий, коли інший буде встановлений по замовчанню. Щоб вказати вихідний потік, викличте функцію таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">printTime2</span><span class="o">(</span><span class="n">out</span> <span class="k">=</span> <span class="nc">Console</span><span class="o">.</span><span class="n">err</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб задати дільник часу, викличте його так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">printTime2</span><span class="o">(</span><span class="n">divisor</span> <span class="k">=</span> <span class="mi">1000</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_9__">8.9 Хвостова рекурсія</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В розділі 7.2 ми згадували, що для трансформації цикла <code>while</code>, що оновлює <code>var</code>, на більш функціональний стиль, що використовує тільки <code>val</code>, ви можете іноді потребувати використання рекурсії. Ось приклад рекурсивоної функції, що апроксимує значення, постійно покращуючи здогадку, доки вона не стане досить гарною:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">approximate</span><span class="o">(</span><span class="n">guess</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">isGoodEnough</span><span class="o">(</span><span class="n">guess</span><span class="o">))</span> <span class="n">guess</span>
+  <span class="k">else</span> <span class="n">approximate</span><span class="o">(</span><span class="n">improve</span><span class="o">(</span><span class="n">guess</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Функція як ця часто використовується в проблемах пошуку, з відповідними реалізаціями <code>isGoodEnough</code> та <code>improve</code>. Якщо ви бажаєте, щоб функція <code>approximate</code> виконувались скоріше, ви можете підпасти в спокусу написати цикл <code>while</code>, що спробувати пришвидшити її, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">approximateLoop</span><span class="o">(</span><span class="n">initialGuess</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">guess</span> <span class="k">=</span> <span class="n">initialGuess</span>
+  <span class="k">while</span> <span class="o">(!</span><span class="n">isGoodEnough</span><span class="o">(</span><span class="n">guess</span><span class="o">))</span>
+    <span class="n">guess</span> <span class="k">=</span> <span class="n">improve</span><span class="o">(</span><span class="n">guess</span><span class="o">)</span>
+  <span class="n">guess</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Яка з двох версій <code>approximate</code> переважає? В термінах краткості та уникнення <code>var</code> перша, функціональна, перемагає. Але імперативний підхід, можливо, більш ефективний? Фактично, якщо заміряти час виконання, з'ясується, що вони майже ідеально однакові!</p></div>
+<div class="paragraph"><p>Це може виглядати несподіванкою, оскільки рекурсивний виклик виглядає значно більш "коштовним", чи простий стрибок з кінця циклу на початок. Однак в випадку <code>approximate</code> вище компілятор Scala здатний застосувати важливу оптимізацію. Зверніть увагу, що рекурсивний виклик є останєю річчю, що трапляється в обчисленні тіла функції <code>approximate</code>. Функції як <code>approximate</code>, що викликають себе як свою останню дію, називаються хвостово рекурсивними. Компілятор Scala детектує хвостову рекурсію, та замінює його на стрибок назад, на початок функції, після оновлення параметрів функції новими значеннями.</p></div>
+<div class="paragraph"><p>Мораль цього в том, що ви не повинні цураитсь використання рекурсивних алгоритмів для вирішення ваших проблем. Часто рекурсивне рішення є більш елегантним та стислим, ніж базований на циклі. Як рішення має хвостову рекурсію, не виникне ніякого навантаження часу виконання, що треба сплачувати.</p></div>
+<div class="sect2">
+<h3 id="_____">Трасування функцій з хвостовою рекурсією</h3>
+<div class="paragraph"><p>Функція з хвостовою рекорсією не буде будувати новий фрейм стека для кожного виклика; всі виклики будуть викликатись в одному фреймі. Це може бути несподіванкою для програмістів, коли вони переглядатимуть трасу стеку програми, що схибила. Наприклад, ця функція викликає сама себе деяке число разів, та потім закидає виключення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">boom</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">x</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;boom!&quot;</span><span class="o">)</span>
+  <span class="k">else</span> <span class="n">boom</span><span class="o">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця функція не має хвостової рекурсії, оскільки вона виконує операцію інкремента після рекурсивного виклику. Ви отримаєте те що очікували, якщо запустите цю програму:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">boom</span><span class="o">(</span><span class="mi">3</span><span class="o">)</span>
+<span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Exception</span><span class="k">:</span> <span class="kt">boom!</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">boom</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">boom</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">boom</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">boom</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.&lt;</span><span class="n">init</span><span class="o">&gt;(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="o">)</span>
+<span class="o">...</span>
+
+<span class="n">Оптимізаця</span> <span class="n">хвостової</span> <span class="n">рекурсії</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Скомпільований код для <code>approximate</code> в основному є те саме, що і скомпільований код для <code>approximateLoop</code>. Обоє функції компілюються до тих самих тринадцяти інструкцій байткоду Java. Якщо ви подивитесь на байткод, згенерований компілятором Scala для метода з хвостовою рекурсією, <code>approximate</code>, ви побачите, що хоча обоє, <code>isGoodEnough</code> та <code>improveare</code> викликаються в тілі метода, <code>approximate</code> - ні. Компілятор Scala оптимізував геть рекурсивний виклик:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">public</span> <span class="n">double</span> <span class="n">approximate</span><span class="o">(</span><span class="n">double</span><span class="o">);</span>
+  <span class="nc">Code</span><span class="k">:</span>
+  <span class="err">0</span><span class="kt">:</span>    <span class="kt">aload_0</span>
+  <span class="mi">1</span><span class="k">:</span>    <span class="kt">astore_3</span>
+  <span class="mi">2</span><span class="k">:</span>    <span class="kt">aload_0</span>
+  <span class="mi">3</span><span class="k">:</span>    <span class="kt">dload_1</span>
+  <span class="mi">4</span><span class="k">:</span>    <span class="kt">invokevirtual</span> <span class="k">#</span><span class="err">24</span><span class="o">;</span> <span class="c1">//Method isGoodEnough:(D)Z</span>
+  <span class="mi">7</span><span class="k">:</span>    <span class="kt">ifeq</span>  <span class="err">12</span>
+  <span class="err">10</span><span class="kt">:</span>   <span class="kt">dload_1</span>
+  <span class="mi">11</span><span class="k">:</span>   <span class="kt">dreturn</span>
+  <span class="mi">12</span><span class="k">:</span>   <span class="kt">aload_0</span>
+  <span class="mi">13</span><span class="k">:</span>   <span class="kt">dload_1</span>
+  <span class="mi">14</span><span class="k">:</span>   <span class="kt">invokevirtual</span> <span class="k">#</span><span class="err">27</span><span class="o">;</span> <span class="c1">//Method improve:(D)D</span>
+  <span class="mi">17</span><span class="k">:</span>   <span class="kt">dstore_1</span>
+  <span class="mi">18</span><span class="k">:</span>   <span class="kt">goto</span> <span class="err">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви тепер модифікуєте <code>boom</code>, так, щоб вона тепер стала хвостово рекурсивною:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">bang</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span><span class="k">if</span> <span class="o">(</span><span class="n">x</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;bang!&quot;</span><span class="o">)</span>
+  <span class="k">else</span> <span class="n">bang</span><span class="o">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви отримаєте:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">bang</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Exception</span><span class="k">:</span> <span class="kt">bang!</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.&lt;</span><span class="n">init</span><span class="o">&gt;(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="o">)</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>НА цей раз ви бачите тільки один фрейм стеку для <code>bang</code>. Ви можете думати, що <code>bang</code> впала до того, як викликати себе, але це не той випадок. Якщо ви думаєте, що ви можете бути збентежені через хвостовою оптимізацією, коли переглядаєте на трасу стеку, ви можете відключити її, надавши наступний аргумент до оболонки <code>scala</code> або компілятору <code>scalac</code>:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>-g:notailcalls</code></pre>
+</div></div>
+<div class="paragraph"><p>Коли вказана ця опція ви знову отримаєте довшу трасу стеку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">bang</span><span class="o">(</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Exception</span><span class="k">:</span> <span class="kt">bang!</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.</span><span class="n">bang</span><span class="o">(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">at</span> <span class="o">.&lt;</span><span class="n">init</span><span class="o">&gt;(&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="o">)</span> <span class="o">...</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="____3">Обмеження хвостової рекурсії</h3>
+<div class="paragraph"><p>Використання хвостової рекурсії в Scala є досить обмеженої, оскільки набір інструкцій JVM робить реалізацію більш розвинених форм хвостової рекурсії дуже складною. Scala тільки оптимізує прямі рекурсивні виклики назад, до тої самої функції, що робить виклики. Якщо рекурсія непряма, оптимізація неможлива:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">isEven</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">x</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="kc">true</span> <span class="k">else</span> <span class="n">isOdd</span><span class="o">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+
+<span class="k">def</span> <span class="n">isOdd</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">x</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="kc">false</span> <span class="k">else</span> <span class="n">isEven</span><span class="o">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви також не отримаєте хвостову оптимізацію, якщо фінальний виклик іде до функціонального значення. Розгляньте наприклад наступний рекурсивний код:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">funValue</span> <span class="k">=</span> <span class="n">nestedFun</span> <span class="k">_</span>
+<span class="k">def</span> <span class="n">nestedFun</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">x</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="o">{</span> <span class="n">println</span><span class="o">(</span><span class="n">x</span><span class="o">);</span> <span class="n">funValue</span><span class="o">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span> <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Значення змінної <code>funValue</code> посилається на функціональне значення, що в основному огортає виклик до <code>nestedFun</code>. Коли ви застосовуєте функціональне значення до аргументу, він робить свій хід, застосовує <code>nestedFun</code> до того самого аргументу, та повертає результат. Таким чином, ви маєте надію, що компілятор Scala буде робити хвостову оптимізацію, але в цьому випадку цього не буде. Оптимізація хвостового виклику обмежена до ситуацій, коли метод або вкладена функція викликає себе напряму в якості своєї останньої операції, без проходженню через функціональне значення, або деякий інший посередник. (Якщо ви досі не повністю розумієте хвостову рекурсію, дивіться Розділ 8.9).</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_8_10_">8.10 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ця глава надала вам гранд тур по функціях в Scala. На додаток до методів, Scala провадить локальні функції, функціональні літерали та функціональні значення. На додаток до нормальних функціональних викликів Scala провадить частково застосовані функції, та функції з повторюваними параметрами. Коли можливо, функціональні виклики реалізовані як оптимізовані хвостові виклики, і, таким чином, багато гарно виглядаючих рекурсивних функцій роблять так само швидко, як і оптимізовані вручну версії, що використовують цикли <code>while</code>. Наступна глава буде будуватись на ціх засадах, та покаже, як багата підтримка функцій в Scala допомагає вам абстрогуватись над керуванням.</p></div>
 </div>
 </div>
 </div>
@@ -1390,7 +1378,7 @@ foundations and show how Scala&#8217;s rich support for functions helps you abst
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-05 05:14:34 EET
+ 2019-02-05 11:46:34 EET
 </div>
 </div>
 </body>

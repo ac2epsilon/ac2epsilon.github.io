@@ -798,387 +798,367 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>Chapter 9
-Control Abstraction
-In Chapter 7, we pointed out that Scala doesn&#8217;t have many built-in control abstractions because it gives
-you the ability to create your own. In the previous chapter, you learned about function values. In this
-chapter, we&#8217;ll show you how to apply function values to create new control abstractions. Along the way,
-you&#8217;ll also learn about currying and by-name parameters.
-9.1 REDUCING CODE DUPLICATION
-All functions are separated into common parts, which are the same in every invocation of the function,
-and non-common parts, which may vary from one function invocation to the next. The common parts
-are in the body of the function, while the non-common parts must be supplied via arguments. When
-you use a function value as an argument, the non-common part of the algorithm is itself some other
-algorithm! At each invocation of such a function, you can pass in a different function value as an
-argument, and the invoked function will, at times of its choosing, invoke the passed function value.
-These higher-order functions—functions that take functions as parameters—give you extra
-opportunities to condense and simplify code.
-One benefit of higher-order functions is they enable you to create control abstractions that allow you to
-reduce code duplication. For example, suppose you are writing a file browser, and you want to provide
-an API that allows users to search for files matching some criterion. First, you add a facility to search
-for files whose names end in a particular string. This would enable your users to find, for example, all
-files with a ".scala" extension. You could provide such an API by defining a public filesEnding method
-inside a singleton object like this:
-object FileMatcher {
-private def filesHere = (new java.io.File(".")).listFiles
-}
-def filesEnding(query: String) =
-for (file &#8592; filesHere; if file.getName.endsWith(query))
-yield file
-The filesEnding method obtains the list of all files in the current directory using the private helper
-method filesHere, then filters them based on whether each file name ends with the user-specified query.
-Given filesHere is private, the filesEnding method is the only accessible method defined
-in FileMatcher, the API you provide to your users.
-So far so good, and there is no repeated code yet. Later on, though, you decide to let people search
-based on any part of the file name. This is good for when your users cannot remember if they named a
-file phb-important.doc, stupid-phb-report.doc, may2003salesdoc.phb, or something entirely different;
-they just know that "phb" appears in the name somewhere. You go back to work and add this function
-to your FileMatcher API:def filesContaining(query: String) =
-for (file &#8592; filesHere; if file.getName.contains(query))
-yield file
-This function works just like filesEnding. It searches filesHere, checks the name, and returns the file if
-the name matches. The only difference is that this function uses contains instead ofendsWith.
-The months go by, and the program becomes more successful. Eventually, you give in to the requests of
-a few power users who want to search based on regular expressions. These sloppy guys have immense
-directories with thousands of files, and they would like to do things like find all "pdf" files that have
-"oopsla" in the title somewhere. To support them, you write this function:
-def filesRegex(query: String) =
-for (file &#8592; filesHere; if file.getName.matches(query))
-yield file
-Experienced programmers will notice all of this repetition and wonder if it can be factored into a
-common helper function. Doing it the obvious way does not work, however. You would like to be able
-to do the following:
-def filesMatching(query: String, null) =
-for (file &#8592; filesHere; if file.getName.null(query))
-yield file
-This approach would work in some dynamic languages, but Scala does not allow pasting together code
-at runtime like this. So what do you do?
-Function values provide an answer. While you cannot pass around a method name as a value, you can
-get the same effect by passing around a function value that calls the method for you. In this case, you
-could add a matcher parameter to the method whose sole purpose is to check a file name against a
-query:
-def filesMatching(query: String,
-matcher: (String, String) &#8658; Boolean) = {
-for (file &#8592; filesHere; if matcher(file.getName, query))
-yield file
-}
-In this version of the method, the if clause now uses matcher to check the file name against the query.
-Precisely what this check does depends on what is specified as the matcher. Take a look, now, at the
-type of matcher itself. It is a function, and thus has a &#8658; in the type. This function takes two string
-arguments—the file name and the query—and returns a boolean, so the type of this function
-is (String, String) &#8658; Boolean.
-Given this new filesMatching helper method, you can simplify the three searching methods by having
-them call the helper method, passing in an appropriate function:
-def filesEnding(query: String) =
-filesMatching(query, <em>.endsWith(</em>))def filesContaining(query: String) =
-filesMatching(query, <em>.contains(</em>))
-def filesRegex(query: String) =
-filesMatching(query, <em>.matches(</em>))
-The function literals shown in this example use the placeholder syntax, introduced in the previous
-chapter, which may not as yet feel very natural to you. So here&#8217;s a clarification of how placeholders are
-used: The function literal <em>.endsWith(</em>), used in the filesEnding method, means the same thing as:
-(fileName: String, query: String) &#8658; fileName.endsWith(query)
-Because filesMatching takes a function that requires two String arguments, you need not specify the
-types of the arguments; you could just write(fileName, query) &#8658; fileName.endsWith(query). Since the
-parameters are each used only once in the body of the function (i.e., the first parameter, fileName, is
-used first in the body, and the second parameter, query, is used second), you can use the placeholder
-syntax: <em>.endsWith(</em>). The first underscore is a placeholder for the first parameter, the file name, and
-the second underscore a placeholder for the second parameter, the query string.
-This code is already simplified, but it can actually be even shorter. Notice that the query gets passed
-to filesMatching, but filesMatching does nothing with the query except to pass it back to the
-passed matcher function. This passing back and forth is unnecessary because the caller already knew
-the query to begin with! You might as well remove the query parameter
-fromfilesMatching and matcher, thus simplifying the code as shown in Listing 9.1.
-object FileMatcher {
-private def filesHere = (new java.io.File(".")).listFiles
-private def filesMatching(matcher: String &#8658; Boolean) =
-for (file &#8592; filesHere; if matcher(file.getName))
-yield file
-def filesEnding(query: String) =
-filesMatching(<em>.endsWith(query))
-def filesContaining(query: String) =
-filesMatching(</em>.contains(query))
-}
-def filesRegex(query: String) =
-filesMatching(<em>.matches(query))
-Listing 9.1 - Using closures to reduce code duplication.
-This example demonstrates the way in which first-class functions can help you eliminate code
-duplication where it would be very difficult to do so without them. In Java, for example, you could
-create an interface containing a method that takes one String and returns a Boolean, then create and
-pass anonymous inner class instances that implement this interface tofilesMatching. Although this
-approach would remove the code duplication you are trying to eliminate, it would, at the same time,
-add as much or more new code. Thus the benefit is not worth the cost, and you may as well live with
-the duplication.Moreover, this example demonstrates how closures can help you reduce code duplication. The function
-literals used in the previous example, such as _.endsWith(</em>) and <em>.contains(</em>), are instantiated at
-runtime into function values that are not closures because they don&#8217;t capture any free variables. Both
-variables used in the expression, <em>.endsWith(</em>), for example, are represented by underscores, which
-means they are taken from arguments to the function. Thus, <em>.endsWith(</em>) uses two bound variables,
-and no free variables. By contrast, the function literal <em>.endsWith(query), used in the most recent
-example, contains one bound variable, the argument represented by the underscore, and one free
-variable named query. It is only because Scala supports closures that you were able to remove
-the query parameter fromfilesMatching in the most recent example, thereby simplifying the code even
-further.
-9.2 SIMPLIFYING CLIENT CODE
-The previous example demonstrated that higher-order functions can help reduce code duplication as
-you implement an API. Another important use of higher-order functions is to put them in an API itself
-to make client code more concise. A good example is provided by the special-purpose looping methods
-of Scala&#8217;s collection types.<span class="footnote"><br />[These special-purpose looping methods are defined in trait Traversable, which is extended by List, Set, and Map. See Chapter 17 for a discussion.]<br /></span> Many of these are listed inTable 3.1 in Chapter 3, but take a look at just
-one example for now to see why these methods are so useful.
-Consider exists, a method that determines whether a passed value is contained in a collection. You
-could, of course, search for an element by having a var initialized to false, looping through the
-collection checking each item, and setting the var to true if you find what you are looking for. Here&#8217;s a
-method that uses this approach to determine whether a passedList contains a negative number:
-def containsNeg(nums: List[Int]): Boolean = {
-var exists = false
-for (num &#8592; nums)
-if (num &lt; 0)
-exists = true
-exists
-}
-If you define this method in the interpreter, you can call it like this:
-scala&gt; containsNeg(List(1, 2, 3, 4))
-res0: Boolean = false
-scala&gt; containsNeg(List(1, 2, -3, 4))
-res1: Boolean = true
-A more concise way to define the method, though, is by calling the higher-order functionexists on the
-passed List, like this:
-def containsNeg(nums: List[Int]) = nums.exists(</em> &lt; 0)
-This version of containsNeg yields the same results as the previous:
-scala&gt; containsNeg(Nil)
-res2: Boolean = falsescala&gt; containsNeg(List(0, -1, -2))
-res3: Boolean = true
-The exists method represents a control abstraction. It is a special-purpose looping construct provided
-by the Scala library, rather than built into the Scala language like while or for. In the previous section,
-the higher-order function, filesMatching, reduces code duplication in the implementation of
-the object FileMatcher. The exists method provides a similar benefit, but because exists is public in
-Scala&#8217;s collections API, the code duplication it reduces is client code of that API. If exists didn&#8217;t exist,
-and you wanted to write a containsOdd method to test whether a list contains odd numbers, you might
-write it like this:
-def containsOdd(nums: List[Int]): Boolean = {
-var exists = false
-for (num &#8592; nums)
-if (num % 2 == 1)
-exists = true
-exists
-}
-If you compare the body of containsNeg with that of containsOdd, you&#8217;ll find that everything is
-repeated except the test condition of an if expression. Using exists, you could write this instead:
-def containsOdd(nums: List[Int]) = nums.exists(_ % 2 == 1)
-The body of the code in this version is again identical to the body of the
-correspondingcontainsNeg method (the version that uses exists), except the condition for which to
-search is different. Yet the amount of code duplication is much smaller because all of the looping
-infrastructure is factored out into the exists method itself.
-There are many other looping methods in Scala&#8217;s standard library. As with exists, they can often shorten
-your code if you recognize opportunities to use them.
-9.3 CURRYING
-In Chapter 1, we said that Scala allows you to create new control abstractions that "feel like native
-language support." Although the examples you&#8217;ve seen so far are indeed control abstractions, it is
-unlikely anyone would mistake them for native language support. To understand how to make control
-abstractions that feel more like language extensions, you first need to understand the functional
-programming technique called currying.
-A curried function is applied to multiple argument lists, instead of just one. Listing 9.2 shows a regular,
-non-curried function, which adds two Int parameters, x and y.
-scala&gt; def plainOldSum(x: Int, y: Int) = x + y
-plainOldSum: (x: Int, y: Int)Int
-scala&gt; plainOldSum(1, 2)
-res4: Int = 3Listing 9.2 - Defining and invoking a "plain old" function.
-By contrast, Listing 9.3 shows a similar function that&#8217;s curried. Instead of one list of two Intparameters,
-you apply this function to two lists of one Int parameter each.
-scala&gt; def curriedSum(x: Int)(y: Int) = x + y
-curriedSum: (x: Int)(y: Int)Int
-scala&gt; curriedSum(1)(2)
-res5: Int = 3
-Listing 9.3 - Defining and invoking a curried function.
-What&#8217;s happening here is that when you invoke curriedSum, you actually get two traditional function
-invocations back to back. The first function invocation takes a single Int parameter named x, and
-returns a function value for the second function. This second function takes theInt parameter y. Here&#8217;s a
-function named first that does in spirit what the first traditional function invocation
-of curriedSum would do:
-scala&gt; def first(x: Int) = (y: Int) &#8658; x + y
-first: (x: Int)Int &#8658; Int
-Applying the first function to 1—in other words, invoking the first function and passing in 1—yields
-the second function:
-scala&gt; val second = first(1)
-second: Int &#8658; Int = &lt;function1&gt;
-Applying the second function to 2 yields the result:
-scala&gt; second(2)
-res6: Int = 3
-These first and second functions are just an illustration of the currying process. They are not directly
-connected to the curriedSum function. Nevertheless, there is a way to get an actual reference
-to curriedSum&#8217;s "second" function. You can use the placeholder notation to usecurriedSum in a partially
-applied function expression, like this:
-scala&gt; val onePlus = curriedSum(1)_
-onePlus: Int &#8658; Int = &lt;function1&gt;
-The underscore in curriedSum(1)_ is a placeholder for the second parameter list.<span class="footnote"><br />[In the previous chapter, when the placeholder notation was used on traditional methods, like println <em>, you had to leave a space between the name and the underscore. In this case you don&#8217;t, because whereas println</em> is a legal identifier in Scala, curriedSum(1)_ is not.]<br /></span> The result is a
-reference to a function that, when invoked, adds one to its sole Int argument and returns the result:
-scala&gt; onePlus(2)
-res7: Int = 3
-And here&#8217;s how you&#8217;d get a function that adds two to its sole Int argument:
-scala&gt; val twoPlus = curriedSum(2)_
-twoPlus: Int &#8658; Int = &lt;function1&gt;
-scala&gt; twoPlus(2)
-res8: Int = 49.4 WRITING NEW CONTROL STRUCTURES
-In languages with first-class functions, you can effectively make new control structures even though the
-syntax of the language is fixed. All you need to do is create methods that take functions as arguments.
-For example, here is the "twice" control structure, which repeats an operation two times and returns the
-result:
-scala&gt; def twice(op: Double &#8658; Double, x: Double) = op(op(x))
-twice: (op: Double &#8658; Double, x: Double)Double
-scala&gt; twice(_ + 1, 5)
-res9: Double = 7.0
-The type of op in this example is Double &#8658; Double, which means it is a function that takes
-oneDouble as an argument and returns another Double.
-Any time you find a control pattern repeated in multiple parts of your code, you should think about
-implementing it as a new control structure. Earlier in the chapter you saw filesMatching, a very
-specialized control pattern. Consider now a more widely used coding pattern: open a resource, operate
-on it, and then close the resource. You can capture this in a control abstraction using a method like the
-following:
-def withPrintWriter(file: File, op: PrintWriter &#8658; Unit) = {
-val writer = new PrintWriter(file)
-try {
-op(writer)
-} finally {
-writer.close()
-}
-}
-Given such a method, you can use it like this:
-withPrintWriter(
-new File("date.txt"),
-writer &#8658; writer.println(new java.util.Date)
-)
-The advantage of using this method is that it&#8217;s withPrintWriter, not user code, that assures the file is
-closed at the end. So it&#8217;s impossible to forget to close the file. This technique is called the loan pattern,
-because a control-abstraction function, such as withPrintWriter, opens a resource and "loans" it to a
-function. For instance, withPrintWriter in the previous example loans a PrintWriter to the function, op.
-When the function completes, it signals that it no longer needs the "borrowed" resource. The resource
-is then closed in a finally block, to ensure it is indeed closed, regardless of whether the function
-completes by returning normally or throwing an exception.
-One way in which you can make the client code look a bit more like a built-in control structure is to use
-curly braces instead of parentheses to surround the argument list. In any method invocation in Scala in
-which you&#8217;re passing in exactly one argument, you can opt to use curly braces to surround the argument
-instead of parentheses.For example, instead of:
-scala&gt; println("Hello, world!")
-Hello, world!
-You could write:
-scala&gt; println { "Hello, world!" }
-Hello, world!
-In the second example, you used curly braces instead of parentheses to surround the arguments
-to println. This curly braces technique will work, however, only if you&#8217;re passing in one argument.
-Here&#8217;s an attempt at violating that rule:
-scala&gt; val g = "Hello, world!"
-g: String = Hello, world!
-scala&gt; g.substring { 7, 9 }
-&lt;console&gt;:1: error: <em>;</em> expected but <em>,</em> found.
-g.substring { 7, 9 }
-^
-Because you are attempting to pass in two arguments to substring, you get an error when you try to
-surround those arguments with curly braces. Instead, you&#8217;ll need to use parentheses:
-scala&gt; g.substring(7, 9)
-res12: String = wo
-The purpose of this ability to substitute curly braces for parentheses for passing in one argument is to
-enable client programmers to write function literals between curly braces. This can make a method call
-feel more like a control abstraction. Take the withPrintWritermethod defined previously as an example.
-In its most recent form, withPrintWriter takes two arguments, so you can&#8217;t use curly braces.
-Nevertheless, because the function passed towithPrintWriter is the last argument in the list, you can use
-currying to pull the first argument, the File, into a separate argument list. This will leave the function as
-the lone parameter of the second argument list. Listing 9.4 shows how you&#8217;d need to
-redefine withPrintWriter.
-def withPrintWriter(file: File)(op: PrintWriter &#8658; Unit) = {
-val writer = new PrintWriter(file)
-try {
-op(writer)
-} finally {
-writer.close()
-}
-}
-Listing 9.4 - Using the loan pattern to write to a file.
-The new version differs from the old one only in that there are now two parameter lists with one
-parameter each instead of one parameter list with two parameters. Look between the two parameters. In
-the previous version of withPrintWriter, shown here, you see &#8230;File, op&#8230;. But in this version, you
-see &#8230;File)(op&#8230;. Given the above definition, you can call the method with a more pleasing syntax:val file = new File("date.txt")
-withPrintWriter(file) { writer &#8658;
-writer.println(new java.util.Date)
-}
-In this example, the first argument list, which contains one File argument, is written surrounded by
-parentheses. The second argument list, which contains one function argument, is surrounded by curly
-braces.
-9.5 BY-NAME PARAMETERS
-The withPrintWriter method shown in the previous section differs from built-in control structures of the
-language, such as if and while, in that the code between the curly braces takes an argument. The
-function passed to withPrintWriter requires one argument of typePrintWriter. This argument shows up
-as the "writer &#8658;" in:
-withPrintWriter(file) { writer &#8658;
-writer.println(new java.util.Date)
-}
-But what if you want to implement something more like if or while, where there is no value to pass into
-the code between the curly braces? To help with such situations, Scala provides by-name parameters.
-As a concrete example, suppose you want to implement an assertion construct called myAssert.
-<span class="footnote"><br />[You&#8217;ll call this myAssert, not assert, because Scala provides an assert of its own, which will be described in Section 14.1.]<br /></span> The myAssert function will take a function value as input and consult a flag to decide what to do. If
-the flag is set, myAssert will invoke the passed function and verify that it returns true. If the flag is
-turned off, myAssert will quietly do nothing at all.
-Without using by-name parameters, you could write myAssert like this:
-var assertionsEnabled = true
-def myAssert(predicate: () &#8658; Boolean) =
-if (assertionsEnabled &amp;&amp; !predicate())
-throw new AssertionError
-The definition is fine, but using it is a little bit awkward:
-myAssert(() &#8658; 5 &gt; 3)
-You would really prefer to leave out the empty parameter list and &#8658; symbol in the function literal and
-write the code like this:
-myAssert(5 &gt; 3) // Won&#8217;t work, because missing () &#8658;
-By-name parameters exist precisely so that you can do this. To make a by-name parameter, you give the
-parameter a type starting with &#8658; instead of () &#8658;. For example, you could
-changemyAssert&#8217;s predicate parameter into a by-name parameter by changing its type, "() &#8658; Boolean",
-into "&#8658; Boolean". Listing 9.5 shows how that would look:def byNameAssert(predicate: &#8658; Boolean) =
-if (assertionsEnabled &amp;&amp; !predicate)
-throw new AssertionError
-Listing 9.5 - Using a by-name parameter.
-Now you can leave out the empty parameter in the property you want to assert. The result is that
-using byNameAssert looks exactly like using a built-in control structure:
-byNameAssert(5 &gt; 3)
-A by-name type, in which the empty parameter list, (), is left out, is only allowed for parameters. There
-is no such thing as a by-name variable or a by-name field.
-Now, you may be wondering why you couldn&#8217;t simply write myAssert using a plain old Booleanfor the
-type of its parameter, like this:
-def boolAssert(predicate: Boolean) =
-if (assertionsEnabled &amp;&amp; !predicate)
-throw new AssertionError
-This formulation is also legal, of course, and the code using this version of boolAssert would still look
-exactly as before:
-boolAssert(5 &gt; 3)
-Nevertheless, one difference exists between these two approaches that is important to note. Because the
-type of boolAssert&#8217;s parameter is Boolean, the expression inside the parentheses inboolAssert(5 &gt; 3) is
-evaluated before the call to boolAssert. The expression 5 &gt; 3 yields true, which is passed to boolAssert.
-By contrast, because the type of byNameAssert&#8217;s predicate parameter is&#8658; Boolean, the expression
-inside the parentheses in byNameAssert(5 &gt; 3) is not evaluated before the call to byNameAssert.
-Instead a function value will be created whose apply method will evaluate 5 &gt; 3, and this function
-value will be passed to byNameAssert.
-The difference between the two approaches, therefore, is that if assertions are disabled, you&#8217;ll see any
-side effects that the expression inside the parentheses may have in boolAssert, but not
-in byNameAssert. For example, if assertions are disabled, attempting to assert on "x / 0 == 0" will yield
-an exception in boolAssert&#8217;s case:
-scala&gt; val x = 5
-x: Int = 5
-scala&gt; var assertionsEnabled = false
-assertionsEnabled: Boolean = false
-scala&gt; boolAssert(x / 0 == 0)
-java.lang.ArithmeticException: / by zero
-&#8230; 33 elided
-But attempting to assert on the same code in byNameAssert&#8217;s case will not yield an exception:
-scala&gt; byNameAssert(x / 0 == 0)9.6 CONCLUSION
-This chapter has shown you how to build on Scala&#8217;s rich function support to build control abstractions.
-You can use functions within your code to factor out common control patterns, and you can take
-advantage of higher-order functions in the Scala library to reuse control patterns that are common
-across all programmers' code. We also discussed how to use currying and by-name parameters so that
-your own higher-order functions can be used with a concise syntax.
-In the previous chapter and this one, you have seen quite a lot of information about functions. The next
-few chapters will go back to discussing more object-oriented features of the language.</p></div>
+<div class="sect1">
+<h2 id="__9">Глава 9</h2>
+<div class="sectionbody">
+</div>
+</div>
+<h1 id="__">Абстракції керування</h1>
+<div class="paragraph"><p>В Главі 7 ми вказали, що Scala не має багато вбудованих абстракцій керування, оскільки вона надає вам можливість створювати ваші власні. В попередній главі ви навчились щодо функціональних значень. В цій главі ми покажемо вам, як застосовувати функціональні значення для створення нових абстракцій керування. По ходу справи ми вивчимо, що таке карування та параметри за ім'ям.</p></div>
+<div class="sect1">
+<h2 id="_9_1___">9.1 Зменьшення дублікації коду</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Всі функції поділяються на загальні частини, що є ті самі за кожного виклику функції, та незагальні частини, що можуть змінюватись від одного виклику до іншого. Загальні частини знаходяться в тілі функції, тоді як незагальні частини мають бути надані через аргументи. Коли ви використовуєте функцію як аргумент, незагальна частина алгоритму сама є деяким іншим алгоритмом! За кожного виклику такої функції ви можете передати інше функціональне значення як аргумент, і викликана функція буде, за своїм вибором, викликати передане функціональне значення. Ці <em>функції вищих порядків</em> — функції, що приймають функції як параметри, даватимуть вам додаткові можливості стиснути та спростити код.</p></div>
+<div class="paragraph"><p>Одна з вигод функцій вищого порядку в тому, що вони надають можливість створювати керівні абстракції, які дозволяють вам зменшити дублікацію кода. Наприклад, уявімо, що ви пишете переглядач файлів, і ви бажаєте впровадити API, що дозволяє користувачам шукати файли, які співпадають з деяким критерієм. Перше, ви додаєте можливість пошуку файлів, чиє ім'я закінчується на певний рядок. Це надасть можливість вашим користувачам шукати, наприклад, всі файли з розширенням <code>.scala</code>. Ви можете провадити таке API, визначивши публічний метод <code>filesEnding</code> в об'єкті синглтоні, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">FileMatcher</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">def</span> <span class="n">filesHere</span> <span class="k">=</span> <span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="nc">File</span><span class="o">(</span><span class="s">&quot;.&quot;</span><span class="o">)).</span><span class="n">listFiles</span>
+
+  <span class="k">def</span> <span class="n">filesEnding</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">;</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+      <span class="k">yield</span> <span class="n">file</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>filesEnding</code> отримує список з усіх файлів в поточній директорії, використовуючи приватний допоміжний метод <code>filesHere</code>, потім фільтрує їх на сонові того, чи ім'я кожного файлу завершується на вказаний користувачем суфікс. Зважаючи що <code>filesHere</code> є приватним, метод <code>filesEnding</code> є єдиним доступним методом в  <code>FileMatcher</code>, API, що ви провадите для своїх користувачів.</p></div>
+<div class="paragraph"><p>Докі все гарно, і немає коду, що повторюється. Однак пізніше ви вирішуєте дозволити людям шукати на основі любої частини імені файла. Це гарно, коли користувачі не пам'ятають, чи вони назвали файл <code>phb-important.doc</code>, <code>stupid-phb-report.doc</code>, <code>may2003salesdoc.phb</code>, або якось зовсім інакше; вони можуть тільки запам'ятати, що десь в імен з'являється <code>phb</code>. Ви повертаєтесь до роботи, і додаєте цю функцію до вашого <code>FileMatcher API</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">filesContaining</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">;</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+    <span class="k">yield</span> <span class="n">file</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця функція робить так само, як <code>filesEnding</code>. Вона шукає <code>filesHere</code>, перевіряє ім'я, та повертає файл, якщо ім'я співпадає. Одна різниця в тому, що ця функція використовує <code>contains</code> замість <code>ofendsWith</code>.</p></div>
+<div class="paragraph"><p>Пройшли місяці, і програма стала більш успішною. З часом ви отримуєте запит від декількох досвідчених користувачів, які бажають шукати на основі регулярних запитів. Ці недбалі хлопці мають величезні каталоги з тисячами файлів, і вони бажають робити такі речі, як шукати всі файли <code>pdf</code>, що мають десь в назві <code>"oopsla"</code>. Щоб підтримати їх, ви пишете цю функцію:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">filesRegex</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">;</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="n">matches</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+    <span class="k">yield</span> <span class="n">file</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ДОсвідчені програмісти зауважать всі ці повторення, та поміркують, чи не можна все це винести в загальну допоміжну функцію. Однак, якщо зробити це в очевидний спосіб не буде робити. Ви, можливо, хотіли б зробити щось таке:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">filesMatching</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="kc">null</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">;</span> <span class="k">if</span> <span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">.</span><span class="kc">null</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+    <span class="k">yield</span> <span class="n">file</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей підхід буде робити в деяких динамічних мовах, але Scala не дозволяє зліплювати код разом під час виконання, як тут. Так що ви можете зробити?</p></div>
+<div class="paragraph"><p>Функціональні значення провадять відповідь. Хоча ви не можете передати по колу ім'я метода як значення, ви можете досягти того ж ефекту, передаючи по колу функціональне значення, що викликає метод за вас. В цьому випадку ви можете додати до метода параметр <code>matcher</code>, чиє єдине призначення є перевіряти ім'я файлу відносно деякого запиту:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">filesMatching</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+    <span class="n">matcher</span><span class="k">:</span> <span class="o">(</span><span class="kt">String</span><span class="o">,</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+
+  <span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">;</span> <span class="k">if</span> <span class="n">matcher</span><span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">,</span> <span class="n">query</span><span class="o">))</span>
+    <span class="k">yield</span> <span class="n">file</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цій версії метода, вираз <code>if</code> тепер використовує <code>matcher</code> для перевірки імені файла відносно запиту. Що в точності це перевіряє залежить від того, що вказане як <code>matcher</code>. Тепер погляньте на тип самого <code>matcher</code>. Це функція, і таким чином має <code>=&gt;</code> в своєму типі. Ця функція приймає два рядкових аргумента, ім'я файлу та запит, та повертає логічне значення, так що тип цієї функції є <code>(String, String) =&gt; Boolean</code>.</p></div>
+<div class="paragraph"><p>Маючи цей новий допоміжний метод <code>filesMatching</code> ви можете спростити три пошукові методи, щоб вони викликати допоміжний метод, якому передається відповідна функція:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">filesEnding</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="n">filesMatching</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="k">_</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="k">_</span><span class="o">))</span>
+
+<span class="k">def</span> <span class="n">filesContaining</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="n">filesMatching</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="k">_</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="k">_</span><span class="o">))</span>
+
+<span class="k">def</span> <span class="n">filesRegex</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+  <span class="n">filesMatching</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="k">_</span><span class="o">.</span><span class="n">matches</span><span class="o">(</span><span class="k">_</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Функціональні літерали, показані в цьому прикладі, використовують синтаксис замінників, введений в попередній главі, що, можливо, не є досі природним для вас. Так що ось роз'яснення як роблять замінники: функціональний літерал</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>_.endsWith(_)</code></pre>
+</div></div>
+<div class="paragraph"><p>використаний в методі <code>filesEnding</code>, означає те саме, що і:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">(</span><span class="n">fileName</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">fileName</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="n">query</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки <code>filesMatching</code> приймає функцію, що потребує два аргумента <code>String</code>, вам не треба вказувати типи його аргументів; ви можете просто писати <code>(fileName, query) =&gt; fileName.endsWith(query)</code>. Оскільки параметри використовуються тільки по одному разу кожний в тілі функції (тобто, перший параметр, <code>fileName</code>, використовується першим в тілі, та другий параметр, <code>query</code>, використовується другим), ви можете використовувати синтаксис замінників: <code>_.endsWith(_)</code>. Перше підкреслення є замінником для першого параметру, імені файлу, та друге підкреслення замінником для другого параметру, рядка запиту.</p></div>
+<div class="paragraph"><p>Цей код вже спрощений, але насправді він може бути ще коротший. Зауважте, що щапит був переданий до <code>filesMatching</code>, але <code>filesMatching</code> нічого не робить з <code>query</code>, крім того, що передає назад, до функції <code>matcher</code>. Це пересилання туди і назад непотрібне, оскільки викликач вже знає <code>query</code>, з якого починати! Ви можете також видалити параметр <code>query</code> з <code>filesMatching</code> та <code>matcher</code>, тим самим спростивши код так, як показано в Лістингу 9.1.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">FileMatcher</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">def</span> <span class="n">filesHere</span> <span class="k">=</span> <span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="nc">File</span><span class="o">(</span><span class="s">&quot;.&quot;</span><span class="o">)).</span><span class="n">listFiles</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">filesMatching</span><span class="o">(</span><span class="n">matcher</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span> <span class="k">=</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">file</span> <span class="k">&lt;-</span> <span class="n">filesHere</span><span class="o">;</span> <span class="k">if</span> <span class="n">matcher</span><span class="o">(</span><span class="n">file</span><span class="o">.</span><span class="n">getName</span><span class="o">))</span>
+      <span class="k">yield</span> <span class="n">file</span>
+
+  <span class="k">def</span> <span class="n">filesEnding</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+    <span class="n">filesMatching</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">endsWith</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+
+  <span class="k">def</span> <span class="n">filesContaining</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+    <span class="n">filesMatching</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">contains</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+
+  <span class="k">def</span> <span class="n">filesRegex</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+    <span class="n">filesMatching</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">matches</span><span class="o">(</span><span class="n">query</span><span class="o">))</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 9.1 - Використання замикань для зменьшення дублікації коду.</p></div>
+<div class="paragraph"><p>Цей приклад демонструє спосіб, в який першокласні функції можуть допомогти уникнути дублікації коду, коли б це було дуже складно зробити без них. Наприклад, в Java ви можете створити інтерфейс, що містить метод, що приймає <code>String</code> та повертає <code>Boolean</code>, потім створити та передати примірники анонімних внутрішніх класів, що реалізують цей інтерфейс до <code>filesMatching</code>. Хоча цей підхід буде видаляти дублікацію, якої ми бажаємо уникнути, він буде, в той самий час, стільки ж, або більше, нового коду. Таким чином, вигоди не вартують ціли, і ви можете так само гарно жити з дублікацією.</p></div>
+<div class="paragraph"><p>Більше того, цей приклад демонструє, як замикання можуть допомогти зменшити дублікацію коду. Функціональні літерали, використані в попередньому прикладі, такі як <code>_.endsWith(_)</code> та <code>_.contains(_)</code>, під час виконання утворюють примірники функціональних значень, що не є замиканнями, бо вони не захоплюють жодних вільних змінних. Обі змінні, використані в вирарзі, наприклад, <code>_.endsWith(_)</code>, представлені підкресленнями, що означає, що вони взяті з аргументів функції. Таким чином, <code>_.endsWith(_)</code> використовує дві прив'язані змінні, і жодних вільних змінних. Для контрасту, функціональний літерал <code>_.endsWith(query)</code>, використана в останньому прикладі, містить прив'язану змінну, аргумент, представлений підкресленням, та одну вільну змінну на ім'я <code>query</code>. Це так тільки через те, що Scala підтримує замикання, так що ви були в змозі видалити параметр <code>query</code> з <code>filesMatching</code> в самому останньому прикладі, тим самим ще більше скоротивши код.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_9_2___">9.2 Спрощення клієнтського кода</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Попередній приклад демонструє, що функції вищого порядку можуть допомогти зменьшити дублікацію кода, коли ви реалізуєте API. Але важливе використання функцій вищого порядку є покладання їх в саме API, щоб зробити клієнтський код більш стислим. Гарний приклад надається методами циклів спеціального призначення на типах колекцій Scala.<span class="footnote"><br />[Ці методи циклів спеціального призначення визначені в трейті <code>Traversable</code>, що розширюється <code>List</code>, <code>Set</code>, та <code>Map</code>. Дивіться Главу 17 щодо дискусії.]<br /></span> Багато з них перелічені в Таблиці 3.1 в Главі 3, але поки ми поглянемо тільки на один приклад, щоб побачити, чому ці методи такі користні.</p></div>
+<div class="paragraph"><p>Розглянемо метод <code>exists</code>, що визначає, чи передане значення міститься в колекції. Звичайно, ви можете шукати елементи, маючи <code>var</code> ініціалізоване в <code>false</code>, в циклі переглядадти колекцію, перевіряючи кожний елемент, та встановити <code>var</code> в <code>true</code>, якщо ви знайдете те, що шукаєте. Ось метод, що використовує цей підхід для визначення, чи переданий <code>List</code> містить від'ємне число:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">containsNeg</span><span class="o">(</span><span class="n">nums</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">exists</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">num</span> <span class="k">&lt;-</span> <span class="n">nums</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">num</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span>
+      <span class="n">exists</span> <span class="k">=</span> <span class="kc">true</span>
+  <span class="n">exists</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви визначите цей метод в інтерпретаторі, ви зможете викликати його ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">containsNeg</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">))</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">containsNeg</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="o">-</span><span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">))</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак більш стислий шлях визначити цей метод, це викликати функцію вищого порядку <code>exists</code> на переданому <code>List</code>, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">containsNeg</span><span class="o">(</span><span class="n">nums</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span> <span class="k">=</span> <span class="n">nums</span><span class="o">.</span><span class="n">exists</span><span class="o">(</span><span class="k">_</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця версія <code>containsNeg</code> видає той самий резільтат, що і попередній:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">containsNeg</span><span class="o">(</span><span class="nc">Nil</span><span class="o">)</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">containsNeg</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="o">-</span><span class="mi">1</span><span class="o">,</span> <span class="o">-</span><span class="mi">2</span><span class="o">))</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>exists</code> представляє абстракцію керування. Це циклічна конструкція особливого призначення, запровадженна бібліотекою Scala, скоріше ніж вбудована в мову Scala, як <code>while</code> або <code>for</code>. В попередньому розділі функція вищого порядку, <code>filesMatching</code>, зменьшує дублікацію коду в реалізації об'єкта <code>FileMatcher</code>. Метод <code>exists</code> провадить подібну перевагу, але оскільки <code>exists</code> є публічним в API колекцій Scala, дублікація коду, який він зменшує, є клієнтський код цього API. Якщо б не існував <code>exists</code>, і ви б бажали написати метод <code>containsOdd</code> для перевірки, чи список містить непарні числа, ви б могли написати це так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">containsOdd</span><span class="o">(</span><span class="n">nums</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">exists</span> <span class="k">=</span> <span class="kc">false</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">num</span> <span class="k">&lt;-</span> <span class="n">nums</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">num</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="n">exists</span> <span class="k">=</span> <span class="kc">true</span>
+<span class="n">exists</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви порівняєте тіло <code>containsNeg</code> з таким в <code>containsOdd</code>, ви знайдете, що все повторюється, за винятком умови перевірки в виразі <code>if</code>. Використовуючи <code>exists</code>, замість ви можете записати таке:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">containsOdd</span><span class="o">(</span><span class="n">nums</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span> <span class="k">=</span> <span class="n">nums</span><span class="o">.</span><span class="n">exists</span><span class="o">(</span><span class="k">_</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">1</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тіло кода в цій версії знову ідентичне до тіла відповідного метода <code>containsNeg</code> (версія, що використовує <code>exists</code>), за винятком того, що відрізняється умова, по якій виконується пошук. Знову, кількість дублікованого коду є значно меньшим, оскільки вся циклічна інфраструктура виділена в самий метод <code>exists</code>. В стандартній бібліотеці Scala існує багато інших циклічних методів. Як і з <code>exists</code>, вони часто можуть скоротити ваш код, якщо ви розпізнаєте можливість використати їх.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_9_3_">9.3 Карування</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В Главі 1 ми казали, що Scala дозволяє вам створювати нові абстракції керування, що "відчуваються як природна підтримка мови". Хоча приклади, що ви бачили досі, напевне є абстраціями керування, навряд що хтось помилково зплутає їх з природною підтримкою мови. Щоб зрозуміти, як створити абстракції керування, що відчуваються більш подібно до розширень мови, зпочатку вам треба зрозуміти прийом функціонального програмування, що називається <em>карування</em>. Карована функція застосовується до декількох списків аргументів, замість тільки одного. Лістинг 9.2 показує звичайну, некаровану функцію, що додає два <code>Int</code> параметри, <code>x</code> та <code>y</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">plainOldSum</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<span class="n">plainOldSum</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Int</span><span class="o">,</span> <span class="kt">y:</span> <span class="kt">Int</span><span class="o">)</span><span class="nc">Int</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">plainOldSum</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3L</span><span class="n">isting</span> <span class="mf">9.2</span> <span class="o">-</span> <span class="nc">Defining</span> <span class="n">and</span> <span class="n">invoking</span> <span class="n">a</span> <span class="s">&quot;plain old&quot;</span> <span class="n">function</span><span class="o">.</span>
+</pre></div></div></div>
+<div class="paragraph"><p>На відміну, Лістинг 9.3 показує подібну функцію, що є карованою. Замість одного списку з двох <code>Int</code>, ви застосовуєте цю функцію до двох списків, по одному параметру <code>Int</code> кожний.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">curriedSum</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)(</span><span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<span class="n">curriedSum</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Int</span><span class="o">)(</span><span class="kt">y:</span> <span class="kt">Int</span><span class="o">)</span><span class="kt">Int</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">curriedSum</span><span class="o">(</span><span class="mi">1</span><span class="o">)(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 9.3 - Визначення та виклик карованої функції.</p></div>
+<div class="paragraph"><p>Що тут відбувається, це коли ви викликаєте <code>curriedSum</code>, насправді ви отримуєте два традиційні виклики функцій, пліч-о-пліч. Перший виклик функції приймає один параметр <code>Int</code> на ім'я <code>x</code>, та повертає значення функції для другої функції. Ця друга функція приймає <code>Int</code> параметр <code>y</code>. Ось функція на ім'я <code>first</code>, що діє в дусі, що мав би робити перший традиційний виклик функції <code>curriedSum</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">first</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="o">(</span><span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<span class="n">first</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Int</span><span class="o">)</span><span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Застосовуючи першої функції до 1 — іншими словами, викликаючи першу функцію, та передаючі їй 1 — дає другу функцію:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">second</span> <span class="k">=</span> <span class="n">first</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+<span class="n">second</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Застосовуючи другу функцію до 2 дає результат:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">second</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ці функції, <code>first</code> та <code>second</code>, є просто ілюстраціями процесу карування. Вони напряму не пов'язані до функції <code>curriedSum</code>. Тим не менш, існує спосіб отримати дійсне посилання на "другу" функцію <code>curriedSum</code>. Ви можете використовувати нотацію замінників для використання <code>curriedSum</code> в частково застосованому функціональному виразі, таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">onePlus</span> <span class="k">=</span> <span class="n">curriedSum</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span><span class="k">_</span>
+<span class="n">onePlus</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Підкреслення в <code>curriedSum(1)_</code> є замінником для другого списку параметрів.<span class="footnote"><br />[В попередній главі, коли нотація замінників була застосована в традиційному методі, як <code>println _</code>, ви маєте залишати проміжок між ім'ям та підкресленням. В цьому випадку ви не змушені робити це, оскільки хоча <code>println_</code> є легальним ідентифікатором в Scala, <code>curriedSum(1)_</code> - ні.]<br /></span> Результатом буде посилання на функцію, що, коли буде викликана, додає один до свого єдиного аргумента <code>Int</code>, та повертає результат:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">onePlus</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Та ось як ви отримуєте функцію, що додає два до свого єдиного аргументу <code>Int</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">twoPlus</span> <span class="k">=</span> <span class="n">curriedSum</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span><span class="k">_</span>
+<span class="n">twoPlus</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">function1</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">twoPlus</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">4</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_9_4____">9.4 Написання нових керівних структур</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В мові з першокласними функціями ви можете ефективно створити нові керівні структури, навіть якщо синтаксис мови фіксований. Все що вам треба зробити - це створити методи, що приймають функції як аргументи. Наприклад, ось керівна структура <code>twice</code>, що повторює операцію два рази, та повертає результат:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">twice</span><span class="o">(</span><span class="n">op</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=&gt;</span> <span class="nc">Double</span><span class="o">,</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="k">=</span> <span class="n">op</span><span class="o">(</span><span class="n">op</span><span class="o">(</span><span class="n">x</span><span class="o">))</span>
+<span class="n">twice</span><span class="k">:</span> <span class="o">(</span><span class="kt">op:</span> <span class="kt">Double</span> <span class="o">=&gt;</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="nc">Double</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">twice</span><span class="o">(</span><span class="k">_</span> <span class="o">+</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="mf">7.0</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тип <code>op</code> в цьому прикладі є <code>Double =&gt; Double</code>, що означає, що це функція, що приймає одне <code>Double</code> в якості аргументу, та повертає інше <code>Double</code>. Кожного разу, коли ви знайдете шаблон керування, повторюваний в декількох частинах вашого коду, вам слідує подувати про реалізацію його як нової керуючої структури. Раніше в цій главі ви бачили <code>filesMatching</code>, дуже спеціалізований керівний шаблон. Тепер розглянемо більш широко використовуваний шаблон кодування: відкрити ресурс, виконувати операції з ним, та потім зачинити ресурс. Ви можете захопити це в керівній абстракції, використовуючи метод, подібний до наступного:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">withPrintWriter</span><span class="o">(</span><span class="n">file</span><span class="k">:</span> <span class="kt">File</span><span class="o">,</span> <span class="n">op</span><span class="k">:</span> <span class="kt">PrintWriter</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">writer</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PrintWriter</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">op</span><span class="o">(</span><span class="n">writer</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="o">()</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи такий метод, ви можете використати його таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">withPrintWriter</span><span class="o">(</span>
+  <span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="s">&quot;date.txt&quot;</span><span class="o">),</span>
+  <span class="n">writer</span> <span class="k">=&gt;</span> <span class="n">writer</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">Date</span><span class="o">)</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Перевага від використання цього метода в тому, що це <code>withPrintWriter</code>, а не код користувача, переконується, що в кінці файл буде зачинений . Так що неможливо забути зачинити файл. Цей прийом називається <em>шаблоном позичання</em>, оскікльи функція абстракції керування, така як <code>withPrintWriter</code>, відкриває ресурс, та "позичає" його функції. Наприклад, <code>withPrintWriter</code> в попередньому прикладі позичає <code>PrintWriter</code> функції <code>op</code>. Коли функція завершується, вона сигналить, що вона більше не потребує "запозичений" ресурс. Потім ресурс зачиняється в блоці <code>finally</code>, щоб переконатись, що він напевне зачинений, безвідносно від того, чи функція завершилась через нормальне повернення, або через закидання виключення.</p></div>
+<div class="paragraph"><p>Один зі шляхів, як ви можете зробити, щоб код клієнта виглядав як вбудована структура керування, це використовувати фігурні дужки замість дужок для оточення списку аргументів. В любому виклику метода в Scala, в якому ви передаєте рівно один аргумент, ви можете обрати використовувати фігурні дужки для оточення аргумента замість дужок. Наприклад, замість:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;Hello, world!&quot;</span><span class="o">)</span>
+<span class="nc">Hello</span><span class="o">,</span> <span class="n">world</span><span class="o">!</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ви можете записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">println</span> <span class="o">{</span> <span class="s">&quot;Hello, world!&quot;</span> <span class="o">}</span>
+<span class="nc">Hello</span><span class="o">,</span> <span class="n">world</span><span class="o">!</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В другому прикладі ви використали фігурні дужки замість дужок, щоб оточити аргументи <code>println</code>. Однак цей прийом з фігурними дужками буде робить, тілкьи якщо ви передаєте один аргумент. Ось спроба порушити це правило:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">g</span> <span class="k">=</span> <span class="s">&quot;Hello, world!&quot;</span>
+<span class="n">g</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Hello</span><span class="o">,</span> <span class="n">world</span><span class="o">!</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">g</span><span class="o">.</span><span class="n">substring</span> <span class="o">{</span> <span class="mi">7</span><span class="o">,</span> <span class="mi">9</span> <span class="o">}</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">1</span><span class="k">:</span> <span class="kt">error:</span> <span class="err">&#39;</span><span class="o">;</span><span class="err">&#39;</span> <span class="n">expected</span> <span class="n">but</span> <span class="sc">&#39;,&#39;</span> <span class="n">found</span><span class="o">.</span>
+        <span class="n">g</span><span class="o">.</span><span class="n">substring</span> <span class="o">{</span> <span class="mi">7</span><span class="o">,</span> <span class="mi">9</span> <span class="o">}</span>
+                       <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки ви намагаєтесь передати два аргументи до <code>substring</code>, ви отримуєте помилку, коли ви намагаєтесь оточити ці аргументи фігурними дужками. Замість цього вам треба використовувати дужки:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">g</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="mi">7</span><span class="o">,</span> <span class="mi">9</span><span class="o">)</span>
+<span class="n">res12</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">wo</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Призначення цієї здатності замінювати дужки на фігурні дужки для передачі одного аргумента, є дозволити програмісту клієнта писати функціональні літерали між фігурними дужками. Це може зробити виклик метода більш подібним до абстракції керування. Розгляньте визначений до цього метод <code>withPrintWriter</code> як приклад. В його самій останній формі <code>withPrintWriter</code> приймає два аргументи, так що ви не можете використовувати фігурні дужки.</p></div>
+<div class="paragraph"><p>Тим не менш, оскільки функція, передана в <code>withPrintWriter</code> є останнім аргументом в списку, ви можете виконати карування для підтягування першого аргументу, <code>File</code>, в окремий список аргументів. Це залишить функцію як окремий параметр в другому списку аргументів. Лістинг 9.4 показує, як вам треба перевизначити <code>withPrintWriter</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">withPrintWriter</span><span class="o">(</span><span class="n">file</span><span class="k">:</span> <span class="kt">File</span><span class="o">)(</span><span class="n">op</span><span class="k">:</span> <span class="kt">PrintWriter</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">writer</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PrintWriter</span><span class="o">(</span><span class="n">file</span><span class="o">)</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="n">op</span><span class="o">(</span><span class="n">writer</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">finally</span> <span class="o">{</span>
+    <span class="n">writer</span><span class="o">.</span><span class="n">close</span><span class="o">()</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 9.4 - Використання шаблона позичання для запису в файл.</p></div>
+<div class="paragraph"><p>Нова версія відрізняється від старої тільки в тому, що тепер в нас два списки параметрів, з одним параметром в кожному, замість одного списку параметрів з двома параметрами. В показаній тут попередній версії <code>withPrintWriter</code> ви бачили <code>...File, op...</code>. Але в цій версії ви бачите <code>...File)(op...</code>. Беручи до уваги визначення вище, ви можете викликати метод з більш приємним синтаксисом:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">file</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">File</span><span class="o">(</span><span class="s">&quot;date.txt&quot;</span><span class="o">)</span>
+
+<span class="n">withPrintWriter</span><span class="o">(</span><span class="n">file</span><span class="o">)</span> <span class="o">{</span> <span class="n">writer</span> <span class="k">=&gt;</span>
+  <span class="n">writer</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">Date</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому прикладі перший список аргументів, що містить один аргумент <code>File</code>, записаний в оточенні дужок. Другий список аргументів, що містить один функціональний аргумент, оточений в фігурні дужки.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_9_5____">9.5 Параметри за ім'ям</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Метод <code>withPrintWriter</code>, показаний в попередньому розділі, відрізняється від вбудованих керівних структур мови, таких як <code>if</code> та <code>while</code>, тому що код між фігурними дужками приймає аргумент. Функція, передана до <code>withPrintWriter</code> потребує один аргумент типу PrintWriter. Цей аргумент показаний як <code>writer =&gt;</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">withPrintWriter</span><span class="o">(</span><span class="n">file</span><span class="o">)</span> <span class="o">{</span> <span class="n">writer</span> <span class="k">=&gt;</span>
+  <span class="n">writer</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="k">new</span> <span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">Date</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але що, якщо ви бажаєте реалізувати дещо більш подібне до <code>if</code> або <code>while</code>, де немає значення, що треба передати в код між фігурними дужками? Щоб допомогти в таких ситуаціях Scala провадить параметри за іменем.</p></div>
+<div class="paragraph"><p>В якості конкретного прикладу, уявімо ви бажаєте реалізувати конструкцію твердження <code>myAssert</code>. <span class="footnote"><br />[Ми назвемо це <code>myAssert</code>, не <code>assert</code>, оскільки Scala провадить свій власний <code>assert</code>, що буде описане в Розділі 14.1.]<br /></span> Функція <code>myAssert</code> буде приймати функціональне значення на вході, та звірятись з флагом, щоб вирішити, що робити. Якщо флаг встановлений, <code>myAssert</code> буде викликати передану функцію, та перевіряти, чи вона повертає <code>true</code>. Якщо флаг не встановлений, <code>myAssert</code> буде тихо взагалі нічого не робити.</p></div>
+<div class="paragraph"><p>Без параметрів за ім'ям ви можете записати <code>myAssert</code> десь так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">assertionsEnabled</span> <span class="k">=</span> <span class="kc">true</span>
+<span class="k">def</span> <span class="n">myAssert</span><span class="o">(</span><span class="n">predicate</span><span class="k">:</span> <span class="o">()</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">assertionsEnabled</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">predicate</span><span class="o">())</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">AssertionError</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Визначення гарне, але її використання трохи незручне:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">myAssert</span><span class="o">(()</span> <span class="k">=&gt;</span> <span class="mi">5</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете дійсно схилятись до відкидання пустого списку параметрів та символа <code>=&gt;</code> в функціональному літералі, та записати код таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">myAssert</span><span class="o">(</span><span class="mi">5</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="o">)</span> <span class="c1">// Не буде робити, оскільки відсутнє () =&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Параметри за ім'ям існують саме для того, щоб це було можливо зробити. Щоб створити параметр за ім'ям, ви даєте параметру тип, що починається з <code>=&gt;</code> замість <code>() =&gt;</code>. Наприклад, ви можете змінити параметр предикату <code>myAssert</code> в параметр за ім'ям, змінивши його тип <code>() =&gt; Boolean</code> на <code>=&gt; Boolean</code>. Лістинг 9.5 показує, як це має виглядати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">byNameAssert</span><span class="o">(</span><span class="n">predicate</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">assertionsEnabled</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">predicate</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">AssertionError</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 9.5 - Використання параметра за ім'ям.</p></div>
+<div class="paragraph"><p>Тепер ви можете відкинути пустий параметр у властивості, що ви бажаєте перевірити. Результат в тому, що  <code>byNameAssert</code> виглядає точно як вбудована структура керування:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">byNameAssert</span><span class="o">(</span><span class="mi">5</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тип за ім'ям, в якому відкидається пустий список параметрів, <code>()</code>, дозволений тільки для параметрів. Немає такого, як змінна за ім'ям або поле за ім'ям. Тепер ви можете здивуватись, чому ви не можете просто написати  <code>myAssert</code>, використовуючи простий старий <code>Boolean</code> для типу його параметра, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">boolAssert</span><span class="o">(</span><span class="n">predicate</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">assertionsEnabled</span> <span class="o">&amp;&amp;</span> <span class="o">!</span><span class="n">predicate</span><span class="o">)</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">AssertionError</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Звичайно, це формулювання також легальне, та код з використанням ціє версії <code>boolAssert</code> все ще буде виглядати точно як раніше:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">boolAssert</span><span class="o">(</span><span class="mi">5</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тим не менш, існує одна відмінінсть між ціма двома підходами, яку важливо зазначити. Оскільки тип параметру <code>boolAssert</code> є <code>Boolean</code>, вираз всередині дужок в <code>boolAssert(5 &gt; 3)</code> обчислюється перед викликом до <code>boolAssert</code>. Вираз <code>5 &gt; 3</code> дає <code>true</code>, що передається до <code>boolAssert</code>. Для контрасту, оскільки тип параметра предикату <code>byNameAssert</code> є <code>=&gt; Boolean</code>, вираз в дужках в <code>byNameAssert(5 &gt; 3)</code> не обчислюється перед викликом до <code>byNameAssert</code>. Замість цього буде створено функціональне значення, метод <code>apply</code> якого буде обчислювати <code>5 &gt; 3</code>, та це функціональне значення буде передане в <code>byNameAssert</code>.</p></div>
+<div class="paragraph"><p>Таким чином, різниця між двома підходами в тому, що якщо твердження відключене, ви побачите тільки побічний ефект цього виразу, який може мати вираз в дужках для <code>boolAssert</code>, але не для <code>byNameAssert</code>. Наприклад, якщо твердження відключені, спроба перевірити <code>x / 0 == 0</code> буде видавати виключення в випадку <code>boolAssert</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="mi">5</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">5</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">var</span> <span class="n">assertionsEnabled</span> <span class="k">=</span> <span class="kc">false</span>
+<span class="n">assertionsEnabled</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">boolAssert</span><span class="o">(</span><span class="n">x</span> <span class="o">/</span> <span class="mi">0</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span>
+<span class="o">...</span> <span class="mi">33</span> <span class="n">elided</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але спроба виконати той самий код в випадку <code>byNameAssert</code> не дає виключення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">byNameAssert</span><span class="o">(</span><span class="n">x</span> <span class="o">/</span> <span class="mi">0</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_9_6_">9.6 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ця глава показала вам, як багата функціональна підтримка в Scala використовується для побудови абстракцій керування. Ви можете використовувати функції в вашому коді для виділення загальних шаблонів керування, та ви можете отримати переваги функцій вищих порядків в бібліотеці Scala, щоб повторно використовувати шаблони керування, що є загальними поміж коду всіх програмістів. Ми також розглянули, як використовувати карування та параметри за ім'ям, так що ваші власні функції вищих порядків можуть бути використані зі стислим синтаксисом.</p></div>
+<div class="paragraph"><p>В попередній та цій главі ви бачили досить багато інформації щодо функцій. Наступні декілька глав повертатимуть назад, до обговорення більш об'єктно-орієнтовних можливостей мови.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-28 00:16:50 EET
+ 2019-02-08 02:00:37 EET
 </div>
 </div>
 </body>
