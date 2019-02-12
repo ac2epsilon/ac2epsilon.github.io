@@ -798,283 +798,276 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>Chapter 11
-Scala&#8217;s Hierarchy
-Now that you&#8217;ve seen the details of class inheritance in the previous chapter, it is a good time to take a
-step back and look at Scala&#8217;s class hierarchy as a whole. In Scala, every class inherits from a common
-superclass named Any. Because every class is a subclass of Any, the methods defined in Any are
-"universal" methods: they may be invoked on any object. Scala also defines some interesting classes at
-the bottom of the hierarchy, Null and Nothing, which essentially act as common subclasses. For
-example, just as Any is a superclass of every other class, Nothing is a subclass of every other class. In
-this chapter, we&#8217;ll give you a tour of Scala&#8217;s class hierarchy.
-11.1 SCALA&#8217;S CLASS HIERARCHY
-Figure 11.1 shows an outline of Scala&#8217;s class hierarchy. At the top of the hierarchy is class Any, which
-defines methods that include the following:
-final def ==(that: Any): Boolean
-final def !=(that: Any): Boolean
-def equals(that: Any): Boolean
-def : Int
-def hashCode: Int
-def toString: String
-Because every class inherits from Any, every object in a Scala program can be compared using==, !=,
-or equals; hashed using  or hashCode; and formatted using toString. The equality and inequality
-methods, == and !=, are declared final in class Any, so they cannot be overridden in subclasses.
-The == method is essentially the same as equals and != is always the negation ofequals.<span class="footnote"><br />[The only case where == does not directly call equals is for Java&#8217;s boxed numeric classes, such as Integer or Long. In Java, a new Integer(1) does not equal a new Long(1) even though for primitivevalues 1 == 1L. Since Scala is a more regular language than Java, it was necessary to correct this discrepancy by special-casing the == method for these classes. Likewise, the method provides a Scala version of hashing that is the same as Java&#8217;s hashCode, except for boxed numeric types, where it works consistently with ==. For instance new Integer(1) andnew Long(1) hash the same with  even though their Java hashCodes are different.]<br /></span> So
-individual classes can tailor what == or != means by overriding the equals method. We&#8217;ll show an
-example later in this chapter.Class hierarchy of Scala.
-The root class Any has two subclasses: AnyVal and AnyRef. AnyVal is the parent class of value
-classes in Scala. While you can define your own value classes (see Section 11.4), there are nine value
-classes built into Scala: Byte, Short, Char, Int, Long, Float, Double, Boolean, and Unit. The first eight
-of these correspond to Java&#8217;s primitive types, and their values are represented at run time as Java&#8217;s
-primitive values. The instances of these classes are all written as literals in Scala. For example, 42 is an
-instance of Int, <em>x</em> is an instance of Char, and false an instance ofBoolean. You cannot create instances
-of these classes using new. This is enforced by the "trick" that value classes are all defined to be both
-abstract and final.
-So if you were to write:
-scala&gt; new Int
-you would get:
-&lt;console&gt;:5: error: class Int is abstract; cannot be
-instantiated
-new Int
-<sup>The other value class, Unit, corresponds roughly to Java&#8217;s void type; it is used as the result type of a
-method that does not otherwise return an interesting result. Unit has a single instance value, which is
-written (), as discussed in Section 7.2.
-As explained in Chapter 5, the value classes support the usual arithmetic and boolean operators as
-methods. For instance, Int has methods named + and *, and Boolean has methods named || and &amp;&amp;.
-Value classes also inherit all methods from class Any. You can test this in the interpreter:
-scala&gt; 42.toString
-res1: String = 42
-scala&gt; 42.hashCode
-res2: Int = 42
-scala&gt; 42 equals 42
-res3: Boolean = true
-Note that the value class space is flat; all value classes are subtypes of scala.AnyVal, but they do not
-subclass each other. Instead there are implicit conversions between different value class types. For
-example, an instance of class scala.Int is automatically widened (by an implicit conversion) to an
-instance of class scala.Long when required.
-As mentioned in Section 5.10, implicit conversions are also used to add more functionality to value
-types. For instance, the type Int supports all of the operations below:
-scala&gt; 42 max 43
-res4: Int = 43
-scala&gt; 42 min 43
-res5: Int = 42
-scala&gt; 1 until 5
-res6: scala.collection.immutable.Range = Range(1, 2, 3, 4)
-scala&gt; 1 to 5
-res7: scala.collection.immutable.Range.Inclusive
-= Range(1, 2, 3, 4, 5)
-scala&gt; 3.abs
-res8: Int = 3
-scala&gt; (-3).abs
-res9: Int = 3
-Here&#8217;s how this works: The methods min, max, until, to, and abs are all defined in a
-classscala.runtime.RichInt, and there is an implicit conversion from class Int to RichInt. The
-conversion is applied whenever a method is invoked on an Int that is undefined in Int but defined
-in RichInt. Similar "booster classes" and implicit conversions exist for the other value classes. Implicit
-conversions will be discussed in detail in Chapter 21.
-The other subclass of the root class Any is class AnyRef. This is the base class of all reference
-classes in Scala. As mentioned previously, on the Java platform AnyRef is in fact just an alias forclass java.lang.Object. So classes written in Java, as well as classes written in Scala, all inherit
-from AnyRef.<span class="footnote"><br />[The reason AnyRef alias exists, instead of just using the name java.lang.Object, is because Scala was originally designed to work on both the Java and .NET platforms. On .NET, AnyRefwas an alias for System.Object.]<br /></span> One way to think of java.lang.Object, therefore, is as the way AnyRef is implemented
-on the Java platform. Thus, although you can use Object and AnyRefinterchangeably in Scala programs
-on the Java platform, the recommended style is to useAnyRef everywhere.
-11.2 HOW PRIMITIVES ARE IMPLEMENTED
-How is all this implemented? In fact, Scala stores integers in the same way as Java—as 32-bit words.
-This is important for efficiency on the JVM and also for interoperability with Java libraries. Standard
-operations like addition or multiplication are implemented as primitive operations. However, Scala uses
-the "backup" class java.lang.Integer whenever an integer needs to be seen as a (Java) object. This
-happens for instance when invoking the toStringmethod on an integer number or when assigning an
-integer to a variable of type Any. Integers of type Int are converted transparently to "boxed integers" of
-type java.lang.Integer whenever necessary.
-All this sounds a lot like auto-boxing in Java 5 and it is indeed quite similar. There&#8217;s one crucial
-difference though: Boxing in Scala is much less visible than boxing in Java. Try the following in Java:
+<div class="sect1">
+<h2 id="__11">Глава 11</h2>
+<div class="sectionbody">
+</div>
+</div>
+<h1 id="__scala">Ієрархія Scala</h1>
+<div class="paragraph"><p>Тепер, коли ви бачили деталі наслідування класів в попередньому розділі, настав гарний час зробити крок назад, та подивитись на ієрархію класів в цілому. В Scala кожний клас наслідує від загального суперкласа на ім'я <code>Any</code>. Оскільки кожний клас є субкласом <code>Any</code>, методи, визначені в <code>Any</code> є "універсальними" методами: вони можуть бути викликані на любих об'єктах. Scala також визначає деякі цікаві класи знизу ієрархії, <code>Null</code> та <code>Nothing</code>, що, загалом, діють як загальні субкласи. Наприклад, так само, як <code>Any</code> є суперкласом для кожного іншого класу, <code>Nothing</code> є субкласом кожного іншого класа. В цій главі ми надамо вам тур по ієрархії класів Scala.</p></div>
+<div class="sect1">
+<h2 id="_11_1___scala">11.1 Ієрархія класів Scala</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Малюнок 11.1 показує контур ієрархії класів Scala. Нагорі ієрархії класів знаходиться клас <code>Any</code>, що визначає методи, включаючі наступні:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">def</span> <span class="o">==(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span>
+<span class="k">final</span> <span class="k">def</span> <span class="o">!=(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span>
+<span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span>
+<span class="k">def</span> <span class="o">##</span><span class="k">:</span> <span class="kt">Int</span>
+<span class="k">def</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span>
+<span class="k">def</span> <span class="n">toString</span><span class="k">:</span> <span class="kt">String</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки кожний клас наслідує від <code>Any</code>, кожний об'єкт в програмі Scala може бути порівняні з використанням <code>==</code>, <code>!=</code>, або <code>equals</code>; хешовані з використанням <code>##</code> або <code>hashCode</code>; та форматовані з використанням <code>toString</code>. Методи рівності або нерівності, <code>==</code> та <code>!=</code> декларовані як фінальні в класі <code>Any</code>, так що вони не можуть бути перекриті в субкласах. Метод <code>==</code> загалом те саме, що і <code>equals</code>, та <code>!=</code> завжди протилежність до <code>equals</code>.<span class="footnote"><br />[Один випадок, коли <code>==</code> напряму не викликає <code>equals</code>, це для боксованих числових класів Java, такіх, як <code>Integer</code> або <code>Long</code>. В Java <code>new Integer(1)</code> не еквівалентне як <code>equal</code> до <code>new Long(1)</code>, навіть не зважаючи, що для примітивів <code>1 == 1L</code>. Оскільки Scala є більш регулярною мовою, ніж Java, було необхідним скорегувати цю невідповідність через особливий метод == для ціх класів. Подібно, метод <code>##</code> провадить Scala версію хешування, що така сама, як і Java <code>hashCode</code>, за винятко боксованих числових типів, де він робить узгоджено з <code>==</code>. Наприклад, <code>new Integer(1)</code> та <code>new Long(1)</code> хешуються <code>##</code> однаково, не зважаючи на те, що в Java їх <code>hashCode</code> різні.]<br /></span> Так що індивідуальні класи можуть вирішувати, що означає <code>==</code> або <code>!=</code> через перекриття метода <code>equals</code>. Ми покажемо приклад пізніше в цій главі.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="____scala">Ієрархія класів в Scala.</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Кореневий клас <code>Any</code> має два субкласи: <code>AnyVal</code> та <code>AnyRef</code>. <code>AnyVal</code> є батьківським класом для класів значень в Scala. Хоча ви можете визначити ваші власні класи значень (дивіться Розділ 11.4), існують дев'ять класів значень, вбудованих в Scala: <code>Byte</code>, <code>Short</code>, <code>Char</code>, <code>Int</code>, <code>Long</code>, <code>Float</code>, <code>Double</code>, <code>Boolean</code>, <code>Unit</code>. Перші вісім з них відповідають примітивним класам Java, та їх значення представлені під час виконання як примітивні значення Java. Примірники ціх класів всі написані як літерали в Scala. Наприклад, <code>42</code> є примірником of <code>Int</code>, <code>'x'</code> є примірником <code>Char</code>, та <code>false</code> примірник <code>Boolean</code>. Ви не можете створити примірники ціх класів використовуючи <code>new</code>. Це досягається "трюком", так що класи значень всі визначені одночасно абстрактними та фінальними.</p></div>
+<div class="paragraph"><p>Так що якщо ви запишете:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">new</span> <span class="nc">Int</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ви отримаєте:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">class</span> <span class="kt">Int</span> <span class="kt">is</span> <span class="kt">abstract</span><span class="o">;</span> <span class="n">cannot</span> <span class="n">be</span>
+<span class="n">instantiated</span>
+       <span class="k">new</span> <span class="nc">Int</span>
+       <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Інший клас значення, <code>Unit</code>, грубо відповідає до типу Java <code>void</code>; він використовується як тип результате метода, що інакше не повертає цікавого результата. <code>Unit</code> має єдине значення примірника, що записується <code>()</code>, як обговорюється в Розділі 7.2.</p></div>
+<div class="paragraph"><p>Як пояснюється в Главі 5, класи значення підтримують звичайні арифметичні та логічні оператори, як методи. Наприклад, <code>Int</code> має методи на ім'я <code>+</code> та <code>*</code>, та <code>Boolean</code> має методи на ім'я <code>||</code> та <code>&amp;&amp;</code>. Класи значень також наслідують всі методи від класу <code>Any</code>. Ви можете протестувати це в інтерпретаторі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="mf">42.</span><span class="n">toString</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="mi">42</span>
 
-boolean isEqual(int x, int y) {
-return x == y;
-}
-System.out.println(isEqual(421, 421));
-You will surely get true. Now, change the argument types of isEqual to java.lang.Integer (orObject, the
-result will be the same):
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mf">42.</span><span class="n">hashCode</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">42</span>
 
-boolean isEqual(Integer x, Integer y) {
-return x == y;
-}
-System.out.println(isEqual(421, 421));
-You will find that you get false! What happens is that the number 421 gets boxed twice, so that the
-arguments for x and y are two different objects. Because == means reference equality on reference
-types, and Integer is a reference type, the result is false. This is one aspect where it shows that Java is
-not a pure object-oriented language. There is a difference between primitive types and reference types
-that can be clearly observed.
-Now try the same experiment in Scala:
-scala&gt; def isEqual(x: Int, y: Int) = x == y
-isEqual: (x: Int, y: Int)Boolean
-scala&gt; isEqual(421, 421)
-res10: Boolean = true
-scala&gt; def isEqual(x: Any, y: Any) = x == y
-isEqual: (x: Any, y: Any)Boolean
-scala&gt; isEqual(421, 421)res11: Boolean = true
-The equality operation == in Scala is designed to be transparent with respect to the type&#8217;s
-representation. For value types, it is the natural (numeric or boolean) equality. For reference types other
-than Java&#8217;s boxed numeric types, == is treated as an alias of the equals method inherited from Object.
-That method is originally defined as reference equality, but is overridden by many subclasses to
-implement their natural notion of equality. This also means that in Scala you never fall into Java&#8217;s well-
-known trap concerning string comparisons. In Scala, string comparison works as it should:
-scala&gt; val x = "abcd".substring(2)
-x: String = cd
-scala&gt; val y = "abcd".substring(2)
-y: String = cd
-scala&gt; x == y
-res12: Boolean = true
-In Java, the result of comparing x with y would be false. The programmer should have usedequals in
-this case, but it is easy to forget.
-However, there are situations where you need reference equality instead of user-defined equality. For
-example, in some situations where efficiency is paramount, you would like tohash cons with some
-classes and compare their instances with reference equality.<span class="footnote"><br />[You hash cons instances of a class by caching all instances you have created in a weak collection. Then, any time you want a new instance of the class, you first check the cache. If the cache already has an element equal to the one you are about to create, you can reuse the existing instance. As a result of this arrangement, any two instances that are equal withequals() are also equal with reference equality.]<br /></span> For these cases, class AnyRef defines an
-additional eq method, which cannot be overridden and is implemented as reference equality (i.e., it
-behaves like == in Java for reference types). There&#8217;s also the negation of eq, which is called ne. For
-example:
-scala&gt; val x = new String("abc")
-x: String = abc
-scala&gt; val y = new String("abc")
-y: String = abc
-scala&gt; x == y
-res13: Boolean = true
-scala&gt; x eq y
-res14: Boolean = false
-scala&gt; x ne y
-res15: Boolean = true
-Equality in Scala is discussed further in Chapter 30.
-11.3 BOTTOM TYPES
-At the bottom of the type hierarchy in Figure 11.1 you see the two classes scala.Null andscala.Nothing.
-These are special types that handle some "corner cases" of Scala&#8217;s object-oriented type system in a
-uniform way.Class Null is the type of the null reference; it is a subclass of every reference class (i.e., every class that
-itself inherits from AnyRef). Null is not compatible with value types. You cannot, for example, assign
-a null value to an integer variable:
-scala&gt; val i: Int = null
-&lt;console&gt;:7: error: an expression of type Null is ineligible
-for implicit conversion
-val i: Int = null
-</sup>
-Type Nothing is at the very bottom of Scala&#8217;s class hierarchy; it is a subtype of every other type.
-However, there exist no values of this type whatsoever. Why does it make sense to have a type without
-values? As discussed in Section 7.4, one use of Nothing is that it signals abnormal termination.
-For instance there&#8217;s the error method in the Predef object of Scala&#8217;s standard library, which is defined
-like this:
-def error(message: String): Nothing =
-throw new RuntimeException(message)
-The return type of error is Nothing, which tells users that the method will not return normally (it throws
-an exception instead). Because Nothing is a subtype of every other type, you can use methods
-like error in very flexible ways. For instance:
-def divide(x: Int, y: Int): Int =
-if (y != 0) x / y
-else error("can&#8217;t divide by zero")
-The "then" branch of the conditional, x / y, has type Int, whereas the else branch, the call toerror, has
-type Nothing. Because Nothing is a subtype of Int, the type of the whole conditional isInt, as required.
-11.4 DEFINING YOUR OWN VALUE CLASSES
-As mentioned in Section 11.1, you can define your own value classes to augment the ones that are built
-in. Like the built-in value classes, an instance of your value class will usually compile to Java bytecode
-that does not use the wrapper class. In contexts where a wrapper is needed, such as with generic code,
-the value will get boxed and unboxed automatically.
-Only certain classes can be made into value classes. For a class to be a value class, it must have exactly
-one parameter and it must have nothing inside it except defs. Furthermore, no other class can extend a
-value class, and a value class cannot redefine equals or hashCode.
-To define a value class, make it a subclass of AnyVal, and put val before the one parameter. Here is an
-example value class:
-class Dollars(val amount: Int) extends AnyVal {
-override def toString() = "$" + amount
-}As described in Section 10.6, the val prefix allows the amount parameter to be accessed as a field. For
-example, the following code creates an instance of the value class, then retrieves the amount from it:
-scala&gt;
-money:
-scala&gt;
-res16:
-val money = new Dollars(1000000)
-Dollars = $1000000
-money.amount
-Int = 1000000
-In this example, money refers to an instance of the value class. It is of type Dollars in Scala source
-code, but the compiled Java bytecode will use type Int directly.
-This example defines a toString method, and the compiler figures out when to use it. That&#8217;s why
-printing money gives $1000000, with a dollar sign, but printing money.amount gives 1000000. You can
-even define multiple value types that are all backed by the same Int value. For example:
-class SwissFrancs(val amount: Int) extends AnyVal {
-override def toString() = amount + " CHF"
-}
-Even though both Dollars and SwissFrancs are represented as integers, it works fine to use them in the
-same scope:
-scala&gt; val dollars = new Dollars(1000)
-dollars: Dollars = $1000
-scala&gt; val francs = new SwissFrancs(1000)
-francs: SwissFrancs = 1000 CHF
-Avoiding a types monoculture
-To get the most benefit from the Scala class hierarchy, try to define a new class for each domain
-concept, even when it would be possible to reuse the same class for different purposes. Even if such a
-class is a so-called tiny type with no methods or fields, defining the additional class is a way to help the
-compiler be helpful to you.
-For example, suppose you are writing some code to generate HTML. In HTML, a style name is
-represented as a string. So are anchor identifiers. HTML itself is also a string, so if you wanted, you
-could define helper code using strings to represent all of these things, like this:
-def title(text: String, anchor: String, style: String): String =
-s"&lt;a id=<em>$anchor</em>&gt;&lt;h1 class=<em>$style</em>&gt;$text&lt;/h1&gt;&lt;/a&gt;"
-That type signature has four strings in it! Such stringly typed code is technically strongly typed, but
-since everything in sight is of type String, the compiler cannot help you detect the use of one when you
-meant to write the other. For example, it won&#8217;t stop you from this travesty:
-scala&gt; title("chap:vcls", "bold", "Value Classes")
-res17: String = &lt;a id=<em>bold</em>&gt;&lt;h1 class=<em>Value
-Classes</em>&gt;chap:vcls&lt;/h1&gt;&lt;/a&gt;
-This HTML is mangled. The intended display text "Value Classes" is being used as a style class, and
-the text being displayed is "chap.vcls," which was supposed to be an anchor. To top it off, the actualanchor identifier is "bold," which is supposed to be a style class. Despite this comedy of errors, the
-compiler utters not a peep.
-The compiler can be more helpful if you define a tiny type for each domain concept. For example, you
-could define a small class for styles, anchor identifiers, display text, and HTML. Since these classes
-have one parameter and no members, they can be defined as value classes:
-class
-class
-class
-class
-Anchor(val value: String) extends AnyVal
-Style(val value: String) extends AnyVal
-Text(val value: String) extends AnyVal
-Html(val value: String) extends AnyVal
-Given these classes, it is possible to write a version of title that has a less trivial type signature:
-def title(text: Text, anchor: Anchor, style: Style): Html =
-new Html(
-s"&lt;a id=<em>${anchor.value}</em>&gt;"<br />
-s"&lt;h1 class=<em>${style.value}</em>&gt;"<br />
-text.value<br />
-"&lt;/h1&gt;&lt;/a&gt;"
-)
-If you try to use this version with the arguments in the wrong order, the compiler can now detect the
-error. For example:
-scala&gt; title(new Anchor("chap:vcls"), new Style("bold"),
-new Text("Value Classes"))
-&lt;console&gt;:18: error: type mismatch;
-found
-: Anchor
-required: Text
-new Anchor("chap:vcls"),
-<sup>
-&lt;console&gt;:19: error: type mismatch;
-found
-: Style
-required: Anchor
-new Style("bold"),
-</sup>
-&lt;console&gt;:20: error: type mismatch;
-found
-: Text
-required: Style
-new Text("Value Classes"))
-^
-11.5 CONCLUSION
-In this chapter we showed you the classes at the top and bottom of Scala&#8217;s class hierarchy. Now that
-you&#8217;ve gotten a good foundation on class inheritance in Scala, you&#8217;re ready to understand mixin
-composition. In the next chapter, you&#8217;ll learn about traits.</p></div>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mi">42</span> <span class="n">equals</span> <span class="mi">42</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що простір класів значень плаский; всі класи значень є субтипами <code>scala.AnyVal</code>,але вони не є субкласами один одного. Замість цього, існують неявні перетворення між різними типами класів значень. Наприклад, примірник класу <code>scala.Int</code> за потреби автоматично розширюється (через неявне перетворення) на примірник класу <code>scala.Long</code>.</p></div>
+<div class="paragraph"><p>Як зазначається в Розділі 5.10, неявні перетворення також використовуються для додавання більшої функціональності до типів значень. Наприклад, тип <code>Int</code> підтримує всі з операторів нижче:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="mi">42</span> <span class="n">max</span> <span class="mi">43</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">43</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mi">42</span> <span class="n">min</span> <span class="mi">43</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">42</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mi">1</span> <span class="n">until</span> <span class="mi">5</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">scala.collection.immutable.Range</span> <span class="o">=</span> <span class="nc">Range</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mi">1</span> <span class="n">to</span> <span class="mi">5</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">scala.collection.immutable.Range.Inclusive</span>
+<span class="k">=</span> <span class="nc">Range</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mf">3.</span><span class="n">abs</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">(-</span><span class="mi">3</span><span class="o">).</span><span class="n">abs</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось як це робить: методи <code>min</code>, <code>max</code>, <code>until</code>, <code>to</code> та <code>abs</code> всі визначені в класі <code>scala.runtime.RichInt</code>, та існує неявне перетворення від класа <code>Int</code> на <code>RichInt</code>. Перетворення набирає чинності, коли на <code>Int</code> викликається метод, що невизначений в <code>Int</code>, але визначений в <code>RichInt</code>. Подібні "бустерні класи" та неявні перетворення існують також для інших класах значень. Неявні перетворення будуть дискутуватись детально в Главі 21.</p></div>
+<div class="paragraph"><p>Інший субклас кореневого класа <code>Any</code> є клас <code>AnyRef</code>. Це базовий клас всіх класів посилань в Scala. Як зазначалось раніше, на Java платформі <code>AnyRef</code> фактично є псевдонімом для класа <code>java.lang.Object</code>. Так що класи, написані на Java, так само, як класи, написані на Scala, всі наслідують від <code>AnyRef</code>.<span class="footnote"><br />[Причина, з якої існує псевдонім <code>AnyRef</code>, замість простого використання імені <code>java.lang.Object</code>, є факт, що  Scala була початково розроблена для роботи на обох платформах Java та .NET. На .NET  <code>AnyRefwas</code> є псевдонімом до <code>System.Object</code>.]<br /></span> Таким чином, один зі способів думати про <code>java.lang.Object</code>, є спосіб, як <code>AnyRef</code> реалізований на платформі Java. Так що, хоча ви можете використовувати <code>Object</code> та <code>AnyRef</code> взаємозамінно в програмах Scala на Java платформі, рекомендованим стилем є повсякчасне використання <code>AnyRef</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_11_2___">11.2 Як реалізовані примітиви</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як це все реалізоване? Фактично, Scala зберігає цілі в той самий спосіб, що і Java — як 32-бітні слова. Це важливо для ефективності на JVM, і також для взаємодії з бібліотеками Java. Стандартні операції, як додавання або множення, реалізовані як примітивні операції. Однак Scala використовує "дублюючий" клас <code>java.lang.Integer</code>, коли ціле має виглядати як (Java) об'єкт. Це трапляється, наприклад, коли викликається метод <code>toString</code> на цілому числі, або коли присвоюються ціле до змінної типу <code>Any</code>. Цілі типу <code>Int</code> при необхідності прозоро конвертуються до "боксованих цілих" типу <code>java.lang.Integer</code>.</p></div>
+<div class="paragraph"><p>Все це виглядає як авто-боксування в Java 5, і насправді досить подібно. Однак є одна значна різниця: боксування в Scala значно менш помітне, ніж боксування в Java. Спробуйте наступне в Java:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Це Java</span>
+<span class="n">boolean</span> <span class="n">isEqual</span><span class="o">(</span><span class="n">int</span> <span class="n">x</span><span class="o">,</span> <span class="n">int</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="nc">System</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="n">isEqual</span><span class="o">(</span><span class="mi">421</span><span class="o">,</span> <span class="mi">421</span><span class="o">));</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви, звичайно, отримаєте <code>true</code>. Тепер змініть типи аргументів <code>isEqual</code> на <code>java.lang.Integer</code> (або <code>Object</code>, результат буде той самий):</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Це Java</span>
+<span class="n">boolean</span> <span class="n">isEqual</span><span class="o">(</span><span class="nc">Integer</span> <span class="n">x</span><span class="o">,</span> <span class="nc">Integer</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span><span class="o">;</span>
+<span class="o">}</span>
+<span class="nc">System</span><span class="o">.</span><span class="n">out</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="n">isEqual</span><span class="o">(</span><span class="mi">421</span><span class="o">,</span> <span class="mi">421</span><span class="o">));</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви знайдете, що тепер ви отримуєте <code>false</code>! Що відбувається, це число <code>421`боксується  двічі, так що аргументи для `x</code> та <code>y</code> є двома різними об'єктами. Оскільки <code>==</code> означає рівність посилань, та <code>Integer</code> є типом посилання, та результат буде <code>false</code>. Це один з аспектів, який показує, що Java не є чистою об'єктно-орієнтовною мовою. Існує різниця між примітивними типами, та типами посилань, що можливо ясно спостерігати.</p></div>
+<div class="paragraph"><p>Тепер спробуємо той самий експеримент в Scala:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">isEqual</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span>
+<span class="n">isEqual</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Int</span><span class="o">,</span> <span class="kt">y:</span> <span class="kt">Int</span><span class="o">)</span><span class="nc">Boolean</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">isEqual</span><span class="o">(</span><span class="mi">421</span><span class="o">,</span> <span class="mi">421</span><span class="o">)</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">isEqual</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Any</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span>
+<span class="n">isEqual</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Any</span><span class="o">,</span> <span class="kt">y:</span> <span class="kt">Any</span><span class="o">)</span><span class="nc">Boolean</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">isEqual</span><span class="o">(</span><span class="mi">421</span><span class="o">,</span> <span class="mi">421</span><span class="o">)</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Операція еквівалентності <code>==</code> в Scala розроблений бути прозорим з точки зору представлення типу. Для типів значень це природна (числова та логічна) рівність. Для типів посилань, інших ніж боксовані числові типи Java, <code>==</code> трактується як псевдоним для метода <code>equals</code>, наслідуваного від <code>Object</code>. Цей метод в оригіналі визначений як референсна еквівалентність, але перекритий багатьма субкласами для реалізації їх природної нотації рівності. Це також означає, що в Scala ви ніколи не попадете в гарно відому ловушку Java, що стосується порівняння рядків. В Scala порівняння рідків робить як повинно:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="s">&quot;abcd&quot;</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">cd</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="s">&quot;abcd&quot;</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+<span class="n">y</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">cd</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span>
+<span class="n">res12</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В Java результат порівняння <code>x</code> з <code>y</code> буде <code>false</code>. Програміст має використовувати <code>equals</code> в цьому випадку, але про це легко забути.</p></div>
+<div class="paragraph"><p>Однак є ситуації, коли вам потрібна рівність посилань, замість визначеної користувачем рівності. Наприклад, в деяких ситуаціях, де ефективність є понад усе, ви, можливо, вирішите хешувати класи, та порівнювати їх примірники на рівність посилань.<span class="footnote"><br />[Ви хешуєте примірники класу, кешуючи всі примірники, які ви створюєте в слабкій колекції. Потім, кожного разу, коли вам треба новий примірник класу, ви спочатку перевіряєте кеш. Якщо кеш вже має елемент, еквівалентний до того, що ви збираєтесь створити, ви можете повторно використати існуючий примірник. Як результат цього механізму, любі два примірника, що еквівалентні згідно <code>equals()</code>, також є еквівалентні згідно рівності посилань.]<br /></span> Для ціх випадків клас <code>AnyRef</code> визначає додатковий метод <code>eq</code>, що не може бути перекритий, та реалізований як рівність посилання (тобто, він поводиться як <code>==</code> в Java для типів посилань). Також є доповнення до <code>eq</code>, що називається <code>ne</code>. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="s">&quot;abc&quot;</span><span class="o">)</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">abc</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="s">&quot;abc&quot;</span><span class="o">)</span>
+<span class="n">y</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">abc</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="o">==</span> <span class="n">y</span>
+<span class="n">res13</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="n">eq</span> <span class="n">y</span>
+<span class="n">res14</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="n">ne</span> <span class="n">y</span>
+<span class="n">res15</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Еквівалентність в Scala обговорюється далі в Главі 30.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_11_3__">11.3 Нижні типи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Знизу ієрархії типів на Малюнку 11.1 ви бачите два класи, <code>scala.Null</code> та <code>scala.Nothing</code>. Це особливі типи, що обробляють деякі "пограничні випадки" об'єктно-орієнтовної системи типів Scala в уніформний спосіб.</p></div>
+<div class="paragraph"><p>Клас <code>Null</code> є типом посилання <code>null</code>; це субклас кожного класу посилань (тобто, кожного класу, що сам наслідує від <code>AnyRef</code>). <code>Null</code> не сумісний з типами значень. Наприклад, ви не можете присвоїти значення <code>null</code> до цілого значення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="kc">null</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">7</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">an</span> <span class="kt">expression</span> <span class="kt">of</span> <span class="k">type</span> <span class="kt">Null</span> <span class="kt">is</span> <span class="kt">ineligible</span>
+<span class="k">for</span> <span class="k">implicit</span> <span class="n">conversion</span>
+       <span class="k">val</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="kc">null</span>
+                    <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тип <code>Nothing</code> є на самому дні ієрархії класів Scala; це субтип кожного іншого типу. Однак не існує жодного примірника цього типу. Чому може бути сенс мати тип без значень? Як обговорюється в Розділі 7.4, одне використання <code>Nothing</code> є сигналювання щодо ненормального завершення.</p></div>
+<div class="paragraph"><p>Наприклад, існує метод <code>error</code> в об'єкті <code>Predef</code> стандартної бібліотеки Scala, що визначений таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">error</span><span class="o">(</span><span class="n">message</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Nothing</span> <span class="o">=</span>
+  <span class="k">throw</span> <span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">(</span><span class="n">message</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тип повернення <code>error</code> є <code>Nothing</code>, що каже користувачам, що метод не буде повертати значення звичайним чином (замість цього він закидає виключення). Оскільки <code>Nothing</code> є субтипом кожного іншого типу, ви можете використовувати методи, як <code>error</code>, в дуже гнучкі способи. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">divide</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">y</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="n">x</span> <span class="o">/</span> <span class="n">y</span>
+  <span class="k">else</span> <span class="n">error</span><span class="o">(</span><span class="s">&quot;can&#39;t divide by zero&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Гілка <code>then`умовного виразу, `x / y</code>, має тип <code>Int</code>, тоді як гілка <code>else</code> викликає <code>error</code>, та має тип <code>Nothing</code>. Оскільки <code>Nothing</code> є субтипом <code>Int</code>, тип цілого виразу є <code>Int</code>, як це і вимагається.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_11_4_____">11.4 Визначення ваших власних класів значення</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як зазначалось в Розділі 11.1, ви можете визначити ваші власні класи значень, щоб покращити ті, що вже є вбудовані. Як і вбудовані класи значень, примірник вашого класу значення буде звичайно компілюватись в Java бійткод, що не використовує клас огортки. В контекстах, коли огортка потрібна, як в коді дженериків, значення буде боксоване та розбоксоване автоматично.</p></div>
+<div class="paragraph"><p>Тільки певні класи можуть бути перетворені в класи значень. Щоб клас був класом значення, він повинен мати рівно один параметр, і він не повинен містити всередині нічого, за винятком <code>def</code>. Більше того, жодний інший клас не може розширяти клас значення, та клас значення не може перевизначати <code>equals</code> або <code>hashCode</code>.</p></div>
+<div class="paragraph"><p>Щоб визначити клас значення, зробіть його субкласом <code>AnyVal</code>, та покладіть <code>val</code> перед одним параметром. Ось приклад класу значення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Dollars</span><span class="o">(</span><span class="k">val</span> <span class="n">amount</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span><span class="o">()</span> <span class="k">=</span> <span class="s">&quot;$&quot;</span> <span class="o">+</span> <span class="n">amount</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як описано в Розділі 10.6, префікс <code>val</code> дозволяє параметру <code>amount</code> бути досяжним як поле. Наприклад, наступний код створює примірник класу значення, що отримує значення з поля:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span><span class="k">val</span> <span class="n">money</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Dollars</span><span class="o">(</span><span class="mi">1000000</span><span class="o">)</span>
+<span class="n">money</span><span class="k">:</span> <span class="kt">Dollars</span> <span class="o">=</span> <span class="n">$1000000</span>
+
+<span class="n">scala</span><span class="o">&gt;</span><span class="n">money</span><span class="o">.</span><span class="n">amount</span>
+<span class="n">res16</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1000000</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому прикладі <code>money</code> посилається на примірник класу значення. Його тип в джерельному коді Scala буде <code>Dollars</code>, але скомпільований байткод Java буде напряму використовувати тип  <code>Int</code>.</p></div>
+<div class="paragraph"><p>Цей приклад визначає метод <code>toString</code>, і компілятор здогадується, коли його використовувати. Ось чому друк <code>money</code> дає <code>$1000000</code> зі знаком долара, але друк <code>money.amount</code> дає <code>1000000</code>. Ви навіть можете визначити декілька типів значень, що одночасно підтримуються тим самим значенням <code>Int</code>. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">SwissFrancs</span><span class="o">(</span><span class="k">val</span> <span class="n">amount</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span><span class="o">()</span> <span class="k">=</span> <span class="n">amount</span> <span class="o">+</span> <span class="s">&quot; CHF&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Навіть не зважаючи, що обоє, <code>Dollars</code> та <code>SwissFrancs</code> представлені як цілі, це робить добре, коли вони використовуються разом в полі зору:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">dollars</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Dollars</span><span class="o">(</span><span class="mi">1000</span><span class="o">)</span>
+<span class="n">dollars</span><span class="k">:</span> <span class="kt">Dollars</span> <span class="o">=</span> <span class="n">$1000</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">francs</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">SwissFrancs</span><span class="o">(</span><span class="mi">1000</span><span class="o">)</span>
+<span class="n">francs</span><span class="k">:</span> <span class="kt">SwissFrancs</span> <span class="o">=</span> <span class="mi">1000</span> <span class="nc">CHF</span>
+</pre></div></div></div>
+<div class="sect2">
+<h3 id="___">Уникнення монокультури типів</h3>
+<div class="paragraph"><p>Щоб отримати найбільшу вигоду від ієрархії класів Scala, намагайтесь визначати нові класи для кожної галузевої концепції, навіть коли можливо використати той самий клас для різних призначень. Навіть, якщо такий клас є так званим <em>крихітним типом</em> без методів або полів, визначення додаткових класів є шляхом допомогти компілятору бути корисним для вас.</p></div>
+<div class="paragraph"><p>Наприклад, уявімо, що ви пишете деякий код для генерації HTML. В HTML ім'я стиля представлений як рядок. Так само як ідентифікатори якорів. Сам HTML також є рядком, так що, якщо ви бажаєте, ви можете визначити допоміжний код з використанням рядків, щоб представляти все це, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">title</span><span class="o">(</span><span class="n">text</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">anchor</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">style</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span>
+  <span class="s">s&quot;&lt;a id=&#39;</span><span class="si">$anchor</span><span class="s">&#39;&gt;&lt;h1 class=&#39;</span><span class="si">$style</span><span class="s">&#39;&gt;</span><span class="si">$text</span><span class="s">&lt;/h1&gt;&lt;/a&gt;&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця сигнатура типу має чотири рядки в собі! Такий за-рядковано типізований код технічно строго типізований, але оскільки все в полі зору має тип <code>String</code>, компілятор не може допомогти вам детектувати використання одного, коли ви мали на увазі написати інше. Наприклад, він не зупинить вас від цієї пародії:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">title</span><span class="o">(</span><span class="s">&quot;chap:vcls&quot;</span><span class="o">,</span> <span class="s">&quot;bold&quot;</span><span class="o">,</span> <span class="s">&quot;Value Classes&quot;</span><span class="o">)</span>
+<span class="n">res17</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">a</span> <span class="n">id</span><span class="o">=</span><span class=" -Symbol">&#39;bold</span><span class="err">&#39;</span><span class="o">&gt;&lt;</span><span class="n">h1</span> <span class="n">class</span><span class="o">=</span><span class=" -Symbol">&#39;Value</span>
+    <span class="nc">Classes</span><span class="err">&#39;</span><span class="o">&gt;</span><span class="n">chap</span><span class="k">:</span><span class="kt">vcls&lt;/h1&gt;&lt;/a&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей HTML геть перекручений. Призначений для відображення текст <code>"Value Classes"</code> був використаний як клас стилю, та відображений текст є <code>"chap.vcls"</code>, що був задуманий як якір. Щоб довершити все, насправді ідентифікатор якоря є <code>"bold"</code>, що мав бути класом стилю. Не зважаючи на цю комедію помилок, компілятор не вимовив ані слова.</p></div>
+<div class="paragraph"><p>Компілятор міг бути більш корисним, якщо ви визначите крихітні типи для кожної доменної концепції. Наприклад, ви можете визначити малий клас для стилю, ідентифікатора якоря, тексту для відображення та HTML. Оскільки ці класи мають один параметр, і не мають членів, вони можуть бути визначені як класи значення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Anchor</span><span class="o">(</span><span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span>
+<span class="k">class</span> <span class="nc">Style</span><span class="o">(</span><span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span>
+<span class="k">class</span> <span class="nc">Text</span><span class="o">(</span><span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span>
+<span class="k">class</span> <span class="nc">Html</span><span class="o">(</span><span class="k">val</span> <span class="n">value</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи ці класи можливо написати версію <code>title</code>, що має менш тривіальну сигнатуру типів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">title</span><span class="o">(</span><span class="n">text</span><span class="k">:</span> <span class="kt">Text</span><span class="o">,</span> <span class="n">anchor</span><span class="k">:</span> <span class="kt">Anchor</span><span class="o">,</span> <span class="n">style</span><span class="k">:</span> <span class="kt">Style</span><span class="o">)</span><span class="k">:</span> <span class="kt">Html</span> <span class="o">=</span>
+  <span class="k">new</span> <span class="nc">Html</span><span class="o">(</span>
+    <span class="s">s&quot;&lt;a id=&#39;</span><span class="si">${</span><span class="n">anchor</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s">&#39;&gt;&quot;</span> <span class="o">+</span>
+    <span class="s">s&quot;&lt;h1 class=&#39;</span><span class="si">${</span><span class="n">style</span><span class="o">.</span><span class="n">value</span><span class="si">}</span><span class="s">&#39;&gt;&quot;</span> <span class="o">+</span>
+    <span class="n">text</span><span class="o">.</span><span class="n">value</span> <span class="o">+</span>
+    <span class="s">&quot;&lt;/h1&gt;&lt;/a&gt;&quot;</span>
+  <span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви спробуєте використати цю версію з аргументами в невірному порядку, компілятор тепер може детектувати помилку. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">title</span><span class="o">(</span><span class="k">new</span> <span class="nc">Anchor</span><span class="o">(</span><span class="s">&quot;chap:vcls&quot;</span><span class="o">),</span> <span class="k">new</span> <span class="nc">Style</span><span class="o">(</span><span class="s">&quot;bold&quot;</span><span class="o">),</span>
+           <span class="k">new</span> <span class="nc">Text</span><span class="o">(</span><span class="s">&quot;Value Classes&quot;</span><span class="o">))</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">18</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+ <span class="n">found</span>   <span class="k">:</span> <span class="kt">Anchor</span>
+ <span class="n">required</span><span class="k">:</span> <span class="kt">Text</span>
+                <span class="k">new</span> <span class="nc">Anchor</span><span class="o">(</span><span class="s">&quot;chap:vcls&quot;</span><span class="o">),</span>
+                <span class="o">^</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">19</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+ <span class="n">found</span>   <span class="k">:</span> <span class="kt">Style</span>
+ <span class="n">required</span><span class="k">:</span> <span class="kt">Anchor</span>
+                <span class="k">new</span> <span class="nc">Style</span><span class="o">(</span><span class="s">&quot;bold&quot;</span><span class="o">),</span>
+                <span class="o">^</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">20</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+ <span class="n">found</span>   <span class="k">:</span> <span class="kt">Text</span>
+ <span class="n">required</span><span class="k">:</span> <span class="kt">Style</span>
+                <span class="k">new</span> <span class="nc">Text</span><span class="o">(</span><span class="s">&quot;Value Classes&quot;</span><span class="o">))</span>
+                <span class="o">^</span>
+</pre></div></div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_11_5_">11.5 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В цій главі ми показали вам класи нагорі та знизу ієрархії класів Scala. Тепер, коли ви отримали гарне підгрунтя щодо наслідування класів в Scala, ви готові для розуміння композиції міксінів. В наступній главі ви навчитесь щодо трейтів.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-01-28 00:29:34 EET
+ 2019-02-12 20:20:33 EET
 </div>
 </div>
 </body>

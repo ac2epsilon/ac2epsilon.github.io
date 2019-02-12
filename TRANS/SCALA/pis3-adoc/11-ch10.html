@@ -812,727 +812,664 @@ asciidoc.install();
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">elem</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span>
 </pre></div></div></div>
-<div class="paragraph"><p>As you can see, elements will be modeled with a type named Element. You&#8217;ll be able to call aboveor beside on an element, passing in a second element, to get a new element that combines the two. For example, the following expression would construct a larger element consisting of two columns, each with a height of two:</p></div>
+<div class="paragraph"><p>Як ви можете бачити, елементи будуть змодельовані за допомогою типу на ім'я <code>Element</code>. Ви зможете викликати <code>above</code> або <code>beside</code> на <code>element</code>, передаючи другий елемент, щоб створити новий елемент, який є комбінацією двох. Наприклад, наступний вираз буде конструювати більший елемент, що складається з двох колонок, кожна висотою 2:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">column1</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">)</span> <span class="n">above</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;***&quot;</span><span class="o">)</span>
 <span class="k">val</span> <span class="n">column2</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;***&quot;</span><span class="o">)</span> <span class="n">above</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;world&quot;</span><span class="o">)</span>
 <span class="n">column1</span> <span class="n">beside</span> <span class="n">column2</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Printing the result of this expression would give you:</p></div>
+<div class="paragraph"><p>Друк результате цього виразу буде давати вам таке:</p></div>
 <div class="listingblock">
 <div class="content">
 <pre><code>hello ***
 *** world</code></pre>
 </div></div>
-<div class="paragraph"><p>Layout elements are a good example of a system in which objects can be constructed from simple parts
-with the aid of composing operators. In this chapter, we&#8217;ll define classes that enable element objects to
-be constructed from arrays, lines, and rectangles. These basic element objects will be the simple parts.
-We&#8217;ll also define composing operators above andbeside. Such composing operators are also often
-called combinators because they combine elements of some domain into new elements.
-Thinking in terms of combinators is generally a good way to approach library design: it pays to think
-about the fundamental ways to construct objects in an application domain. What are the simple objects?In what ways can more interesting objects be constructed out of simpler ones? How do combinators
-hang together? What are the most general combinations? Do they satisfy any interesting laws? If you
-have good answers to these questions, your library design is on track.
-10.2 ABSTRACT CLASSES
-Our first task is to define type Element, which represents layout elements. Since elements are two
-dimensional rectangles of characters, it makes sense to include a member, contents, that refers to the
-contents of a layout element. The contents can be represented as an array of strings, where each string
-represents a line. Hence, the type of the result returned by contentswill be Array[String]. Listing
-10.1 shows what it will look like.
-abstract class Element {
-def contents: Array[String]
-}
-Listing 10.1 - Defining an abstract method and class.
-In this class, contents is declared as a method that has no implementation. In other words, the method is
-an abstract member of class Element. A class with abstract members must itself be declared abstract,
-which is done by writing an abstract modifier in front of the class keyword:
-abstract class Element &#8230;
-The abstract modifier signifies that the class may have abstract members that do not have an
-implementation. As a result, you cannot instantiate an abstract class. If you try to do so, you&#8217;ll get a
-compiler error:
-scala&gt; new Element
-&lt;console&gt;:5: error: class Element is abstract;
-cannot be instantiated
-new Element
-<sup>
-Later in this chapter, you&#8217;ll see how to create subclasses of class Element, which you&#8217;ll be able to
-instantiate because they fill in the missing definition for contents.
-Note that the contents method in class Element does not carry an abstract modifier. A method is abstract
-if it does not have an implementation (i.e., no equals sign or body). Unlike Java, no abstract modifier is
-necessary (or allowed) on method declarations. Methods that have an implementation are
-called concrete.
-Another bit of terminology distinguishes between declarations and definitions.
-Class Elementdeclares the abstract method contents, but currently defines no concrete methods. In the
-next section, however, we&#8217;ll enhance Element by defining some concrete methods.10.3 DEFINING PARAMETERLESS METHODS
-As a next step, we&#8217;ll add methods to Element that reveal its width and height, as shown inListing
-10.2. The height method returns the number of lines in contents. The width method returns the length
-of the first line, or if there are no lines in the element, returns zero. (This means you cannot define an
-element with a height of zero and a non-zero width.)
-abstract class Element {
-def contents: Array[String]
-def height: Int = contents.length
-def width: Int = if (height == 0) 0 else contents(0).length
-}
-Listing 10.2 - Defining parameterless methods width and height.
-Note that none of Element&#8217;s three methods has a parameter list, not even an empty one. For example,
-instead of:
-def width(): Int
-the method is defined without parentheses:
-def width: Int
-Such parameterless methods are quite common in Scala. By contrast, methods defined with empty
-parentheses, such as def height(): Int, are called empty-paren methods. The recommended convention is
-to use a parameterless method whenever there are no parameters and the method accesses mutable state
-only by reading fields of the containing object (in particular, it does not change mutable state). This
-convention supports the uniform access principle,<span class="footnote"><br />[Meyer, Object-Oriented Software Construction [Mey00]]<br /></span> which says that client code should not be affected
-by a decision to implement an attribute as a field or method.
-For instance, we could implement width and height as fields, instead of methods, simply by changing
-the def in each definition to a val:
-abstract class Element {
-def contents: Array[String]
-val height = contents.length
-val width =
-if (height == 0) 0 else contents(0).length
-}
-The two pairs of definitions are completely equivalent from a client&#8217;s point of view. The only difference
-is that field accesses might be slightly faster than method invocations because the field values are pre-
-computed when the class is initialized, instead of being computed on each method call. On the other
-hand, the fields require extra memory space in each Element object. So it depends on the usage profile
-of a class whether an attribute is better represented as a field or method, and that usage profile might
-change over time. The point is that clients of theElement class should not be affected when its internal
-implementation changes.In particular, a client of class Element should not need to be rewritten if a field of that class gets
-changed into an access function, so long as the access function is pure (i.e., it does not have any side
-effects and does not depend on mutable state). The client should not need to care either way.
-So far so good. But there&#8217;s still a slight complication that has to do with the way Java handles things.
-The problem is that Java does not implement the uniform access principle. So it&#8217;sstring.length() in Java,
-not string.length, even though it&#8217;s array.length, not array.length(). Needless to say, this is very
-confusing.
-To bridge that gap, Scala is very liberal when it comes to mixing parameterless and empty-paren
-methods. In particular, you can override a parameterless method with an empty-paren method, and vice
-versa. You can also leave off the empty parentheses on an invocation of any function that takes no
-arguments. For instance, the following two lines are both legal in Scala:
-Array(1, 2, 3).toString
-"abc".length
-In principle it&#8217;s possible to leave out all empty parentheses in Scala function calls. However, it&#8217;s still
-recommended to write the empty parentheses when the invoked method represents more than a
-property of its receiver object. For instance, empty parentheses are appropriate if the method performs
-I/O, writes reassignable variables (vars), or reads vars other than the receiver&#8217;s fields, either directly or
-indirectly by using mutable objects. That way, the parameter list acts as a visual clue that some
-interesting computation is triggered by the call. For instance:
-"hello".length
-println()
+<div class="paragraph"><p>Елементи розташування є гарним прикладом системи, в якій об'єкти можуть бути сконструйовані з простих частин за допомогою оераторів композиції. В цій главі ми будемо визначати класи, що дозволять конструювання об'єктів-елементів з масивів, ліній та прямокутників. Ці базові об'єкти елементів будуть простими частинами. Ми також визначимо операції композиції <code>above</code> та <code>beside</code>. Такі компонуючі оператори також часто називають <em>комбінаторами</em>, оскікльи вони комбінують елементи в деякій галузі в нові елементи.</p></div>
+<div class="paragraph"><p>Думаючи в термінах комбінаторів загалом гарний підхід розробки бібліотеки: це відплачується - думати про фундаментальні шляхи конструювання об'єктів в домені застосування. Що таке прості об'єкти? В який спосіб найбільш цікаві об'єкти можуть бути сконструйовані з простіших? Як комбінатори поводяться разом? Які комбінатори найбільш загальні? Чи вони задовільняють цікавим законам? Якщо ви маєте гарні відповіді на ці запитання, розробка вашої бібліотеки на вірному шляху.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_2__">10.2 Абстрактні класи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Наше перше завдання є визначити тип <code>Element</code>, що предаставляє елементи розташування. Оскільки елементи є двохвимірні прямокутники символів, має сенс включити член <code>contents</code>, що посалається на вміст елемента розташування. Цей <code>contents</code> може бути представлений як масив рядків, до кожний рядок представляє лінію. Таким чином, тип результата, що повертається <code>contents</code> буде <code>Array[String]</code>. Лістинг 10.1 показує, як це буде виглядати.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.1 - Визначення абстрактного метода та класа.</p></div>
+<div class="paragraph"><p>В цьому класі <code>contents</code> декларовано як метод, що не має реалізації. Іншими словами, метод є абстрактним членом класа <code>Element</code>. Клас з абстрактинми методами має сам бути визначений як абстрактний, що робиться додаванням модифікатора <code>abstract</code> перед ключовим словом <code>class</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Модифікатор <code>abstract</code> означає, що клас може мати абстрактні члени, що не мають реалізації. Як результат, ви не можете створити примірник абстрактного класу. Якщо ви спробуєте зробити це, ви отримаєте помилку компіляції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">new</span> <span class="nc">Element</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">5</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">class</span> <span class="kt">Element</span> <span class="kt">is</span> <span class="kt">abstract</span><span class="o">;</span>
+    <span class="n">cannot</span> <span class="n">be</span> <span class="n">instantiated</span>
+       <span class="k">new</span> <span class="nc">Element</span>
+           <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Пізніше в цій главі ви побачите, як створити субкласи класа <code>Element</code>, для яких ви будете в змозі створити примірники, оскільки вони заповнюють відсутнє визначення дла <code>contents</code>.</p></div>
+<div class="paragraph"><p>Зауважте, що метод <code>contents</code> в класі <code>Element</code> не має модифікатора <code>abstract</code>. Метод є абстрактним, якщо він не має реалізації (тобто знака рівності або тіла). На відміну від Java, для декларацій методів модифікатор <code>abstract</code> не потрібен (та не дозволений). Методи, що мають реалізцію, називаються <em>суцільними</em>.</p></div>
+<div class="paragraph"><p>Інша частка термінології відрізняє декларації та визначення. Клас <code>Element</code> <em>декларує</em> абстрактний метод <code>contents</code>, але наразі не <em>визначає</em> конкретинх методів. Однак в наступному розділі ми розширимо <code>Element</code>, визначаючи деякі суцільні методи.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_3____">10.3 Визначення методів без параметрів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як наступний крок, ми додамо методи до <code>Element</code>, що з'ясовують його ширину та довжину, як показано в Лістингу 10.2. Метод <code>height</code> повертає число рядків в <code>contents</code>. Метод <code>width</code> повертає довжину першого рядка, або повертає нуль, якщо в елементі немає нічого. (Це означає, що ви не можете визначити елемент з висотою нуль, та ненульовою шириною.)</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">length</span>
+  <span class="k">def</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">height</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">contents</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">length</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.2 - Визначення методів без параметрів, <code>width</code> та <code>height</code>.</p></div>
+<div class="paragraph"><p>Зауважте, що жодний з трьох методів <code>Element</code> не має списку параметрів, навіть порожнього. Наприклад, замість:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">width</span><span class="o">()</span><span class="k">:</span> <span class="kt">Int</span>
+</pre></div></div></div>
+<div class="paragraph"><p>метод визначений без дужок:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Такі <em>безпараметричні</em> методи є досить загальними в Scala. На відміну, методи, визначені з порожніми дужками, такі як <code>def height(): Int</code>, називаються <em>методами з порожніми дужками</em>. Рекомендована домовленість є використовувати безпараметричні методи, коли немає параметрів, і метод отримує доступ до змінного стану тільки через читання полів містячого об'єкта (зокрема, він не змінює змінний стан). Ця домовленість підтримує принцип уніфіормного доступу,<span class="footnote"><br />[Meyer, Object-Oriented Software Construction [Mey00]]<br /></span> який каже, що клієнтський код не має зазнати впливу від рішення реалізувати атрибут як поле або метод.</p></div>
+<div class="paragraph"><p>Наприклад, ми можемо реалізувати <code>width</code> та <code>height</code> елемента як поля, замість методів, просто змінивши <code>def</code> в кожному визначенні на <code>val</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+  <span class="k">val</span> <span class="n">height</span> <span class="k">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">length</span>
+  <span class="k">val</span> <span class="n">width</span> <span class="k">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">height</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">contents</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">length</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Дві пари визначень повністю еквівалентні з клієнтської точки зору. Єдине що відрізняється, це те, що доступ до поля може бути трохи швидший, ніж виклик метода, оскільки значення полів попередньо обчислені при ініціалізації класа, замість бути обчислені при кожному виклику метода. З іншого боку, поля потребують додаткового простору в пам'яті в кожному елементі <code>Element</code>. Так що це залежить від профілю використання класа, чи атрибут краще представляти як поле чи метод, і цей профіль використання може змінитись з часом. Суть в тому, що клієнти класа <code>Element</code> не мають зазнати впливу, коли змінюється внутрішнє представлення.</p></div>
+<div class="paragraph"><p>Зокрема, клієнт класу <code>Element</code> не має бути переписаний, якщо поле цього класа буде змінено на функцію доступу, доки ця функція є чистою (тобто вона не має жодних побічних ефектів, та не залежить від змінного стану). Клієнт не має турбуватись в жодному випадку.</p></div>
+<div class="paragraph"><p>Доки все гарно. Але все ще є невелике ускладнення, що має справу з тим, як Java обробляє речі. Проблема в тому, що Java не реалізує принцип уніформного доступу. Так що існує <code>string.length()</code> в Java, не <code>string.length</code>, навіть якщо <code>array.length</code>, не <code>array.length()</code>. Нічого і казати, що це дуже бентежить.</p></div>
+<div class="paragraph"><p>Щоб полатати цю дірку, Scala є дуже ліберальною, коли доходить до міксування безпараметричних методів, та методів з порожніми дужками. Зокрема, ви можете перекрити безпараметричні методи методом порожніх дужок, та навпаки. Ви також можете відкинути порожні дужки при виклику функції, що не приймає аргументів. Наприклад, наступні два рядка обоє є легальними в Scala:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">).</span><span class="n">toString</span>
+<span class="s">&quot;abc&quot;</span><span class="o">.</span><span class="n">length</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В принципі можливо відкинути всі порожні дужки в викликах функцій Scala. Однак все ще рекомендовано писати порожні дужки, коли викликаний метод представляє більше ніж властивість об'єкта отримувача. Наприклад, порожні дужки на місці, коли метод виконує I/O, записує переприсвоювані змінні (<code>var</code>), або читає <code>var</code> окрім полів отримувача, прямо або непрямо через використання змінних об'єктів. Таким чином, список параметрів діє як візуальна підказка, що виклик запускає деякі цікаві обчислення. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="s">&quot;hello&quot;</span><span class="o">.</span><span class="n">length</span> <span class="c1">// немає (), бо немає побічних ефектів</span>
+<span class="n">println</span><span class="o">()</span> <span class="c1">// краще не відкидати ()</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб підсумувати, в Scala заохочується визначати методи, що не приймають параметрів, та не мають побічних ефектів, як безпараметричні методи (тобто відкидаючи порожні дужки). З іншого боку, вам ніколи не слід визначати метод, що має побічні ефекти, без дужок, оскільки виклики цього метода потім будуть виглядати як вибір поля. Так що ваші клієнти можуть бути здивовані, коли побачать побічні ефекти.</p></div>
+<div class="paragraph"><p>Подібним чином, коли ви викликаєте функцію, що має побічний ефект, переконайтесь, що коли писали виклик включили порожні дужки. Інший спосіб думати про це: коли функція, що ви викликаєте, виконує операцію, використовуйте дужки. Але якщо вона просто провадить доступ до властивості, прибирайте дужки.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_4__">10.4 Розширення класів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Нам все ще треба бути в змозі створювати нові об'єкти елементів. Ви вже бачили, що <code>new Element</code> не може бути використаний для цього, оскільки <code>Element</code> є абстрактним. Таким чином, щоб створити примірник елемента, нам треба створити субклас, що розширює <code>Element</code>, та реалізує абстрактний метод <code>contents</code>. Лістинг 10.3 показує можливий спосіб зробити це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="n">conts</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">conts</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.3 - Визначення <code>ArrayElement</code> як субкласа <code>Element</code>.</p></div>
+<div class="paragraph"><p>Клас <code>ArrayElement</code> визначений для розширення класу <code>Element</code>. Так само, як в Java, ви використовуєте твердження <code>extends</code> після імені класу, щоб виразити цей факт:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">...</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Малюнок 10.1 - Діаграма класів для <code>ArrayElement</code>.</p></div>
+<div class="paragraph"><p>Таке твердження <code>extends</code> має два ефекти: це дає класу <code>ArrayElement</code> наслідувати всі неприватні члени від класу <code>Element</code>, та це робить тип <code>ArrayElement</code> субтипом типу <code>Element</code>. Зважаючи що <code>ArrayElement</code> розширює <code>Element</code>, клас <code>ArrayElement</code> називається субкласом класу <code>Element</code>. І навпаки, <code>Element</code> є суперкласом <code>ArrayElement</code>. Якщо ви приберете твердження <code>extends</code>, компілятор Scala неявно вважатиме, що ваш клас розширює <code>scala.AnyRef</code>, що на Java платформі є те саме, що і клас <code>java.lang.Object</code>. Таким чином, клас <code>Element</code> неявно розширює клас <code>AnyRef</code>. Ви можете бачити ці відношення наслідування на Малюнку 10.1.</p></div>
+<div class="paragraph"><p>Наслідування означає, що всі члени суперкласа також є членами субкласу, з двома виключеннями. Перше, приватні члени суперкласу не наслідуються в субкласі. Друге, члени суперкласа не наслідуються, якщо член з таким же ім'ям та параметрами вже реалізовані в субкласі. В такому випадку ми кажемо, що субклас <em>перекриває</em> член в суперкласі. Якщо член субкласу є суцільним, та член суперкласу є абстрактним, ми також кажемо, що суцільний член реалізує абстрактний.</p></div>
+<div class="paragraph"><p>Наприклад, метод <code>contents</code> в <code>ArrayElement</code> перекриває (або, альтернативно, реалізує) абстрактний метод <code>contents</code> в класі <code>Element</code>.<span class="footnote"><br />[Одна проріха в цьому дизайні в тому, що оскільки повернутий масив є змінним, клієнти можуть змінити його. Для книжки ми будемо підтримувати речі простими, але коли <code>ArrayElement</code> є частиною реального проекта, ви можете розглянути можливість повертати захисну копію масива замість цього. Інша проблема полягає в тому, що ми досі не переконались, що кожний елемент <code>String</code> масиву  <code>contents</code> має ту саму довжину. Це може бути вирішене через перевірку передумови в первинному конструкторі, за закиданні виключення, якщо вона порушується.]<br /></span> Для контрасту, клас <code>ArrayElement</code> наслідує методи <code>width</code> та <code>height</code> від класа <code>Element</code>. Наприклад, маючи <code>ArrayElement ae</code>, ви можете запитати його <code>width</code> використовуючи <code>ae.width</code>, так, якби <code>width</code> було визначене в класі <code>ArrayElement</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">ae</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="s">&quot;world&quot;</span><span class="o">))</span>
+<span class="n">ae</span><span class="k">:</span> <span class="kt">ArrayElement</span> <span class="o">=</span> <span class="nc">ArrayElement</span><span class="k">@</span><span class="mi">39274</span><span class="n">bf7</span>
 
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">ae</span><span class="o">.</span><span class="n">width</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">5</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Створення субтипів означає, що значення субкласу може бути використане, коли потрібне значення суперкласу. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">e</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Змінна <code>e</code> визначена як тип <code>Element</code>, так що його значення ініціалізації також має бути <code>Element</code>. Фактично, значення ініціалізації є <code>ArrayElement</code>. Це OK, оскільки клас <code>ArrayElement</code> розширює клас <code>Element</code>, і як результат, тип <code>ArrayElement</code> сумісний з типом <code>Element</code>.<span class="footnote"><br />[Для додаткової перспективи на різницю між суперкласом та субкласом дивіться входження глассарію щодо субтипів.]<br /></span></p></div>
+<div class="paragraph"><p>Малюнок 10.1 також показує порівняння відношень, що існують між <code>ArrayElement</code> та <code>Array[String]</code>. Це відношення називається композицією, та  клас <code>ArrayElement</code> є "скомпонований" з класу <code>Array[String]</code>, тому що компілятор Scala буде покладати в двійниковий клас, що він генерує для <code>ArrayElement</code>, поле, що містить посилання на переданий масив <code>conts</code>. Ми обговоримо деякі рішення дизайну композиції та наслідування далі в цій главі, в Розділі 10.11.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_5____">10.5 Перекриття методів та полей</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Принцип уніформного доступу є тільки одним аспектом, коли Scala розглядає поля та методи в більш уніформний спосіб, ніж Java. Інша різниця в тому, що в Scala поля та методи належать до того самого простору імен. Це робить можливим для поля перекривати метод без параметрів. Наприклад, ви можете змінити реалізацію <code>contents</code> в класі <code>ArrayElement</code> з метода на поле, без модифікації визначення абстрактного метода <code>contents</code> в класі <code>Element</code>, як показано в Лістингу 10.4:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="n">conts</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">conts</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.4 - Перекриття метода без параметрів за допомогою поля.</p></div>
+<div class="paragraph"><p>Поле <code>contents</code> (визначене як <code>val</code>) в цій версії <code>ArrayElement</code> є чудово гарною реалізацією метода без параметрів <code>contents</code> (декларований за допомогою <code>def</code>) в класі <code>Element</code>. З іншої сторони, в Scala заборонено визначати поле та метод з тим самим ім'ям в тому самому класі, хоча це дозволено в Java.</p></div>
+<div class="paragraph"><p>Наприклад, цей Java клас буде чудово компілюватись:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Це Java</span>
+<span class="kd">class</span> <span class="nc">CompilesFine</span> <span class="o">{</span>
+  <span class="kd">private</span> <span class="kt">int</span> <span class="n">f</span> <span class="o">=</span> <span class="mi">0</span><span class="o">;</span>
+  <span class="kd">public</span> <span class="kt">int</span> <span class="nf">f</span><span class="o">()</span> <span class="o">{</span>
+    <span class="k">return</span> <span class="mi">1</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але відповідний клас Scala не буде компілюватись:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">WontCompile</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">f</span> <span class="k">=</span> <span class="mi">0</span> <span class="c1">// Не буде компілюватись, оскільки поле</span>
+  <span class="k">def</span> <span class="n">f</span> <span class="k">=</span> <span class="mi">1</span>         <span class="c1">// та метод мають те саме ім&#39;я</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Загалом, Scala має лише два простору імен для визначень, на відміну від чотирьох в Java. Чотири простори імен в Java є поля, методи, типи та пакунки. На відміну в Scala лише два простори імен:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+значення (поля, методи, пакунки та об'єкти синглтони)
+</p>
+</li>
+<li>
+<p>
+types (імена класів та трейтів)
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Причина, з якої Scala покладає поля та методи в той самий простір імен в точності та, щоб ви могли перекривати методи без параметірв за допомогою <code>val</code>, дещо, чого ви не можете робити в Java.<span class="footnote"><br />[Причина, з якої в Scala пакунки подіяють той самий простір імен, що поля і методи - бо це дозволяє вам імпортувати пакунки (на додаток до тільки імен типів) та поля і методи об'єктів синглтонів. Це знову дещо, чого ви не можете в Java. Це буде описане в Розділі 13.3.]<br /></span></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_6___">10.6 Визначення параметричних полів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Знову розглянемо визначення класу <code>ArrayElement</code>, показану в попередній главі. Він мав параметр <code>conts</code>, чиє єдине призначення є бути скопійованим в поле <code>contents</code>. Ім'я параметра <code>conts</code> було обране саме так, щоб воно могло виглядати подібно до імені поля  <code>contents</code>, насправді не перетинаючись з ним. Це "сморід коду," ознака, що може бути непотрібна надмірність або повторення у вашому коді.</p></div>
+<div class="paragraph"><p>Ви можете уникнути сморіду коду, комбінуючи параметр та поле в одному визначенні параметричного коду, як показано в Лістингу 10.5:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ArrayElement</span><span class="o">(</span>
+  <span class="k">val</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+<span class="o">)</span> <span class="k">extends</span> <span class="nc">Element</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.5 - Визначення <code>contents</code> як параметричного поля.</p></div>
+<div class="paragraph"><p>Зауважте, що тепер параметр <code>contents</code> має перед собою <code>val</code>. Це скорочення, що одночасно визначеє параметр та поле з тим самим полем. Зокрема, клас <code>ArrayElement</code> тепер має (неперепризначуване) поле <code>contents</code>, до якого можна отримати з поза меж класу. Поле ініціалізоване значенням параметру. Це так, якби клас був написаний наступним чином, де <code>x123</code> є довільним свіжим ім'ям для параметру:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="n">x123</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="n">x123</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Також ви можете перед параметром класу поставити <code>var</code>, в якому випадку відповідне поле буде переприсвоюване. Нарешті, можливо додати модифікатори, такі як <code>private</code>, <code>protected</code>,<span class="footnote"><br />[Модифікатор <code>protected</code>, що надає доступ до субкласів, буде розкритий в деталях в Главі 13.]<br /></span> або <code>override</code> до ціх параметричних полів, так само, як ви можете зробити для любих інших членів методів. Наприклад, розгляньте визначення наступних класів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Cat</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">dangerous</span> <span class="k">=</span> <span class="kc">false</span>
+<span class="o">}</span>
 
-To summarize, it is encouraged in Scala to define methods that take no parameters and have no side
-effects as parameterless methods (i.e., leaving off the empty parentheses). On the other hand, you
-should never define a method that has side-effects without parentheses, because invocations of that
-method would then look like a field selection. So your clients might be surprised to see the side effects.
-Similarly, whenever you invoke a function that has side effects, be sure to include the empty
-parentheses when you write the invocation. Another way to think about this is if the function you&#8217;re
-calling performs an operation, use the parentheses. But if it merely provides access to a property, leave
-the parentheses off.
-10.4 EXTENDING CLASSES
-We still need to be able to create new element objects. You have already seen that "new Element"
-cannot be used for this because class Element is abstract. To instantiate an element, therefore, we will
-need to create a subclass that extends Element and implements the abstract contentsmethod. Listing
-10.3 shows one possible way to do that:
-class ArrayElement(conts: Array[String]) extends Element {
-def contents: Array[String] = conts
-}Listing 10.3 - Defining ArrayElement as a subclass of Element.
-Class ArrayElement is defined to extend class Element. Just like in Java, you use an extends clause
-after the class name to express this:
-&#8230; extends Element &#8230;
-Figure 10.1 - Class diagram for ArrayElement.
-Such an extends clause has two effects: It makes class ArrayElement inherit all non-private members
-from class Element, and it makes the type ArrayElement a subtype of the type Element.
-Given ArrayElement extends Element, class ArrayElement is called a subclass of
-class Element.Conversely, Element is a superclass of ArrayElement. If you leave out an extends clause,
-the Scala compiler implicitly assumes your class extends from scala.AnyRef, which on the Java
-platform is the same as class java.lang.Object. Thus, class Element implicitly extends class AnyRef.
-You can see these inheritance relationships in Figure 10.1.
-Inheritance means that all members of the superclass are also members of the subclass, with two
-exceptions. First, private members of the superclass are not inherited in a subclass. Second, a member
-of a superclass is not inherited if a member with the same name and parameters is already implemented
-in the subclass. In that case we say the member of the subclass overrides the member of the superclass.
-If the member in the subclass is concrete and the member of the superclass is abstract, we also say that
-the concrete memberimplements the abstract one.
-For example, the contents method in ArrayElement overrides (or alternatively: implements) abstract
-method contents in class Element.<span class="footnote"><br />[One flaw with this design is that because the returned array is mutable, clients could change it. For the book we&#8217;ll keep things simple, but were ArrayElement part of a real project, you might consider returning a defensive copy of the array instead. Another problem is we aren&#8217;t currently ensuring that every String element of the contents array has the same length. This could be solved by checking the precondition in the primary constructor and throwing an exception if it is violated.]<br /></span> By contrast, class ArrayElement inherits
-the widthand height methods from class Element. For example, given an ArrayElement ae, you can
-query its width using ae.width, as if width were defined in class ArrayElement:
-scala&gt; val ae = new ArrayElement(Array("hello", "world"))
-ae: ArrayElement = <a href="mailto:ArrayElement@39274bf7">ArrayElement@39274bf7</a>
-scala&gt; ae.width
-res0: Int = 5Subtyping means that a value of the subclass can be used wherever a value of the superclass is
-required. For example:
-val e: Element = new ArrayElement(Array("hello"))
-Variable e is defined to be of type Element, so its initializing value should also be an Element. In fact,
-the initializing value&#8217;s type is ArrayElement. This is OK, because class ArrayElement extends
-class Element, and as a result, the type ArrayElement is compatible with the type Element.<span class="footnote"><br />[For more perspective on the difference between subclass and subtype, see the glossary entry for subtype.]<br /></span>
-Figure 10.1 also shows the composition relationship that exists
-between ArrayElement andArray[String]. This relationship is called composition because
-class ArrayElement is "composed" out of class Array[String], in that the Scala compiler will place into
-the binary class it generates for ArrayElement a field that holds a reference to the passed conts array.
-We&#8217;ll discuss some design considerations concerning composition and inheritance later in this chapter,
-inSection 10.11.
-10.5 OVERRIDING METHODS AND FIELDS
-The uniform access principle is just one aspect where Scala treats fields and methods more uniformly
-than Java. Another difference is that in Scala, fields and methods belong to the same namespace. This
-makes it possible for a field to override a parameterless method. For instance, you could change the
-implementation of contents in class ArrayElement from a method to a field without having to modify
-the abstract method definition of contents in class Element, as shown in Listing 10.4:
-class ArrayElement(conts: Array[String]) extends Element {
-val contents: Array[String] = conts
-}
-Listing 10.4 - Overriding a parameterless method with a field.
-Field contents (defined with a val) in this version of ArrayElement is a perfectly good implementation
-of the parameterless method contents (declared with a def) in class Element. On the other hand, in
-Scala it is forbidden to define a field and method with the same name in the same class, whereas this is
-allowed in Java.
-For example, this Java class would compile just fine:
+<span class="k">class</span> <span class="nc">Tiger</span> <span class="o">(</span>
+  <span class="k">override</span> <span class="k">val</span> <span class="n">dangerous</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">,</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span>
+<span class="o">)</span> <span class="k">extends</span> <span class="nc">Cat</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Визначення <code>Tiger</code> є скороченням для наступного альтернативного визначення класу, з перекриттям члена <code>dangerous</code> та приватним членом <code>age</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Tiger</span><span class="o">(</span><span class="n">param1</span><span class="k">:</span> <span class="kt">Boolean</span><span class="o">,</span> <span class="n">param2</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Cat</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">val</span> <span class="n">dangerous</span> <span class="k">=</span> <span class="n">param1</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">age</span> <span class="k">=</span> <span class="n">param2</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Обоє члени ініціалізовані від відповідних парамтрів. Ми довільно обираємо імена для ціх параметрів, <code>param1</code> та <code>param2</code>. Важлива річ була щоб вони не перетинались з іншими іменами в полі зору.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_7___">10.7 Виклик конструкторів суперкласу</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Тепер ви маєте повну систему, що складається з двох класів: абстрактного класу <code>Element</code>, що розширений суцільним класом <code>ArrayElement</code>. Ви можете також уявити собі для вираження елемента. Наприклад, клієнти можуть виявити бажання створити елемент розташування, що складається з однієї лінії, взятої як рядок. Об'єктно-орієнтовне програмування робить простим розширення системи за допомогою нових варіантів даних. Ви можете просто додавати субкласі. Наприклад, Лістинг 10.6 показує клас <code>LineElement</code>, що поширює <code>ArrayElement</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LineElement</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="n">s</span><span class="o">))</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">width</span> <span class="k">=</span> <span class="n">s</span><span class="o">.</span><span class="n">length</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">height</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.6 - Викликання конструктора суперкласа.</p></div>
+<div class="paragraph"><p>Оскікльи <code>LineElement</code> розширює <code>ArrayElement</code>, та конструктор <code>ArrayElement</code> приймає параметр (<code>Array[String]</code>), <code>LineElement</code> потребує передати аргумент до первинного конструктора його суперкласу. Щоб викликати конструктор суперкласу, ви просто покладаєте аргумент або аргументи, що ви бажаєте передати, в дужках, що слідують за ім'ям суперкласу. Наприклад, клас <code>LineElement</code> передає <code>Array(s)</code> до первинного конструктора <code>ArrayElement</code>, покладаючи в його в дужки після імені суперкласа <code>ArrayElement</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">...</span> <span class="k">extends</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="n">s</span><span class="o">))</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>З новим субкласом ієрархія наслідування для елементів розташування зараз виглядає, як показано на Малюнку 10.2.</p></div>
+<div class="paragraph"><p>Малюнок 10.2 - Діаграма класів для <code>LineElement</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_8___override">10.8 Використання модифікатора override</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Зауважте, що визначення <code>width</code> та <code>height</code> в <code>LineElement</code> має модифікатор <code>override</code>. В розділі 6.3 ви бачили цей модифікатор в визначенні метода <code>toString</code>. Scala потребує такого модифікатора для всіх членів, що перекривають суцільний метод в батьківському класі. Модифікатор є опціональним, якщо член реалізує абстрактний член з тим самим ім'ям. Модифікатор заборонений, якщо член не перекриває або не реалізує деякий член в базовому класі. Оскільки <code>height</code> та <code>width</code> в класі <code>LineElement</code> перекривають суцільні визначення в класі <code>Element</code>, <code>override</code> є обов'язковим.</p></div>
+<div class="paragraph"><p>Це правило провадить корисну інформацію для компілятора, що допомагає уникати деяких складних для відлову помилок, та робить еволюцію безпечнішою. Наприклад, якщо ви випадково невірно назвали метод, або випадково дали йому інший список параметрів, компілятор відповість повідомленням про помилку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">$</span> <span class="n">scalac</span> <span class="nc">LineElement</span><span class="o">.</span><span class="n">scala</span>
+<span class="o">.../</span><span class="nc">LineElement</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">50</span><span class="kt">:</span>
+<span class="n">error</span><span class="k">:</span> <span class="kt">method</span> <span class="kt">hight</span> <span class="kt">overrides</span> <span class="kt">nothing</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hight</span> <span class="k">=</span> <span class="mi">1</span>
+           <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Домовленість перекриття навіть більше важливе, коли доходить до еволюції системи. Скажімо, ви визначаєте бібліотеку з методів малювання 2D. Ви зробили її публічно доступною, та вона широко уживана. В наступній версії бібліотеки ви бажаєте додати до вашого базового класа <code>Shape</code> новий метод з такою сигнатурою:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">hidden</span><span class="o">()</span><span class="k">:</span> <span class="kt">Boolean</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ваш новий метод буде використовуватись в різних методах малювання, щоб визначити, чи треба малювати фігуру. Це може призвести до значного прискорення, але ви не можете зробити це без ризику поламати клієнтській код. Кінець кінцем, клієнт міг вже визначити субклас <code>Shape</code> з іншою реалізацією <code>hidden</code>. Можливо, клієнській метод насправді робить отримуючий об'єкт зникаючим, замість перевіряти, чи об'єкт прихований. Оскільки дві версії <code>hidden</code> перекривають один одний, ваші методи малювання скінчать тим, що робитимуть об'єкти знікаючими, що напевне не те, чого ви бажаєте!</p></div>
+<div class="paragraph"><p>Ці "випадкові перекриття" є найбільш загальною маніфестацією того, що називається проблемою "крихких базових класів". Проблема в тому, що якщо ви додаєте нові члени до базових класів (які ми звичайно називаємо суперкласами) в ієрархії класів, ми ризикуємо зламати клієнтській код. Scala не може повністю вирішити проблему крихкіх базових класів, але він покращує ситуацію, порівняно з Java.<span class="footnote"><br />[В Java 1.5 була введена анотація <code>@Override</code>, що робить подібно до модифікатор Scala <code>override</code>, але на відміну від Scala <code>override</code>, це не вимагається.]<br /></span> Якщо бібліотека малювання та її клієнти були написані на Scala, тоді оригінальна клієнтська реалізація <code>hidden</code> не може мати модифікатора  <code>override</code>, оскільки на той час немає іншого метода з цім ім'ям.</p></div>
+<div class="paragraph"><p>Як тільки ви додасте метод <code>hidden</code> до другої версії вашого класу фігури, перекомпіляція клієнта буде давати помилку, подібну до наступної:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">.../</span><span class="nc">Shapes</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">6</span><span class="kt">:</span> <span class="kt">error:</span> <span class="kt">error</span> <span class="kt">overriding</span> <span class="kt">method</span>
+     <span class="n">hidden</span> <span class="n">in</span> <span class="k">class</span> <span class="nc">Shape</span> <span class="n">of</span> <span class="k">type</span> <span class="o">()</span><span class="kt">Boolean</span><span class="o">;</span>
+<span class="n">method</span> <span class="n">hidden</span> <span class="n">needs</span> <span class="err">`</span><span class="k">override</span><span class="err">&#39;</span> <span class="n">modifier</span>
+<span class="k">def</span> <span class="n">hidden</span><span class="o">()</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+<span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тобто, замість помилкової поведінки ваш клієнт отримає помилку часу компіляції, що, зазвичай, значно краще.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_9_____">10.9 Поліморфізм та динамічне зв'язування</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ви бачили в Розділі 10.4, що змінна типу <code>Element</code> може посилатись на об'єкт типу <code>ArrayElement</code>. Ім'я цього феномену є <em>поліморфізм</em>, що означає "багато форм". В цьому випадку, об'єкти <code>Element</code> можуть мати багато форм.<span class="footnote"><br />[Цей різновид поліморфізму називається поліморфізмом субтипізації. Інший різновид поліморфізму в Scala називається універсальним поліморфізмом, та обговорюється в Главі 19.]<br /></span></p></div>
+<div class="paragraph"><p>Доки ви бачили дві такі форми: <code>ArrayElement</code> та <code>LineElement</code>. Ви можете створити більше форм <code>Element</code>, через визначення нових субкласів <code>Element</code>. Наприклад, ви можете визначити нову форму <code>Element</code>, що має задані ширину та довжину, та повністю заповнений наданим символом:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">UniformElement</span><span class="o">(</span>
+  <span class="n">ch</span><span class="k">:</span> <span class="kt">Char</span><span class="o">,</span>
+  <span class="k">override</span> <span class="k">val</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+  <span class="k">override</span> <span class="k">val</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span>
+<span class="o">)</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">line</span> <span class="k">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">toString</span> <span class="o">*</span> <span class="n">width</span>
+  <span class="k">def</span> <span class="n">contents</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">.</span><span class="n">fill</span><span class="o">(</span><span class="n">height</span><span class="o">)(</span><span class="n">line</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ієрархія наслідування для класа <code>Element</code> тепер виглядає як показано на Малюнку 10.3. Як результат, Scala буде приймати всі наступні присвоєння, оскільки тип присвоюваних виразів відповідає до типу визначенної змінної:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">e1</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="s">&quot;world&quot;</span><span class="o">))</span>
+<span class="k">val</span> <span class="n">ae</span><span class="k">:</span> <span class="kt">ArrayElement</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">LineElement</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">)</span>
+<span class="k">val</span> <span class="n">e2</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="n">ae</span>
+<span class="k">val</span> <span class="n">e3</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">UniformElement</span><span class="o">(</span><span class="sc">&#39;x&#39;</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви перевірите ієрархію наслідування, ви знайдете, що для кожного з ціх чотирьох визначень <code>val</code>, тип виразу зправа від знаку рівності нижче типу <code>val</code>, що ініціалізується зліва знаку рівності.</p></div>
+<div class="paragraph"><p>Малюнок 10.3 - Ієрархія класу елементів розташування.</p></div>
+<div class="paragraph"><p>Однак друга частина історії в тому, що виклики ціх методів не змінній і виразах зв'язані динамічно. Це означає, що справжня реалізація метода визначається під час виконання, на основі класу об'єкта, не на основі типу змінної або виразу. Щоб продемонструвати цю поведінку, ми тимчасово видалимо всі існуючі члени з нашого класу <code>Element</code>, та додамо в <code>Element</code> метод з назвою <code>demo</code>. Ми перекриємо <code>demo</code> в <code>ArrayElement</code> та <code>LineElement</code>, але не в <code>UniformElement</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">demo</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;Element&#39;s implementation invoked&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
 
-class CompilesFine {
-private int f = 0;
-public int f() {
-return 1;
-}
-}
-But the corresponding Scala class would not compile:
-class WontCompile {
-private var f = 0 // Won&#8217;t compile, because a field
-def f = 1
+<span class="k">class</span> <span class="nc">ArrayElement</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">demo</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ArrayElement&#39;s implementation invoked&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
 
-}Generally, Scala has just two namespaces for definitions in place of Java&#8217;s four. Java&#8217;s four namespaces
-are fields, methods, types, and packages. By contrast, Scala&#8217;s two namespaces are:
-• values (fields, methods, packages, and singleton objects)
-• types (class and trait names)
-The reason Scala places fields and methods into the same namespace is precisely so you can override a
-parameterless method with a val, something you can&#8217;t do with Java.<span class="footnote"><br />[The reason that packages share the same namespace as fields and methods in Scala is to enable you to import packages (in addition to just the names of types) and the fields and methods of singleton objects. This is also something you can&#8217;t do in Java. It will be described in Section 13.3.]<br /></span>
-10.6 DEFINING PARAMETRIC FIELDS
-Consider again the definition of class ArrayElement shown in the previous section. It has
-aparameter conts whose sole purpose is to be copied into the contents field. The name conts of the
-parameter was chosen just so that it would look similar to the field name contents without actually
-clashing with it. This is a "code smell," a sign that there may be some unnecessary redundancy and
-repetition in your code.
-You can avoid the code smell by combining the parameter and the field in a singleparametric
-field definition, as shown in Listing 10.5:
-class ArrayElement(
-val contents: Array[String]
-) extends Element
-Listing 10.5 - Defining contents as a parametric field.
-Note that now the contents parameter is prefixed by val. This is a shorthand that defines at the same
-time a parameter and field with the same name. Specifically, class ArrayElement now has an
-(unreassignable) field contents, which can be accessed from outside the class. The field is initialized
-with the value of the parameter. It&#8217;s as if the class had been written as follows, where x123 is an
-arbitrary fresh name for the parameter:
-class ArrayElement(x123: Array[String]) extends Element {
-val contents: Array[String] = x123
-}
-You can also prefix a class parameter with var, in which case the corresponding field would be
-reassignable. Finally, it is possible to add modifiers, such as private, protected,<span class="footnote"><br />[The protected modifier, which grants access to subclasses, will be covered in detail inChapter 13.]<br /></span> or override to these
-parametric fields, just as you can for any other class member. Consider, for instance, the following
-class definitions:
-class Cat {
-val dangerous = false
-}
-class Tiger(
-override val dangerous: Boolean,
-private var age: Int
-) extends CatTiger&#8217;s definition is a shorthand for the following alternate class definition with an overriding
-member dangerous and a private member age:
-class Tiger(param1: Boolean, param2: Int) extends Cat {
-override val dangerous = param1
-private var age = param2
-}
-Both members are initialized from the corresponding parameters. We chose the names of those
-parameters, param1 and param2, arbitrarily. The important thing was that they not clash with any other
-name in scope.
-10.7 INVOKING SUPERCLASS CONSTRUCTORS
-You now have a complete system consisting of two classes: an abstract class Element, which is
-extended by a concrete class ArrayElement. You might also envision other ways to express an
-element. For example, clients might want to create a layout element consisting of a single line given by
-a string. Object-oriented programming makes it easy to extend a system with new data-variants. You
-can simply add subclasses. For example, Listing 10.6 shows a LineElementclass that
-extends ArrayElement:
-class LineElement(s: String) extends ArrayElement(Array(s)) {
-override def width = s.length
-override def height = 1
-}
-Listing 10.6 - Invoking a superclass constructor.
-Since LineElement extends ArrayElement, and ArrayElement&#8217;s constructor takes a parameter
-(anArray[String]), LineElement needs to pass an argument to the primary constructor of its superclass.
-To invoke a superclass constructor, you simply place the argument or arguments you want to pass in
-parentheses following the name of the superclass. For example,
-classLineElement passes Array(s) to ArrayElement&#8217;s primary constructor by placing it in parentheses
-after the superclass ArrayElement&#8217;s name:
-&#8230; extends ArrayElement(Array(s)) &#8230;
-With the new subclass, the inheritance hierarchy for layout elements now looks as shown inFigure
-10.2.Figure 10.2 - Class diagram for LineElement.
-10.8 USING OVERRIDE MODIFIERS
-Note that the definitions of width and height in LineElement carry an override modifier. In Section 6.3,
-you saw this modifier in the definition of a toString method. Scala requires such a modifier for all
-members that override a concrete member in a parent class. The modifier is optional if a member
-implements an abstract member with the same name. The modifier is forbidden if a member does not
-override or implement some other member in a base class. Since height and width in
-class LineElement override concrete definitions in class Element, overrideis required.
-This rule provides useful information for the compiler that helps avoid some hard-to-catch errors and
-makes system evolution safer. For instance, if you happen to misspell the method or accidentally give it
-a different parameter list, the compiler will respond with an error message:
-$ scalac LineElement.scala
-&#8230;/LineElement.scala:50:
-error: method hight overrides nothing
-override def hight = 1
-</sup>
-The override convention is even more important when it comes to system evolution. Say you defined a
-library of 2D drawing methods. You made it publicly available, and it is widely used. In the next
-version of the library you want to add to your base class Shape a new method with this signature:
-def hidden(): Boolean
-Your new method will be used by various drawing methods to determine whether a shape needs to be
-drawn. This could lead to a significant speedup, but you cannot do this without the risk of breaking
-client code. After all, a client could have defined a subclass of Shape with a different implementation
-of hidden. Perhaps the client&#8217;s method actually makes the receiver object disappear instead of testing
-whether the object is hidden. Because the two versions ofhidden override each other, your drawing
-methods would end up making objects disappear, which is certainly not what you want!
-These "accidental overrides" are the most common manifestation of what is called the "fragile base
-class" problem. The problem is that if you add new members to base classes (which we usually callsuperclasses) in a class hierarchy, you risk breaking client code. Scala cannot completely solve the
-fragile base class problem, but it improves on the situation compared to Java.<span class="footnote"><br />[In Java 1.5, an @Override annotation was introduced that works similarly to Scala&#8217;s overridemodifier, but unlike Scala&#8217;s override, is not required.]<br /></span> If the drawing library
-and its clients were written in Scala, then the client&#8217;s original implementation of hidden could not have
-had an override modifier, because at the time there was no other method with that name.
-Once you add the hidden method to the second version of your shape class, a recompile of the client
-would give an error like the following:
-&#8230;/Shapes.scala:6: error: error overriding method
-hidden in class Shape of type ()Boolean;
-method hidden needs &#8216;override&#8217; modifier
-def hidden(): Boolean =
-<sup>
-That is, instead of wrong behavior your client would get a compile-time error, which is usually much
-preferable.
-10.9 POLYMORPHISM AND DYNAMIC BINDING
-You saw in Section 10.4 that a variable of type Element could refer to an object of typeArrayElement.
-The name for this phenomenon is polymorphism, which means "many shapes" or "many forms." In this
-case, Element objects can have many forms.<span class="footnote"><br />[This kind of polymorphism is called subtyping polymorphism. Another kind of polymorphism in Scala called universal polymorphism is discussed in Chapter 19.]<br /></span>
-So far, you&#8217;ve seen two such forms: ArrayElement and LineElement. You can create more forms
-ofElement by defining new Element subclasses. For example, you could define a new form
-ofElement that has a given width and height, and is filled everywhere with a given character:
-class UniformElement(
-ch: Char,
-override val width: Int,
-override val height: Int
-) extends Element {
-private val line = ch.toString * width
-def contents = Array.fill(height)(line)
-}
-The inheritance hierarchy for class Element now looks as shown in Figure 10.3. As a result, Scala will
-accept all of the following assignments, because the type of the assigning expression conforms to the
-type of the defined variable:
-val
-val
-val
-val
-e1:
-ae:
-e2:
-e3:
-Element = new ArrayElement(Array("hello", "world"))
-ArrayElement = new LineElement("hello")
-Element = ae
-Element = new UniformElement(<em>x</em>, 2, 3)
-If you check the inheritance hierarchy, you&#8217;ll find that in each of these four val definitions, the type of
-the expression to the right of the equals sign is below the type of the val being initialized to the left of
-the equals sign.Figure 10.3 - Class hierarchy of layout elements.
-The other half of the story, however, is that method invocations on variables and expressions
-are dynamically bound. This means that the actual method implementation invoked is determined at run
-time based on the class of the object, not the type of the variable or expression. To demonstrate this
-behavior, we&#8217;ll temporarily remove all existing members from our Element classes and add a method
-named demo to Element. We&#8217;ll override demo inArrayElement and LineElement, but not
-in UniformElement:
-abstract class Element {
-def demo() = {
-println("Element&#8217;s implementation invoked")
-}
-}
-class ArrayElement extends Element {
-override def demo() = {
-println("ArrayElement&#8217;s implementation invoked")
-}
-}
-class LineElement extends ArrayElement {
-override def demo() = {
-println("LineElement&#8217;s implementation invoked")
-}
-}
+<span class="k">class</span> <span class="nc">LineElement</span> <span class="k">extends</span> <span class="nc">ArrayElement</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">demo</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;LineElement&#39;s implementation invoked&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
 
-class UniformElement extends Element
-If you enter this code into the interpreter, you can then define this method that takes anElement and
-invokes demo on it:
-def invokeDemo(e: Element) = {
-e.demo()
-}
-If you pass an ArrayElement to invokeDemo, you&#8217;ll see a message indicating ArrayElement&#8217;s
-implementation of demo was invoked, even though the type of the variable, e, on which demowas
-invoked is Element:scala&gt; invokeDemo(new ArrayElement)
-ArrayElement&#8217;s implementation invoked
-Similarly, if you pass a LineElement to invokeDemo, you&#8217;ll see a message that
-indicates LineElement&#8217;sdemo implementation was invoked:
-scala&gt; invokeDemo(new LineElement)
-LineElement&#8217;s implementation invoked
-The behavior when passing a UniformElement may at first glance look suspicious, but it is correct:
-scala&gt; invokeDemo(new UniformElement)
-Element&#8217;s implementation invoked
-Because UniformElement does not override demo, it inherits the implementation of demo from its
-superclass, Element. Thus, Element&#8217;s implementation is the correct implementation of demo to invoke
-when the class of the object is UniformElement.
-10.10 DECLARING FINAL MEMBERS
-Sometimes when designing an inheritance hierarchy, you want to ensure that a member cannot be
-overridden by subclasses. In Scala, as in Java, you do this by adding a finalmodifier to the member. As
-shown in Listing 10.7, you could place a final modifier onArrayElement&#8217;s demo method.
-class ArrayElement extends Element {
-final override def demo() = {
-println("ArrayElement&#8217;s implementation invoked")
-}
-}
-Listing 10.7 - Declaring a final method.
-Given this version of ArrayElement, an attempt to override demo in its subclass, LineElement, would
-not compile:
-elem.scala:18: error: error overriding method demo
-in class ArrayElement of type ()Unit;
-method demo cannot override final member
-override def demo() = {
-</sup>
-You may also at times want to ensure that an entire class not be subclassed. To do this you simply
-declare the entire class final by adding a final modifier to the class declaration. For example, Listing
-10.8 shows how you would declare ArrayElement final:
-final class ArrayElement extends Element {
-override def demo() = {
-println("ArrayElement&#8217;s implementation invoked")
-}
-}Listing 10.8 - Declaring a final class.
-With this version of ArrayElement, any attempt at defining a subclass would fail to compile:
-elem.scala: 18: error: illegal inheritance from final class
-ArrayElement
-class LineElement extends ArrayElement {
-^
-We&#8217;ll now remove the final modifiers and demo methods, and go back to the earlier implementation of
-the Element family. We&#8217;ll focus our attention in the remainder of this chapter to completing a working
-version of the layout library.
-10.11 USING COMPOSITION AND INHERITANCE
-Composition and inheritance are two ways to define a new class in terms of another existing class. If
-what you&#8217;re after is primarily code reuse, you should in general prefer composition to inheritance. Only
-inheritance suffers from the fragile base class problem, in which you can inadvertently break subclasses
-by changing a superclass.
-One question you can ask yourself about an inheritance relationship is whether it models anis-
-a relationship.<span class="footnote"><br />[Meyers, Effective C<code> [Mey91]]<br /></span> For example, it would be reasonable to say that ArrayElement is-an Element. Another
-question you can ask is whether clients will want to use the subclass type as a superclass type.<span class="footnote"><br />[Eckel, Thinking in Java [Eck98]]<br /></span> In the
-case of ArrayElement, we do indeed expect clients will want to use anArrayElement as an Element.
-If you ask these questions about the inheritance relationships shown in Figure 10.3, do any of the
-relationships seem suspicious? In particular, does it seem obvious to you that a LineElementis-
-an ArrayElement? Do you think clients would ever need to use a LineElement as an ArrayElement?
-In fact, we defined LineElement as a subclass of ArrayElement primarily to reuse ArrayElement&#8217;s
-definition of contents. Perhaps it would be better, therefore, to define LineElement as a direct subclass
-of Element, like this:
-class LineElement(s: String) extends Element {
-val contents = Array(s)
-override def width = s.length
-override def height = 1
-}
-In the previous version, LineElement had an inheritance relationship with ArrayElement, from which it
-inherited contents. It now has a composition relationship with Array: it holds a reference to an array of
-strings from its own contents field.<span class="footnote"><br />[Class ArrayElement also has a composition relationship with Array, because its parametriccontents field holds a reference to an array of strings. The code for ArrayElement is shown inListing 10.5 here. Its composition relationship is represented in class diagrams by a diamond, as shown, for example, in Figure 10.1 here.]<br /></span> Given this implementation ofLineElement, the inheritance
-hierarchy for Element now looks as shown in Figure 10.4.Figure 10.4 - Class hierarchy with revised LineElement.
-10.12 IMPLEMENTING ABOVE, BESIDE, AND TOSTRING
-As a next step, we&#8217;ll implement method above in class Element. Putting one element above another
-means concatenating the two contents values of the elements. So a first draft of method above could
-look like this:
-def above(that: Element): Element =
-new ArrayElement(this.contents </code> that.contents)
-The <code> operation concatenates two arrays. Arrays in Scala are represented as Java arrays, but support
-many more methods. Specifically, arrays in Scala can be converted to instances of a class scala.Seq,
-which represents sequence-like structures and contains a number of methods for accessing and
-transforming sequences. Some other array methods will be explained in this chapter and a more
-comprehensive discussion will be given in Chapter 17.
-In fact, the code shown previously is not quite sufficient because it does not let you put elements of
-different widths on top of each other. To keep things simple in this section, however, we&#8217;ll leave this as
-is and only pass elements of the same length to above. In Section 10.14, we&#8217;ll make an enhancement
-to above so that clients can use it to combine elements of different widths.
-The next method to implement is beside. To put two elements beside each other, we&#8217;ll create a new
-element in which every line results from concatenating corresponding lines of the two elements. As
-before, to keep things simple, we&#8217;ll start by assuming the two elements have the same height. This leads
-to the following design of method beside:
-def beside(that: Element): Element = {
-val contents = new Array[String](this.contents.length)
-for (i &#8592; 0 until this.contents.length)
-contents(i) = this.contents(i) + that.contents(i)
-new ArrayElement(contents)
-}
-The beside method first allocates a new array, contents, and fills it with the concatenation of the
-corresponding array elements in this.contents and that.contents. It finally produces a
-newArrayElement containing the new contents.Although this implementation of beside works, it is in an imperative style, the telltale sign of which is
-the loop in which we index through arrays. Alternatively, the method could be abbreviated to one
-expression:
-new ArrayElement(
-for (
-(line1, line2) &#8592; this.contents zip that.contents
-) yield line1 + line2
-)
-Here, the two arrays, this.contents and that.contents, are transformed into an array of pairs (asTuple2s
-are called) using the zip operator. The zip operator picks corresponding elements in its two operands
-and forms an array of pairs. For instance, this expression:
-Array(1, 2, 3) zip Array("a", "b")
-will evaluate to:
-Array1
-If one of the two operand arrays is longer than the other, zip will drop the remaining elements. In the
-expression above, the third element of the left operand, 3, does not form part of the result, because it
-does not have a corresponding element in the right operand.
-The zipped array is then iterated over by a for expression. Here, the syntax "for ((line1, line2) &#8592; &#8230;)"
-allows you to name both elements of a pair in one pattern (i.e., line1stands now for the first element of
-the pair, and line2 stands for the second). Scala&#8217;s pattern-matching system will be described in detail
-in Chapter 15. For now, you can just think of this as a way to define two vals, line1 and line2, for each
-step of the iteration.
-The for expression has a yield part and therefore yields a result. The result is of the same kind as the
-expression iterated over (i.e., it is an array). Each element of the array is the result of concatenating the
-corresponding lines, line1 and line2. So the end result of this code is the same as in the first version
-of beside, but because it avoids explicit array indexing, the result is obtained in a less error-prone way.
-You still need a way to display elements. As usual, this is done by defining a toString method that
-returns an element formatted as a string. Here is its definition:
-override def toString = contents mkString "\n"
-The implementation of toString makes use of mkString, which is defined for all sequences, including
-arrays. As you saw in Section 7.8, an expression like "arr mkString sep" returns a string consisting of
-all elements of the array arr. Each element is mapped to a string by calling its toString method. A
-separator string sep is inserted between consecutive element strings. So the expression,
-"contents mkString "\n"" formats the contents array as a string, where each array element appears on a
-line by itself.
-abstract class Element {def contents: Array[String]
-def width: Int =
-if (height == 0) 0 else contents(0).length
-def height: Int = contents.length
-def above(that: Element): Element =
-new ArrayElement(this.contents </code> that.contents)
-def beside(that: Element): Element =
-new ArrayElement(
-for (
-(line1, line2) &#8592; this.contents zip that.contents
-) yield line1 + line2
-)
-override def toString = contents mkString "\n"
-}
-Listing 10.9 - Class Element with above, beside, and toString.
-Note that toString does not carry an empty parameter list. This follows the recommendations for the
-uniform access principle, because toString is a pure method that does not take any parameters. With the
-addition of these three methods, class Element now looks as shown inListing 10.9.
-10.13 DEFINING A FACTORY OBJECT
-You now have a hierarchy of classes for layout elements. This hierarchy could be presented to your
-clients "as is," but you might also choose to hide the hierarchy behind a factory object.
-A factory object contains methods that construct other objects. Clients would then use these factory
-methods to construct objects, rather than constructing the objects directly with new. An advantage of
-this approach is that object creation can be centralized and the details of how objects are represented
-with classes can be hidden. This hiding will both make your library simpler for clients to understand,
-because less detail is exposed, and provide you with more opportunities to change your library&#8217;s
-implementation later without breaking client code.
-The first task in constructing a factory for layout elements is to choose where the factory methods
-should be located. Should they be members of a singleton object or of a class? What should the
-containing object or class be called? There are many possibilities. A straightforward solution is to
-create a companion object of class Element and make this the factory object for layout elements. That
-way, you need to expose only the class/object combo of Element to your clients, and you can hide the
-three implementation classes ArrayElement,LineElement, and UniformElement.
-Listing 10.10 is a design of the Element object that follows this scheme. The Element object contains
-three overloaded variants of an elem method and each constructs a different kind of layout object.
-object Element {
-def elem(contents: Array[String]): Element =
-new ArrayElement(contents)def elem(chr: Char, width: Int, height: Int): Element =
-new UniformElement(chr, width, height)
-def elem(line: String): Element =
-new LineElement(line)
-}
-Listing 10.10 - A factory object with factory methods.
-With the advent of these factory methods, it makes sense to change the implementation of
-class Element so that it goes through the elem factory methods rather than creating
-newArrayElement instances explicitly. To call the factory methods without qualifying them
-withElement, the name of the singleton object, we will import Element.elem at the top of the source
-file. In other words, instead of invoking the factory methods with Element.elem inside classElement,
-we&#8217;ll import Element.elem so we can just call the factory methods by their simple name,elem. Listing
-10.11 shows what class Element will look like after these changes.
-import Element.elem
-abstract class Element {
-def contents: Array[String]
-def width: Int =
-if (height == 0) 0 else contents(0).length
-def height: Int = contents.length
-def above(that: Element): Element =
-elem(this.contents <code> that.contents)
-def beside(that: Element): Element =
-elem(
-for (
-(line1, line2) &#8592; this.contents zip that.contents
-) yield line1 + line2
-)
-override def toString = contents mkString "\n"
-}
-Listing 10.11 - Class Element refactored to use factory methods.
-In addition, given the factory methods, the subclasses, ArrayElement, LineElement,
-andUniformElement, could now be private because they no longer need to be accessed directly by
-clients. In Scala, you can define classes and singleton objects inside other classes and singleton
-objects. One way to make the Element subclasses private is to place them inside theElement singleton
-object and declare them private there. The classes will still be accessible to the three elem factory
-methods, where they are needed. Listing 10.12 shows how that will look.10.14 HEIGHTEN AND WIDEN
-We need one last enhancement. The version of Element shown in Listing 10.11 is not quite sufficient
-because it does not allow clients to place elements of different widths on top of each other, or place
-elements of different heights beside each other.
-For example, evaluating the following expression won&#8217;t work correctly, because the second line in the
-combined element is longer than the first:
-new ArrayElement(Array("hello")) above
-new ArrayElement(Array("world!"))
-Similarly, evaluating the following expression would not work properly, because the
-firstArrayElement has a height of two and the second a height of only one:
-new ArrayElement(Array("one", "two")) beside
-new ArrayElement(Array("one"))
-Listing 10.13 shows a private helper method, widen, which takes a width and returns an Elementof that
-width. The result contains the contents of this Element, centered, padded to the left and right by any
-spaces needed to achieve the required width. Listing 10.13 also shows a similar method, heighten,
-which performs the same function in the vertical direction. The widenmethod is invoked by above to
-ensure that Elements placed above each other have the same width. Similarly, the heighten method is
-invoked by beside to ensure that elements placed beside each other have the same height. With these
-changes, the layout library is ready for use.
-object Element {
-private class ArrayElement(
-val contents: Array[String]
-) extends Element
-private class LineElement(s: String) extends Element {
-val contents = Array(s)
-override def width = s.length
-override def height = 1
-}
-private class UniformElement(
-ch: Char,
-override val width: Int,
-override val height: Int
-) extends Element {
-private val line = ch.toString * width
-def contents = Array.fill(height)(line)
-}
-def elem(contents: Array[String]): Element =
-new ArrayElement(contents)
-def elem(chr: Char, width: Int, height: Int): Element =
-new UniformElement(chr, width, height)
-def elem(line: String): Element =}
-new LineElement(line)
-Listing 10.12 - Hiding implementation with private classes.
-import Element.elem
-abstract class Element {
-def contents: Array[String]
-def width: Int = contents(0).length
-def height: Int = contents.length
-def above(that: Element): Element = {
-val this1 = this widen that.width
-val that1 = that widen this.width
-elem(this1.contents </code> that1.contents)
-}
-def beside(that: Element): Element = {
-val this1 = this heighten that.height
-val that1 = that heighten this.height
-elem(
-for ((line1, line2) &#8592; this1.contents zip that1.contents)
-yield line1 + line2)
-}
-def widen(w: Int): Element =
-if (w &#8656; width) this
-else {
-val left = elem(' <em>, (w - width) / 2, height)
-val right = elem(</em> <em>, w - width - left.width, height)
-left beside this beside right
-}
-def heighten(h: Int): Element =
-if (h &#8656; height) this
-else {
-val top = elem(</em> <em>, width, (h - height) / 2)
-val bot = elem(</em> <em>, width, h - height - top.height)
-top above this above bot
-}
-}
-override def toString = contents mkString "\n"
-Listing 10.13 - Element with widen and heighten methods.
-10.15 PUTTING IT ALL TOGETHER
-A fun way to exercise almost all elements of the layout library is to write a program that draws a spiral
-with a given number of edges. This Spiral program, shown in Listing 10.14, will do just that.
-import Element.elem
-object Spiral {
-val space = elem(" ")val corner = elem("<code>")
-def spiral(nEdges: Int, direction: Int): Element = {
-if (nEdges == 1)
-elem("</code>")
-else {
-val sp = spiral(nEdges - 1, (direction + 3) % 4)
-def verticalBar = elem(</em>|<em>, 1, sp.height)
-def horizontalBar = elem(</em>-', sp.width, 1)
-if (direction == 0)
-(corner beside horizontalBar) above (sp beside space)
-else if (direction == 1)
-(sp above space) beside (corner above verticalBar)
-else if (direction == 2)
-(space beside sp) above (horizontalBar beside corner)
-else
-(verticalBar above corner) beside (space above sp)
-}
-}
-def main(args: Array[String]) = {
-val nSides = args(0).toInt
-println(spiral(nSides, 0))
-}
-}
-Listing 10.14 - The Spiral application.
-Because Spiral is a standalone object with a main method with the proper signature, it is a Scala
-application. Spiral takes one command-line argument, an integer, and draws a spiral with the specified
-number of edges. For example, you could draw a six-edge spiral, as shown on the left, and larger
-spirals, as shown on the right.
-$ scala Spiral 6
-<code>-----
-|
-| +-</code>
-| + |
-|
-|
-<code>---</code>
-$ scala Spiral 11
-<code>----------
-|
-| +------</code>
-| |
-|
-| | <code>--</code> |
-| | | | |
-| | <code> | |
-| |
-| |
-| <code>----</code> |
-|
-|
-<code>--------</code>
-$ scala Spiral 17
-<code>----------------
-|
-| +------------</code>
-| |
-|
-| | <code>--------</code> |
-| | |
-| |
-| | | <code>----</code> | |
-| | | |
-| | |
-| | | | </code> | | |
-| | | | | | | |
-| | | <code>--</code> | | |
-| | |
-| | |
-| | <code>------</code> | |
-| |
-| |
-| <code>----------</code> |
-|
-|
-<code>--------------</code>
-10.16 CONCLUSION
-In this section, you saw more concepts related to object-oriented programming in Scala. Among others,
-you encountered abstract classes, inheritance and subtyping, class hierarchies, parametric fields, andmethod overriding. You should have developed a feel for constructing a non-trivial class hierarchy in
-Scala. We&#8217;ll work with the layout library again inChapter 14.</p></div>
+<span class="c1">// UniformElement наслідує demo від Element</span>
+<span class="k">class</span> <span class="nc">UniformElement</span> <span class="k">extends</span> <span class="nc">Element</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви введете цей код в інтерпретатор, потім ви можете визначитицей метод, що приймає <code>Element</code>, та викликає на ньому <code>demo</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">invokeDemo</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">e</span><span class="o">.</span><span class="n">demo</span><span class="o">()</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви передасте <code>ArrayElement</code> до <code>invokeDemo</code>, ви побачите повідомлення, що вказує, що була викликана реалізація demo з ArrayElement, навіть хоча тип змінної <code>e</code>, на якому викликається demo, є <code>Element</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">invokeDemo</span><span class="o">(</span><span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">)</span>
+<span class="nc">ArrayElement</span><span class=" -Symbol">&#39;s</span> <span class="n">implementation</span> <span class="n">invoked</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Подібно до цього, якщо ви передасте <code>LineElement</code> до <code>invokeDemo</code>, ви побачите повідомлення, що вказує, що була викликана реалізація <code>demo</code> з <code>LineElement</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">invokeDemo</span><span class="o">(</span><span class="k">new</span> <span class="nc">LineElement</span><span class="o">)</span>
+<span class="nc">LineElement</span><span class=" -Symbol">&#39;s</span> <span class="n">implementation</span> <span class="n">invoked</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Поведінка коли передається <code>UniformElement</code> може зпочатку виглядати підозрілою, але вона коректна:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">invokeDemo</span><span class="o">(</span><span class="k">new</span> <span class="nc">UniformElement</span><span class="o">)</span>
+<span class="nc">Element</span><span class=" -Symbol">&#39;s</span> <span class="n">implementation</span> <span class="n">invoked</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки <code>UniformElement</code> не перекриває <code>demo</code>, він наслідує реалізацію <code>demo</code> від свого суперкласу, <code>Element</code>. Таким чином, реалізація <code>Element</code> є коректною реалізацією <code>demo</code>, коли клас об'єкта є <code>UniformElement</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_10___">10.10 Декларація фінальних членів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Іноді, коли розробляється ієрархія наслідування, ви бажаєте переконатись, що член не може бути перекритий в субкласах. В Scala, як і в Java, ви робите це, додаючи модифікатор <code>final</code> до члена. Як показано в Лістингу 10.7, ви можете покласти модифікатор <code>final</code> на <code>demo</code> метод в <code>ArrayElement</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ArrayElement</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="n">demo</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ArrayElement&#39;s implementation invoked&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.7 - Декларування фінального методу.</p></div>
+<div class="paragraph"><p>Маючи цю версію <code>ArrayElement</code>, спроба перекрити <code>demo</code> в субкласі <code>LineElement</code> не буде компілюватись:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">elem</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">18</span><span class="kt">:</span> <span class="kt">error:</span> <span class="kt">error</span> <span class="kt">overriding</span> <span class="kt">method</span> <span class="kt">demo</span>
+   <span class="n">in</span> <span class="k">class</span> <span class="nc">ArrayElement</span> <span class="n">of</span> <span class="k">type</span> <span class="o">()</span><span class="kt">Unit</span><span class="o">;</span>
+<span class="n">method</span> <span class="n">demo</span> <span class="n">cannot</span> <span class="k">override</span> <span class="k">final</span> <span class="n">member</span>
+    <span class="k">override</span> <span class="k">def</span> <span class="n">demo</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+                 <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Також часом ви бажаєте переконатись, що цілий клас не може мати субкласів. Щоб зробити це, просто декларуйте цілий клас фінальним, додаючи модифікатор <code>final</code> до декларації класу. Наприклад, Лістинг 10.8 показує, як ви можете декларувати фінальний <code>ArrayElement</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">class</span> <span class="nc">ArrayElement</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">demo</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;ArrayElement&#39;s implementation invoked&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.8 - Декларування фінального класу.</p></div>
+<div class="paragraph"><p>З цією версією <code>ArrayElement</code>, люба спроба визначити субклас не буде компілюватись:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">elem</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span> <span class="err">18</span><span class="kt">:</span> <span class="kt">error:</span> <span class="kt">illegal</span> <span class="kt">inheritance</span> <span class="kt">from</span> <span class="kt">final</span> <span class="kt">class</span>
+    <span class="nc">ArrayElement</span>
+  <span class="k">class</span> <span class="nc">LineElement</span> <span class="k">extends</span> <span class="nc">ArrayElement</span> <span class="o">{</span>
+                            <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер ми видалимо модифікатор <code>final</code> та метод <code>demo</code>, та повернемось до ранішньої реалізації сімейства <code>Element</code>. В залишку глави ми зфокусуємо нашу увагу на завершенні робочої версії бібліотеки розташування.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_11____">10.11 Використання композиції та наслідування</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Композиція та наслідування є двома шляхами визначити новий клас в термінах іншого існуючого класа. Якщо те, чого ви шукаєте, це просте повторне використання коду, ви маєте обрати композицію замість наслідування. Тільки наслідування потерпає від проблеми крихких базових класів, коли ви можете ненавмисно зашкодити субкласам через зміни в суперкласі.</p></div>
+<div class="paragraph"><p>Одне питання, що ви можете запитати себе щодо відношення наслідування, чи моделює воно відношення "..є примірником..".<span class="footnote"><br />[Meyers, Effective C++ [Mey91]]<br /></span> Наприклад, це буде досить дотепним сказати, що <code>ArrayElement</code> <em>є примірником</em> <code>Element</code>. Інше питання, що ви можете запитати, це чи те, чи колись клієнти забажають використовувати тип субкласів як тип суперкласу.<span class="footnote"><br />[Eckel, Thinking in Java [Eck98]]<br /></span> В випадку <code>ArrayElement</code>, ми очевидно очікуємо, що клієнти бажатимуть використовувати <code>ArrayElement</code> як <code>Element</code>.</p></div>
+<div class="paragraph"><p>Якщо ви задасте ці питання щодо відношень наслідування, показаних на Малюнку 10.3, чи якесь з відношень виглядає підозріло? Закрема, чи виглає це очевидним, що <code>LineElement</code> <em>є примірником</em> <code>ArrayElement</code>? Чи ви думаєте, що клієнтам колись знадобиться використовувати <code>LineElement</code> як <code>ArrayElement</code>?</p></div>
+<div class="paragraph"><p>Фактично, ми визначили <code>LineElement</code> як субклас <code>ArrayElement</code> в основному для повторного використання визначення <code>contents</code> з <code>ArrayElement</code>. Можливо, було б краще визначити <code>LineElement</code> як прямий субклас <code>Element</code>, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">LineElement</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">contents</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">width</span> <span class="k">=</span> <span class="n">s</span><span class="o">.</span><span class="n">length</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">height</span> <span class="k">=</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В попередній версії <code>LineElement</code> має відношення наслідування з <code>ArrayElement</code>, від якого він наслідує <code>contents</code>. Тепер він має відношення композиції з <code>Array</code>: він має посилання на масив з рядків зі свого власного поля <code>contents</code>.<span class="footnote"><br />[Клас <code>ArrayElement</code> також має відношення композиції з <code>Array</code>, оскільки його параметричне поле <code>contents</code> містить посилання на масив з рядків. Код для <code>ArrayElement</code> показаний в Лістингу 10.5. Його відношення композиції представлене на діаграмі класу як діамант, наприклад, як показано на Малюнку 10.1.]<br /></span> Маючи цю реалізацію <code>LineElement</code>, ієрархія наслідування для <code>Element</code> тепер виглядає так, як на Малюнку 10.4.</p></div>
+<div class="paragraph"><p>Малюнок 10.4 - Ієрархія класів з переробленим <code>LineElement</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_12__code_above_code_code_beside_code__code_tostring_code">10.12 Реалізація <code>above</code>, <code>beside</code> та <code>toString</code></h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як наступний крок, ми реалізуємо метод <code>above</code> в класі <code>Element</code>. Покладання одного елементу над іншим означає конкатенацію двох значень <code>contents</code> для елементів. Так що перша чернетка метода <code>above</code> може виглядати так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">above</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+  <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">contents</span> <span class="o">++</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Операція <code>++</code> конкатенує два масиви. Масиви в Scala представлені масивами Java, але підтримують значно більше методів. Більш точно, масиви в Scala можуть бути конвертовані в примірники класу <code>scala.Seq</code>, що представляє собою послідовність-подібні структуру, та містить декілька методів для доступу та перетворення послідовностей. Деякі інші методи масивів будуть пояснені в цій главі, та більш докладна дискусія буде надана в Главі 17.</p></div>
+<div class="paragraph"><p>Фактично, попередньо показаний код не дуже достатній, оскільки він не дозволяє вам покладати вам елементи різної ширини один зверху іншого. Щоб утримувати речі в цьому розділі простими, ми залишимо це як є, та передаватимемо до <code>above</code> тільки елементи однієї ширини. В Розділі 10.14 ми зробимо покращення до <code>above</code>, так щоб клієнти могли використовувати його для комбінування елементів з різною шириною.</p></div>
+<div class="paragraph"><p>Наступний метод, що треба реалізувати, є <code>beside</code>. Щоб покласти два елементи один поряд з іншим, ми створимо новий елемент, в якому кожна лінія утворюється від канкатенації відповідних ліній з двох елементів. Як і раніше, щоб утримувати речі простими, ми почнемо з припущення, що два елементи мають ту саму висоту. Це призводить до наступного дизайну метода <code>beside</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">beside</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">contents</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">](</span><span class="k">this</span><span class="o">.</span><span class="n">contents</span><span class="o">.</span><span class="n">length</span><span class="o">)</span>
+  <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="k">this</span><span class="o">.</span><span class="n">contents</span><span class="o">.</span><span class="n">length</span><span class="o">)</span>
+    <span class="n">contents</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="k">=</span> <span class="k">this</span><span class="o">.</span><span class="n">contents</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="o">+</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
+  <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>beside</code> спочатку розміщує новий масив <code>contents</code>, та заповнює його вмістом відповідних елементів масива в <code>this.contents</code> та <code>that.contents</code>. В фіналі він продукує новий <code>ArrayElement</code>, що містить новий <code>contents</code>.</p></div>
+<div class="paragraph"><p>Хоча ця реалізація <code>beside</code> робить, це імперативний стиль, промовистим знаком чого є цикл в якому ми проходимо по масиву. Альтернативно, метод може бути скорочений до одного вирау:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span>
+  <span class="k">for</span> <span class="o">(</span>
+        <span class="o">(</span><span class="n">line1</span><span class="o">,</span> <span class="n">line2</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="k">this</span><span class="o">.</span><span class="n">contents</span> <span class="n">zip</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span>
+      <span class="o">)</span> <span class="k">yield</span> <span class="n">line1</span> <span class="o">+</span> <span class="n">line2</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут є два масива, <code>this.contents</code> та <code>that.contents</code>, що трансформуються в масив з пар (що називаютсья <code>Tuple2s</code>) використовуючи оператор <code>zip</code>. Оператор <code>zip</code> бере відповідні елементи зі своїх двох операндів, та формує масив з пар. Наприклад, цей вираз:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span> <span class="n">zip</span> <span class="nc">Array</span><span class="o">(</span><span class="s">&quot;a&quot;</span><span class="o">,</span> <span class="s">&quot;b&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>обчислюється до:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Array</span><span class="o">((</span><span class="mi">1</span><span class="o">,</span> <span class="s">&quot;a&quot;</span><span class="o">),</span> <span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="s">&quot;b&quot;</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо один з двох масивів довший за інший, <code>zip</code> буде відкидати зайві елементи. В виразі вище третій елемент лівого операнда, <code>3</code>, не формує частину результату, оскільки він не має відповідного елемента в правому операнді.</p></div>
+<div class="paragraph"><p>Після цього поєднаний масив ітерується в виразу <code>for</code>. Тут синтаксис <code>for ((line1, line2) &lt;- ...)</code> дозволяє вам назвати обоє елементи з пари в одному шаблоні (тобто, тепер <code>line1</code> тепер відповідає першому елементу з пари, та <code>line2</code> відповідає другому). Система співпадіння з шаблонами в Scala буде описана в деталях в Главі 15. Доки ви можете думати про це як про спосіб визначити дві <code>val</code>, <code>line1</code> та <code>line2</code>, на кожному кроці ітерації.</p></div>
+<div class="paragraph"><p>Вираз <code>for</code> має частину <code>yield</code>, і, таким чином, видає результат. Результат буде того самого типу, що і вираз, по якому іде ітерація (тобто, це масив). Кожний елемент масиву є результатом конкатенації відповідних рядків, <code>line1</code> та <code>line2</code>. Так що ваш останній результат цього коду є той самий, що і в першій версії <code>beside</code>, але оскільки він уникає індексації масиву, цей результат отриманий в менш схильний до помилок спосіб.</p></div>
+<div class="paragraph"><p>Вам все ще треба спосіб відображати елементи. Як звичайно, це робиться через визначення метода <code>toString</code>, що повертає елемент, відформатований як рядок. Ось визначення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">contents</span> <span class="n">mkString</span> <span class="s">&quot;\n&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Реалізація <code>toString</code> задіє <code>mkString</code>, що визначене для всіх послідовностей, включаючи масиви. Як ви бачили в Розділі 7.8, вирази, як <code>arr mkString sep</code> повертає рядок, що складається з усіх елементів масива <code>arr</code>. Кожний елемент відзеркалюється на рядок, через виклик для кожного елементу <code>toString</code>. Рядок роздільника, sep, вставляється між послідовними рядками елементів. Так що вираз <code>contents mkString "\n"</code> форматує масив <code>contents</code> як рядок, де кожний елемент масива з'являється на окремому рядку.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span><span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">height</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">contents</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">length</span>
+
+  <span class="k">def</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">length</span>
+
+  <span class="k">def</span> <span class="n">above</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">contents</span> <span class="o">++</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">beside</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span>
+      <span class="k">for</span> <span class="o">(</span>
+        <span class="o">(</span><span class="n">line1</span><span class="o">,</span> <span class="n">line2</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="k">this</span><span class="o">.</span><span class="n">contents</span> <span class="n">zip</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span>
+      <span class="o">)</span> <span class="k">yield</span> <span class="n">line1</span> <span class="o">+</span> <span class="n">line2</span>
+    <span class="o">)</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">contents</span> <span class="n">mkString</span> <span class="s">&quot;\n&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.9 - Клас <code>Element</code> з <code>above</code>, <code>beside</code> та <code>toString</code>.</p></div>
+<div class="paragraph"><p>Зауважте, що <code>toString</code> не має порожнього списку параметрів. Це слідує рекомендаціям для принципа уніформного доступу, оскільки <code>toString</code> є чистим методом, що не приймає жодних параметрів. З додаванням ціх трьох методів, клас <code>Element</code> тепер виглядає як показано в Лістингу 10.9.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_13____">10.13 Визначення об'єкта фабрики</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Тепер ви маєте ієрархію класів для елементів розташування. Ця ієрархія може бути представлена вашим клієнтам "як є", але ви також можете обрати приховати ієрархію за лаштунками об'єкта фабрики.</p></div>
+<div class="paragraph"><p>Об'єкт фабрики містить методи, що конструюють інші об'єкти. Потім клієнти використовують ці методи фабрики, замість конструювання об'єктів напряму за допомогою <code>new</code>. Перевага цього підходу до створення об'єктів в тому, що створення об'єктів може бути централізоване, і деталі того, як об'єкти представлені класами може бути приховане. Це приховування одночасно зробить вашу бібліотеку простішою для розуміння клієнтами, оскільки показані меньше деталей, та провадить вам більше можливостей пізніше змінити реалізацію вашої бібліотеки, не руйнуючи код клієнта.</p></div>
+<div class="paragraph"><p>Перше завдання в конструюванні фабрики для ваших об'єктів розташування є обрати, де мають бути розміщені методи фабрики. Чи мають вони бути членами об'єкта синглтона, або класа? Що повинно викликати містячий об'єкт або клас? Існую багато можливостей. Прямолінійне рішення є створити об'єкт компанйон класа <code>Element</code>, та зробити його об'єктом фабрикою для елементів розміщення. Таким чином, вам треба показати вашим клієнтам тільки комбінацію класа/об'єкта, та ви можете приховати три класа реалізації,<code>ArrayElement</code>, <code>LineElement</code>, та <code>UniformElement</code>.</p></div>
+<div class="paragraph"><p>Лістинг 10.10 є дизайном об'єкта <code>Element</code>, що слідує цій схемі. Об'єкт  <code>Element</code> містить три перевантажені варіанти метода <code>elem</code>, та кожний конструює різний тип об'єкта розташування.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">elem</span><span class="o">(</span><span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">elem</span><span class="o">(</span><span class="n">chr</span><span class="k">:</span> <span class="kt">Char</span><span class="o">,</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">UniformElement</span><span class="o">(</span><span class="n">chr</span><span class="o">,</span> <span class="n">width</span><span class="o">,</span> <span class="n">height</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">elem</span><span class="o">(</span><span class="n">line</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">new</span> <span class="nc">LineElement</span><span class="o">(</span><span class="n">line</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.10 - Об'єкт фабрики з методом фабрики.</p></div>
+<div class="paragraph"><p>З появою ціх методів фабрик має сенс змінити реалізацію класа <code>Element</code>, так щоб він шов через методи фабрик <code>elem</code>, скоріше ніж створювати нові примірники <code>ArrayElement</code> напряму. Щоб викликати методи фабрик, не кваліфікуючи їх іменем об'єкта синглтона, <code>Element</code>, ми будемо імпортувати <code>Element.elem</code> на верхньому рівні джерельного файла. Іншими словами, замість виклику методів фабрик як <code>Element.elem</code> зсередини класу <code>Element</code>,ми імпортуємо <code>Element.elem</code>, так що ви можете просто викликати методи фабрик по їх простому імені, <code>elem</code>. Лістинг 10.11 показує, як буде виглядати клас Element після ціх змін.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">Element.elem</span>
+
+<span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span>
+
+  <span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+
+  <span class="k">def</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">height</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="mi">0</span> <span class="k">else</span> <span class="n">contents</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">length</span>
+
+  <span class="k">def</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">length</span>
+
+  <span class="k">def</span> <span class="n">above</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="n">elem</span><span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">contents</span> <span class="o">++</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">beside</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="n">elem</span><span class="o">(</span>
+      <span class="k">for</span> <span class="o">(</span>
+        <span class="o">(</span><span class="n">line1</span><span class="o">,</span> <span class="n">line2</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="k">this</span><span class="o">.</span><span class="n">contents</span> <span class="n">zip</span> <span class="n">that</span><span class="o">.</span><span class="n">contents</span>
+      <span class="o">)</span> <span class="k">yield</span> <span class="n">line1</span> <span class="o">+</span> <span class="n">line2</span>
+    <span class="o">)</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">contents</span> <span class="n">mkString</span> <span class="s">&quot;\n&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.11 - Клас <code>Element</code> після рефакторинга з додавання методів фабрик.</p></div>
+<div class="paragraph"><p>На додаток, маючи методи фабрик, тепер субкласи <code>ArrayElement</code>, <code>LineElement</code>, <code>UniformElement</code> можуть бути приватними, оскільки вони більше не мають отримувати доступ напряму від клієнтів. В Scala ви можете визначати класи та об'єкти синглтони. Один спосіб зробити субкласи <code>Element</code> приватними - це покласти їх в об'єкт синглтон <code>Element</code>, та декларувати їх там приватними. Класи будуть все ще доступні до трьох методах фабрик <code>elem</code>, де вони потрібні. Лістинг 10.12 показує, як це буде виглядати.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_14___">10.14 Підвищення та розширення</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Нам треба одне останнє покращення. Версія <code>Element</code>, показана в Лістингу 10.11, не є повністю достатньою, оскільки вона не дозволяє клієнтам покладати елементи з різною шириною один на одний, або класти поряд елементи з різною висотою. Наприклад, обчислення наступних виразів не буде робити коректно, оскільки другий рядок в комбінованому елементі довший, ніж в першому:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">))</span> <span class="n">above</span>
+<span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;world!&quot;</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Подібно до цього, обчислення наступного виразу не буде робити потрібним чином, оскільки перший <code>ArrayElement</code> має висоту два, а другий висоту один:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">,</span> <span class="s">&quot;two&quot;</span><span class="o">))</span> <span class="n">beside</span>
+<span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="nc">Array</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.13 показує приватний допоміжний метод, <code>widen</code>, що приймає ширину, та повертає <code>Element</code> такої ширини. Результат містить вміст цього <code>Element</code>, відцентрований та вирівняний зліва та зправа додатковими проміжками, як треба щоб досягти потрібної ширини. Лістинг 10.13 також показує подібний метод, <code>heighten</code>, що виконує ту саму функцію в вертикальному напрямку. Метод <code>widen</code> викликається в <code>above</code>, щоб переконатись, що <code>Element</code>, покладений над будь-яким іншим, матиме ту саму ширину. Подібно до цього, метод <code>heighten</code> викликається в <code>beside</code>, щоб переконатись, що елементи, розташовані поряд, мають ту саму ширину. З такими змінами бібліотека розташування готова до використання.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Element</span> <span class="o">{</span>
+
+    <span class="k">private</span> <span class="k">class</span> <span class="nc">ArrayElement</span><span class="o">(</span>
+      <span class="k">val</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+    <span class="o">)</span> <span class="k">extends</span> <span class="nc">Element</span>
+
+    <span class="k">private</span> <span class="k">class</span> <span class="nc">LineElement</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">contents</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+      <span class="k">override</span> <span class="k">def</span> <span class="n">width</span> <span class="k">=</span> <span class="n">s</span><span class="o">.</span><span class="n">length</span>
+      <span class="k">override</span> <span class="k">def</span> <span class="n">height</span> <span class="k">=</span> <span class="mi">1</span>
+    <span class="o">}</span>
+
+    <span class="k">private</span> <span class="k">class</span> <span class="nc">UniformElement</span><span class="o">(</span>
+      <span class="n">ch</span><span class="k">:</span> <span class="kt">Char</span><span class="o">,</span>
+      <span class="k">override</span> <span class="k">val</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+      <span class="k">override</span> <span class="k">val</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span>
+    <span class="o">)</span> <span class="k">extends</span> <span class="nc">Element</span> <span class="o">{</span>
+      <span class="k">private</span> <span class="k">val</span> <span class="n">line</span> <span class="k">=</span> <span class="n">ch</span><span class="o">.</span><span class="n">toString</span> <span class="o">*</span> <span class="n">width</span>
+      <span class="k">def</span> <span class="n">contents</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">.</span><span class="n">fill</span><span class="o">(</span><span class="n">height</span><span class="o">)(</span><span class="n">line</span><span class="o">)</span>
+    <span class="o">}</span>
+
+    <span class="k">def</span> <span class="n">elem</span><span class="o">(</span><span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+      <span class="k">new</span> <span class="nc">ArrayElement</span><span class="o">(</span><span class="n">contents</span><span class="o">)</span>
+
+    <span class="k">def</span> <span class="n">elem</span><span class="o">(</span><span class="n">chr</span><span class="k">:</span> <span class="kt">Char</span><span class="o">,</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+      <span class="k">new</span> <span class="nc">UniformElement</span><span class="o">(</span><span class="n">chr</span><span class="o">,</span> <span class="n">width</span><span class="o">,</span> <span class="n">height</span><span class="o">)</span>
+
+    <span class="k">def</span> <span class="n">elem</span><span class="o">(</span><span class="n">line</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+      <span class="k">new</span> <span class="nc">LineElement</span><span class="o">(</span><span class="n">line</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.12 - Приховування реалізації за допомогою приватних класів.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">Element.elem</span>
+
+<span class="k">abstract</span> <span class="k">class</span> <span class="nc">Element</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">contents</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+
+  <span class="k">def</span> <span class="n">width</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">contents</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">length</span>
+  <span class="k">def</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">contents</span><span class="o">.</span><span class="n">length</span>
+
+  <span class="k">def</span> <span class="n">above</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">this1</span> <span class="k">=</span> <span class="k">this</span> <span class="n">widen</span> <span class="n">that</span><span class="o">.</span><span class="n">width</span>
+    <span class="k">val</span> <span class="n">that1</span> <span class="k">=</span> <span class="n">that</span> <span class="n">widen</span> <span class="k">this</span><span class="o">.</span><span class="n">width</span>
+    <span class="n">elem</span><span class="o">(</span><span class="n">this1</span><span class="o">.</span><span class="n">contents</span> <span class="o">++</span> <span class="n">that1</span><span class="o">.</span><span class="n">contents</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">beside</span><span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Element</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">this1</span> <span class="k">=</span> <span class="k">this</span> <span class="n">heighten</span> <span class="n">that</span><span class="o">.</span><span class="n">height</span>
+    <span class="k">val</span> <span class="n">that1</span> <span class="k">=</span> <span class="n">that</span> <span class="n">heighten</span> <span class="k">this</span><span class="o">.</span><span class="n">height</span>
+    <span class="n">elem</span><span class="o">(</span>
+      <span class="k">for</span> <span class="o">((</span><span class="n">line1</span><span class="o">,</span> <span class="n">line2</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="n">this1</span><span class="o">.</span><span class="n">contents</span> <span class="n">zip</span> <span class="n">that1</span><span class="o">.</span><span class="n">contents</span><span class="o">)</span>
+      <span class="k">yield</span> <span class="n">line1</span> <span class="o">+</span> <span class="n">line2</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">widen</span><span class="o">(</span><span class="n">w</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">w</span> <span class="o">&lt;=</span> <span class="n">width</span><span class="o">)</span> <span class="k">this</span>
+    <span class="k">else</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">left</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39; &#39;</span><span class="o">,</span> <span class="o">(</span><span class="n">w</span> <span class="o">-</span> <span class="n">width</span><span class="o">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">,</span> <span class="n">height</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">right</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39; &#39;</span><span class="o">,</span> <span class="n">w</span> <span class="o">-</span> <span class="n">width</span> <span class="o">-</span> <span class="n">left</span><span class="o">.</span><span class="n">width</span><span class="o">,</span> <span class="n">height</span><span class="o">)</span>
+      <span class="n">left</span> <span class="n">beside</span> <span class="k">this</span> <span class="n">beside</span> <span class="n">right</span>
+    <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">heighten</span><span class="o">(</span><span class="n">h</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">h</span> <span class="o">&lt;=</span> <span class="n">height</span><span class="o">)</span> <span class="k">this</span>
+    <span class="k">else</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">top</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39; &#39;</span><span class="o">,</span> <span class="n">width</span><span class="o">,</span> <span class="o">(</span><span class="n">h</span> <span class="o">-</span> <span class="n">height</span><span class="o">)</span> <span class="o">/</span> <span class="mi">2</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">bot</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39; &#39;</span><span class="o">,</span> <span class="n">width</span><span class="o">,</span> <span class="n">h</span> <span class="o">-</span> <span class="n">height</span> <span class="o">-</span> <span class="n">top</span><span class="o">.</span><span class="n">height</span><span class="o">)</span>
+      <span class="n">top</span> <span class="n">above</span> <span class="k">this</span> <span class="n">above</span> <span class="n">bot</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">contents</span> <span class="n">mkString</span> <span class="s">&quot;\n&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.13 - <code>Element</code> з методами <code>widen</code> та <code>heighten</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_15___">10.15 Складаємо все разом</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Цікавий спосіб потренуватись з майже всіма елементами бібліотеки розташування - це написати програму, що малює спіраль з заданим числом граней. Ця програма Spiral, показана в Лістингу 10.14, що робить саме це.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">Element.elem</span>
+
+<span class="k">object</span> <span class="nc">Spiral</span> <span class="o">{</span>
+
+  <span class="k">val</span> <span class="n">space</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">)</span>
+
+  <span class="k">val</span> <span class="n">corner</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;+&quot;</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">spiral</span><span class="o">(</span><span class="n">nEdges</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">direction</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">nEdges</span> <span class="o">==</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="n">elem</span><span class="o">(</span><span class="s">&quot;+&quot;</span><span class="o">)</span>
+    <span class="k">else</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">sp</span> <span class="k">=</span> <span class="n">spiral</span><span class="o">(</span><span class="n">nEdges</span> <span class="o">-</span> <span class="mi">1</span><span class="o">,</span> <span class="o">(</span><span class="n">direction</span> <span class="o">+</span> <span class="mi">3</span><span class="o">)</span> <span class="o">%</span> <span class="mi">4</span><span class="o">)</span>
+      <span class="k">def</span> <span class="n">verticalBar</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39;|&#39;</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="n">sp</span><span class="o">.</span><span class="n">height</span><span class="o">)</span>
+      <span class="k">def</span> <span class="n">horizontalBar</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39;-&#39;</span><span class="o">,</span> <span class="n">sp</span><span class="o">.</span><span class="n">width</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">direction</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span>
+        <span class="o">(</span><span class="n">corner</span> <span class="n">beside</span> <span class="n">horizontalBar</span><span class="o">)</span> <span class="n">above</span> <span class="o">(</span><span class="n">sp</span> <span class="n">beside</span> <span class="n">space</span><span class="o">)</span>
+      <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">direction</span> <span class="o">==</span> <span class="mi">1</span><span class="o">)</span>
+        <span class="o">(</span><span class="n">sp</span> <span class="n">above</span> <span class="n">space</span><span class="o">)</span> <span class="n">beside</span> <span class="o">(</span><span class="n">corner</span> <span class="n">above</span> <span class="n">verticalBar</span><span class="o">)</span>
+      <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">direction</span> <span class="o">==</span> <span class="mi">2</span><span class="o">)</span>
+        <span class="o">(</span><span class="n">space</span> <span class="n">beside</span> <span class="n">sp</span><span class="o">)</span> <span class="n">above</span> <span class="o">(</span><span class="n">horizontalBar</span> <span class="n">beside</span> <span class="n">corner</span><span class="o">)</span>
+      <span class="k">else</span>
+        <span class="o">(</span><span class="n">verticalBar</span> <span class="n">above</span> <span class="n">corner</span><span class="o">)</span> <span class="n">beside</span> <span class="o">(</span><span class="n">space</span> <span class="n">above</span> <span class="n">sp</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">main</span><span class="o">(</span><span class="n">args</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">nSides</span> <span class="k">=</span> <span class="n">args</span><span class="o">(</span><span class="mi">0</span><span class="o">).</span><span class="n">toInt</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">spiral</span><span class="o">(</span><span class="n">nSides</span><span class="o">,</span> <span class="mi">0</span><span class="o">))</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 10.14 - Застосування Spiral.</p></div>
+<div class="paragraph"><p>Оскікльи <code>Spiral</code> є окремий об'єкт з методом <code>main</code> відповідної сигнатури, це застосування Scala. Spiral приймає один аргумент командного рядка як ціле, та малює спіраль з заданим числом граней. Наприклад, ви можете намалювати шісти-гранну спіраль, як показано зліва, та більші спіралі, які показані зправа.</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>$ scala Spiral 6    $ scala Spiral 11   $ scala Spiral 17
++-----              +----------         +----------------
+|                   |                   |
+| +-+               | +------+          | +------------+
+| + |               | |      |          | |            |
+|   |               | | +--+ |          | | +--------+ |
++---+               | | |  | |          | | |        | |
+                    | | ++ | |          | | | +----+ | |
+                    | |    | |          | | | |    | | |
+                    | +----+ |          | | | | ++ | | |
+                    |        |          | | | |  | | | |
+                    +--------+          | | | +--+ | | |
+                                        | | |      | | |
+                                        | | +------+ | |
+                                        | |          | |
+                                        | +----------+ |
+                                        |              |
+                                        +--------------+</code></pre>
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_10_16_">10.16 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В цьому розділі ви бачили більше концепцій, пов'язаних з об'єктно-орієнтовним програмуванням в Scala. Поміж іншого, вам зустрілись абстрактні класи, наслідквання та субтипи, ієрархії класів, параметричні поля та перекриття методів. Ви мали розвинути відчуття конструювання нетривіальних ієрархій в Scala. Ми будемо знову робити з бібліотекою розташувань в Главі 14.</p></div>
 </div>
 </div>
 </div>
@@ -1540,7 +1477,7 @@ Scala. We&#8217;ll work with the layout library again inChapter 14.</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-08 02:26:04 EET
+ 2019-02-12 13:17:12 EET
 </div>
 </div>
 </body>

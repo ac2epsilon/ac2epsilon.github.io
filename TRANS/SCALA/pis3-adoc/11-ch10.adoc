@@ -15,725 +15,721 @@ include::headers.adoc[]
 ----
 elem(s: String): Element
 ----
-As you can see, elements will be modeled with a type named Element. You'll be able to call aboveor beside on an element, passing in a second element, to get a new element that combines the two. For example, the following expression would construct a larger element consisting of two columns, each with a height of two:
+Як ви можете бачити, елементи будуть змодельовані за допомогою типу на ім'я `Element`. Ви зможете викликати `above` або `beside` на `element`, передаючи другий елемент, щоб створити новий елемент, який є комбінацією двох. Наприклад, наступний вираз буде конструювати більший елемент, що складається з двох колонок, кожна висотою 2:
 [source,scala]
 ----
 val column1 = elem("hello") above elem("***")
 val column2 = elem("***") above elem("world")
 column1 beside column2
 ----
-Printing the result of this expression would give you:
+Друк результате цього виразу буде давати вам таке:
 ----
 hello ***
 *** world
 ----
-Layout elements are a good example of a system in which objects can be constructed from simple parts
-with the aid of composing operators. In this chapter, we'll define classes that enable element objects to
-be constructed from arrays, lines, and rectangles. These basic element objects will be the simple parts.
-We'll also define composing operators above andbeside. Such composing operators are also often
-called combinators because they combine elements of some domain into new elements.
-Thinking in terms of combinators is generally a good way to approach library design: it pays to think
-about the fundamental ways to construct objects in an application domain. What are the simple objects?In what ways can more interesting objects be constructed out of simpler ones? How do combinators
-hang together? What are the most general combinations? Do they satisfy any interesting laws? If you
-have good answers to these questions, your library design is on track.
-10.2 ABSTRACT CLASSES
-Our first task is to define type Element, which represents layout elements. Since elements are two
-dimensional rectangles of characters, it makes sense to include a member, contents, that refers to the
-contents of a layout element. The contents can be represented as an array of strings, where each string
-represents a line. Hence, the type of the result returned by contentswill be Array[String]. Listing
-10.1 shows what it will look like.
+Елементи розташування є гарним прикладом системи, в якій об'єкти можуть бути сконструйовані з простих частин за допомогою оераторів композиції. В цій главі ми будемо визначати класи, що дозволять конструювання об'єктів-елементів з масивів, ліній та прямокутників. Ці базові об'єкти елементів будуть простими частинами. Ми також визначимо операції композиції `above` та `beside`. Такі компонуючі оператори також часто називають _комбінаторами_, оскікльи вони комбінують елементи в деякій галузі в нові елементи.
+
+Думаючи в термінах комбінаторів загалом гарний підхід розробки бібліотеки: це відплачується - думати про фундаментальні шляхи конструювання об'єктів в домені застосування. Що таке прості об'єкти? В який спосіб найбільш цікаві об'єкти можуть бути сконструйовані з простіших? Як комбінатори поводяться разом? Які комбінатори найбільш загальні? Чи вони задовільняють цікавим законам? Якщо ви маєте гарні відповіді на ці запитання, розробка вашої бібліотеки на вірному шляху.
+
+10.2 Абстрактні класи
+---------------------
+Наше перше завдання є визначити тип `Element`, що предаставляє елементи розташування. Оскільки елементи є двохвимірні прямокутники символів, має сенс включити член `contents`, що посалається на вміст елемента розташування. Цей `contents` може бути представлений як масив рядків, до кожний рядок представляє лінію. Таким чином, тип результата, що повертається `contents` буде `Array[String]`. Лістинг 10.1 показує, як це буде виглядати.
+[source,scala]
+----
 abstract class Element {
-def contents: Array[String]
+  def contents: Array[String]
 }
-Listing 10.1 - Defining an abstract method and class.
-In this class, contents is declared as a method that has no implementation. In other words, the method is
-an abstract member of class Element. A class with abstract members must itself be declared abstract,
-which is done by writing an abstract modifier in front of the class keyword:
+----
+Лістинг 10.1 - Визначення абстрактного метода та класа.
+
+В цьому класі `contents` декларовано як метод, що не має реалізації. Іншими словами, метод є абстрактним членом класа `Element`. Клас з абстрактинми методами має сам бути визначений як абстрактний, що робиться додаванням модифікатора `abstract` перед ключовим словом `class`:
+[source,scala]
+----
 abstract class Element ...
-The abstract modifier signifies that the class may have abstract members that do not have an
-implementation. As a result, you cannot instantiate an abstract class. If you try to do so, you'll get a
-compiler error:
+----
+Модифікатор `abstract` означає, що клас може мати абстрактні члени, що не мають реалізації. Як результат, ви не можете створити примірник абстрактного класу. Якщо ви спробуєте зробити це, ви отримаєте помилку компіляції:
+[source,scala]
+----
 scala> new Element
 <console>:5: error: class Element is abstract;
-cannot be instantiated
-new Element
-^
-Later in this chapter, you'll see how to create subclasses of class Element, which you'll be able to
-instantiate because they fill in the missing definition for contents.
-Note that the contents method in class Element does not carry an abstract modifier. A method is abstract
-if it does not have an implementation (i.e., no equals sign or body). Unlike Java, no abstract modifier is
-necessary (or allowed) on method declarations. Methods that have an implementation are
-called concrete.
-Another bit of terminology distinguishes between declarations and definitions.
-Class Elementdeclares the abstract method contents, but currently defines no concrete methods. In the
-next section, however, we'll enhance Element by defining some concrete methods.10.3 DEFINING PARAMETERLESS METHODS
-As a next step, we'll add methods to Element that reveal its width and height, as shown inListing
-10.2. The height method returns the number of lines in contents. The width method returns the length
-of the first line, or if there are no lines in the element, returns zero. (This means you cannot define an
-element with a height of zero and a non-zero width.)
+    cannot be instantiated
+       new Element
+           ^
+----
+Пізніше в цій главі ви побачите, як створити субкласи класа `Element`, для яких ви будете в змозі створити примірники, оскільки вони заповнюють відсутнє визначення дла `contents`.
+
+Зауважте, що метод `contents` в класі `Element` не має модифікатора `abstract`. Метод є абстрактним, якщо він не має реалізації (тобто знака рівності або тіла). На відміну від Java, для декларацій методів модифікатор `abstract` не потрібен (та не дозволений). Методи, що мають реалізцію, називаються _суцільними_.
+
+Інша частка термінології відрізняє декларації та визначення. Клас `Element` _декларує_ абстрактний метод `contents`, але наразі не _визначає_ конкретинх методів. Однак в наступному розділі ми розширимо `Element`, визначаючи деякі суцільні методи.
+
+10.3 Визначення методів без параметрів
+--------------------------------------
+Як наступний крок, ми додамо методи до `Element`, що з'ясовують його ширину та довжину, як показано в Лістингу 10.2. Метод `height` повертає число рядків в `contents`. Метод `width` повертає довжину першого рядка, або повертає нуль, якщо в елементі немає нічого. (Це означає, що ви не можете визначити елемент з висотою нуль, та ненульовою шириною.)
+[source,scala]
+----
 abstract class Element {
-def contents: Array[String]
-def height: Int = contents.length
-def width: Int = if (height == 0) 0 else contents(0).length
+  def contents: Array[String]
+  def height: Int = contents.length
+  def width: Int = if (height == 0) 0 else contents(0).length
 }
-Listing 10.2 - Defining parameterless methods width and height.
-Note that none of Element's three methods has a parameter list, not even an empty one. For example,
-instead of:
+----
+Лістинг 10.2 - Визначення методів без параметрів, `width` та `height`.
+
+Зауважте, що жодний з трьох методів `Element` не має списку параметрів, навіть порожнього. Наприклад, замість:
+[source,scala]
+----
 def width(): Int
-the method is defined without parentheses:
+----
+метод визначений без дужок:
+[source,scala]
+----
 def width: Int
-Such parameterless methods are quite common in Scala. By contrast, methods defined with empty
-parentheses, such as def height(): Int, are called empty-paren methods. The recommended convention is
-to use a parameterless method whenever there are no parameters and the method accesses mutable state
-only by reading fields of the containing object (in particular, it does not change mutable state). This
-convention supports the uniform access principle,footnote:[Meyer, Object-Oriented Software Construction [Mey00\]] which says that client code should not be affected
-by a decision to implement an attribute as a field or method.
-For instance, we could implement width and height as fields, instead of methods, simply by changing
-the def in each definition to a val:
+----
+Такі _безпараметричні_ методи є досить загальними в Scala. На відміну, методи, визначені з порожніми дужками, такі як `def height(): Int`, називаються _методами з порожніми дужками_. Рекомендована домовленість є використовувати безпараметричні методи, коли немає параметрів, і метод отримує доступ до змінного стану тільки через читання полів містячого об'єкта (зокрема, він не змінює змінний стан). Ця домовленість підтримує принцип уніфіормного доступу,footnote:[Meyer, Object-Oriented Software Construction [Mey00\]] який каже, що клієнтський код не має зазнати впливу від рішення реалізувати атрибут як поле або метод.
+
+Наприклад, ми можемо реалізувати `width` та `height` елемента як поля, замість методів, просто змінивши `def` в кожному визначенні на `val`:
+[source,scala]
+----
 abstract class Element {
-def contents: Array[String]
-val height = contents.length
-val width =
-if (height == 0) 0 else contents(0).length
+  def contents: Array[String]
+  val height = contents.length
+  val width =
+    if (height == 0) 0 else contents(0).length
 }
-The two pairs of definitions are completely equivalent from a client's point of view. The only difference
-is that field accesses might be slightly faster than method invocations because the field values are pre-
-computed when the class is initialized, instead of being computed on each method call. On the other
-hand, the fields require extra memory space in each Element object. So it depends on the usage profile
-of a class whether an attribute is better represented as a field or method, and that usage profile might
-change over time. The point is that clients of theElement class should not be affected when its internal
-implementation changes.In particular, a client of class Element should not need to be rewritten if a field of that class gets
-changed into an access function, so long as the access function is pure (i.e., it does not have any side
-effects and does not depend on mutable state). The client should not need to care either way.
-So far so good. But there's still a slight complication that has to do with the way Java handles things.
-The problem is that Java does not implement the uniform access principle. So it'sstring.length() in Java,
-not string.length, even though it's array.length, not array.length(). Needless to say, this is very
-confusing.
-To bridge that gap, Scala is very liberal when it comes to mixing parameterless and empty-paren
-methods. In particular, you can override a parameterless method with an empty-paren method, and vice
-versa. You can also leave off the empty parentheses on an invocation of any function that takes no
-arguments. For instance, the following two lines are both legal in Scala:
+----
+Дві пари визначень повністю еквівалентні з клієнтської точки зору. Єдине що відрізняється, це те, що доступ до поля може бути трохи швидший, ніж виклик метода, оскільки значення полів попередньо обчислені при ініціалізації класа, замість бути обчислені при кожному виклику метода. З іншого боку, поля потребують додаткового простору в пам'яті в кожному елементі `Element`. Так що це залежить від профілю використання класа, чи атрибут краще представляти як поле чи метод, і цей профіль використання може змінитись з часом. Суть в тому, що клієнти класа `Element` не мають зазнати впливу, коли змінюється внутрішнє представлення.
+
+Зокрема, клієнт класу `Element` не має бути переписаний, якщо поле цього класа буде змінено на функцію доступу, доки ця функція є чистою (тобто вона не має жодних побічних ефектів, та не залежить від змінного стану). Клієнт не має турбуватись в жодному випадку.
+
+Доки все гарно. Але все ще є невелике ускладнення, що має справу з тим, як Java обробляє речі. Проблема в тому, що Java не реалізує принцип уніформного доступу. Так що існує `string.length()` в Java, не `string.length`, навіть якщо `array.length`, не `array.length()`. Нічого і казати, що це дуже бентежить.
+
+Щоб полатати цю дірку, Scala є дуже ліберальною, коли доходить до міксування безпараметричних методів, та методів з порожніми дужками. Зокрема, ви можете перекрити безпараметричні методи методом порожніх дужок, та навпаки. Ви також можете відкинути порожні дужки при виклику функції, що не приймає аргументів. Наприклад, наступні два рядка обоє є легальними в Scala:
+[source,scala]
+----
 Array(1, 2, 3).toString
 "abc".length
-In principle it's possible to leave out all empty parentheses in Scala function calls. However, it's still
-recommended to write the empty parentheses when the invoked method represents more than a
-property of its receiver object. For instance, empty parentheses are appropriate if the method performs
-I/O, writes reassignable variables (vars), or reads vars other than the receiver's fields, either directly or
-indirectly by using mutable objects. That way, the parameter list acts as a visual clue that some
-interesting computation is triggered by the call. For instance:
-"hello".length
-println()
-// no () because no side-effect
-// better to not drop the ()
-To summarize, it is encouraged in Scala to define methods that take no parameters and have no side
-effects as parameterless methods (i.e., leaving off the empty parentheses). On the other hand, you
-should never define a method that has side-effects without parentheses, because invocations of that
-method would then look like a field selection. So your clients might be surprised to see the side effects.
-Similarly, whenever you invoke a function that has side effects, be sure to include the empty
-parentheses when you write the invocation. Another way to think about this is if the function you're
-calling performs an operation, use the parentheses. But if it merely provides access to a property, leave
-the parentheses off.
-10.4 EXTENDING CLASSES
-We still need to be able to create new element objects. You have already seen that "new Element"
-cannot be used for this because class Element is abstract. To instantiate an element, therefore, we will
-need to create a subclass that extends Element and implements the abstract contentsmethod. Listing
-10.3 shows one possible way to do that:
+----
+В принципі можливо відкинути всі порожні дужки в викликах функцій Scala. Однак все ще рекомендовано писати порожні дужки, коли викликаний метод представляє більше ніж властивість об'єкта отримувача. Наприклад, порожні дужки на місці, коли метод виконує I/O, записує переприсвоювані змінні (`var`), або читає `var` окрім полів отримувача, прямо або непрямо через використання змінних об'єктів. Таким чином, список параметрів діє як візуальна підказка, що виклик запускає деякі цікаві обчислення. Наприклад:
+[source,scala]
+----
+"hello".length // немає (), бо немає побічних ефектів
+println() // краще не відкидати ()
+----
+Щоб підсумувати, в Scala заохочується визначати методи, що не приймають параметрів, та не мають побічних ефектів, як безпараметричні методи (тобто відкидаючи порожні дужки). З іншого боку, вам ніколи не слід визначати метод, що має побічні ефекти, без дужок, оскільки виклики цього метода потім будуть виглядати як вибір поля. Так що ваші клієнти можуть бути здивовані, коли побачать побічні ефекти.
+
+Подібним чином, коли ви викликаєте функцію, що має побічний ефект, переконайтесь, що коли писали виклик включили порожні дужки. Інший спосіб думати про це: коли функція, що ви викликаєте, виконує операцію, використовуйте дужки. Але якщо вона просто провадить доступ до властивості, прибирайте дужки.
+
+10.4 Розширення класів
+----------------------
+Нам все ще треба бути в змозі створювати нові об'єкти елементів. Ви вже бачили, що `new Element` не може бути використаний для цього, оскільки `Element` є абстрактним. Таким чином, щоб створити примірник елемента, нам треба створити субклас, що розширює `Element`, та реалізує абстрактний метод `contents`. Лістинг 10.3 показує можливий спосіб зробити це:
+[source,scala]
+----
 class ArrayElement(conts: Array[String]) extends Element {
-def contents: Array[String] = conts
-}Listing 10.3 - Defining ArrayElement as a subclass of Element.
-Class ArrayElement is defined to extend class Element. Just like in Java, you use an extends clause
-after the class name to express this:
+  def contents: Array[String] = conts
+}
+----
+Лістинг 10.3 - Визначення `ArrayElement` як субкласа `Element`.
+
+Клас `ArrayElement` визначений для розширення класу `Element`. Так само, як в Java, ви використовуєте твердження `extends` після імені класу, щоб виразити цей факт:
+[source,scala]
+----
 ... extends Element ...
-Figure 10.1 - Class diagram for ArrayElement.
-Such an extends clause has two effects: It makes class ArrayElement inherit all non-private members
-from class Element, and it makes the type ArrayElement a subtype of the type Element.
-Given ArrayElement extends Element, class ArrayElement is called a subclass of
-class Element.Conversely, Element is a superclass of ArrayElement. If you leave out an extends clause,
-the Scala compiler implicitly assumes your class extends from scala.AnyRef, which on the Java
-platform is the same as class java.lang.Object. Thus, class Element implicitly extends class AnyRef.
-You can see these inheritance relationships in Figure 10.1.
-Inheritance means that all members of the superclass are also members of the subclass, with two
-exceptions. First, private members of the superclass are not inherited in a subclass. Second, a member
-of a superclass is not inherited if a member with the same name and parameters is already implemented
-in the subclass. In that case we say the member of the subclass overrides the member of the superclass.
-If the member in the subclass is concrete and the member of the superclass is abstract, we also say that
-the concrete memberimplements the abstract one.
-For example, the contents method in ArrayElement overrides (or alternatively: implements) abstract
-method contents in class Element.footnote:[One flaw with this design is that because the returned array is mutable, clients could change it. For the book we'll keep things simple, but were ArrayElement part of a real project, you might consider returning a defensive copy of the array instead. Another problem is we aren't currently ensuring that every String element of the contents array has the same length. This could be solved by checking the precondition in the primary constructor and throwing an exception if it is violated.] By contrast, class ArrayElement inherits
-the widthand height methods from class Element. For example, given an ArrayElement ae, you can
-query its width using ae.width, as if width were defined in class ArrayElement:
+----
+
+Малюнок 10.1 - Діаграма класів для `ArrayElement`.
+
+Таке твердження `extends` має два ефекти: це дає класу `ArrayElement` наслідувати всі неприватні члени від класу `Element`, та це робить тип `ArrayElement` субтипом типу `Element`. Зважаючи що `ArrayElement` розширює `Element`, клас `ArrayElement` називається субкласом класу `Element`. І навпаки, `Element` є суперкласом `ArrayElement`. Якщо ви приберете твердження `extends`, компілятор Scala неявно вважатиме, що ваш клас розширює `scala.AnyRef`, що на Java платформі є те саме, що і клас `java.lang.Object`. Таким чином, клас `Element` неявно розширює клас `AnyRef`. Ви можете бачити ці відношення наслідування на Малюнку 10.1.
+
+Наслідування означає, що всі члени суперкласа також є членами субкласу, з двома виключеннями. Перше, приватні члени суперкласу не наслідуються в субкласі. Друге, члени суперкласа не наслідуються, якщо член з таким же ім'ям та параметрами вже реалізовані в субкласі. В такому випадку ми кажемо, що субклас _перекриває_ член в суперкласі. Якщо член субкласу є суцільним, та член суперкласу є абстрактним, ми також кажемо, що суцільний член реалізує абстрактний.
+
+Наприклад, метод `contents` в `ArrayElement` перекриває (або, альтернативно, реалізує) абстрактний метод `contents` в класі `Element`.footnote:[Одна проріха в цьому дизайні в тому, що оскільки повернутий масив є змінним, клієнти можуть змінити його. Для книжки ми будемо підтримувати речі простими, але коли `ArrayElement` є частиною реального проекта, ви можете розглянути можливість повертати захисну копію масива замість цього. Інша проблема полягає в тому, що ми досі не переконались, що кожний елемент `String` масиву  `contents` має ту саму довжину. Це може бути вирішене через перевірку передумови в первинному конструкторі, за закиданні виключення, якщо вона порушується.] Для контрасту, клас `ArrayElement` наслідує методи `width` та `height` від класа `Element`. Наприклад, маючи `ArrayElement ae`, ви можете запитати його `width` використовуючи `ae.width`, так, якби `width` було визначене в класі `ArrayElement`:
+[source,scala]
+----
 scala> val ae = new ArrayElement(Array("hello", "world"))
 ae: ArrayElement = ArrayElement@39274bf7
+
 scala> ae.width
-res0: Int = 5Subtyping means that a value of the subclass can be used wherever a value of the superclass is
-required. For example:
+res0: Int = 5
+----
+Створення субтипів означає, що значення субкласу може бути використане, коли потрібне значення суперкласу. Наприклад:
+[source,scala]
+----
 val e: Element = new ArrayElement(Array("hello"))
-Variable e is defined to be of type Element, so its initializing value should also be an Element. In fact,
-the initializing value's type is ArrayElement. This is OK, because class ArrayElement extends
-class Element, and as a result, the type ArrayElement is compatible with the type Element.footnote:[For more perspective on the difference between subclass and subtype, see the glossary entry for subtype.]
-Figure 10.1 also shows the composition relationship that exists
-between ArrayElement andArray[String]. This relationship is called composition because
-class ArrayElement is "composed" out of class Array[String], in that the Scala compiler will place into
-the binary class it generates for ArrayElement a field that holds a reference to the passed conts array.
-We'll discuss some design considerations concerning composition and inheritance later in this chapter,
-inSection 10.11.
-10.5 OVERRIDING METHODS AND FIELDS
-The uniform access principle is just one aspect where Scala treats fields and methods more uniformly
-than Java. Another difference is that in Scala, fields and methods belong to the same namespace. This
-makes it possible for a field to override a parameterless method. For instance, you could change the
-implementation of contents in class ArrayElement from a method to a field without having to modify
-the abstract method definition of contents in class Element, as shown in Listing 10.4:
+----
+Змінна `e` визначена як тип `Element`, так що його значення ініціалізації також має бути `Element`. Фактично, значення ініціалізації є `ArrayElement`. Це OK, оскільки клас `ArrayElement` розширює клас `Element`, і як результат, тип `ArrayElement` сумісний з типом `Element`.footnote:[Для додаткової перспективи на різницю між суперкласом та субкласом дивіться входження глассарію щодо субтипів.]
+
+Малюнок 10.1 також показує порівняння відношень, що існують між `ArrayElement` та `Array[String]`. Це відношення називається композицією, та  клас `ArrayElement` є "скомпонований" з класу `Array[String]`, тому що компілятор Scala буде покладати в двійниковий клас, що він генерує для `ArrayElement`, поле, що містить посилання на переданий масив `conts`. Ми обговоримо деякі рішення дизайну композиції та наслідування далі в цій главі, в Розділі 10.11.
+
+10.5 Перекриття методів та полей
+--------------------------------
+Принцип уніформного доступу є тільки одним аспектом, коли Scala розглядає поля та методи в більш уніформний спосіб, ніж Java. Інша різниця в тому, що в Scala поля та методи належать до того самого простору імен. Це робить можливим для поля перекривати метод без параметрів. Наприклад, ви можете змінити реалізацію `contents` в класі `ArrayElement` з метода на поле, без модифікації визначення абстрактного метода `contents` в класі `Element`, як показано в Лістингу 10.4:
+[source,scala]
+----
 class ArrayElement(conts: Array[String]) extends Element {
-val contents: Array[String] = conts
+  val contents: Array[String] = conts
 }
-Listing 10.4 - Overriding a parameterless method with a field.
-Field contents (defined with a val) in this version of ArrayElement is a perfectly good implementation
-of the parameterless method contents (declared with a def) in class Element. On the other hand, in
-Scala it is forbidden to define a field and method with the same name in the same class, whereas this is
-allowed in Java.
-For example, this Java class would compile just fine:
-// This is Java
+----
+Лістинг 10.4 - Перекриття метода без параметрів за допомогою поля.
+
+Поле `contents` (визначене як `val`) в цій версії `ArrayElement` є чудово гарною реалізацією метода без параметрів `contents` (декларований за допомогою `def`) в класі `Element`. З іншої сторони, в Scala заборонено визначати поле та метод з тим самим ім'ям в тому самому класі, хоча це дозволено в Java.
+
+Наприклад, цей Java клас буде чудово компілюватись:
+[source,java]
+----
+// Це Java
 class CompilesFine {
-private int f = 0;
-public int f() {
-return 1;
+  private int f = 0;
+  public int f() {
+    return 1;
+  }
 }
-}
-But the corresponding Scala class would not compile:
+----
+Але відповідний клас Scala не буде компілюватись:
+[source,scala]
+----
 class WontCompile {
-private var f = 0 // Won't compile, because a field
-def f = 1
-// and method have the same name
-}Generally, Scala has just two namespaces for definitions in place of Java's four. Java's four namespaces
-are fields, methods, types, and packages. By contrast, Scala's two namespaces are:
-• values (fields, methods, packages, and singleton objects)
-• types (class and trait names)
-The reason Scala places fields and methods into the same namespace is precisely so you can override a
-parameterless method with a val, something you can't do with Java.footnote:[The reason that packages share the same namespace as fields and methods in Scala is to enable you to import packages (in addition to just the names of types) and the fields and methods of singleton objects. This is also something you can't do in Java. It will be described in Section 13.3.]
-10.6 DEFINING PARAMETRIC FIELDS
-Consider again the definition of class ArrayElement shown in the previous section. It has
-aparameter conts whose sole purpose is to be copied into the contents field. The name conts of the
-parameter was chosen just so that it would look similar to the field name contents without actually
-clashing with it. This is a "code smell," a sign that there may be some unnecessary redundancy and
-repetition in your code.
-You can avoid the code smell by combining the parameter and the field in a singleparametric
-field definition, as shown in Listing 10.5:
+  private var f = 0 // Не буде компілюватись, оскільки поле
+  def f = 1         // та метод мають те саме ім'я
+}
+----
+Загалом, Scala має лише два простору імен для визначень, на відміну від чотирьох в Java. Чотири простори імен в Java є поля, методи, типи та пакунки. На відміну в Scala лише два простори імен:
+
+* значення (поля, методи, пакунки та об'єкти синглтони)
+* types (імена класів та трейтів)
+
+Причина, з якої Scala покладає поля та методи в той самий простір імен в точності та, щоб ви могли перекривати методи без параметірв за допомогою `val`, дещо, чого ви не можете робити в Java.footnote:[Причина, з якої в Scala пакунки подіяють той самий простір імен, що поля і методи - бо це дозволяє вам імпортувати пакунки (на додаток до тільки імен типів) та поля і методи об'єктів синглтонів. Це знову дещо, чого ви не можете в Java. Це буде описане в Розділі 13.3.]
+
+10.6 Визначення параметричних полів
+-----------------------------------
+Знову розглянемо визначення класу `ArrayElement`, показану в попередній главі. Він мав параметр `conts`, чиє єдине призначення є бути скопійованим в поле `contents`. Ім'я параметра `conts` було обране саме так, щоб воно могло виглядати подібно до імені поля  `contents`, насправді не перетинаючись з ним. Це "сморід коду," ознака, що може бути непотрібна надмірність або повторення у вашому коді.
+
+Ви можете уникнути сморіду коду, комбінуючи параметр та поле в одному визначенні параметричного коду, як показано в Лістингу 10.5:
+[source,scala]
+----
 class ArrayElement(
-val contents: Array[String]
+  val contents: Array[String]
 ) extends Element
-Listing 10.5 - Defining contents as a parametric field.
-Note that now the contents parameter is prefixed by val. This is a shorthand that defines at the same
-time a parameter and field with the same name. Specifically, class ArrayElement now has an
-(unreassignable) field contents, which can be accessed from outside the class. The field is initialized
-with the value of the parameter. It's as if the class had been written as follows, where x123 is an
-arbitrary fresh name for the parameter:
+----
+Лістинг 10.5 - Визначення `contents` як параметричного поля.
+
+Зауважте, що тепер параметр `contents` має перед собою `val`. Це скорочення, що одночасно визначеє параметр та поле з тим самим полем. Зокрема, клас `ArrayElement` тепер має (неперепризначуване) поле `contents`, до якого можна отримати з поза меж класу. Поле ініціалізоване значенням параметру. Це так, якби клас був написаний наступним чином, де `x123` є довільним свіжим ім'ям для параметру:
+[source,scala]
+----
 class ArrayElement(x123: Array[String]) extends Element {
-val contents: Array[String] = x123
+  val contents: Array[String] = x123
 }
-You can also prefix a class parameter with var, in which case the corresponding field would be
-reassignable. Finally, it is possible to add modifiers, such as private, protected,footnote:[The protected modifier, which grants access to subclasses, will be covered in detail inChapter 13.] or override to these
-parametric fields, just as you can for any other class member. Consider, for instance, the following
-class definitions:
+----
+Також ви можете перед параметром класу поставити `var`, в якому випадку відповідне поле буде переприсвоюване. Нарешті, можливо додати модифікатори, такі як `private`, `protected`,footnote:[Модифікатор `protected`, що надає доступ до субкласів, буде розкритий в деталях в Главі 13.] або `override` до ціх параметричних полів, так само, як ви можете зробити для любих інших членів методів. Наприклад, розгляньте визначення наступних класів:
+[source,scala]
+----
 class Cat {
-val dangerous = false
+  val dangerous = false
 }
-class Tiger(
-override val dangerous: Boolean,
-private var age: Int
-) extends CatTiger's definition is a shorthand for the following alternate class definition with an overriding
-member dangerous and a private member age:
+
+class Tiger (
+  override val dangerous: Boolean,
+  private var age: Int
+) extends Cat
+----
+Визначення `Tiger` є скороченням для наступного альтернативного визначення класу, з перекриттям члена `dangerous` та приватним членом `age`:
+[source,scala]
+----
 class Tiger(param1: Boolean, param2: Int) extends Cat {
-override val dangerous = param1
-private var age = param2
+  override val dangerous = param1
+  private var age = param2
 }
-Both members are initialized from the corresponding parameters. We chose the names of those
-parameters, param1 and param2, arbitrarily. The important thing was that they not clash with any other
-name in scope.
-10.7 INVOKING SUPERCLASS CONSTRUCTORS
-You now have a complete system consisting of two classes: an abstract class Element, which is
-extended by a concrete class ArrayElement. You might also envision other ways to express an
-element. For example, clients might want to create a layout element consisting of a single line given by
-a string. Object-oriented programming makes it easy to extend a system with new data-variants. You
-can simply add subclasses. For example, Listing 10.6 shows a LineElementclass that
-extends ArrayElement:
+----
+Обоє члени ініціалізовані від відповідних парамтрів. Ми довільно обираємо імена для ціх параметрів, `param1` та `param2`. Важлива річ була щоб вони не перетинались з іншими іменами в полі зору.
+
+10.7 Виклик конструкторів суперкласу
+------------------------------------
+Тепер ви маєте повну систему, що складається з двох класів: абстрактного класу `Element`, що розширений суцільним класом `ArrayElement`. Ви можете також уявити собі для вираження елемента. Наприклад, клієнти можуть виявити бажання створити елемент розташування, що складається з однієї лінії, взятої як рядок. Об'єктно-орієнтовне програмування робить простим розширення системи за допомогою нових варіантів даних. Ви можете просто додавати субкласі. Наприклад, Лістинг 10.6 показує клас `LineElement`, що поширює `ArrayElement`:
+[source,scala]
+----
 class LineElement(s: String) extends ArrayElement(Array(s)) {
-override def width = s.length
-override def height = 1
+  override def width = s.length
+  override def height = 1
 }
-Listing 10.6 - Invoking a superclass constructor.
-Since LineElement extends ArrayElement, and ArrayElement's constructor takes a parameter
-(anArray[String]), LineElement needs to pass an argument to the primary constructor of its superclass.
-To invoke a superclass constructor, you simply place the argument or arguments you want to pass in
-parentheses following the name of the superclass. For example,
-classLineElement passes Array(s) to ArrayElement's primary constructor by placing it in parentheses
-after the superclass ArrayElement's name:
+----
+Лістинг 10.6 - Викликання конструктора суперкласа.
+
+Оскікльи `LineElement` розширює `ArrayElement`, та конструктор `ArrayElement` приймає параметр (`Array[String]`), `LineElement` потребує передати аргумент до первинного конструктора його суперкласу. Щоб викликати конструктор суперкласу, ви просто покладаєте аргумент або аргументи, що ви бажаєте передати, в дужках, що слідують за ім'ям суперкласу. Наприклад, клас `LineElement` передає `Array(s)` до первинного конструктора `ArrayElement`, покладаючи в його в дужки після імені суперкласа `ArrayElement`:
+[source,scala]
+----
 ... extends ArrayElement(Array(s)) ...
-With the new subclass, the inheritance hierarchy for layout elements now looks as shown inFigure
-10.2.Figure 10.2 - Class diagram for LineElement.
-10.8 USING OVERRIDE MODIFIERS
-Note that the definitions of width and height in LineElement carry an override modifier. In Section 6.3,
-you saw this modifier in the definition of a toString method. Scala requires such a modifier for all
-members that override a concrete member in a parent class. The modifier is optional if a member
-implements an abstract member with the same name. The modifier is forbidden if a member does not
-override or implement some other member in a base class. Since height and width in
-class LineElement override concrete definitions in class Element, overrideis required.
-This rule provides useful information for the compiler that helps avoid some hard-to-catch errors and
-makes system evolution safer. For instance, if you happen to misspell the method or accidentally give it
-a different parameter list, the compiler will respond with an error message:
+----
+З новим субкласом ієрархія наслідування для елементів розташування зараз виглядає, як показано на Малюнку 10.2.
+
+Малюнок 10.2 - Діаграма класів для `LineElement`.
+
+10.8 Використання модифікатора override
+---------------------------------------
+Зауважте, що визначення `width` та `height` в `LineElement` має модифікатор `override`. В розділі 6.3 ви бачили цей модифікатор в визначенні метода `toString`. Scala потребує такого модифікатора для всіх членів, що перекривають суцільний метод в батьківському класі. Модифікатор є опціональним, якщо член реалізує абстрактний член з тим самим ім'ям. Модифікатор заборонений, якщо член не перекриває або не реалізує деякий член в базовому класі. Оскільки `height` та `width` в класі `LineElement` перекривають суцільні визначення в класі `Element`, `override` є обов'язковим.
+
+Це правило провадить корисну інформацію для компілятора, що допомагає уникати деяких складних для відлову помилок, та робить еволюцію безпечнішою. Наприклад, якщо ви випадково невірно назвали метод, або випадково дали йому інший список параметрів, компілятор відповість повідомленням про помилку:
+[source,scala]
+----
 $ scalac LineElement.scala
 .../LineElement.scala:50:
 error: method hight overrides nothing
-override def hight = 1
-^
-The override convention is even more important when it comes to system evolution. Say you defined a
-library of 2D drawing methods. You made it publicly available, and it is widely used. In the next
-version of the library you want to add to your base class Shape a new method with this signature:
+  override def hight = 1
+           ^
+----
+Домовленість перекриття навіть більше важливе, коли доходить до еволюції системи. Скажімо, ви визначаєте бібліотеку з методів малювання 2D. Ви зробили її публічно доступною, та вона широко уживана. В наступній версії бібліотеки ви бажаєте додати до вашого базового класа `Shape` новий метод з такою сигнатурою:
+[source,scala]
+----
 def hidden(): Boolean
-Your new method will be used by various drawing methods to determine whether a shape needs to be
-drawn. This could lead to a significant speedup, but you cannot do this without the risk of breaking
-client code. After all, a client could have defined a subclass of Shape with a different implementation
-of hidden. Perhaps the client's method actually makes the receiver object disappear instead of testing
-whether the object is hidden. Because the two versions ofhidden override each other, your drawing
-methods would end up making objects disappear, which is certainly not what you want!
-These "accidental overrides" are the most common manifestation of what is called the "fragile base
-class" problem. The problem is that if you add new members to base classes (which we usually callsuperclasses) in a class hierarchy, you risk breaking client code. Scala cannot completely solve the
-fragile base class problem, but it improves on the situation compared to Java.footnote:[In Java 1.5, an @Override annotation was introduced that works similarly to Scala's overridemodifier, but unlike Scala's override, is not required.] If the drawing library
-and its clients were written in Scala, then the client's original implementation of hidden could not have
-had an override modifier, because at the time there was no other method with that name.
-Once you add the hidden method to the second version of your shape class, a recompile of the client
-would give an error like the following:
+----
+Ваш новий метод буде використовуватись в різних методах малювання, щоб визначити, чи треба малювати фігуру. Це може призвести до значного прискорення, але ви не можете зробити це без ризику поламати клієнтській код. Кінець кінцем, клієнт міг вже визначити субклас `Shape` з іншою реалізацією `hidden`. Можливо, клієнській метод насправді робить отримуючий об'єкт зникаючим, замість перевіряти, чи об'єкт прихований. Оскільки дві версії `hidden` перекривають один одний, ваші методи малювання скінчать тим, що робитимуть об'єкти знікаючими, що напевне не те, чого ви бажаєте!
+
+Ці "випадкові перекриття" є найбільш загальною маніфестацією того, що називається проблемою "крихких базових класів". Проблема в тому, що якщо ви додаєте нові члени до базових класів (які ми звичайно називаємо суперкласами) в ієрархії класів, ми ризикуємо зламати клієнтській код. Scala не може повністю вирішити проблему крихкіх базових класів, але він покращує ситуацію, порівняно з Java.footnote:[В Java 1.5 була введена анотація `@Override`, що робить подібно до модифікатор Scala `override`, але на відміну від Scala `override`, це не вимагається.] Якщо бібліотека малювання та її клієнти були написані на Scala, тоді оригінальна клієнтська реалізація `hidden` не може мати модифікатора  `override`, оскільки на той час немає іншого метода з цім ім'ям.
+
+Як тільки ви додасте метод `hidden` до другої версії вашого класу фігури, перекомпіляція клієнта буде давати помилку, подібну до наступної:
+[source,scala]
+----
 .../Shapes.scala:6: error: error overriding method
-hidden in class Shape of type ()Boolean;
+     hidden in class Shape of type ()Boolean;
 method hidden needs `override' modifier
 def hidden(): Boolean =
 ^
-That is, instead of wrong behavior your client would get a compile-time error, which is usually much
-preferable.
-10.9 POLYMORPHISM AND DYNAMIC BINDING
-You saw in Section 10.4 that a variable of type Element could refer to an object of typeArrayElement.
-The name for this phenomenon is polymorphism, which means "many shapes" or "many forms." In this
-case, Element objects can have many forms.footnote:[This kind of polymorphism is called subtyping polymorphism. Another kind of polymorphism in Scala called universal polymorphism is discussed in Chapter 19.]
-So far, you've seen two such forms: ArrayElement and LineElement. You can create more forms
-ofElement by defining new Element subclasses. For example, you could define a new form
-ofElement that has a given width and height, and is filled everywhere with a given character:
+----
+Тобто, замість помилкової поведінки ваш клієнт отримає помилку часу компіляції, що, зазвичай, значно краще.
+
+10.9 Поліморфізм та динамічне зв'язування
+-----------------------------------------
+Ви бачили в Розділі 10.4, що змінна типу `Element` може посилатись на об'єкт типу `ArrayElement`. Ім'я цього феномену є _поліморфізм_, що означає "багато форм". В цьому випадку, об'єкти `Element` можуть мати багато форм.footnote:[Цей різновид поліморфізму називається поліморфізмом субтипізації. Інший різновид поліморфізму в Scala називається універсальним поліморфізмом, та обговорюється в Главі 19.]
+
+Доки ви бачили дві такі форми: `ArrayElement` та `LineElement`. Ви можете створити більше форм `Element`, через визначення нових субкласів `Element`. Наприклад, ви можете визначити нову форму `Element`, що має задані ширину та довжину, та повністю заповнений наданим символом:
+[source,scala]
+----
 class UniformElement(
-ch: Char,
-override val width: Int,
-override val height: Int
+  ch: Char,
+  override val width: Int,
+  override val height: Int
 ) extends Element {
-private val line = ch.toString * width
-def contents = Array.fill(height)(line)
+  private val line = ch.toString * width
+  def contents = Array.fill(height)(line)
 }
-The inheritance hierarchy for class Element now looks as shown in Figure 10.3. As a result, Scala will
-accept all of the following assignments, because the type of the assigning expression conforms to the
-type of the defined variable:
-val
-val
-val
-val
-e1:
-ae:
-e2:
-e3:
-Element = new ArrayElement(Array("hello", "world"))
-ArrayElement = new LineElement("hello")
-Element = ae
-Element = new UniformElement('x', 2, 3)
-If you check the inheritance hierarchy, you'll find that in each of these four val definitions, the type of
-the expression to the right of the equals sign is below the type of the val being initialized to the left of
-the equals sign.Figure 10.3 - Class hierarchy of layout elements.
-The other half of the story, however, is that method invocations on variables and expressions
-are dynamically bound. This means that the actual method implementation invoked is determined at run
-time based on the class of the object, not the type of the variable or expression. To demonstrate this
-behavior, we'll temporarily remove all existing members from our Element classes and add a method
-named demo to Element. We'll override demo inArrayElement and LineElement, but not
-in UniformElement:
+----
+Ієрархія наслідування для класа `Element` тепер виглядає як показано на Малюнку 10.3. Як результат, Scala буде приймати всі наступні присвоєння, оскільки тип присвоюваних виразів відповідає до типу визначенної змінної:
+[source,scala]
+----
+val e1: Element = new ArrayElement(Array("hello", "world"))
+val ae: ArrayElement = new LineElement("hello")
+val e2: Element = ae
+val e3: Element = new UniformElement('x', 2, 3)
+----
+Якщо ви перевірите ієрархію наслідування, ви знайдете, що для кожного з ціх чотирьох визначень `val`, тип виразу зправа від знаку рівності нижче типу `val`, що ініціалізується зліва знаку рівності.
+
+Малюнок 10.3 - Ієрархія класу елементів розташування.
+
+Однак друга частина історії в тому, що виклики ціх методів не змінній і виразах зв'язані динамічно. Це означає, що справжня реалізація метода визначається під час виконання, на основі класу об'єкта, не на основі типу змінної або виразу. Щоб продемонструвати цю поведінку, ми тимчасово видалимо всі існуючі члени з нашого класу `Element`, та додамо в `Element` метод з назвою `demo`. Ми перекриємо `demo` в `ArrayElement` та `LineElement`, але не в `UniformElement`:
+[source,scala]
+----
 abstract class Element {
-def demo() = {
-println("Element's implementation invoked")
+  def demo() = {
+    println("Element's implementation invoked")
+  }
 }
-}
+
 class ArrayElement extends Element {
-override def demo() = {
-println("ArrayElement's implementation invoked")
+  override def demo() = {
+    println("ArrayElement's implementation invoked")
+  }
 }
-}
+
 class LineElement extends ArrayElement {
-override def demo() = {
-println("LineElement's implementation invoked")
+  override def demo() = {
+    println("LineElement's implementation invoked")
+  }
 }
-}
-// UniformElement inherits Element's demo
+
+// UniformElement наслідує demo від Element
 class UniformElement extends Element
-If you enter this code into the interpreter, you can then define this method that takes anElement and
-invokes demo on it:
+----
+Якщо ви введете цей код в інтерпретатор, потім ви можете визначитицей метод, що приймає `Element`, та викликає на ньому `demo`:
+[source,scala]
+----
 def invokeDemo(e: Element) = {
-e.demo()
+  e.demo()
 }
-If you pass an ArrayElement to invokeDemo, you'll see a message indicating ArrayElement's
-implementation of demo was invoked, even though the type of the variable, e, on which demowas
-invoked is Element:scala> invokeDemo(new ArrayElement)
+----
+Якщо ви передасте `ArrayElement` до `invokeDemo`, ви побачите повідомлення, що вказує, що була викликана реалізація demo з ArrayElement, навіть хоча тип змінної `e`, на якому викликається demo, є `Element`:
+[source,scala]
+----
+scala> invokeDemo(new ArrayElement)
 ArrayElement's implementation invoked
-Similarly, if you pass a LineElement to invokeDemo, you'll see a message that
-indicates LineElement'sdemo implementation was invoked:
+----
+Подібно до цього, якщо ви передасте `LineElement` до `invokeDemo`, ви побачите повідомлення, що вказує, що була викликана реалізація `demo` з `LineElement`:
+[source,scala]
+----
 scala> invokeDemo(new LineElement)
 LineElement's implementation invoked
-The behavior when passing a UniformElement may at first glance look suspicious, but it is correct:
+----
+Поведінка коли передається `UniformElement` може зпочатку виглядати підозрілою, але вона коректна:
+[source,scala]
+----
 scala> invokeDemo(new UniformElement)
 Element's implementation invoked
-Because UniformElement does not override demo, it inherits the implementation of demo from its
-superclass, Element. Thus, Element's implementation is the correct implementation of demo to invoke
-when the class of the object is UniformElement.
-10.10 DECLARING FINAL MEMBERS
-Sometimes when designing an inheritance hierarchy, you want to ensure that a member cannot be
-overridden by subclasses. In Scala, as in Java, you do this by adding a finalmodifier to the member. As
-shown in Listing 10.7, you could place a final modifier onArrayElement's demo method.
+----
+Оскільки `UniformElement` не перекриває `demo`, він наслідує реалізацію `demo` від свого суперкласу, `Element`. Таким чином, реалізація `Element` є коректною реалізацією `demo`, коли клас об'єкта є `UniformElement`.
+
+10.10 Декларація фінальних членів
+---------------------------------
+Іноді, коли розробляється ієрархія наслідування, ви бажаєте переконатись, що член не може бути перекритий в субкласах. В Scala, як і в Java, ви робите це, додаючи модифікатор `final` до члена. Як показано в Лістингу 10.7, ви можете покласти модифікатор `final` на `demo` метод в `ArrayElement`.
+[source,scala]
+----
 class ArrayElement extends Element {
-final override def demo() = {
-println("ArrayElement's implementation invoked")
+  final override def demo() = {
+    println("ArrayElement's implementation invoked")
+  }
 }
-}
-Listing 10.7 - Declaring a final method.
-Given this version of ArrayElement, an attempt to override demo in its subclass, LineElement, would
-not compile:
+----
+Лістинг 10.7 - Декларування фінального методу.
+
+Маючи цю версію `ArrayElement`, спроба перекрити `demo` в субкласі `LineElement` не буде компілюватись:
+[source,scala]
+----
 elem.scala:18: error: error overriding method demo
-in class ArrayElement of type ()Unit;
+   in class ArrayElement of type ()Unit;
 method demo cannot override final member
-override def demo() = {
-^
-You may also at times want to ensure that an entire class not be subclassed. To do this you simply
-declare the entire class final by adding a final modifier to the class declaration. For example, Listing
-10.8 shows how you would declare ArrayElement final:
+    override def demo() = {
+                 ^
+----
+Також часом ви бажаєте переконатись, що цілий клас не може мати субкласів. Щоб зробити це, просто декларуйте цілий клас фінальним, додаючи модифікатор `final` до декларації класу. Наприклад, Лістинг 10.8 показує, як ви можете декларувати фінальний `ArrayElement`:
+[source,scala]
+----
 final class ArrayElement extends Element {
-override def demo() = {
-println("ArrayElement's implementation invoked")
+  override def demo() = {
+    println("ArrayElement's implementation invoked")
+  }
 }
-}Listing 10.8 - Declaring a final class.
-With this version of ArrayElement, any attempt at defining a subclass would fail to compile:
+----
+Лістинг 10.8 - Декларування фінального класу.
+
+З цією версією `ArrayElement`, люба спроба визначити субклас не буде компілюватись:
+[source,scala]
+----
 elem.scala: 18: error: illegal inheritance from final class
-ArrayElement
-class LineElement extends ArrayElement {
-^
-We'll now remove the final modifiers and demo methods, and go back to the earlier implementation of
-the Element family. We'll focus our attention in the remainder of this chapter to completing a working
-version of the layout library.
-10.11 USING COMPOSITION AND INHERITANCE
-Composition and inheritance are two ways to define a new class in terms of another existing class. If
-what you're after is primarily code reuse, you should in general prefer composition to inheritance. Only
-inheritance suffers from the fragile base class problem, in which you can inadvertently break subclasses
-by changing a superclass.
-One question you can ask yourself about an inheritance relationship is whether it models anis-
-a relationship.footnote:[Meyers, Effective C++ [Mey91\]] For example, it would be reasonable to say that ArrayElement is-an Element. Another
-question you can ask is whether clients will want to use the subclass type as a superclass type.footnote:[Eckel, Thinking in Java [Eck98\]] In the
-case of ArrayElement, we do indeed expect clients will want to use anArrayElement as an Element.
-If you ask these questions about the inheritance relationships shown in Figure 10.3, do any of the
-relationships seem suspicious? In particular, does it seem obvious to you that a LineElementis-
-an ArrayElement? Do you think clients would ever need to use a LineElement as an ArrayElement?
-In fact, we defined LineElement as a subclass of ArrayElement primarily to reuse ArrayElement's
-definition of contents. Perhaps it would be better, therefore, to define LineElement as a direct subclass
-of Element, like this:
+    ArrayElement
+  class LineElement extends ArrayElement {
+                            ^
+----
+Тепер ми видалимо модифікатор `final` та метод `demo`, та повернемось до ранішньої реалізації сімейства `Element`. В залишку глави ми зфокусуємо нашу увагу на завершенні робочої версії бібліотеки розташування.
+
+10.11 Використання композиції та наслідування
+---------------------------------------------
+Композиція та наслідування є двома шляхами визначити новий клас в термінах іншого існуючого класа. Якщо те, чого ви шукаєте, це просте повторне використання коду, ви маєте обрати композицію замість наслідування. Тільки наслідування потерпає від проблеми крихких базових класів, коли ви можете ненавмисно зашкодити субкласам через зміни в суперкласі.
+
+Одне питання, що ви можете запитати себе щодо відношення наслідування, чи моделює воно відношення "..є примірником..".footnote:[Meyers, Effective C++ [Mey91\]] Наприклад, це буде досить дотепним сказати, що `ArrayElement` _є примірником_ `Element`. Інше питання, що ви можете запитати, це чи те, чи колись клієнти забажають використовувати тип субкласів як тип суперкласу.footnote:[Eckel, Thinking in Java [Eck98\]] В випадку `ArrayElement`, ми очевидно очікуємо, що клієнти бажатимуть використовувати `ArrayElement` як `Element`.
+
+Якщо ви задасте ці питання щодо відношень наслідування, показаних на Малюнку 10.3, чи якесь з відношень виглядає підозріло? Закрема, чи виглає це очевидним, що `LineElement` _є примірником_ `ArrayElement`? Чи ви думаєте, що клієнтам колись знадобиться використовувати `LineElement` як `ArrayElement`?
+
+Фактично, ми визначили `LineElement` як субклас `ArrayElement` в основному для повторного використання визначення `contents` з `ArrayElement`. Можливо, було б краще визначити `LineElement` як прямий субклас `Element`, ось так:
+[source,scala]
+----
 class LineElement(s: String) extends Element {
-val contents = Array(s)
-override def width = s.length
-override def height = 1
+  val contents = Array(s)
+  override def width = s.length
+  override def height = 1
 }
-In the previous version, LineElement had an inheritance relationship with ArrayElement, from which it
-inherited contents. It now has a composition relationship with Array: it holds a reference to an array of
-strings from its own contents field.footnote:[Class ArrayElement also has a composition relationship with Array, because its parametriccontents field holds a reference to an array of strings. The code for ArrayElement is shown inListing 10.5 here. Its composition relationship is represented in class diagrams by a diamond, as shown, for example, in Figure 10.1 here.] Given this implementation ofLineElement, the inheritance
-hierarchy for Element now looks as shown in Figure 10.4.Figure 10.4 - Class hierarchy with revised LineElement.
-10.12 IMPLEMENTING ABOVE, BESIDE, AND TOSTRING
-As a next step, we'll implement method above in class Element. Putting one element above another
-means concatenating the two contents values of the elements. So a first draft of method above could
-look like this:
+----
+В попередній версії `LineElement` має відношення наслідування з `ArrayElement`, від якого він наслідує `contents`. Тепер він має відношення композиції з `Array`: він має посилання на масив з рядків зі свого власного поля `contents`.footnote:[Клас `ArrayElement` також має відношення композиції з `Array`, оскільки його параметричне поле `contents` містить посилання на масив з рядків. Код для `ArrayElement` показаний в Лістингу 10.5. Його відношення композиції представлене на діаграмі класу як діамант, наприклад, як показано на Малюнку 10.1.] Маючи цю реалізацію `LineElement`, ієрархія наслідування для `Element` тепер виглядає так, як на Малюнку 10.4.
+
+Малюнок 10.4 - Ієрархія класів з переробленим `LineElement`.
+
+10.12 Реалізація `above`, `beside` та `toString`
+-----------------------------------------------
+Як наступний крок, ми реалізуємо метод `above` в класі `Element`. Покладання одного елементу над іншим означає конкатенацію двох значень `contents` для елементів. Так що перша чернетка метода `above` може виглядати так:
+[source,scala]
+----
 def above(that: Element): Element =
-new ArrayElement(this.contents ++ that.contents)
-The ++ operation concatenates two arrays. Arrays in Scala are represented as Java arrays, but support
-many more methods. Specifically, arrays in Scala can be converted to instances of a class scala.Seq,
-which represents sequence-like structures and contains a number of methods for accessing and
-transforming sequences. Some other array methods will be explained in this chapter and a more
-comprehensive discussion will be given in Chapter 17.
-In fact, the code shown previously is not quite sufficient because it does not let you put elements of
-different widths on top of each other. To keep things simple in this section, however, we'll leave this as
-is and only pass elements of the same length to above. In Section 10.14, we'll make an enhancement
-to above so that clients can use it to combine elements of different widths.
-The next method to implement is beside. To put two elements beside each other, we'll create a new
-element in which every line results from concatenating corresponding lines of the two elements. As
-before, to keep things simple, we'll start by assuming the two elements have the same height. This leads
-to the following design of method beside:
+  new ArrayElement(this.contents ++ that.contents)
+----
+Операція `++` конкатенує два масиви. Масиви в Scala представлені масивами Java, але підтримують значно більше методів. Більш точно, масиви в Scala можуть бути конвертовані в примірники класу `scala.Seq`, що представляє собою послідовність-подібні структуру, та містить декілька методів для доступу та перетворення послідовностей. Деякі інші методи масивів будуть пояснені в цій главі, та більш докладна дискусія буде надана в Главі 17.
+
+Фактично, попередньо показаний код не дуже достатній, оскільки він не дозволяє вам покладати вам елементи різної ширини один зверху іншого. Щоб утримувати речі в цьому розділі простими, ми залишимо це як є, та передаватимемо до `above` тільки елементи однієї ширини. В Розділі 10.14 ми зробимо покращення до `above`, так щоб клієнти могли використовувати його для комбінування елементів з різною шириною.
+
+Наступний метод, що треба реалізувати, є `beside`. Щоб покласти два елементи один поряд з іншим, ми створимо новий елемент, в якому кожна лінія утворюється від канкатенації відповідних ліній з двох елементів. Як і раніше, щоб утримувати речі простими, ми почнемо з припущення, що два елементи мають ту саму висоту. Це призводить до наступного дизайну метода `beside`:
+[source,scala]
+----
 def beside(that: Element): Element = {
-val contents = new Array[String](this.contents.length)
-for (i <- 0 until this.contents.length)
-contents(i) = this.contents(i) + that.contents(i)
-new ArrayElement(contents)
+  val contents = new Array[String](this.contents.length)
+  for (i <- 0 until this.contents.length)
+    contents(i) = this.contents(i) + that.contents(i)
+  new ArrayElement(contents)
 }
-The beside method first allocates a new array, contents, and fills it with the concatenation of the
-corresponding array elements in this.contents and that.contents. It finally produces a
-newArrayElement containing the new contents.Although this implementation of beside works, it is in an imperative style, the telltale sign of which is
-the loop in which we index through arrays. Alternatively, the method could be abbreviated to one
-expression:
+----
+Метод `beside` спочатку розміщує новий масив `contents`, та заповнює його вмістом відповідних елементів масива в `this.contents` та `that.contents`. В фіналі він продукує новий `ArrayElement`, що містить новий `contents`.
+
+Хоча ця реалізація `beside` робить, це імперативний стиль, промовистим знаком чого є цикл в якому ми проходимо по масиву. Альтернативно, метод може бути скорочений до одного вирау:
+[source,scala]
+----
 new ArrayElement(
-for (
-(line1, line2) <- this.contents zip that.contents
-) yield line1 + line2
+  for (
+        (line1, line2) <- this.contents zip that.contents
+      ) yield line1 + line2
 )
-Here, the two arrays, this.contents and that.contents, are transformed into an array of pairs (asTuple2s
-are called) using the zip operator. The zip operator picks corresponding elements in its two operands
-and forms an array of pairs. For instance, this expression:
+----
+Тут є два масива, `this.contents` та `that.contents`, що трансформуються в масив з пар (що називаютсья `Tuple2s`) використовуючи оператор `zip`. Оператор `zip` бере відповідні елементи зі своїх двох операндів, та формує масив з пар. Наприклад, цей вираз:
+[source,scala]
+----
 Array(1, 2, 3) zip Array("a", "b")
-will evaluate to:
+----
+обчислюється до:
+[source,scala]
+----
 Array((1, "a"), (2, "b"))
-If one of the two operand arrays is longer than the other, zip will drop the remaining elements. In the
-expression above, the third element of the left operand, 3, does not form part of the result, because it
-does not have a corresponding element in the right operand.
-The zipped array is then iterated over by a for expression. Here, the syntax "for ((line1, line2) <- ...)"
-allows you to name both elements of a pair in one pattern (i.e., line1stands now for the first element of
-the pair, and line2 stands for the second). Scala's pattern-matching system will be described in detail
-in Chapter 15. For now, you can just think of this as a way to define two vals, line1 and line2, for each
-step of the iteration.
-The for expression has a yield part and therefore yields a result. The result is of the same kind as the
-expression iterated over (i.e., it is an array). Each element of the array is the result of concatenating the
-corresponding lines, line1 and line2. So the end result of this code is the same as in the first version
-of beside, but because it avoids explicit array indexing, the result is obtained in a less error-prone way.
-You still need a way to display elements. As usual, this is done by defining a toString method that
-returns an element formatted as a string. Here is its definition:
+----
+Якщо один з двох масивів довший за інший, `zip` буде відкидати зайві елементи. В виразі вище третій елемент лівого операнда, `3`, не формує частину результату, оскільки він не має відповідного елемента в правому операнді.
+
+Після цього поєднаний масив ітерується в виразу `for`. Тут синтаксис `for ((line1, line2) <- ...)` дозволяє вам назвати обоє елементи з пари в одному шаблоні (тобто, тепер `line1` тепер відповідає першому елементу з пари, та `line2` відповідає другому). Система співпадіння з шаблонами в Scala буде описана в деталях в Главі 15. Доки ви можете думати про це як про спосіб визначити дві `val`, `line1` та `line2`, на кожному кроці ітерації.
+
+Вираз `for` має частину `yield`, і, таким чином, видає результат. Результат буде того самого типу, що і вираз, по якому іде ітерація (тобто, це масив). Кожний елемент масиву є результатом конкатенації відповідних рядків, `line1` та `line2`. Так що ваш останній результат цього коду є той самий, що і в першій версії `beside`, але оскільки він уникає індексації масиву, цей результат отриманий в менш схильний до помилок спосіб.
+
+Вам все ще треба спосіб відображати елементи. Як звичайно, це робиться через визначення метода `toString`, що повертає елемент, відформатований як рядок. Ось визначення:
+[source,scala]
+----
 override def toString = contents mkString "\n"
-The implementation of toString makes use of mkString, which is defined for all sequences, including
-arrays. As you saw in Section 7.8, an expression like "arr mkString sep" returns a string consisting of
-all elements of the array arr. Each element is mapped to a string by calling its toString method. A
-separator string sep is inserted between consecutive element strings. So the expression,
-"contents mkString "\n"" formats the contents array as a string, where each array element appears on a
-line by itself.
+----
+Реалізація `toString` задіє `mkString`, що визначене для всіх послідовностей, включаючи масиви. Як ви бачили в Розділі 7.8, вирази, як `arr mkString sep` повертає рядок, що складається з усіх елементів масива `arr`. Кожний елемент відзеркалюється на рядок, через виклик для кожного елементу `toString`. Рядок роздільника, sep, вставляється між послідовними рядками елементів. Так що вираз `contents mkString "\n"` форматує масив `contents` як рядок, де кожний елемент масива з'являється на окремому рядку.
+[source,scala]
+----
 abstract class Element {def contents: Array[String]
-def width: Int =
-if (height == 0) 0 else contents(0).length
-def height: Int = contents.length
-def above(that: Element): Element =
-new ArrayElement(this.contents ++ that.contents)
-def beside(that: Element): Element =
-new ArrayElement(
-for (
-(line1, line2) <- this.contents zip that.contents
-) yield line1 + line2
-)
-override def toString = contents mkString "\n"
+  def width: Int =
+    if (height == 0) 0 else contents(0).length
+
+  def height: Int = contents.length
+  
+  def above(that: Element): Element =
+    new ArrayElement(this.contents ++ that.contents)
+
+  def beside(that: Element): Element =
+    new ArrayElement(
+      for (
+        (line1, line2) <- this.contents zip that.contents
+      ) yield line1 + line2
+    )
+
+  override def toString = contents mkString "\n"
 }
-Listing 10.9 - Class Element with above, beside, and toString.
-Note that toString does not carry an empty parameter list. This follows the recommendations for the
-uniform access principle, because toString is a pure method that does not take any parameters. With the
-addition of these three methods, class Element now looks as shown inListing 10.9.
-10.13 DEFINING A FACTORY OBJECT
-You now have a hierarchy of classes for layout elements. This hierarchy could be presented to your
-clients "as is," but you might also choose to hide the hierarchy behind a factory object.
-A factory object contains methods that construct other objects. Clients would then use these factory
-methods to construct objects, rather than constructing the objects directly with new. An advantage of
-this approach is that object creation can be centralized and the details of how objects are represented
-with classes can be hidden. This hiding will both make your library simpler for clients to understand,
-because less detail is exposed, and provide you with more opportunities to change your library's
-implementation later without breaking client code.
-The first task in constructing a factory for layout elements is to choose where the factory methods
-should be located. Should they be members of a singleton object or of a class? What should the
-containing object or class be called? There are many possibilities. A straightforward solution is to
-create a companion object of class Element and make this the factory object for layout elements. That
-way, you need to expose only the class/object combo of Element to your clients, and you can hide the
-three implementation classes ArrayElement,LineElement, and UniformElement.
-Listing 10.10 is a design of the Element object that follows this scheme. The Element object contains
-three overloaded variants of an elem method and each constructs a different kind of layout object.
+----
+Лістинг 10.9 - Клас `Element` з `above`, `beside` та `toString`.
+
+Зауважте, що `toString` не має порожнього списку параметрів. Це слідує рекомендаціям для принципа уніформного доступу, оскільки `toString` є чистим методом, що не приймає жодних параметрів. З додаванням ціх трьох методів, клас `Element` тепер виглядає як показано в Лістингу 10.9.
+
+10.13 Визначення об'єкта фабрики
+--------------------------------
+Тепер ви маєте ієрархію класів для елементів розташування. Ця ієрархія може бути представлена вашим клієнтам "як є", але ви також можете обрати приховати ієрархію за лаштунками об'єкта фабрики.
+
+Об'єкт фабрики містить методи, що конструюють інші об'єкти. Потім клієнти використовують ці методи фабрики, замість конструювання об'єктів напряму за допомогою `new`. Перевага цього підходу до створення об'єктів в тому, що створення об'єктів може бути централізоване, і деталі того, як об'єкти представлені класами може бути приховане. Це приховування одночасно зробить вашу бібліотеку простішою для розуміння клієнтами, оскільки показані меньше деталей, та провадить вам більше можливостей пізніше змінити реалізацію вашої бібліотеки, не руйнуючи код клієнта.
+
+Перше завдання в конструюванні фабрики для ваших об'єктів розташування є обрати, де мають бути розміщені методи фабрики. Чи мають вони бути членами об'єкта синглтона, або класа? Що повинно викликати містячий об'єкт або клас? Існую багато можливостей. Прямолінійне рішення є створити об'єкт компанйон класа `Element`, та зробити його об'єктом фабрикою для елементів розміщення. Таким чином, вам треба показати вашим клієнтам тільки комбінацію класа/об'єкта, та ви можете приховати три класа реалізації,`ArrayElement`, `LineElement`, та `UniformElement`.
+
+Лістинг 10.10 є дизайном об'єкта `Element`, що слідує цій схемі. Об'єкт  `Element` містить три перевантажені варіанти метода `elem`, та кожний конструює різний тип об'єкта розташування.
+[source,scala]
+----
 object Element {
-def elem(contents: Array[String]): Element =
-new ArrayElement(contents)def elem(chr: Char, width: Int, height: Int): Element =
-new UniformElement(chr, width, height)
-def elem(line: String): Element =
-new LineElement(line)
+  def elem(contents: Array[String]): Element =
+    new ArrayElement(contents)
+    
+  def elem(chr: Char, width: Int, height: Int): Element =
+    new UniformElement(chr, width, height)
+
+  def elem(line: String): Element =
+    new LineElement(line)
 }
-Listing 10.10 - A factory object with factory methods.
-With the advent of these factory methods, it makes sense to change the implementation of
-class Element so that it goes through the elem factory methods rather than creating
-newArrayElement instances explicitly. To call the factory methods without qualifying them
-withElement, the name of the singleton object, we will import Element.elem at the top of the source
-file. In other words, instead of invoking the factory methods with Element.elem inside classElement,
-we'll import Element.elem so we can just call the factory methods by their simple name,elem. Listing
-10.11 shows what class Element will look like after these changes.
+----
+Лістинг 10.10 - Об'єкт фабрики з методом фабрики.
+
+З появою ціх методів фабрик має сенс змінити реалізацію класа `Element`, так щоб він шов через методи фабрик `elem`, скоріше ніж створювати нові примірники `ArrayElement` напряму. Щоб викликати методи фабрик, не кваліфікуючи їх іменем об'єкта синглтона, `Element`, ми будемо імпортувати `Element.elem` на верхньому рівні джерельного файла. Іншими словами, замість виклику методів фабрик як `Element.elem` зсередини класу `Element`,ми імпортуємо `Element.elem`, так що ви можете просто викликати методи фабрик по їх простому імені, `elem`. Лістинг 10.11 показує, як буде виглядати клас Element після ціх змін.
+[source,scala]
+----
 import Element.elem
+
 abstract class Element {
-def contents: Array[String]
-def width: Int =
-if (height == 0) 0 else contents(0).length
-def height: Int = contents.length
-def above(that: Element): Element =
-elem(this.contents ++ that.contents)
-def beside(that: Element): Element =
-elem(
-for (
-(line1, line2) <- this.contents zip that.contents
-) yield line1 + line2
-)
-override def toString = contents mkString "\n"
+
+  def contents: Array[String]
+
+  def width: Int =
+    if (height == 0) 0 else contents(0).length
+
+  def height: Int = contents.length
+
+  def above(that: Element): Element =
+    elem(this.contents ++ that.contents)
+
+  def beside(that: Element): Element =
+    elem(
+      for (
+        (line1, line2) <- this.contents zip that.contents
+      ) yield line1 + line2
+    )
+
+  override def toString = contents mkString "\n"
 }
-Listing 10.11 - Class Element refactored to use factory methods.
-In addition, given the factory methods, the subclasses, ArrayElement, LineElement,
-andUniformElement, could now be private because they no longer need to be accessed directly by
-clients. In Scala, you can define classes and singleton objects inside other classes and singleton
-objects. One way to make the Element subclasses private is to place them inside theElement singleton
-object and declare them private there. The classes will still be accessible to the three elem factory
-methods, where they are needed. Listing 10.12 shows how that will look.10.14 HEIGHTEN AND WIDEN
-We need one last enhancement. The version of Element shown in Listing 10.11 is not quite sufficient
-because it does not allow clients to place elements of different widths on top of each other, or place
-elements of different heights beside each other.
-For example, evaluating the following expression won't work correctly, because the second line in the
-combined element is longer than the first:
+----
+Лістинг 10.11 - Клас `Element` після рефакторинга з додавання методів фабрик.
+
+На додаток, маючи методи фабрик, тепер субкласи `ArrayElement`, `LineElement`, `UniformElement` можуть бути приватними, оскільки вони більше не мають отримувати доступ напряму від клієнтів. В Scala ви можете визначати класи та об'єкти синглтони. Один спосіб зробити субкласи `Element` приватними - це покласти їх в об'єкт синглтон `Element`, та декларувати їх там приватними. Класи будуть все ще доступні до трьох методах фабрик `elem`, де вони потрібні. Лістинг 10.12 показує, як це буде виглядати.
+
+10.14 Підвищення та розширення
+------------------------------
+Нам треба одне останнє покращення. Версія `Element`, показана в Лістингу 10.11, не є повністю достатньою, оскільки вона не дозволяє клієнтам покладати елементи з різною шириною один на одний, або класти поряд елементи з різною висотою. Наприклад, обчислення наступних виразів не буде робити коректно, оскільки другий рядок в комбінованому елементі довший, ніж в першому:
+[source,scala]
+----
 new ArrayElement(Array("hello")) above
 new ArrayElement(Array("world!"))
-Similarly, evaluating the following expression would not work properly, because the
-firstArrayElement has a height of two and the second a height of only one:
+----
+Подібно до цього, обчислення наступного виразу не буде робити потрібним чином, оскільки перший `ArrayElement` має висоту два, а другий висоту один:
+[source,scala]
+----
 new ArrayElement(Array("one", "two")) beside
 new ArrayElement(Array("one"))
-Listing 10.13 shows a private helper method, widen, which takes a width and returns an Elementof that
-width. The result contains the contents of this Element, centered, padded to the left and right by any
-spaces needed to achieve the required width. Listing 10.13 also shows a similar method, heighten,
-which performs the same function in the vertical direction. The widenmethod is invoked by above to
-ensure that Elements placed above each other have the same width. Similarly, the heighten method is
-invoked by beside to ensure that elements placed beside each other have the same height. With these
-changes, the layout library is ready for use.
+----
+Лістинг 10.13 показує приватний допоміжний метод, `widen`, що приймає ширину, та повертає `Element` такої ширини. Результат містить вміст цього `Element`, відцентрований та вирівняний зліва та зправа додатковими проміжками, як треба щоб досягти потрібної ширини. Лістинг 10.13 також показує подібний метод, `heighten`, що виконує ту саму функцію в вертикальному напрямку. Метод `widen` викликається в `above`, щоб переконатись, що `Element`, покладений над будь-яким іншим, матиме ту саму ширину. Подібно до цього, метод `heighten` викликається в `beside`, щоб переконатись, що елементи, розташовані поряд, мають ту саму ширину. З такими змінами бібліотека розташування готова до використання.
+[source,scala]
+----
 object Element {
-private class ArrayElement(
-val contents: Array[String]
-) extends Element
-private class LineElement(s: String) extends Element {
-val contents = Array(s)
-override def width = s.length
-override def height = 1
+
+    private class ArrayElement(
+      val contents: Array[String]
+    ) extends Element
+
+    private class LineElement(s: String) extends Element {
+      val contents = Array(s)
+      override def width = s.length
+      override def height = 1
+    }
+
+    private class UniformElement(
+      ch: Char,
+      override val width: Int,
+      override val height: Int
+    ) extends Element {
+      private val line = ch.toString * width
+      def contents = Array.fill(height)(line)
+    }
+
+    def elem(contents: Array[String]): Element =
+      new ArrayElement(contents)
+
+    def elem(chr: Char, width: Int, height: Int): Element =
+      new UniformElement(chr, width, height)
+
+    def elem(line: String): Element =
+      new LineElement(line)
 }
-private class UniformElement(
-ch: Char,
-override val width: Int,
-override val height: Int
-) extends Element {
-private val line = ch.toString * width
-def contents = Array.fill(height)(line)
-}
-def elem(contents: Array[String]): Element =
-new ArrayElement(contents)
-def elem(chr: Char, width: Int, height: Int): Element =
-new UniformElement(chr, width, height)
-def elem(line: String): Element =}
-new LineElement(line)
-Listing 10.12 - Hiding implementation with private classes.
+----
+Лістинг 10.12 - Приховування реалізації за допомогою приватних класів.
+
+[source,scala]
+----
 import Element.elem
+
 abstract class Element {
-def contents: Array[String]
-def width: Int = contents(0).length
-def height: Int = contents.length
-def above(that: Element): Element = {
-val this1 = this widen that.width
-val that1 = that widen this.width
-elem(this1.contents ++ that1.contents)
+  def contents: Array[String]
+
+  def width: Int = contents(0).length
+  def height: Int = contents.length
+
+  def above(that: Element): Element = {
+    val this1 = this widen that.width
+    val that1 = that widen this.width
+    elem(this1.contents ++ that1.contents)
+  }
+
+  def beside(that: Element): Element = {
+    val this1 = this heighten that.height
+    val that1 = that heighten this.height
+    elem(
+      for ((line1, line2) <- this1.contents zip that1.contents)
+      yield line1 + line2)
+  }
+
+  def widen(w: Int): Element =
+    if (w <= width) this
+    else {
+      val left = elem(' ', (w - width) / 2, height)
+      val right = elem(' ', w - width - left.width, height)
+      left beside this beside right
+    }
+
+  def heighten(h: Int): Element =
+    if (h <= height) this
+    else {
+      val top = elem(' ', width, (h - height) / 2)
+      val bot = elem(' ', width, h - height - top.height)
+      top above this above bot
+    }
+  }
+  
+  override def toString = contents mkString "\n"
 }
-def beside(that: Element): Element = {
-val this1 = this heighten that.height
-val that1 = that heighten this.height
-elem(
-for ((line1, line2) <- this1.contents zip that1.contents)
-yield line1 + line2)
-}
-def widen(w: Int): Element =
-if (w <= width) this
-else {
-val left = elem(' ', (w - width) / 2, height)
-val right = elem(' ', w - width - left.width, height)
-left beside this beside right
-}
-def heighten(h: Int): Element =
-if (h <= height) this
-else {
-val top = elem(' ', width, (h - height) / 2)
-val bot = elem(' ', width, h - height - top.height)
-top above this above bot
-}
-}
-override def toString = contents mkString "\n"
-Listing 10.13 - Element with widen and heighten methods.
-10.15 PUTTING IT ALL TOGETHER
-A fun way to exercise almost all elements of the layout library is to write a program that draws a spiral
-with a given number of edges. This Spiral program, shown in Listing 10.14, will do just that.
+----
+Лістинг 10.13 - `Element` з методами `widen` та `heighten`.
+
+10.15 Складаємо все разом
+-------------------------
+Цікавий спосіб потренуватись з майже всіма елементами бібліотеки розташування - це написати програму, що малює спіраль з заданим числом граней. Ця програма Spiral, показана в Лістингу 10.14, що робить саме це.
+[source,scala]
+----
 import Element.elem
+
 object Spiral {
-val space = elem(" ")val corner = elem("+")
-def spiral(nEdges: Int, direction: Int): Element = {
-if (nEdges == 1)
-elem("+")
-else {
-val sp = spiral(nEdges - 1, (direction + 3) % 4)
-def verticalBar = elem('|', 1, sp.height)
-def horizontalBar = elem('-', sp.width, 1)
-if (direction == 0)
-(corner beside horizontalBar) above (sp beside space)
-else if (direction == 1)
-(sp above space) beside (corner above verticalBar)
-else if (direction == 2)
-(space beside sp) above (horizontalBar beside corner)
-else
-(verticalBar above corner) beside (space above sp)
+  
+  val space = elem(" ")
+  
+  val corner = elem("+")
+
+  def spiral(nEdges: Int, direction: Int): Element = {
+    if (nEdges == 1)
+      elem("+")
+    else {
+      val sp = spiral(nEdges - 1, (direction + 3) % 4)
+      def verticalBar = elem('|', 1, sp.height)
+      def horizontalBar = elem('-', sp.width, 1)
+      if (direction == 0)
+        (corner beside horizontalBar) above (sp beside space)
+      else if (direction == 1)
+        (sp above space) beside (corner above verticalBar)
+      else if (direction == 2)
+        (space beside sp) above (horizontalBar beside corner)
+      else
+        (verticalBar above corner) beside (space above sp)
+    }
+  }
+
+  def main(args: Array[String]) = {
+    val nSides = args(0).toInt
+    println(spiral(nSides, 0))
+  }
 }
-}
-def main(args: Array[String]) = {
-val nSides = args(0).toInt
-println(spiral(nSides, 0))
-}
-}
-Listing 10.14 - The Spiral application.
-Because Spiral is a standalone object with a main method with the proper signature, it is a Scala
-application. Spiral takes one command-line argument, an integer, and draws a spiral with the specified
-number of edges. For example, you could draw a six-edge spiral, as shown on the left, and larger
-spirals, as shown on the right.
-$ scala Spiral 6
-+-----
-|
-| +-+
-| + |
-|
-|
-+---+
-$ scala Spiral 11
-+----------
-|
-| +------+
-| |
-|
-| | +--+ |
-| | | | |
-| | ++ | |
-| |
-| |
-| +----+ |
-|
-|
-+--------+
-$ scala Spiral 17
-+----------------
-|
-| +------------+
-| |
-|
-| | +--------+ |
-| | |
-| |
-| | | +----+ | |
-| | | |
-| | |
-| | | | ++ | | |
-| | | | | | | |
-| | | +--+ | | |
-| | |
-| | |
-| | +------+ | |
-| |
-| |
-| +----------+ |
-|
-|
-+--------------+
-10.16 CONCLUSION
-In this section, you saw more concepts related to object-oriented programming in Scala. Among others,
-you encountered abstract classes, inheritance and subtyping, class hierarchies, parametric fields, andmethod overriding. You should have developed a feel for constructing a non-trivial class hierarchy in
-Scala. We'll work with the layout library again inChapter 14.
+----
+Лістинг 10.14 - Застосування Spiral.
+
+Оскікльи `Spiral` є окремий об'єкт з методом `main` відповідної сигнатури, це застосування Scala. Spiral приймає один аргумент командного рядка як ціле, та малює спіраль з заданим числом граней. Наприклад, ви можете намалювати шісти-гранну спіраль, як показано зліва, та більші спіралі, які показані зправа.
+----
+$ scala Spiral 6    $ scala Spiral 11   $ scala Spiral 17
++-----              +----------         +----------------
+|                   |                   |
+| +-+               | +------+          | +------------+
+| + |               | |      |          | |            |
+|   |               | | +--+ |          | | +--------+ |
++---+               | | |  | |          | | |        | |
+                    | | ++ | |          | | | +----+ | |
+                    | |    | |          | | | |    | | |
+                    | +----+ |          | | | | ++ | | |
+                    |        |          | | | |  | | | |
+                    +--------+          | | | +--+ | | |
+                                        | | |      | | |
+                                        | | +------+ | |
+                                        | |          | |
+                                        | +----------+ |
+                                        |              |
+                                        +--------------+    
+----
+10.16 Висновок
+--------------
+В цьому розділі ви бачили більше концепцій, пов'язаних з об'єктно-орієнтовним програмуванням в Scala. Поміж іншого, вам зустрілись абстрактні класи, наслідквання та субтипи, ієрархії класів, параметричні поля та перекриття методів. Ви мали розвинути відчуття конструювання нетривіальних ієрархій в Scala. Ми будемо знову робити з бібліотекою розташувань в Главі 14.
  
