@@ -6,322 +6,288 @@ include::headers.adoc[]
 Твердження та тести
 ===================
 
-Assertions and tests are two important ways you can check that the software you write behaves as you
-expect. In this chapter, we'll show you several options you have in Scala to write and run them.
+Твердження та тести є два важливі шляхи, яким ви можете перевірити, що програмне забезпечення, яке ви пишете, поводиться так, як ви очікуєте. В цій главі ми покажемо декілька опцій, що ви маєте в Scala для написання та виконання тестів.
 
 14.1 Твердження
 ---------------
-Assertions in Scala are written as calls of a predefined method assert.footnote:[The assert method is defined in the Predef singleton object, whose members are automatically imported into every Scala source file.] The
-expressionassert(condition) throws an AssertionError if condition does not hold. There's also a two-
-argument version of assert: The expression assert(condition, explanation) tests condition and, if it does
-not hold, throws an AssertionError that contains the given explanation. The type of explanation is Any,
-so you can pass any object as the explanation. The assert method will calltoString on it to get a string
-explanation to place inside the AssertionError. For example, in the method named "above" of
-class Element, shown in Listing 10.13 here, you might place an assert after the calls to widen to make
-sure that the widened elements have equal widths. This is shown in Listing 14.1.
+Твердження в Scala написані як виклики попередньо визначеного метода `assert`.footnote:[Метод `assert` визначений в об'єкті синглтоні `Predef`, чиї члени автоматично імпортуються в кожний джерельний файл Scala.] Вираз `assert(умова)` закидає `AssertionError`, якщо умова не дотримується. Існує також версія `assert` з двома аргументами: вираз `assert(умова, пояснення)` перевіряє умову, та, якщо воно не дотримується, закидає `AssertionError`, що містить надане пояснення. Тип пояснення `Any`, так що ви можете передати любий об'єкт в якості пояснення. Метод `assert` буде викликати `toString` не ньому, щоб отримати рядок пояснення, що покладається в `AssertionError`. Наприклад, в методі з назвою `above` класа `Element`, показаному в Лістингу 10.13, ви можете розмістити `assert` після виклику до `widen`, щоб переконатись, що поширені елементи мають однакову ширину. Це показано в Лістингу 14.1.
+[source,scala]
+----
 def above(that: Element): Element = {
-val this1 = this widen that.width
-val that1 = that widen this.width
-assert(this1.width == that1.width)
-elem(this1.contents ++ that1.contents)
+  val this1 = this widen that.width
+  val that1 = that widen this.width
+  assert(this1.width == that1.width)
+  elem(this1.contents ++ that1.contents)
 }
-Listing 14.1 - Using an assertion.
-Another way you might choose to do this is to check the widths at the end of the widenmethod, right
-before you return the value. You can accomplish this by storing the result in aval, performing an
-assertion on the result, then mentioning the val last so the result is returned if the assertion succeeds.
-However, you can do this more concisely with a convenience method in Predef named ensuring, as
-shown in Listing 14.2.
-The ensuring method can be used with any result type because of an implicit conversion.Although it
-looks in this code as if we're invoking ensuring on widen's result, which is typeElement, we're actually
-invoking ensuring on a type to which Element is implicitly converted. Theensuring method takes one
-argument, a predicate function that takes a result type and returnsBoolean, and passes the result to the
-predicate. If the predicate returns true, ensuring will return the result; otherwise, ensuring will throw
-an AssertionError.
-In this example, the predicate is "w <= _.width". The underscore is a placeholder for the one argument
-passed to the predicate, the Element result of the widen method. If the width passed as w to widen is
-less than or equal to the width of the result Element, the predicate will result in true, and ensuring will
-result in the Element on which it was invoked. Because this is the last expression of
-the widen method, widen itself will then result in the Element.private def widen(w: Int): Element =
-if (w <= width)
-this
-else {
-val left = elem(' ', (w - width) / 2, height)
-var right = elem(' ', w - width - left.width, height)
-left beside this beside right
-} ensuring (w <= _.width)
-Listing 14.2 - Using ensuring to assert a function's result.
-Assertions can be enabled and disabled using the JVM's -ea and -da command-line flags. When
-enabled, each assertion serves as a little test that uses the actual data encountered as the software runs.
-In the remainder of this chapter, we'll focus on the writing of external tests, which provide their own
-test data and run independently from the application.
-14.2 TESTING IN SCALA
-You have many options for testing in Scala, from established Java tools, such as JUnit and TestNG, to
-tools written in Scala, such as ScalaTest, specs2, and ScalaCheck. For the remainder of this chapter,
-we'll give you a quick tour of these tools. We'll start with ScalaTest.
-ScalaTest is the most flexible Scala test framework: it can be easily customized to solve different
-problems. ScalaTest's flexibility means teams can use whatever testing style fits their needs best. For
-example, for teams familar with JUnit, the FunSuite style will feel comfortable and familiar. Listing
-14.3 shows an example.
+----
+Лістинг 14.1 - Використання твердження.
+
+Інший шлях, як ви можете обрати зробити це, є перевірити ширини в кінці метода `widen`, прямо перед поверненням значення. Ви можете досягти цього через зберігання результату як `val`, виконуя твердження для результату, потім вказуючи `val` останнім, так що результат буде повернений, якщо твердження справджується. Однак ви можете зробити це більш стисло, за допомогою зручного метода в `Predef` на ім'я `ensuring`, як показано в Лістингу 14.2.
+
+Метод `ensuring` може бути використаний з любим типом результату завдяки неявному перетворенню. Хоча це виглядає в цьому коді так, якби ми викликали `ensuring` на результаті `widen`, що має тип `Element`, насправді викликаючи `ensuring` на типі, до якого `Element` неявно конвертоване. Метод `ensuring` приймає один аргумент, функцію предикати, що приймає тип результату та повертає `Boolean`, та передає результат в предикат. Якщо предикат повертає `true`, `ensuring` буде повертати результат; інакше  `ensuring` буде закидати `AssertionError`.
+
+В цьому прикладі предикат є `w <= _.width`. Підкреслення є заповнювачем для одного аргумента, переданого до предикату, результату `Element` метода `widen`. Якщо ширина, передана як `w` до `widen` меньше або рівне до ширини результуючого `Element`, предикат буде давати результат `true`, та `ensuring` буде давати результат `Element`, на якому він був викликаний. Оскільки це останній вираз метода `widen`, сам `widen` потім буде мати результат `Element`.
+[source,scala]
+----
+private def widen(w: Int): Element =
+  if (w <= width)
+    this
+  else {
+    val left = elem(' ', (w - width) / 2, height)
+    var right = elem(' ', w - width - left.width, height)
+    left beside this beside right
+  } ensuring (w <= _.width)
+----
+Лістинг 14.2 - Використання `ensuring` для твердження щодо результата функції.
+
+Твердження можуть бути вімкнені та вимкнені з використанням флагів командного рядка JVM, `-ea` та `-da`. Коли ввімкнено, кожне твердження служить як малий тест, що використовує дійсні дані, що використовуються при виконанні програми. В залишку цієї глави ми сфокусуємось на написанні зовнішніх тестів, що провадять свої власні тестові дані, та виконуються незалежно від застосування.
+
+14.2 Тестування в Scala
+-----------------------
+Ви маєте багато опцій для тестування в Scala, від визнаних Java інструментів, таких як JUnit та TestNG, до інструментів, написаних на Scala, таких як ScalaTest, specs2, та ScalaCheck. В залишку цієї глави ми надамо вам швидкий тур по цім інструментам. Ми почнемо з ScalaTest.
+
+ScalaTest є найбільш гнучким фреймворком тестування Scala: він може бути налаштований для вирішення різних проблем. Гнучкість ScalaTest означає, що команди можуть використовувати такі стилі тестування, що найкраще підходять до їх потреб. Наприклад, для команд, знайомих з JUnit, стиль FunSuite буде відчуватись комфортабельним в знайомим. Лістинг 14.3 показує приклад.
+[source,scala]
+----
 import org.scalatest.FunSuite
 import Element.elem
+
 class ElementSuite extends FunSuite {
-test("elem result should have passed width") {
-val ele = elem('x', 2, 3)
-assert(ele.width == 2)
+
+  test("elem result should have passed width") {
+    val ele = elem('x', 2, 3)
+    assert(ele.width == 2)
+  }
 }
-}
-Listing 14.3 - Writing tests with FunSuite.
-The central concept in ScalaTest is the suite, a collection of tests. A test can be anything with a name
-that can start and either succeed, fail, be pending, or canceled. Trait Suite is the central unit of
-composition in ScalaTest. Suite declares "lifecycle" methods defining a default way to run tests, which
-can be overridden to customize how tests are written and run.
-ScalaTest offers style traits that extend Suite and override lifecycle methods to support different testing
-styles. It also provides mixin traits that override lifecycle methods to address particular testing needs.
-You define test classes by composing Suite style and mixin traits, and define test suites by
-composing Suite instances.FunSuite, which is extended by the test class shown in Listing 14.3, is an example of a testing style.
-The "Fun" in FunSuite stands for function; "test" is a method defined in FunSuite, which is invoked by
-the primary constructor of ElementSuite. You specify the name of the test as a string between the
-parentheses and the test code itself between curly braces. The test code is a function passed as a by-
-name parameter to test, which registers it for later execution.
-ScalaTest is integrated into common build tools (such as sbt and Maven) and IDEs (such as IntelliJ
-IDEA and Eclipse). You can also run a Suite directly via ScalaTest's Runner application or from the
-Scala interpreter simply by invoking execute on it. Here's an example:
+----
+Лістинг 14.3 - Writing tests with FunSuite.
+
+Центральна концепція в ScalaTest є сюїта, колекція тестів. Тестом може бути будь-що з ім'ям, що може розпочатись, та або мати вдачу, або схибити, бути в стані очікування або скасованим. Трейт `Suite` є центральною одиницею композиції в ScalaTest. Сюїта декларує методи "життєвого цикла", що визначають шлях по замовчанню для виконання тесту, що може бути перекрите для налаштування того, як тести можуть бути написані або виконані.
+
+ScalaTest пропонує трейти стилів, що розширюють `Suite`, та перекривають методи життєвого циклу, щоб підтримувати різні стилі тестування. Він також провадить міксіни трейтів, що що перекривають методи життєвого циклу, щоб адресувати окремі потреби тестування. Ви визначаєте тестові класи через композицію стилів `Suite` та міксін трейтів, та визначаєте тестові сюїти, через композицію примірників `Suite`.
+
+`FunSuite`, що розширюється тестовим класом, показаним на Лістингу 14.3, є прикладом тестового стилю. `Fun` в `FunSuite` означає функцію; `test` є методом, визначеним в  `FunSuite`, що викликається первинним конструктором `ElementSuite`. Ви вказуєте ім'я тесту як рядок в дужках, та сам код тестування між фігурними дужками. Тестовий код є функцією, переданою як параметр за-ім'ям до `test`, що реєструє її для подальшого виклику.
+
+ScalaTest інтегрований в загальні інструменти побудови (такі як sbt та Maven), та IDE (такі як IntelliJ IDEA та Eclipse). Також ви можете виконати `Suite` напряму, через застосування ScalaTest Runner, або з інтерпретатора Scala, просто викликавши на ньому `execute`. Ось приклад:
+[source,scala]
+----
 scala> (new ElementSuite).execute()
 ElementSuite:
 - elem result should have passed width
-All ScalaTest styles, including FunSuite, are designed to encourage the writing of focused tests with
-descriptive names. In addition, all styles generate specification-like output that can facilitate
-communication among stakeholders. The style you choose dictates only how the declarations of your
-tests will look. Everything else in ScalaTest works consistently the same way no matter what style you
-choose.footnote:[More detail on ScalaTest is available from http://www.scalatest.org/.
-[3\]]
-14.3 INFORMATIVE FAILURE REPORTS
-The test in Listing 14.3 attempts to create an element of width 2 and assert that the width of the
-resulting element is indeed 2. Were this assertion to fail, the failure report would include the filename
-and line number of the offending assertion, and an informative error message:
+----
+Всі стилі ScalaTest, включаючи `FunSuite`, розроблені для заохочення написання сфокусованих тестів з описовими назвами. На додаток, всі стилі генерують специфікація-подібний вихід, що може спростити комунікацію між зацікавленими сторонами. Стиль, що ви обираєте, диктує тільки те, як будуть виглядати декларації вашого тесту. Все інше в ScalaTest робить узгоджено в однаковий спосіб, не важливо, який стиль ви оберете.footnote:[Більше деталей щодо ScalaTest досутпні на http://www.scalatest.org/.[3\]]
+
+14.3 Інформативні звіти про збої
+--------------------------------
+Тест в Лістингу 14.3 намагається створити елемент ширини 2, та стверджує, що ширина отриманого елементу, відповідно, 2. Коли твердження схибить, звіт про збій повинен включати ім'я файлу та номер рядка винного твердження, а також інформативне повідомлення про помилку:
+[source,scala]
+----
 scala> val width = 3
 width: Int = 3
+
 scala> assert(width == 2)
 org.scalatest.exceptions.TestFailedException:
-3 did not equal 2
-To provide descriptive error messages when assertions fail, ScalaTest analyzes the expressions passed
-to each assert invocation at compile time. If you prefer to see even more detailed information about
-assertion failures, you can use ScalaTest's DiagrammedAssertions, whose error messages display a
-diagram of the expression passed to assert:
+    3 did not equal 2
+----
+Щоб запровадити описові повідомлення про помилки тверджень, ScalaTest аналізує вирази, передані в кожному виклику `assert` під час компіляції. Якщо ви бажаєте бачити навіть більш детальну інформацію щодо збоїв тверджень, ви можете використовувати ScalaTest `DiagrammedAssertions`, чиї повідомлення про помилки відображають діаграму виразу, передану до `assert`:
+[source,scala]
+----
 scala> assert(List(1, 2, 3).contains(4))
 org.scalatest.exceptions.TestFailedException:
-assert(List(1,
-|
-|
-|
-1
-List(1,
-2,
-|
-2
-2,
-3).contains(4))
-| |
-|
-3 false
-4
-3)
-ScalaTest's assert methods do not differentiate between the actual and expected result in error
-messages. They just indicate that the left operand did not equal the right operand, or show the values ina diagram. If you wish to emphasize the distinction between actual and expected, you can alternatively
-use ScalaTest's assertResult method, like this:
+
+  assert(List(1, 2, 3).contains(4))
+         |    |  |  |  |        | 
+         |    1  2  3  false    4
+         List(1, 2, 3)
+----
+В ScalaTest методи `assert` не роблять різницю між дійсним та очікуваним результатом в повідомленнях помилок. Вони просто вказують, що лівий операнд не дорівнює правому операнду, або показує значення на діаграмі. Якщо ви бажаєте наголосити на різниці між дійсним та очікуваним, ви можете альтернативно використовувати метод ScalaTest  `assertResult`, ось так:
+[source,scala]
+----
 assertResult(2) {
-ele.width
+   ele.width
 }
-With this expression you indicate that you expect the code between the curly braces to result in 2. Were
-the code between the braces to result in 3, you'd see the message, "Expected 2, but got 3" in the test
-failure report.
-If you want to check that a method throws an expected exception, you can use
-ScalaTest'sassertThrows method, like this:
+----
+Маючи такий вираз, ви вказуєте, що ви очікуєте, що код між фігурними дужками дає результат `2`. Коли код в дужках дасть результат `3`, ви побачите повідомлення "Expected 2, but got 3" в звіті про збій тесту.
+
+Якщо ви бажаєте перевірити, що метод закидає очікувані виключення, ви можете використовувати метод ScalaTest `assertThrows`, ось так:
+[source,scala]
+----
 assertThrows[IllegalArgumentException] {
-elem('x', -2, 3)
+  elem('x', -2, 3)
 }
-If the code between the curly braces throws a different exception than expected, or throws no
-exception, assertThrows will complete abruptly with a TestFailedException. You'll get a helpful error
-message in the failure report, such as:
+----
+Якщо код між фігурними дужками закидає інше виключення, ніж очікується, або не закидає виключення взагалі, `assertThrows` терміново переривається з `TestFailedException`. Ви отримаєте корисне повідомлення про помилку в звіті, таке як:
+----
 Expected IllegalArgumentException to be thrown,
-but NegativeArraySizeException was thrown.
-On the other hand, if the code completes abruptly with an instance of the passed exception
-class, assertThrows will return normally. If you wish to inspect the expected exception further, you can
-use intercept instead of assertThrows. The intercept method works the same asassertThrows, except if
-the expected exception is thrown, intercept returns it:
+  but NegativeArraySizeException was thrown.
+----
+З іншого боку, якщо код завершується терміново з примірником переданого класу виключення, `assertThrows` буде повертатись звичайно. Якщо ви бажаєте проінспектувати далі очікуване виключення, ви можете використовувати `intercept` замість `assertThrows`. Метод `intercept` робить так саме, як `asassertThrows`, за винятком того, що коли очікуване виключення спрацьовує, `intercept` повертає його:
+[source,scala]
+----
 val caught =
-intercept[ArithmeticException] {
-1 / 0
-}
+  intercept[ArithmeticException] {
+    1 / 0
+  }
+
 assert(caught.getMessage == "/ by zero")
-In short, ScalaTest's assertions work hard to provide useful failure messages that will help you diagnose
-and fix problems in your code.
-14.4 TESTS AS SPECIFICATIONS
-In the behavior-driven development (BDD) testing style, the emphasis is on writing human-readable
-specifications of the expected behavior of code and accompanying tests that verify the code has the
-specified behavior. ScalaTest includes several traits that facilitate this style of testing. An example
-using one such trait, FlatSpec, is shown in Listing 14.4.
+----
+Коротше, твердження ScalaTest тяжко роблять для провадження корисних повідомлень, що допомагатимуть вам діагностувати та поладнати проблеми в вашому коді.
+
+14.4 Тести як специфікації
+--------------------------
+В стилі тестування _поведінко-рушійної розробки_ (behavior-driven development, BDD), наголос робиться на написанні зрозумілих для людей специфікацій очікуваної поведінки коду, та додавання супроводжуючих тестів, які перевіряють код на задану поведінку. ScalaTest включає декілька трейтів, що спрощує цей стиль тестування. Приклад використання такого трейту, `FlatSpec`, показаний в Лістингу 14.4.
+[source,scala]
+----
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
-import Element.elemclass ElementSpec extends FlatSpec with Matchers {
-"A UniformElement" should
-"have a width equal to the passed value" in {
-val ele = elem('x', 2, 3)
-ele.width should be (2)
+import Element.elem
+
+class ElementSpec extends FlatSpec with Matchers {
+  "A UniformElement" should
+       "have a width equal to the passed value" in {
+    val ele = elem('x', 2, 3)
+    ele.width should be (2)
+  }
+    
+  it should "have a height equal to the passed value" in {
+    val ele = elem('x', 2, 3)
+    ele.height should be (3)
+  }
+
+  it should "throw an IAE if passed a negative width" in {
+    an [IllegalArgumentException] should be thrownBy {
+      elem('x', -2, 3)
+    }
+  }
 }
-it should "have a height equal to the passed value" in {
-val ele = elem('x', 2, 3)
-ele.height should be (3)
-}
-it should "throw an IAE if passed a negative width" in {
-an [IllegalArgumentException] should be thrownBy {
-elem('x', -2, 3)
-}
-}
-}
-Listing 14.4 - Specifying and testing behavior with a ScalaTest FlatSpec.
-In a FlatSpec, you write tests as specifier clauses. You start by writing a name for the subjectunder test
-as a string ("A UniformElement" in Listing 14.4), then should (or must or can), then a string that
-specifies a bit of behavior required of the subject, then in. In the curly braces following in, you write
-code that tests the specified behavior. In subsequent clauses you can write it to refer to the most
-recently given subject. When a FlatSpec is executed, it will run each specifier clause as a ScalaTest
-test. FlatSpec (and ScalaTest's other specification traits) generate output that reads like a specification
-when run. For example, here's what the output will look like if you run ElementSpec from Listing
-14.4 in the interpreter:
+----
+Лістинг 14.4 - Специфікація та тестування поведінки за допомогою ScalaTest `FlatSpec`.
+
+В `FlatSpec` ви пишете тести як твердження специфікації. Ви починаєте писати з імені для субпроекту під тестом як рядок ("A UniformElement" в Лістингу 14.4), потім `should` (або `must` або `can`), потім рядок, що вказує частину поведінки, яка очікується від предмета, потім `in`. В фігурних дужках, що ідуть далі, ви пишете код, що перевіряє вказану поведінку. В наступних реченнях ви можете писати `it` для посилання до найбільш останнього взятого предмета. Коли виконується `FlatSpec`, він буде проганяти кожне речення специфікації як тест ScalaTest. При виконанні `FlatSpec` (та інші трейти специфікацій  ScalaTest) генерує вивід, що читається як специфікація. Наприклад, ось на що буде схожий вивід, якщо ви запустите `ElementSpec` з Лістинга 14.4 в інтерпретаторі:
+[source,scala]
+----
 scala> (new ElementSpec).execute()
 A UniformElement
 - should have a width equal to the passed value
 - should have a height equal to the passed value
 - should throw an IAE if passed a negative width
-Listing 14.4 also illustrates ScalaTest's matchers domain-specific language (DSL). By mixing in
-trait Matchers, you can write assertions that read more like natural language. ScalaTest provides many
-matchers in its DSL, and also enables you to define new matchers with custom failure messages. The
-matchers shown in Listing 14.4 include the "should be" and "an [...] should be thrownBy { ...} " syntax.
-You can alternatively mix in MustMatchers if you prefer must toshould. For example, mixing
-in MustMatchers would allow you to write expressions such as:
+----
+Лістинг 14.4 також ілюструє домен-специфічну мову (domain-specific language, DSL) матчерів в ScalaTest. Міксуючи трейт `Matchers`, ви можете написати твердження, що читаються майже як природна мова. ScalaTest провадить багато матчерів в своєму DSL, та також дозволяє вам визначати нові матчери з власними повідомленнями. Матчери, показані в Лістингу 14.4 включають синтаксис `should be` та `an [...] should be thrownBy { ...}`. Як альтернатива, ви можете зміксувати `MustMatchers`, якщо ви бажаєте `must` замість `should`. Наприклад, міксування `MustMatchers` дозволить вам писати вирази, такі як:
+[source,scala]
+----
 result must be >= 0
 map must contain key 'c'
-If the last assertion failed, you'd see an error message similar to:
-Map('a' -> 1, 'b' -> 2) did not contain key 'c'The specs2 testing framework, an open source tool written in Scala by Eric Torreborre, also supports
-the BDD style of testing but with a different syntax. For example, you could use specs2 to write the test
-shown in Listing 14.5:
+----
+Якщо останнє твердження схибить, ви побачите повідомлення про помилку, подібне до такого:
+[source,scala]
+----
+Map('a' -> 1, 'b' -> 2) did not contain key 'c'
+----
+Тестовий фреймворк specs2 є інструментом з відкритим кодом, написаний на Scala Eric Torreborre, також підтримує стиль тестування BDD, але з іншим синтаксисом. Наприклад, ви можете використати specs2 для написання тесту, показаного в Лістингу 14.5:
+[source,scala]
+----
 import org.specs2._
 import Element.elem
+
 object ElementSpecification extends Specification {
-"A UniformElement" should {
-"have a width equal to the passed value" in {
-val ele = elem('x', 2, 3)
-ele.width must be_==(2)
+  "A UniformElement" should {
+    "have a width equal to the passed value" in {
+      val ele = elem('x', 2, 3)
+      ele.width must be_==(2)
+    }
+    "have a height equal to the passed value" in {
+      val ele = elem('x', 2, 3)
+      ele.height must be_==(3)
+    }
+    "throw an IAE if passed a negative width" in {
+      elem('x', -2, 3) must
+      throwA[IllegalArgumentException]
+    }
+  }
 }
-"have a height equal to the passed value" in {
-val ele = elem('x', 2, 3)
-ele.height must be_==(3)
-}
-"throw an IAE if passed a negative width" in {
-elem('x', -2, 3) must
-throwA[IllegalArgumentException]
-}
-}
-}
-Listing 14.5 - Specifying and testing behavior with the specs2 framework.
-Like ScalaTest, specs2 provides a matchers DSL. You can see some examples of specs2 matchers in
-action in Listing 14.5 in the lines that contain "must be_==" and "must throwA".[3]You can use specs2
-standalone, but it is also integrated with ScalaTest and JUnit, so you can run specs2 tests with those
-tools as well.
-One of the big ideas of BDD is that tests can be used to facilitate communication between the people
-who decide what a software system should do, the people who implement the software, and the people
-who determine whether the software is finished and working. Although any of ScalaTest's or specs2's
-styles can be used in this manner, ScalaTest'sFeatureSpec in particular is designed for it. Listing
-14.6 shows an example:
+----
+Лістинг 14.5 - Специфікація та тестування поведінки за допомогою фреймворка specs2.
+
+Як і ScalaTest, specs2 провадить DSL. Ви можете бачити деякі приклади матчерів specs2 в дії в Лістингу 14.5 в рядках, що містять `must be_==` та `must throwA`.footnote:[Ви можете завантажити specs2 на http://specs2.org/.] Ви можете використовувати specs2 окремо, але він також інтегрований з ScalaTest та JUnit, так що ви можете використати тести specs2 з ціма інструментами, також.
+
+Одна з великих ідей BDD в тому, що тести можуть бути використані для спрощення комунікації між людьми, які визначають, що програмне забезпечення має робити, людьми, що реалізують програмне забезпечення, та людьми, що визначають, коли програма завершена та робить. Хоча любий зі стилів ScalaTest або specs2 можуть бути використаний в цій манері, ScalaTest `FeatureSpec` навмисне розроблений для цього. Лістинг 14.6 показує приклад:
+[source,scala]
+----
 import org.scalatest._
+
 class TVSetSpec extends FeatureSpec with GivenWhenThen {
+
+  feature("TV power button") {
+      scenario("User presses power button when TV is off") {
+      Given("a TV set that is switched off")
+      When("the power button is pressed")
+      Then("the TV should switch on")
+      pending
+    }
+  }
 }
-feature("TV power button") {
-scenario("User presses power button when TV is off") {
-Given("a TV set that is switched off")
-When("the power button is pressed")
-Then("the TV should switch on")
-pending
-}
-}Listing 14.6 - Using tests to facilitate communication among stakeholders.
-FeatureSpec is designed to guide conversations about software requirements: You must identify
-specific features, then specify those features in terms of scenarios. The Given, When, and Thenmethods
-(provided by trait GivenWhenThen) can help focus the conversation on the specifics of individual
-scenarios. The pending call at the end indicates that neither the test nor the actual behavior has been
-implemented—just the specification. Once all the tests and specified behavior have been implemented,
-the tests will pass and the requirements can be deemed to have been met.
-14.5 PROPERTY-BASED TESTING
-Another useful testing tool for Scala is ScalaCheck, an open source framework written by Rickard
-Nilsson. ScalaCheck enables you to specify properties that the code under test must obey. For each
-property, ScalaCheck will generate data and execute assertions that check whether the property
-holds. Listing 14.7 shows an example of using ScalaCheck from a ScalaTest WordSpec that mixes in
-trait PropertyChecks.
-import
-import
-import
-import
-org.scalatest.WordSpec
-org.scalatest.prop.PropertyChecks
-org.scalatest.MustMatchers._
-Element.elem
+----
+Лістинг 14.6 - Використання тестів для спрощення комунікації між зацікавленими сторонами.
+
+FeatureSpec розроблений для направлення спілкування щодо потреб до програмних систем: ви маєте ідентифікувати специфічні можливості, потім вказати ці можливості в термінах сценаріїв. Методи `Given`, `When` та `Then` (запроваджені трейтом `GivenWhenThen`) можуть допомогти сфокусувати обговорення на особливостях окремих сценаріїв. Виклик `pending` в кінці вказує, що ані тести, вні справжня поведінка не були реалізовані, тільки специфікація. Як тільки всі тести та задана поведінка будуть реалізовані, тести будуть пройдені, та вимоги можуть вважатись задовільненими.
+
+14.5 Базоване на властивостях тестування
+----------------------------------------
+Інший корисний інструмент тестування для Scala є ScalaCheck, фреймворк з відкритим кодом, написаний Rickard Nilsson. ScalaCheck дозволяє вам задавати властивості, яким має підкорюватись код під тестуванням. Для кожної властивості ScalaCheck буде генерувати дані, та виконувати твердження, що перевіряють, чи властивість буде справджуватись. Лістинг 14.7 показує приклад використання ScalaCheck з ScalaTest `WordSpec`, що міксує трейт `PropertyChecks`.
+[source,scala]
+----
+import org.scalatest.WordSpec
+import org.scalatest.prop.PropertyChecks
+import org.scalatest.MustMatchers._
+import Element.elem
+
 class ElementSpec extends WordSpec with PropertyChecks {
-"elem result" must {
-"have passed width" in {
-forAll { (w: Int) =>
+  "elem result" must {
+    "have passed width" in {
+      forAll { (w: Int) =>
+        whenever (w > 0) {
+          elem('x', w, 3).width must equal (w)
+        }
+      }
+    }
+  }
+}
+----
+Лістинг 14.7 - Написання властивість-базованих тестів за допомогою ScalaCheck.
+
+`WordSpec` є класом стилю ScalaTest. Трейт `PropertyChecks` провадить декілька методів `forAll`, що дозволяють вам міксувати властивість-базовані тести з традиційними твердження-базованими або матчер-базованими тестами. В цьому прикладі ми перевіряємо властивість, якій має підкорюватись фабрика `elem`. Властивості ScalaCheck виражені як функціональне значення, що приймає як параметри дані, потрібні для твердження властивості. Ці дані будуть згенеровані ScalaCheck. У властивості, показаній в Лістингу 14.7, дані є ціле на ім'я `w`, що представляє ширину. В тілі функції ви бачите цей код:
+[source,scala]
+----
 whenever (w > 0) {
-elem('x', w, 3).width must equal (w)
+  elem('x', w, 3).width must equal (w)
 }
-}
-}
-}
-}
-Listing 14.7 - Writing property-based tests with ScalaCheck.
-WordSpec is a ScalaTest style class. The PropertyChecks trait provides several forAll methods that
-allow you to mix property-based tests with traditional assertion-based or matcher-based tests. In this
-example, we check a property that the elem factory should obey. ScalaCheck properties are expressed
-as function values that take as parameters the data needed by the property's assertions. This data will be
-generated by ScalaCheck. In the property shown inListing 14.7, the data is an integer named w that
-represents a width. Inside the body of the function, you see this code:
-whenever (w > 0) {
-elem('x', w, 3).width must equal (w)
-}
-The whenever clause indicates that whenever the left hand expression is true, the expression on the
-right must hold true. Thus in this case, the expression in the block must hold true whenever w is greater
-than 0. The right-hand expression in this case will yield true if the width passed to the elem factory is
-the same as the width of the Element returned by the factory.With this small amount of code, ScalaCheck will generate possibly hundreds of values for wand test
-each one, looking for a value for which the property doesn't hold. If the property holds true for every
-value ScalaCheck tries, the test will pass. Otherwise, the test will complete abruptly with
-a TestFailedException that contains information including the value that caused the failure.
-14.6 ORGANIZING AND RUNNING TESTS
-Each framework mentioned in this chapter provides some mechanism for organizing and running tests.
-In this section, we'll give a quick overview of ScalaTest's approach. To get the full story on any of these
-frameworks, however, you'll need to consult their documentation.
-In ScalaTest, you organize large test suites by nesting Suites inside Suites. When a Suite is executed, it
-will execute its nested Suites as well as its tests. The nested Suites will in turn execute their
-nested Suites, and so on. A large test suite, therefore, is represented as a tree ofSuite objects. When you
-execute the root Suite in the tree, all Suites in the tree will be executed.
-You can nest suites manually or automatically. To nest manually, you either override
-thenestedSuites method on your Suites or pass the Suites you want to nest to the constructor of
-class Suites, which ScalaTest provides for this purpose. To nest automatically, you provide package
-names to ScalaTest's Runner, which will discover Suites automatically, nest them under a root Suite,
-and execute the root Suite.
-You can invoke ScalaTest's Runner application from the command line or via a build tool, such as sbt,
-maven, or ant. The simplest way to invoke Runner on the command line is via
-theorg.scalatest.run application. This application expects a fully qualified test class name. For example,
-to run the test class shown in Listing 14.6, you must compile it with:
+----
+Твердження `whenever` вказує, що коли ліва частина вираза є `true`, вираз зправа має також бути `true`. Так що в цьому випадку, вираз в блоці має бути `true`, коли `w` є більше ніж `0`. Права частина виразу в цьому випадку буде давати `true`, якщо ширина, передана до фабрики `elem` є тою самою, що і `width` для Element, що повертається з фабрики.
+
+З цією малою кількістю коду ScalaCheck буде генерувати, можливо, сотні значень для керування тестуванням кожного з них, шукаючи значення, для якого властивість не справджується. Якщо властивість дає `true` для кожного значення, що пробує ScalaCheck, тест буде пройдений. Інакше тест завершиться несподівано з `TestFailedException`, що містить інформацію, включаючи значення, яке спричинило збій.
+
+14.6 Організація та виконання тестів
+------------------------------------
+Кожний фреймворк, згаданий в цій главі, провадить деякий механізм для організації та виконання тестів. В цьому розділі ми надамо швидкий огляд підходу ScalaTest. Щоб отримати повну історію по кожному з ціх фреймворків, вам треба проконсультуватись з їх документацією.
+
+В ScalaTest ви організуєте великі тестові сюїти, вкладаючи `Suite` в `Suite`. Коли `Suite` виконується, вона буде виконувати свої вкладені сюїти, так само, як і їх тести. Вкладені `Suite` будуть в свою чергу виконувати свої вкладені `Suite`, і так далі. Таким чином, велика сюїта представлена як дерево об'єктів `Suite`. Коли ви виконуєте кореневу  `Suite` в дереві, всі сюїти в дереві будуть виконані.
+
+Ви можете вкладувати сюїти іручну або автоматично. Щоб вкладати вручну, ви або перекриваєте метод `nested` для вашої `Suite`, або передаєте всі `Suite`, що ви бажаєте вкласти, в конструктор класу `Suites`, який ScalaTest провадить саме для цієї цілі. Щоб вкласти сюїти автоматично, ви провадите імена пакунків до ScalaTest Runner, що буде визначати `Suite` автоматично, вкладати їх під кореневою `Suite`, та виконувати кореневу `Suite`.
+
+Ви можете визвати застосування ScalaTest Runner з командного рядка або через інструмент побудови, такий як `sbt`, `maven` або `ant`. Найпростіший спосіб викликати Runner з командного рядка через застосування `org.scalatest.run`. Це застосування очікує повністю кваліфіковане ім'я тестованого класу. Наприклад, щоб виконати тестовий клас, показаний в Лістингу 14.6, ви маєте компілювати його такою командою:
+[source,scala]
+----
 $ scalac -cp scalatest.jar TVSetSpec.scala
-Then you can run it with:
-$ scala -cp scalatest.jar org.scalatest.run TVSetSpecFigure 14.1 - The output of org.scalatest.run.
-With -cp you place ScalaTest's JAR file on the class path. (When downloaded, the JAR file name will
-include embedded Scala and ScalaTest version numbers.) The next token,org.scalatest.run, is the fully
-qualified application name. Scala will run this application and pass the remaining tokens as command
-line arguments. The TVSetSpec argument specifies the suite to execute. The result is shown in Figure
-14.1.
-14.7 CONCLUSION
-In this chapter you saw examples of mixing assertions directly in production code, as well as writing
-them externally in tests. You saw that as a Scala programmer, you can take advantage of popular testing
-tools from the Java community, such as JUnit and TestNG, as well as newer tools designed explicitly
-for Scala, such as ScalaTest, ScalaCheck, and specs2. Both in-code assertions and external tests can
-help you achieve your software quality goals. We felt that these techniques are important enough to
-justify the short detour from the Scala tutorial that this chapter represented. In the next chapter,
-however, we'll return to the language tutorial and cover a very useful aspect of Scala: pattern matching.
+----
+Потім ви можете виконати його:
+----
+$ scala -cp scalatest.jar org.scalatest.run TVSetSpec
+----
+
+Малюнок 14.1 - Вивід `org.scalatest.run`.
+
+За допомогою `-cp` ви покладаєте файл ScalaTest JAR на шлях до класів. (При завантаженні ім'я JAR файла буде включати номери версій вбудованих Scala та ScalaTest.) Наступний токен, `org.scalatest.run`, є повністю кваліфікованим іменем застосування. Scala буде виконувати це застосування, та передасть залишок токенів як аргументи командного рядка. Аргумент `TVSetSpec` вказує на сюїту, що треба виконати. Результат показаний на Малюнку 14.1.
+
+14.7 Висновок
+-------------
+В цій главі ви бачили приклади міксування тверджень напряму в промисловий код, так само, як і написання їх назовні, в тестах. Ви бачили, що як Scala програміст, ви можете отримати переваги від популярних тестових інструментів від спільноти Java, таких, як JUnit та TestNG, так само, як і від новіших інструментів, розроблених спеціально для Scala, таких як ScalaTest, ScalaCheck, та specs2. Обоє, твердження в коді та зовнішні тести можуть допомогти вам досягти цілі щодо якості вашого коду. Ми відчуваємо, що ці технології досить важливі, щоб виправдати короткий відступ від Scala туторіала, що представляє ця глава. Однак в наступній главі ми повернемось до туторіала по мові, та розглянемо дуже корисний аспект Scala: співпадіння шаблонів.
