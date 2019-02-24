@@ -1271,4 +1271,365 @@ asciidoc.install();
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">sealed</span> <span class="k">abstract</span> <span class="k">class</span> <span class="nc">Expr</span>
 <span class="k">case</span> <span class="k">class</span> <span class="nc">Var</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
-<span class="k">case</span> <span class="k">class</span> <span class="nc">Number</span><span class="o">(</span><spa
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Number</span><span class="o">(</span><span class="n">num</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">UnOp</span><span class="o">(</span><span class="n">operator</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">arg</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">BinOp</span><span class="o">(</span><span class="n">operator</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+  <span class="n">left</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">,</span> <span class="n">right</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.16 - Закоркована ієрархія кейс класів.</p></div>
+<div class="paragraph"><p>Тепер визначимо порівняння шаблонів, де пропущені деякі можливі варіанти:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">describe</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">e</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Number</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">&quot;a number&quot;</span>
+  <span class="k">case</span> <span class="nc">Var</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">&quot;a variable&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви отримаєте попередження компілятора, подібне до наступного:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>warning: match is not exhaustive!
+missing combination           UnOp
+missing combination          BinOp</code></pre>
+</div></div>
+<div class="paragraph"><p>Паке попередження каже вам, що існує ризик що ваш код може продукувати виключення <code>MatchError</code>, оскільки деякі можливі шаблони (<code>UnOp</code>, <code>BinOp</code>) не оброблені. Попередження вказує на потенційне джерело збоїв під час виконання, так що це звичайно гарна допомога, щоб зробити ваш код вірним.</p></div>
+<div class="paragraph"><p>Однак, часом ви можете натрапити на ситуацію, коли компілятор дуже прискіпливий, видаючи попередження. Наприклад, ви можете знати з контексту, що ви будете застосовувати описаний вище метод до виразів, що є або <code>Numbers</code> або <code>Vars</code>, так що ви знаєте, що він не спродукує <code>MatchError</code>. Щоб повідомлення пішло, ви можете додати третій випадок спіймати-всі до цього метода, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">describe</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">e</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Number</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">&quot;a number&quot;</span>
+  <span class="k">case</span> <span class="nc">Var</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">&quot;a variable&quot;</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">RuntimeException</span> <span class="c1">// Не має трапитись</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це робить, але це не ідеальне. Ви, можливо, не будете дуже щасливі, коли будете змушені додати код, якій ніколи не буде виконуватись (або ви так думаєте), просто попросивши компілятор помовчати.</p></div>
+<div class="paragraph"><p>Більш полегшена альтернатива є додати анотацію <code>@unchecked</code> до вираза селектора в <code>match</code>. Це робиться таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">describe</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">@unchecked</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Number</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">&quot;a number&quot;</span>
+  <span class="k">case</span> <span class="nc">Var</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">&quot;a variable&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Анотації описані в Главі 27. Загалом, ви можете додати анотацію до виразу в той самий спосіб, як ви додаєте тип: за виразом слідують дві крапки і ім'я анотації (зі знаком <em>@</em>). Наприклад, в цьому випадку ви додаєте анотацію <code>@unchecked</code> до змінної <code>e</code> за допомогою <code>e: @unchecked</code>. Анотація <code>@unchecked</code> має особливе значення для порівняння шаблонів. Якщо селектор `match`має цю анотацію, всебічна перевірка шаблону, що слідує, буде придушена.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_15_6__option">15.6 Тип Option</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala має стандартний тип на ім'я <code>Option</code> для опціональних значень. Таке значення може бути в двох формах: <code>Some(x)</code>, де <code>x</code> є дійсним значенням, або об'єкт <code>None</code>, що представляє відсутність значення.</p></div>
+<div class="paragraph"><p>Опціональні значення продукуються деякими зі стандартних операцій для колекцій Scala. Наприклад, метод <code>get</code> зі Scala <code>Map</code> продукує <code>Some(value)</code>, якщо значення, відповідне до наданого ключа, було знайдене, або <code>None</code>, якщо наданий ключ не визначений в <code>Map</code>. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">capitals</span> <span class="k">=</span>
+          <span class="nc">Map</span><span class="o">(</span><span class="s">&quot;France&quot;</span> <span class="o">-&gt;</span> <span class="s">&quot;Paris&quot;</span><span class="o">,</span> <span class="s">&quot;Japan&quot;</span> <span class="o">-&gt;</span> <span class="s">&quot;Tokyo&quot;</span><span class="o">)</span>
+<span class="n">capitals</span><span class="k">:</span> <span class="kt">scala.collection.immutable.Map</span><span class="o">[</span><span class="kt">String</span>,<span class="kt">String</span><span class="o">]</span> <span class="k">=</span>
+<span class="nc">Map</span><span class="o">(</span><span class="nc">France</span> <span class="o">-&gt;</span> <span class="nc">Paris</span><span class="o">,</span> <span class="nc">Japan</span> <span class="o">-&gt;</span> <span class="nc">Tokyo</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">capitals</span> <span class="n">get</span> <span class="s">&quot;France&quot;</span>
+<span class="n">res23</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Paris</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">capitals</span> <span class="n">get</span> <span class="s">&quot;North Pole&quot;</span>
+<span class="n">res24</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Найбільш загальний шлях прийняти опціональні значення окремо - через порівняння шаблонів. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="n">x</span> <span class="k">match</span> <span class="o">{</span>
+         <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">s</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">s</span>
+         <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="s">&quot;?&quot;</span>
+       <span class="o">}</span>
+<span class="n">show</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span><span class="nc">String</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">show</span><span class="o">(</span><span class="n">capitals</span> <span class="n">get</span> <span class="s">&quot;Japan&quot;</span><span class="o">)</span>
+<span class="n">res25</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Tokyo</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">show</span><span class="o">(</span><span class="n">capitals</span> <span class="n">get</span> <span class="s">&quot;France&quot;</span><span class="o">)</span>
+<span class="n">res26</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Paris</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">show</span><span class="o">(</span><span class="n">capitals</span> <span class="n">get</span> <span class="s">&quot;North Pole&quot;</span><span class="o">)</span>
+<span class="n">res27</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">?</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тип <code>Option</code> часто використовується в програмах Scala. Порівняйте це з домінуючою ідіомою Java, використовувати <code>null</code> для вказання відсутності значення. Наприклад, метод <code>get</code> в <code>java.util.HashMapreturns</code> повертає або значення, що зберігається в <code>HashMap</code>, або <code>null</code>, якщо значення не знайдене. Цей підхід робить для Java, але схильний до помилок, оскільки на практиці складно відстежувати, які змінні в програмі можуть приймати значення <code>null</code>.</p></div>
+<div class="paragraph"><p>Якщо змінній дозволено бути <code>null</code>, тоді ви маєте пам'ятати перевіряти її на <code>null</code> кожного разу, коли ви використосуєте її. Якщо ви забудете перевірити, ви відкриєте можливість, щоб під час виконання отримати <code>NullPointerException</code>. Оскільки такі виключення не можуть траплятись дуже часто, може бути складно визначити помилку під час тестування. Для Scala цей підхід не робить взагалі, оскільки можливо зберігати значення типів в хеш мапах, але <code>null</code> не є легальним елементом для типу значення. Наприклад, <code>HashMap[Int, Int]</code> не може повертати <code>null</code> для позначення "нема елементу".</p></div>
+<div class="paragraph"><p>Для контрасту Scala заохочує використання <code>Option</code> для індикації опціонального значення. Цей підхід до опціональних значень має декілька переваг над Java. Перше, це значно більш очевидне для читачів коду, що змінна, чий тип <code>Option[String]</code> є опціональний <code>String</code>, ніж змінна типу <code>String</code>, що може інколи бути <code>null</code>. Але більш важливо, що описана раніше помилка програмування, щодо використання змінної, що може бути <code>null</code> без попередньої перевірки її на <code>null</code>, в Scala стає помилкою типу. Якщо змінна має тип <code>Option[String]</code>, і ви намагаєтесь використовувати її як <code>String</code>, ваша Scala програма не буде компілюватись.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_15_7__">15.7 Шаблони кругом</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Шаблони дозволені в багатьох частинах Scala, не тільки в окремих виразах <code>match</code>. Погляньте на деякі інші місця, де ви можете використовувати шаблони.</p></div>
+<div class="sect2">
+<h3 id="____">Шаблони в присвоєнні змінних</h3>
+<div class="paragraph"><p>Кожного разу, коли ви визначаєте <code>val</code> або <code>var</code>, ви можете використовувати шаблон замість простого ідентифікатора. Наприклад, ви можете розібрати тапл на частини, та присвоїти кожній з частин свою власну змінну, як показане в Лістингу 15.17:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">myTuple</span> <span class="k">=</span> <span class="o">(</span><span class="mi">123</span><span class="o">,</span> <span class="s">&quot;abc&quot;</span><span class="o">)</span>
+<span class="n">myTuple</span><span class="k">:</span> <span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="o">(</span><span class="mi">123</span><span class="o">,</span><span class="n">abc</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="o">(</span><span class="n">number</span><span class="o">,</span> <span class="n">string</span><span class="o">)</span> <span class="k">=</span> <span class="n">myTuple</span>
+<span class="n">number</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">123</span>
+<span class="n">string</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">abc</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.17 - Визначення декількох змінних одним присвоєнням.</p></div>
+<div class="paragraph"><p>Ця конструкція досить корисна, коли робите з кейс класами. Якщо ви точно знаєте кейс клас, з яким ви працюєте, тоді ви можете деконструювати його в шаблоні. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">exp</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;*&quot;</span><span class="o">,</span> <span class="nc">Number</span><span class="o">(</span><span class="mi">5</span><span class="o">),</span> <span class="nc">Number</span><span class="o">(</span><span class="mi">1</span><span class="o">))</span>
+<span class="n">exp</span><span class="k">:</span> <span class="kt">BinOp</span> <span class="o">=</span> <span class="nc">BinOp</span><span class="o">(*,</span><span class="nc">Number</span><span class="o">(</span><span class="mf">5.0</span><span class="o">),</span><span class="nc">Number</span><span class="o">(</span><span class="mf">1.0</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">BinOp</span><span class="o">(</span><span class="n">op</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">)</span> <span class="k">=</span> <span class="n">exp</span>
+<span class="n">op</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">*</span>
+<span class="n">left</span><span class="k">:</span> <span class="kt">Expr</span> <span class="o">=</span> <span class="nc">Number</span><span class="o">(</span><span class="mf">5.0</span><span class="o">)</span>
+<span class="n">right</span><span class="k">:</span> <span class="kt">Expr</span> <span class="o">=</span> <span class="nc">Number</span><span class="o">(</span><span class="mf">1.0</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="__code_ase_code___">Послідовності <code>сase</code> як часткові функції</h3>
+<div class="paragraph"><p>Послідовність випадків (тобто альтернативи) в фігурних дужках можуть бути використані будь-де, де може бути використаний функціональний літерал. В основному послідовність <code>case</code> є функціональним літералом. Змість мати одну точку входу та список параметрів, <code>case</code> послідовність має декілька точок входу, кожна зі своїм списком параметрів. Кожний <code>case</code> є точкою входу до функції, та параметри задаються шаблоном. Тіло кожної точки входу є правою стороною <code>case</code>.</p></div>
+<div class="paragraph"><p>Ось простий приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">withDefault</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span>
+  <span class="k">case</span> <span class="nc">None</span> <span class="k">=&gt;</span> <span class="mi">0</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тіло цієї функції має два <code>case</code> випадки. Перший <code>case</code> співпадає з <code>Some</code>, та повертає число в <code>Some</code>. Другий <code>case</code> співпадає з <code>None</code>, та повертає значення за замовчанням, нуль. Ось ця функція в дії:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">withDefault</span><span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="mi">10</span><span class="o">))</span>
+<span class="n">res28</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">withDefault</span><span class="o">(</span><span class="nc">None</span><span class="o">)</span>
+<span class="n">res29</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця можливість досить корисна для бібліотеки акторів Akka, оскільки вона дозволяє її методу <code>receive</code> бути визначеним як послідовність <code>cases</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">sum</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="k">def</span> <span class="n">receive</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Data</span><span class="o">(</span><span class="n">byte</span><span class="o">)</span> <span class="k">=&gt;</span>
+    <span class="n">sum</span> <span class="o">+=</span> <span class="n">byte</span>
+  <span class="k">case</span> <span class="nc">GetChecksum</span><span class="o">(</span><span class="n">requester</span><span class="o">)</span> <span class="k">=&gt;</span>
+    <span class="k">val</span> <span class="n">checksum</span> <span class="k">=</span> <span class="o">~(</span><span class="n">sum</span> <span class="o">&amp;</span> <span class="mh">0xFF</span><span class="o">)</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">requester</span> <span class="o">!</span> <span class="n">checksum</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ще одне узагальнення нічого не коштує: послідовність випадків дає вам <em>часткову функцію</em>. Якщо ви застосуєте таку функцію до значення, яке вона не підтримує, вона згенерує виключення часу виконання. Наприклад, ось часткова функція, що повертає другий елемент зі списку цілих:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">second</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Int</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">y</span> <span class="o">::</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">y</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Коли ви компілюєте це, компілятор буде коректно попереджати, що порівняння не є вичерпним:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>&lt;console&gt;:17: warning: match is not exhaustive!
+missing combination
+Nil</code></pre>
+</div></div>
+<div class="paragraph"><p>Ця функція буде успішною, якщо ви передасте список з трьох елементів, але ні, якщо ви передасте порожній список:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">second</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">7</span><span class="o">))</span>
+<span class="n">res24</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">6</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">second</span><span class="o">(</span><span class="nc">List</span><span class="o">())</span>
+<span class="n">scala</span><span class="o">.</span><span class="nc">MatchError</span><span class="k">:</span> <span class="kt">List</span><span class="o">()</span>
+      <span class="kt">at</span> <span class="kt">$anonfun$1.apply</span><span class="o">(</span><span class="kt">&lt;console</span><span class="k">&gt;:</span><span class="err">17</span><span class="o">)</span>
+      <span class="kt">at</span> <span class="kt">$anonfun$1.apply</span><span class="o">(</span><span class="kt">&lt;console</span><span class="k">&gt;:</span><span class="err">17</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви бажаєте перевірити, чи часткова функція визначена, ви повинні спочатку сказати компілятору, що ви знаєте, що робите з частковими функціями. Тип <code>List[Int] =&gt; Int</code> включають всі функції зі списків цілих до цілих, чи є вони частковими, чи ні. Тип, що включає тільки часткові функції з масива цілих до цілих, записується <code>PartialFunction[List[Int],Int]</code>. Ось знову друга функція, на цей раз написана як тип часткової функції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">second</span><span class="k">:</span> <span class="kt">PartialFunction</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>,<span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">y</span> <span class="o">::</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">y</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Часткові функції мають метод <code>isDefinedAt</code>, що може бути використана для тестування, чи функція визначена на певному значенні. В цьому випадку функція визначена для кожного списку, що мають щонайменше два елементу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">second</span><span class="o">.</span><span class="n">isDefinedAt</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span><span class="mi">6</span><span class="o">,</span><span class="mi">7</span><span class="o">))</span>
+<span class="n">res30</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">second</span><span class="o">.</span><span class="n">isDefinedAt</span><span class="o">(</span><span class="nc">List</span><span class="o">())</span>
+<span class="n">res31</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Типовий приклад часткової функції є функціональний літерал порівняння шаблону, як той з попереднього прикладу. Фактично, такий вираз транслюється компілятором Scala на часткову функцію, через транслювання шаблону двічі — один раз для реалізації справжньої функції, та ще раз, щоб перевірити, чи функція визначена, чи ні.</p></div>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+Наприклад, функціональний літерал `{ case x :: y 
+</dt>
+<dd>
+<p>
+_ &#8658; y }` буде трансльований до наступного значення часткової функції:
+</p>
+</dd>
+</dl></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">new</span> <span class="nc">PartialFunction</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>, <span class="kt">Int</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">xs</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span> <span class="k">=</span> <span class="n">xs</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">y</span> <span class="o">::</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">y</span>
+  <span class="o">}</span>
+  <span class="k">def</span> <span class="n">isDefinedAt</span><span class="o">(</span><span class="n">xs</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span> <span class="k">=</span> <span class="n">xs</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">y</span> <span class="o">::</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">true</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця трансляція набуває ефекту, кожного разу, коли декларований тип функціонального літералу є <code>PartialFunction</code>. Якщо декларований тип є тільки <code>Function1</code>, або він відсутній, функціональний літерал замість цього транслюється до повної функції.</p></div>
+<div class="paragraph"><p>Загалом, ви повинні намагатись робити з повними функціями, коли це можливо, оскільки використання часткових функцій дозволяє помилки часу виконання, з якими компілятор не може вам допомогти. З іншого боку, часткові функції часом дійсно корисні. Ви можете бути впевнені, що необроблене значення ніколи не буде надане. Альтернативно, ви можете використовувати фреймворк, що отримує часткові функції, і, таким чином, завжди буде перевіряти <code>isDefinedAt</code> перед викликом функції. Приклад останнього є приклад <code>receive</code>, наданий вище, де аргумент є частково визначеною функцією, визначена в точності для тих повідомлень, що викликаючий бажає обробити.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___code_for_code_">Шаблони в <code>for</code> виразах</h3>
+<div class="paragraph"><p>Ви також можете використовувати шаблон в <code>for</code> виразі, як показано в Лістингу 15.18. Цей <code>for</code> вираз отримує пари ключ/значення мапи <code>capitals</code>. Кожна пара порівнюється з шаблоном <code>(country, city)</code>, що визначає дві змінні, <code>country</code> та <code>city</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">((</span><span class="n">country</span><span class="o">,</span> <span class="n">city</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="n">capitals</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="s">&quot;The capital of &quot;</span> <span class="o">+</span> <span class="n">country</span> <span class="o">+</span> <span class="s">&quot; is &quot;</span> <span class="o">+</span> <span class="n">city</span><span class="o">)</span>
+<span class="nc">The</span> <span class="n">capital</span> <span class="n">of</span> <span class="nc">France</span> <span class="n">is</span> <span class="nc">Paris</span>
+<span class="nc">The</span> <span class="n">capital</span> <span class="n">of</span> <span class="nc">Japan</span> <span class="n">is</span> <span class="nc">Tokyo</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.18 - Вираз <code>for</code> з шаблоном таплом.</p></div>
+<div class="paragraph"><p>Шаблон пари, показаний в Лістингу 15.18 був особливий, оскільки порівняння з ним ніколи не може схибити. Зрозуміло, що <code>capitals</code> видає послідовність пар, так що ви можете бути певні, що кожна згенерована пара може бути порівняна з шаблоном пари. Але так само можливо, що шаблон може не співпасти зі згенерованим значенням. Лістинг 15.19 показує приклад, де відбувається саме це.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">results</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="s">&quot;apple&quot;</span><span class="o">),</span> <span class="nc">None</span><span class="o">,</span> <span class="nc">Some</span><span class="o">(</span><span class="s">&quot;orange&quot;</span><span class="o">))</span>
+<span class="n">results</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="n">apple</span><span class="o">),</span> <span class="nc">None</span><span class="o">,</span> <span class="nc">Some</span><span class="o">(</span><span class="n">orange</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="n">fruit</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="n">results</span><span class="o">)</span> <span class="n">println</span><span class="o">(</span><span class="n">fruit</span><span class="o">)</span>
+<span class="n">apple</span>
+<span class="n">orange</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.19 - Обирання елементів списку, що співпадають з шаблоном.</p></div>
+<div class="paragraph"><p>Як ви можете бачити з цього прикладу, згенеровані значення, що не співпадають з шаблоном, будуть відкинуті. Наприклад, другий елемент <code>None</code> є результатом списку, що не співпадає з шаблоном <code>Some(fruit)</code>; таким чином, він не показаний на виході.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_15_8__">15.8 Більший приклад</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Після навчання різним формам шаблонів, ви можете бути зацікавлені побачити їх застосування в більшому прикладі. Запропоноване завдання є написати клас форматування виразів, що відображує арифметичні вирази в двомірному розташуванні. Ділення, такі як <code>x / (x + 1)</code> має друкуватись вертикально, через розташування чисельника зверху займенника, ось так:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>   x
+ -----
+ x + 1</code></pre>
+</div></div>
+<div class="paragraph"><p>Як інший приклад, ось приклад <code>((a / (b * c) + 1 / n) / 3)</code> в двовимірному розташуванні:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>   a     1
+ ----- + -
+ b * c   n
+ ---------
+     3</code></pre>
+</div></div>
+<div class="paragraph"><p>З ціх прикладів виглядає, що клас (назвемо його <code>ExprFormatter</code>) буде мати справу з жонглюванням розміткою, так що має сенс використовувати бібліотеку розташування, розроблену в Главі 10. Ми також будемо використовувати сімейство кейс класів <code>Expr</code>, який ми бачили раніше в цій главі, та покладемо обоє, бібліотеку розташування з Глави 10 та форматування виразів з цієї глави в іменовані пакунки. Повний код приклада буде показаний в Лістингу 15.20 та 15.21.</p></div>
+<div class="paragraph"><p>Корисний перший крок є концентрація на горизонтальному розташуванні. Стуруктурований вираз, як:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>BinOp("+",
+  BinOp("*",
+    BinOp("+", Var("x"), Var("y")),
+      Var("z")),
+  Number(1))</code></pre>
+</div></div>
+<div class="paragraph"><p>має друкувати <code>(x + y) * z + 1</code>. Зауважте, що дужки необхідні навколо <code>x + y</code>, але можуть бути опціональними навколо <code>(x + y) * z</code>. Щоб утримувати розташування як можливо стислішим, вашею ціллю має бути уникати дужок, коли вони надлишкові, при цьому переконавшись, що всі потрібні дужки присутні.</p></div>
+<div class="paragraph"><p>Щоб знати, де треба поставити дужки, код має знати щодо відносних преоритетов кожного оператора, так що є гарною ідеєю спочатку поладнати це. Ви можете виразити відносні преоритети напряму, як літеральна мапа наступної форми:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Map</span><span class="o">(</span>
+  <span class="s">&quot;|&quot;</span> <span class="o">-&gt;</span> <span class="mi">0</span><span class="o">,</span> <span class="s">&quot;||&quot;</span> <span class="o">-&gt;</span> <span class="mi">0</span><span class="o">,</span>
+  <span class="s">&quot;&amp;&quot;</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">,</span> <span class="s">&quot;&amp;&amp;&quot;</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">,</span> <span class="o">...</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак це може включати деяку кількість обчислень преоритетов з вашого боку. Більш зручний підхід є просте визначення груп операторів зі збільшенням преоритетів, та потім обчислювати преоритети кожного оператора на цій основі. Лістинг 15.20 показує код.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">org.stairwaybook.expr</span>
+<span class="k">import</span> <span class="nn">org.stairwaybook.layout.Element.elem</span>
+
+<span class="k">sealed</span> <span class="k">abstract</span> <span class="k">class</span> <span class="nc">Expr</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Var</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Number</span><span class="o">(</span><span class="n">num</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">UnOp</span><span class="o">(</span><span class="n">operator</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">arg</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">BinOp</span><span class="o">(</span><span class="n">operator</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+    <span class="n">left</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">,</span> <span class="n">right</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Expr</span>
+
+<span class="k">class</span> <span class="nc">ExprFormatter</span> <span class="o">{</span>
+<span class="c1">// Містить оператори в групах за збільшенням преоритету</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">opGroups</span> <span class="k">=</span>
+    <span class="nc">Array</span><span class="o">(</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;|&quot;</span><span class="o">,</span> <span class="s">&quot;||&quot;</span><span class="o">),</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;&amp;&quot;</span><span class="o">,</span> <span class="s">&quot;&amp;&amp;&quot;</span><span class="o">),</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;^&quot;</span><span class="o">),</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;==&quot;</span><span class="o">,</span> <span class="s">&quot;!=&quot;</span><span class="o">),</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;&lt;&quot;</span><span class="o">,</span> <span class="s">&quot;&lt;=&quot;</span><span class="o">,</span> <span class="s">&quot;&gt;&quot;</span><span class="o">,</span> <span class="s">&quot;&gt;=&quot;</span><span class="o">),</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;+&quot;</span><span class="o">,</span> <span class="s">&quot;-&quot;</span><span class="o">),</span>
+      <span class="nc">Set</span><span class="o">(</span><span class="s">&quot;*&quot;</span><span class="o">,</span> <span class="s">&quot;%&quot;</span><span class="o">)</span>
+    <span class="o">)</span>
+<span class="c1">// Відзеркалення операторів на їх преоритети</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">precedence</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">assocs</span> <span class="k">=</span>
+      <span class="k">for</span> <span class="o">{</span>
+        <span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">opGroups</span><span class="o">.</span><span class="n">length</span>
+        <span class="n">op</span> <span class="k">&lt;-</span> <span class="n">opGroups</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
+      <span class="o">}</span> <span class="k">yield</span> <span class="n">op</span> <span class="o">-&gt;</span> <span class="n">i</span>
+    <span class="n">assocs</span><span class="o">.</span><span class="n">toMap</span>
+  <span class="o">}</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="n">unaryPrecedence</span> <span class="k">=</span> <span class="n">opGroups</span><span class="o">.</span><span class="n">length</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">fractionPrecedence</span> <span class="k">=</span> <span class="o">-</span><span class="mi">1</span>
+<span class="c1">// продовження в Лістингу 15.21...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.20 - Верхня частина форматувальника виразів.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// ...продовження Лістингу 15.20</span>
+<span class="k">import</span> <span class="nn">org.stairwaybook.layout.Element</span>
+
+<span class="k">private</span> <span class="k">def</span> <span class="n">format</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">,</span> <span class="n">enclPrec</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span>
+  <span class="n">e</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">Var</span><span class="o">(</span><span class="n">name</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="n">elem</span><span class="o">(</span><span class="n">name</span><span class="o">)</span>
+
+    <span class="k">case</span> <span class="nc">Number</span><span class="o">(</span><span class="n">num</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="k">def</span> <span class="n">stripDot</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">s</span> <span class="n">endsWith</span> <span class="s">&quot;.0&quot;</span><span class="o">)</span> <span class="n">s</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">s</span><span class="o">.</span><span class="n">length</span> <span class="o">-</span> <span class="mi">2</span><span class="o">)</span>
+        <span class="k">else</span> <span class="n">s</span>
+      <span class="n">elem</span><span class="o">(</span><span class="n">stripDot</span><span class="o">(</span><span class="n">num</span><span class="o">.</span><span class="n">toString</span><span class="o">))</span>
+
+    <span class="k">case</span> <span class="nc">UnOp</span><span class="o">(</span><span class="n">op</span><span class="o">,</span> <span class="n">arg</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="n">elem</span><span class="o">(</span><span class="n">op</span><span class="o">)</span> <span class="n">beside</span> <span class="n">format</span><span class="o">(</span><span class="n">arg</span><span class="o">,</span> <span class="n">unaryPrecedence</span><span class="o">)</span>
+
+    <span class="k">case</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">top</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">left</span><span class="o">,</span> <span class="n">fractionPrecedence</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">bot</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">right</span><span class="o">,</span> <span class="n">fractionPrecedence</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">line</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39;-&#39;</span><span class="o">,</span> <span class="n">top</span><span class="o">.</span><span class="n">width</span> <span class="n">max</span> <span class="n">bot</span><span class="o">.</span><span class="n">width</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">frac</span> <span class="k">=</span> <span class="n">top</span> <span class="n">above</span> <span class="n">line</span> <span class="n">above</span> <span class="n">bot</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">enclPrec</span> <span class="o">!=</span> <span class="n">fractionPrecedence</span><span class="o">)</span> <span class="n">frac</span>
+      <span class="k">else</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">)</span> <span class="n">beside</span> <span class="n">frac</span> <span class="n">beside</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">)</span>
+
+    <span class="k">case</span> <span class="nc">BinOp</span><span class="o">(</span><span class="n">op</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">opPrec</span> <span class="k">=</span> <span class="n">precedence</span><span class="o">(</span><span class="n">op</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">l</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">left</span><span class="o">,</span> <span class="n">opPrec</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">right</span><span class="o">,</span> <span class="n">opPrec</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">oper</span> <span class="k">=</span> <span class="n">l</span> <span class="n">beside</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">op</span> <span class="o">+</span> <span class="s">&quot; &quot;</span><span class="o">)</span> <span class="n">beside</span> <span class="n">r</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">enclPrec</span> <span class="o">&lt;=</span> <span class="n">opPrec</span><span class="o">)</span> <span class="n">oper</span>
+      <span class="k">else</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;(&quot;</span><span class="o">)</span> <span class="n">beside</span> <span class="n">oper</span> <span class="n">beside</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;)&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">format</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span><span class="k">:</span> <span class="kt">Element</span> <span class="o">=</span> <span class="n">format</span><span class="o">(</span><span class="n">e</span><span class="o">,</span> <span class="mi">0</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.21 - Нижня частина форматувальника виразів.</p></div>
+<div class="paragraph"><p>Змінна <code>precedence</code> є мапою від операторів на їх преоритети, що є цілими, починаючи з 0. Вони обчислюються в виразі <code>for</code> з двома генераторами. Перший генератор продукує кожний індекс <code>i</code> для масиву <code>opGroups</code>. Другий генератор продукує кожний оператор <code>op</code> в <code>opGroups(i)</code>. Для кожного такого оператора вираз <code>for`видає асоціацію від оператора `op</code> на його індекс <code>i</code>. Таким чином, відносна позиція оператора в масиві береться як його преоритет.</p></div>
+<div class="paragraph"><p>Асоціації записані як інфіксна стрілка, <code>op -&gt; i</code>. Так що ви бачите асоціації тільки як частину конструкції мапи, але вони також є значеннями сами по собі. Фактично, асоціація <code>op -&gt; i</code> є нічим іншим, ніж парою <code>(op, i)</code>.</p></div>
+<div class="paragraph"><p>Тепер, коли ви поладнали преоритети всіх двомісних операторів, крім <code>/</code>, має сенс узагальнити цю концепцію, що також покриває одномісні оператори. Преоритети одномісних операторів вищі, ніж преоритет кожного двомісного оператора. Таким чином ми можете встановити <code>unaryPrecedence</code> (показане в Лістингу 15.20) в довжину масива <code>opGroups</code>,що на один більше, ніж преоритет операторів <code>*</code> та <code>%</code>. Преоритет дробі трактується інакше від інших операторів, оскількі дріб використовує вертикальне розташування. Однак, це буде зручним, присвоїти оператору ділення особливий преоритет зі значенням -1, так що ми будемо ініціалізувати <code>fractionPrecedence</code> в -1 (показане в Лістингу 15.20).</p></div>
+<div class="paragraph"><p>Після ціх підготувань ви готові написати головний метод форматування. Цей метод приймає два аргумента: вираз <code>e</code>, типу <code>Expr</code>, та преоритет <code>enclPrec</code> оператора напряму оточуючого виразу <code>e</code>. (Якщо нема оточуючого оператора, <code>enclPrec</code> повинне бути нулем). Метод видає елемент розташування, що представляє двомірний масив символів.</p></div>
+<div class="paragraph"><p>Лістинг 15.21 показує залишок класу <code>ExprFormatter</code>, що включає три метода. Перший метод, <code>stripDot</code>, є допоміжним методом. Наступний метод, приватний метод <code>format</code>, робить більшість роботи по форматуванню виразів. Останній метод, також названий <code>format</code>, є єдиним публічним методом в бібліотеці, що приймає вираз, який треба форматувати. Приватний метод <code>format</code> робить свою роботу, виконуючи порівняння шаблонів на різновиді виразу. Вираз <code>match</code> має п'ять випадків <code>case</code>. Ми обговоримо кожний <code>case</code> окремо.</p></div>
+<div class="paragraph"><p>Перший case є:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">Var</span><span class="o">(</span><span class="n">name</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="n">elem</span><span class="o">(</span><span class="n">name</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо вираз є змінна, результат є елементом, сформованим з імені змінної.</p></div>
+<div class="paragraph"><p>Другмй вираз є:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">Number</span><span class="o">(</span><span class="n">num</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="k">def</span> <span class="n">stripDot</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">s</span> <span class="n">endsWith</span> <span class="s">&quot;.0&quot;</span><span class="o">)</span> <span class="n">s</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">s</span><span class="o">.</span><span class="n">length</span> <span class="o">-</span> <span class="mi">2</span><span class="o">)</span>
+    <span class="k">else</span> <span class="n">s</span>
+  <span class="n">elem</span><span class="o">(</span><span class="n">stripDot</span><span class="o">(</span><span class="n">num</span><span class="o">.</span><span class="n">toString</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо вираз є числом, результат є елементом, сформованим зі значення числа. Функція <code>stripDot</code> очищує вигляд чисел з плаваючою крапкою, відкидаючи любі суфікси <code>".0"</code> з рядка.</p></div>
+<div class="paragraph"><p>Третій випадок наступний:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">UnOp</span><span class="o">(</span><span class="n">op</span><span class="o">,</span> <span class="n">arg</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="n">elem</span><span class="o">(</span><span class="n">op</span><span class="o">)</span> <span class="n">beside</span> <span class="n">format</span><span class="o">(</span><span class="n">arg</span><span class="o">,</span> <span class="n">unaryPrecedence</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо вираз є одномісною операцією <code>UnOp(op, arg)</code>, результатом буде сформований з операнда <code>op</code> та результата форматування аргумента <code>arg</code> з найвищим-можлив
