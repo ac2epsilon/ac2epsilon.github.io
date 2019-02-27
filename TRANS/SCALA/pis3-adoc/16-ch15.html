@@ -1632,4 +1632,117 @@ _ &#8658; y }` буде трансльований до наступного з�
 <div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">UnOp</span><span class="o">(</span><span class="n">op</span><span class="o">,</span> <span class="n">arg</span><span class="o">)</span> <span class="k">=&gt;</span>
   <span class="n">elem</span><span class="o">(</span><span class="n">op</span><span class="o">)</span> <span class="n">beside</span> <span class="n">format</span><span class="o">(</span><span class="n">arg</span><span class="o">,</span> <span class="n">unaryPrecedence</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Якщо вираз є одномісною операцією <code>UnOp(op, arg)</code>, результатом буде сформований з операнда <code>op</code> та результата форматування аргумента <code>arg</code> з найвищим-можлив
+<div class="paragraph"><p>Якщо вираз є одномісною операцією <code>UnOp(op, arg)</code>, результатом буде сформований з операнда <code>op</code> та результата форматування аргумента <code>arg</code> з найвищим-можливим преоритетом оточення.<span class="footnote"><br />[Значення <code>unaryPrecedence</code> є найвищим можливим преоритетом, оскільки він ініціалізований на один більше, ніж преоритет операторів <code>*</code> та <code>%</code>.]<br /></span></p></div>
+<div class="paragraph"><p>Це означає, що якщо <code>arg</code> є двомісною операцією (але не дрібом), вона завжди буде відображатись в дужках.</p></div>
+<div class="paragraph"><p>Четвертий випадок <code>case</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="k">val</span> <span class="n">top</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">left</span><span class="o">,</span> <span class="n">fractionPrecedence</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">bot</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">right</span><span class="o">,</span> <span class="n">fractionPrecedence</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">line</span> <span class="k">=</span> <span class="n">elem</span><span class="o">(</span><span class="sc">&#39;-&#39;</span><span class="o">,</span> <span class="n">top</span><span class="o">.</span><span class="n">width</span> <span class="n">max</span> <span class="n">bot</span><span class="o">.</span><span class="n">width</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">frac</span> <span class="k">=</span> <span class="n">top</span> <span class="n">above</span> <span class="n">line</span> <span class="n">above</span> <span class="n">bot</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">enclPrec</span> <span class="o">!=</span> <span class="n">fractionPrecedence</span><span class="o">)</span> <span class="n">frac</span>
+  <span class="k">else</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">)</span> <span class="n">beside</span> <span class="n">frac</span> <span class="n">beside</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо вираз є дробом, проміжний результат <code>frac</code> формується через розміщення форматованих операндів <code>left</code> та <code>right</code> зверху один одного, розділені елементом горизонтальної лінії. Ширина <code>width</code> горизонтальної лінії є максимум з ширин форматованих операндів. Цей проміжний результат є також фінальним результатом, тільки якщо дріб сам не з'являється як аргумент в іншій дробі. В останньому випадку з кожного боку <code>frac</code> додаються проміжки. Щоб зрозуміти чому, розглянемо вираз <code>(a / b) / c</code>.</p></div>
+<div class="paragraph"><p>Без корекції ширини форматування цього виразу буде давати:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code> a
+ -
+ b
+ -
+ c</code></pre>
+</div></div>
+<div class="paragraph"><p>Пробелма з таким форматуванням є доказ — незрозуміло, де є риска вищого рівня. Вираз вище може означати або <code>(a / b) / c</code>, або <code>a / (b / c)</code>. Щоб вирішити неоднозначність, треба додати проміжки до кожної сторони розташування вкладеного дробу <code>a / b</code>. Тоді розташування стає однозначним:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>  a
+  -
+  b
+ ---
+  c</code></pre>
+</div></div>
+<div class="paragraph"><p>П'ятий, та останній, <code>case</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">BinOp</span><span class="o">(</span><span class="n">op</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="k">val</span> <span class="n">opPrec</span> <span class="k">=</span> <span class="n">precedence</span><span class="o">(</span><span class="n">op</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">l</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">left</span><span class="o">,</span> <span class="n">opPrec</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">r</span> <span class="k">=</span> <span class="n">format</span><span class="o">(</span><span class="n">right</span><span class="o">,</span> <span class="n">opPrec</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">oper</span> <span class="k">=</span> <span class="n">l</span> <span class="n">beside</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot; &quot;</span> <span class="o">+</span> <span class="n">op</span> <span class="o">+</span> <span class="s">&quot; &quot;</span><span class="o">)</span> <span class="n">beside</span> <span class="n">r</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">enclPrec</span> <span class="o">&lt;=</span> <span class="n">opPrec</span><span class="o">)</span> <span class="n">oper</span>
+  <span class="k">else</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;(&quot;</span><span class="o">)</span> <span class="n">beside</span> <span class="n">oper</span> <span class="n">beside</span> <span class="n">elem</span><span class="o">(</span><span class="s">&quot;)&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей випадок стосується всіх інших двомісних операндів. Оскільки він іде після випадку, що починається як:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ви знаєте, що оператор <code>op</code> в шаблоні <code>BinOp(op, left, right)</code> не може бути діленням. Щоб форматувати таку двомісну операцію, вам знадобиться спочатку форматувати її операнди <code>left</code> та <code>right</code>. Параметр преоритету для форматування лівого операнда є преоритет <code>opPrec</code> оператора <code>op</code>, тоді як для правого операнда він на один більше. Така схема гарантує, що дужки також відображають коректну асоциативність.</p></div>
+<div class="paragraph"><p>Наприклад, операція:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;-&quot;</span><span class="o">,</span> <span class="nc">Var</span><span class="o">(</span><span class="s">&quot;a&quot;</span><span class="o">),</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;-&quot;</span><span class="o">,</span> <span class="nc">Var</span><span class="o">(</span><span class="s">&quot;b&quot;</span><span class="o">),</span> <span class="nc">Var</span><span class="o">(</span><span class="s">&quot;c&quot;</span><span class="o">)))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>буде коректно оточена дужками, як "a - (b - c)". Проміжний результат <code>oper</code> потім формується через розміщення форматованих операндів <code>left</code> та <code>right</code> поряд, розділених оператором. Якщо преоритет поточного оператора менше, ніж преоритет оточуючого оператора, <code>oper</code> покладається між дужками; інакше він повертається як є.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">org.stairwaybook.expr._</span>
+
+<span class="k">object</span> <span class="nc">Express</span> <span class="k">extends</span> <span class="nc">App</span> <span class="o">{</span>
+
+  <span class="k">val</span> <span class="n">f</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ExprFormatter</span>
+
+  <span class="k">val</span> <span class="n">e1</span> <span class="k">=</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;*&quot;</span><span class="o">,</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="nc">Number</span><span class="o">(</span><span class="mi">1</span><span class="o">),</span> <span class="nc">Number</span><span class="o">(</span><span class="mi">2</span><span class="o">)),</span>
+                      <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;+&quot;</span><span class="o">,</span> <span class="nc">Var</span><span class="o">(</span><span class="s">&quot;x&quot;</span><span class="o">),</span> <span class="nc">Number</span><span class="o">(</span><span class="mi">1</span><span class="o">)))</span>
+
+  <span class="k">val</span> <span class="n">e2</span> <span class="k">=</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;+&quot;</span><span class="o">,</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="nc">Var</span><span class="o">(</span><span class="s">&quot;x&quot;</span><span class="o">),</span> <span class="nc">Number</span><span class="o">(</span><span class="mi">2</span><span class="o">)),</span>
+                      <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="nc">Number</span><span class="o">(</span><span class="mf">1.5</span><span class="o">),</span> <span class="nc">Var</span><span class="o">(</span><span class="s">&quot;x&quot;</span><span class="o">)))</span>
+
+  <span class="k">val</span> <span class="n">e3</span> <span class="k">=</span> <span class="nc">BinOp</span><span class="o">(</span><span class="s">&quot;/&quot;</span><span class="o">,</span> <span class="n">e1</span><span class="o">,</span> <span class="n">e2</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">e</span><span class="k">:</span> <span class="kt">Expr</span><span class="o">)</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">f</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="n">e</span><span class="o">)+</span> <span class="s">&quot;\n\n&quot;</span><span class="o">)</span>
+
+  <span class="k">for</span> <span class="o">(</span><span class="n">e</span> <span class="k">&lt;-</span> <span class="nc">Array</span><span class="o">(</span><span class="n">e1</span><span class="o">,</span> <span class="n">e2</span><span class="o">,</span> <span class="n">e3</span><span class="o">))</span> <span class="n">show</span><span class="o">(</span><span class="n">e</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 15.22 - Застосування, що друкує форматовані вирази.</p></div>
+<div class="paragraph"><p>Це завершує розробку приватної функції <code>format</code>. Єдиний залишений метод є публічний метод <code>format</code>, що дозволяє програмістам клієнтів форматувати високорівневі вирази, не передаючи аргумент преоритетів. Лістинг 15.22 показує демо програму, що випробовує <code>ExprFormatter</code>.</p></div>
+<div class="paragraph"><p>Зауважте, що навіть хоча ця програма не містить метод, вона все ще виконується, оскільки вона наслідує від трейту App. Ви можете виконувати програму <code>Express</code> такою командою:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span> <span class="nc">Express</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це буде тавати наступний вивід:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code> 1
+ - * (x + 1)
+ 2
+
+ x   1.5
+ - + ---
+ 2    x
+
+  1
+  - * (x + 1)
+  2
+ -----------
+   x   1.5
+   - + ---
+   2    x</code></pre>
+</div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_15_9_">15.9 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В цій главі ви детально навчились щодо кейс класів та порівняння шаблонів. Використовуючи це, ви можете отримати переваги від декількох стислих ідіом, звичайно недоступних в об'єктно-орієнтовних мовах. Однак порівняння шаблонів в Scala іде далі, ніж описане в цій главі. Якщо ви бажаєте використати порівняння шаблонів на одному з ваших класів, але ви не бажаєте відкривати доступ до ваших класів в спосіб, як це роблять кейс класи, ви можете використовувати екстрактори, описані в Главі 26. В наступній главі ми звернемо нашу увагу на списки.</p></div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated
+ 2019-02-24 05:34:52 EET
+</div>
+</div>
+</body>
+</html>

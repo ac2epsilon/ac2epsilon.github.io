@@ -6,852 +6,1000 @@ include::headers.adoc[]
 Робота зі списками
 ==================
 
-Lists are probably the most commonly used data structure in Scala programs. This chapter explains lists
-in detail. We will present many common operations that can be performed on lists. We'll also cover
-some important design principles for programs working on lists.
-16.1 LIST LITERALS
-You saw lists already in the preceding chapters, so you know that a list containing the elements 'a', 'b',
-and 'c' is written List('a', 'b', 'c'). Here are some other examples:
+Списки, можливо, є найбільш загально уживана структура даних в Scala програмах. Ця глава пояснює списки в деталях. Ми будемо презентувати багато загальних операцій, що можуть бути виконані на списках. Ми будемо також покривати деякі важливі принципи дизайну для програм, що роблять зі списками.
+
+16.1 Спискові літерали
+----------------------
+Ви вже бачили списки в попередніх главах, так що ви знаєте, що список містить елементи  `'a'`, `'b'`, та `'c'` записується як `List('a', 'b', 'c')`. Ось деякі інші приклади:
+[source,scala]
+----
 val fruit = List("apples", "oranges", "pears")
 val nums = List(1, 2, 3, 4)
 val diag3 =
-List(
-List(1, 0, 0),
-List(0, 1, 0),
-List(0, 0, 1)
-)
+  List(
+    List(1, 0, 0),
+    List(0, 1, 0),
+    List(0, 0, 1)
+  )
 val empty = List()
-Lists are quite similar to arrays, but there are two important differences. First, lists are immutable. That
-is, elements of a list cannot be changed by assignment. Second, lists have a recursive structure (i.e.,
-a linked list),footnote:[For a graphical depiction of the structure of a List, see Figure 22.2 here.] whereas arrays are flat.
-16.2 THE LIST TYPE
-Like arrays, lists are homogeneous: the elements of a list all have the same type. The type of a list that
-has elements of type T is written List[T]. For instance, here are the same four lists with explicit types
-added:
+----
+Списки досить подібні до масивів, але є дві важливі відмінності. Перше, списки є незмінними, елементи списку не можуть бути змінені через присвоєння. Друге, списки мають рекурсивну структуру (тобто,  _зв'язаний список_),footnote:[Для графічного представлення структури `List`, дивіться Малюнок 22.2.], тоді як масиви пласкі.
+
+16.2 Тип List
+-------------
+Як і масиви, списки є гомогенними: елементи списків всі мають той самий тип. Тип списку, що мають елементи типу `T`, записується `List[T]`. Наприклад, ось ті самі чотири списки з доданими явними списками:
+[source,scala]
+----
 val fruit: List[String] = List("apples", "oranges", "pears")
 val nums: List[Int] = List(1, 2, 3, 4)
 val diag3: List[List[Int]] =
-List(
-List(1, 0, 0),
-List(0, 1, 0),
-List(0, 0, 1)
-)
+  List(
+    List(1, 0, 0),
+    List(0, 1, 0),
+    List(0, 0, 1) 
+  )
 val empty: List[Nothing] = List()
-The list type in Scala is covariant. This means that for each pair of types S and T, if S is a subtype of T,
-then List[S] is a subtype of List[T]. For instance, List[String] is a subtype ofList[Object]. This is
-natural because every list of strings can also be seen as a list of objects.footnote:[Chapter 19 gives more details on covariance and other kinds of variance.]
-Note that the empty list has type List[Nothing]. You saw in Section 11.3 that Nothing is the bottom
-type in Scala's class hierarchy. It is a subtype of every other Scala type. Because lists are covariant, it
-follows that List[Nothing] is a subtype of List[T] for any type T. So the empty list object, which hastype List[Nothing], can also be seen as an object of every other list type of the form List[T]. That's why
-it is permissible to write code like:
-// List() is also of type List[String]!
+----
+Тип списку в Scala є ковариантним. Це означає, що для кожної пари типів `S` та `T`, якщо `S` є субтипом `T`, тоді `List[S]` є субтипом `List[T]`. Наприклад, `List[String]` є субтипом `List[Object]`. Це природно, оскільки кожний список рядків може також розглядатись і як список об'єктів.footnote:[Глава 19 дає більше деталей щодо коваріантності та інших типів варіантності.]
+
+Зауважте, що порожній список має тип `List[Nothing]`. Ви бачили в Розділі 11.3, що `Nothing` є нижнім типом в ієрархії класів Scala. Це субтип кожного іншого типу Scala. Оскільки списки коваріантні, з цього слідує, що `List[Nothing]` є субтипом `List[T]` для любого типу `T`. Так що об'єкт порожнього списку, що має тип `List[Nothing]`, може також розглядатись як об'єкт кожного іншого типу списка в формі `List[T]`. Ось чому дозволяється писати код, подібний до наступного:
+[source,scala]
+----
+// List() також є типом List[String]!
 val xs: List[String] = List()
-16.3 CONSTRUCTING LISTS
-All lists are built from two fundamental building blocks, Nil and :: (pronounced "cons"). Nilrepresents
-the empty list. The infix operator, ::, expresses list extension at the front. That is,x :: xs represents a list
-whose first element is x, followed by (the elements of) list xs. Hence, the previous list values could also
-have been defined as follows:
+----
+16.3 Конструювання списків
+--------------------------
+Всі списки побудовані з двох фундаментальних будівельних блоків, `Nil` та `::` (вимовляється `cons`). `Nil` представляє порожній список. Інфіксний оператор `::` виражає розширення списку зпереду. Тобто, `x :: xs` представляє список, чий перший елемент є `x`, за яким слідує (елементи) список `xs`. Так що попередній список значень також може бути визначений наступним чином:
+[source,scala]
+----
 val fruit = "apples" :: ("oranges" :: ("pears" :: Nil))
 val nums = 1 :: (2 :: (3 :: (4 :: Nil)))
 val diag3 = (1 :: (0 :: (0 :: Nil))) ::
-(0 :: (1 :: (0 :: Nil))) ::
-(0 :: (0 :: (1 :: Nil))) :: Nil
+            (0 :: (1 :: (0 :: Nil))) ::
+            (0 :: (0 :: (1 :: Nil))) :: Nil
 val empty = Nil
-In fact the previous definitions of fruit, nums, diag3, and empty in terms of List(...) are just wrappers
-that expand to these definitions. For instance, List(1, 2, 3) creates the list1 :: (2 :: (3 :: Nil)).
-Because it ends in a colon, the :: operation associates to the right: A :: B :: C is interpreted
-asA :: (B :: C). Therefore, you can drop the parentheses in the previous definitions. For instance:
+----
+Фактично, попередні визначення `fruit`, `nums`, `diag3`, та `empty` в термінах `List(...)` є тільки огортками, що розширюють ці визначення. Наприклад, `List(1, 2, 3)` створює `list1 :: (2 :: (3 :: Nil))`.
+
+Оскільки вона завершується на дві крапки, операція `::` асоціюється зправа: `A :: B :: C` інтерпретується як `A :: (B :: C)`. Таким чином, ви можете відкинути дужки в попередніх визначеннях. Наприклад:
+[source,scala]
+----
 val nums = 1 :: 2 :: 3 :: 4 :: Nil
-is equivalent to the previous definition of nums.
-16.4 BASIC OPERATIONS ON LISTS
-All operations on lists can be expressed in terms of the following three:
-head
-returns the first element of a list
-tail
-returns a list consisting of all elements except the first
-isEmpty returns true if the list is empty
-These operations are defined as methods of class List. Some examples are shown in Table 16.1.
-The head and tail methods are defined only for non-empty lists. When selected from an empty list, they
-throw an exception:
+----
+еквівалентне до попереднього визначення `nums`.
+
+16.4 Базові операції зі списками
+--------------------------------
+Всі операції зі списками можуть бути визначені в термінах наступних трьох:
+
+`head` повертає перший елемент списку
+
+`tail` повератає список, що складається з усіх елементів списку, крім першого
+
+`isEmpty` повертає `true`, якщо список порожній
+
+Ці операції визначені як методи класу `List`. Деякі приклади показані в Таблиці 16.1. Методи `head` та `tail` визначені тільки для не-порожніх списків. Коли вибираються для порожніх списків, вони закидають виключення:
+[source,scala]
+----
 scala> Nil.head
 java.util.NoSuchElementException: head of empty list
-As an example of how lists can be processed, consider sorting the elements of a list of numbers into
-ascending order. One simple way to do so is insertion sort, which works as follows: To sort a non-
-empty list x :: xs, sort the remainder xs and insert the first element x at the right position in the result.
-Sorting an empty list yields the empty list. Expressed as Scala code, the insertion sort algorithm looks
-like:def isort(xs: List[Int]): List[Int] =
-if (xs.isEmpty) Nil
-else insert(xs.head, isort(xs.tail))
+----
+Як приклад того, як списки можуть оброблятись, розглянемо сортування елементів списку, що є числами, в порядку зростання. Один простий спосіб зробити це - сортування вставкою, що робить наступним чином: для сортування непорожнього списку `x :: xs`, сортується залишок `xs`, та перший елемент `x` вставляється в правильну позицію результата. Виражене як код Scala, алгоритм сортування вставкою виглядає так:
+[source,scala]
+----
+def isort(xs: List[Int]): List[Int] =
+  if (xs.isEmpty) Nil
+  else insert(xs.head, isort(xs.tail))
+
 def insert(x: Int, xs: List[Int]): List[Int] =
-if (xs.isEmpty || x <= xs.head) x :: xs
-else xs.head :: insert(x, xs.tail)
-Table 16.1 - Basic list operations
-What it is
-empty.isEmpty
-fruit.isEmpty
-fruit.head
-fruit.tail.head
-diag3.head
-What it does
-returns true
-returns false
-returns "apples"
-returns "oranges"
-returns List(1, 0, 0)
-16.5 LIST PATTERNS
-Lists can also be taken apart using pattern matching. List patterns correspond one-by-one to list
-expressions. You can either match on all elements of a list using a pattern of the formList(...), or you
-take lists apart bit by bit using patterns composed from the :: operator and the Nil constant.
-Here's an example of the first kind of pattern:
+  if (xs.isEmpty || x <= xs.head) x :: xs
+  else xs.head :: insert(x, xs.tail)
+----
+[caption="Таблиця 16.1 "]
+.Базові операції списків
+[cols="1,1",options="header"]
+|===
+^| Що таке ^| Що робить
+|`empty.isEmpty`|повертає `true`
+|`fruit.isEmpty`|повертає `false`
+|`fruit.head`|повертає `"apples"`
+|`fruit.tail.head`|повертає `"oranges"` 
+|`diag3.head`|повертає `List(1, 0, 0)`
+|===
+16.5 Шаблони списків
+--------------------
+Списки також можуть бути розділені на частини з використанням порівнянь шаблонів. Шаблони списків відповідають один до однго з виразами списків. Ви можете або порівняти всі елементи списку з використанням шаблону в формі `List(...)`, або ви розбиваєте список на частини, використовуючи шаблон, скомпонований з оператора `::` та константи `Nil`.
+
+Ось різновид першого типу шаблонів:
+[source,scala]
+----
 scala> val List(a, b, c) = fruit
 a: String = apples
 b: String = oranges
 c: String = pears
-The pattern List(a, b, c) matches lists of length 3, and binds the three elements to the pattern
-variables a, b, and c. If you don't know the number of list elements beforehand, it's better to match
-with :: instead. For instance, the pattern a :: b :: rest matches lists of length 2 or greater:
-ABOUT PATTERN MATCHING ON LISTS
-If you review the possible forms of patterns explained in Chapter 15, you might find that
-neither List(...) nor :: look like it fits the kinds of patterns defined there. In fact,List(...) is an instance of
-a library-defined extractor pattern. Such patterns will be discussed in Chapter 26. The "cons"
-pattern x :: xs is a special case of an infix operation pattern. As an expression, an infix operation is
-equivalent to a method call. For patterns, the rules are different: As a pattern, an infix operation such
-as p op q is equivalent to op(p, q). That is, the infix operator op is treated as a constructor pattern. In
-particular, a cons pattern such as x :: xs is treated as ::(x, xs).
-This hints that there should be a class named :: that corresponds to the pattern constructor. Indeed, there
-is such a class—it is named scala.:: and is exactly the class that builds non-empty lists. So :: exists
-twice in Scala, once as a name of a class in package scala and again as a method in class List. The
-effect of the method :: is to produce an instance of the class scala.::. You'll find out more details about
-how the List class is implemented in Chapter 22.scala> val a :: b :: rest = fruit
+----
+Шаблон `List(a, b, c)` співпадає зі списками довжини 3, та прив'язує три елементи до змінних шаблону, `a`, `b`, та `c`. Якщо ви не знаєте число елементів в списку заздалегідь, тоді краще замість цього порівнювати за допомогою `::`. Наприклад, шаблон `a :: b :: rest` співпадає зі списками довжини 2 або більше:
+
+Щодо порівняння шаблонів списків
+--------------------------------
+Якщо ви розглядаєте можливі форми шаблонів, пояснених в Главі 15, ви можете винайти, що ні `List(...)` ані `::` не вигладають, як підходящі різновиди шаблонів, визначених там. Фактично, `List(...)` є примірником визначеного в бібліотеці шаблону екстрактора. Такі шаблони будуть обговорюватись в Главі 26. Шаблон `cons` `x :: xs` є особливим випадком шаблону інфіксної операції. Як вираз, інфіксна операція еквівалентна до виклику метода. Для шаблонів правила інші: в якості шаблона інфіксна операція, така, як `p op q` еквівалентна до `op(p, q)`. Тобто, інфіксний оператор `op` трактується як шаблон конструктора. Зокрема, шаблон `cons`, такий як `x :: xs`, трактується як `::(x, xs)`.
+
+Це підказує, що має бути клас на ім'я `::`, що відповідає до конструктора шаблону. Звісно, такий клас існує — його ім'я `scala.::`, та це саме той клас, що будує непорожні списки. Так що `::` існує двічі в Scala, один раз як ім'я, класу в пакунку `scala`, і знову як метод в класі `List`. Ефект метода `::` є продукувати примірник класу `scala.::`. Ви знайдете більше деталей щодо того, як реалізований клас `List`, в Главі 22.
+[source,scala]
+----
+scala> val a :: b :: rest = fruit
 a: String = apples
 b: String = oranges
 rest: List[String] = List(pears)
-Taking lists apart with patterns is an alternative to taking them apart with the basic methodshead, tail,
-and isEmpty. For instance, here's insertion sort again, this time written with pattern matching:
+----
+Розбиття списків на частити за допомогою шаблонів є альтернативою до їх поділення за допомогою базових методів `head`, `tail`, та `isEmpty`. Наприклад, ось знову сортування вставкою, на цей раз написана за допомогою порівняння шаблонів:
+[source,scala]
+----
 def isort(xs: List[Int]): List[Int] = xs match {
-case List()
-=> List()
-case x :: xs1 => insert(x, isort(xs1))
+  case List() => List()
+  case x :: xs1 => insert(x, isort(xs1))
 }
+
 def insert(x: Int, xs: List[Int]): List[Int] = xs match {
-case List() => List(x)
-case y :: ys => if (x <= y) x :: xs
-else y :: insert(x, ys)
+  case List() => List(x)
+  case y :: ys => if (x <= y) x :: xs
+                  else y :: insert(x, ys)
 }
-Often, pattern matching over lists is clearer than decomposing them with methods, so pattern matching
-should be a part of your list processing toolbox.
-This is all you need to know about lists in Scala to use them correctly. However, there are also a large
-number of methods that capture common patterns of operations over lists. These methods make list
-processing programs more concise and often clearer. The next two sections present the most important
-methods defined in the List class.
-16.6 FIRST-ORDER METHODS ON CLASS LIST
-This section explains most first-order methods defined in the List class. A method is first-order if it
-does not take any functions as arguments. We will also introduce some recommended techniques to
-structure programs that operate on lists by using two examples.
-Concatenating two lists
-An operation similar to :: is list concatenation, written `:::'. Unlike ::, ::: takes two lists as operands. The
-result of xs ::: ys is a new list that contains all the elements of xs, followed by all the elements of ys.
-Here are some examples:
+----
+Часто порівняння шаблонів зі списками ясніше, ніж їх декомпозиція за допомогою методів, так що порівняння шаблонів має стати частиною вашого інструментарія обробки списків.
+
+Це все що вам треба знати щодо списків в Scala, щоб використовувати їх коректно. Однак існує велика кількість методів, що захоплюють загальні шаблони операцій зі списками. Ці методи роблять програми обробки списків більш стислими, та часто яснішими. Наступні два розділи представляють найбільш важливі методи, визначені в класі `List`.
+
+16.6 Методи першого порядка на класі List
+-----------------------------------------
+Цей розділ пояснює більшість методів першого порядка, визначених в класі `List`. Метод є першого порядку, якщо він не приймає жодних функцій як аргументів. Ми будемо також вводити деякі рекомендовані прийоми, щоб структурувати програми, що оперують на списках, використовуючи для цього два приклада.
+
+Конкатенація двох списків
+~~~~~~~~~~~~~~~~~~~~~~~~~
+Операція, подібна до `::` є конкатенація списків, що записується як `:::`. На відміну від `::`, `:::` приймає два списка як операнди. Результатом `xs ::: ys` є новий список, що містить всі елементи `xs`,за яким слідують всі елементи `ys`.
+
+Ось деякі приклади:
+[source,scala]
+----
 scala> List(1, 2) ::: List(3, 4, 5)
 res0: List[Int] = List(1, 2, 3, 4, 5)
+
 scala> List() ::: List(1, 2, 3)
 res1: List[Int] = List(1, 2, 3)
+
 scala> List(1, 2, 3) ::: List(4)
 res2: List[Int] = List(1, 2, 3, 4)
-Like cons, list concatenation associates to the right. An expression like this:
-xs ::: ys ::: zsis interpreted like this:
+----
+Як і `cons`, конкатенація списків асоціюється зправа. Такий вираз:
+[source,scala]
+----
+xs ::: ys ::: zs
+----
+інтерпретується так:
+[source,scala]
+----
 xs ::: (ys ::: zs)
-The Divide and Conquer principle
-Concatenation (:::) is implemented as a method in class List. It would also be possible to implement
-concatenation "by hand," using pattern matching on lists. It's instructive to try to do that yourself,
-because it shows a common way to implement algorithms using lists. First, we'll settle on a signature
-for the concatenation method, which we'll call append. In order not to mix things up too much, assume
-that append is defined outside the List class, so it will take the two lists to be concatenated as
-parameters. These two lists must agree on their element type, but that element type can be arbitrary.
-This can be expressed by giving append a type parameter,footnote:[Type parameters will be explained in more detail in Chapter 19.] that represents the element type of the two
-input lists:
+----
+Принцип "Розділяй та володій"
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Конкатенація (`:::`) реалізована як метод в класі `List`. Також можливо реалізувати конкатенацію "вручну", використовуючи порівняння шаблонів для списків. Є повчальним спробувати зробити це самостійно, оскільки це показує загальний шлях реалізації алгоритмів з використанням списків. Перше, ми домовимось щодо сигнатури для метода конкатенації, який ми назвемо `append`. Щоб не дуже змішувати все докупи, будемо вважати, що `append` визначений за межами класу `List`, так що він прийматиме два списки, що будуть канкатеновані, як параметри. Ці два списки мають домовитись щодо типу їх елементів, але цей тип може бути довільним. Це може бути виражене через надання `append` параметру типа,footnote:[Параметр типу буде пояснений більш детально в Главі 19.], що представляє тип елемента двох вхідних списків:
+[source,scala]
+----
 def append[T](xs: List[T], ys: List[T]): List[T]
-To design the implementation of append, it pays to remember the "divide and conquer" design principle
-for programs over recursive data structures such as lists. Many algorithms over lists first split an input
-list into simpler cases using a pattern match. That's the divide part of the principle. They then construct
-a result for each case. If the result is a non-empty list, some of its parts may be constructed by recursive
-invocations of the same algorithm. That's theconquer part of the principle.
-To apply this principle to the implementation of the append method, the first question to ask is on
-which list to match. This is less trivial in the case of append than for many other methods because there
-are two choices. However, the subsequent "conquer" phase tells you that you need to construct a list
-consisting of all elements of both input lists. Since lists are constructed from the back towards the
-front, ys can remain intact, whereas xs will need to be taken apart and prepended to ys. Thus, it makes
-sense to concentrate on xs as a source for a pattern match. The most common pattern match over lists
-simply distinguishes an empty from a non-empty list. So this gives the following outline of
-an append method:
+----
+Щоб розробити реалізацію `append`, слід пам'ятати принцип розробки "поділяй та володій" для програм з рекурсивними структурами даних, як списки. Багато алгоритмів над списками спочатку розділяють вхідний список на простіші випадки, використовуючи порівняння шаблонів. Це частина _роздліляй_ цього принципу. Потім вони конструюють результат для кожного `case`. Якщо результат є непорожній список, деякі з його частин можуть бути сконструйовані через рекурсивні виклики того самого алгоритму. Це частина _володій_ принципу.
+
+Щоб застосувати цей принцип до реалізації метода `append`, перше запитання, що треба запитати, це який зі списків порівнювати. Це трохи тривіальніше в випадку `append`, ніж для багатьох інших методів, оскікльи є два вибори. Однак, наступна фаза "володіння" каже вам, що вам треба сконструювати список, що складається з усіх елементів обох вхідних списків. Оскільки списки сконструйовані з кінця в напрямку початку, `ys` може залишатись як є, тоді як `xs` буде треба розбити на частини на поставити перед `ys`. Таким чином, має сенс сконцентруватись на `xs`, як джерелі для порівняння шаблонів. Найбільш загальне порівняння шаблонів зі списками є просте розрізнення порожніх та непорожніх списків. Так що це дає наступний контур метода `append`:
+[source,scala]
+----
 def append[T](xs: List[T], ys: List[T]): List[T] =
-xs match {
-case List() => ???
-case x :: xs1 => ???
-}
-All that remains is to fill in the two places marked with ???.footnote:[The ??? method, which throws scala.NotImplementedError and has result type Nothing, can be used as a temporary implementation during development.] The first such place is the alternative
-where the input list xs is empty. In this case concatenation yields the second list:
+  xs match {
+    case List() => ???
+    case x :: xs1 => ???
+  }
+----
+Все що залишається, це заповнити два місця, відмічені `???`.footnote:[Метод `???`, що закидає `scala.NotImplementedError`, та має тип результата `Nothing`, може бути використаний як тимчасова реалізація впродовж розробки.] Перше таке місце є альтернатива, де вхідний список `xs` порожній. В цьому випадку конкатенація видає другий список:
+[source,scala]
+----
 case List() => ys
-The second place left open is the alternative where the input list xs consists of some head xfollowed by
-a tail xs1. In this case the result is also a non-empty list. To construct a non-empty list you need to
-know what the head and the tail of that list should be. You know that the first element of the result listis x. As for the remaining elements, these can be computed by appending the second list, ys, to the rest
-of the first list, xs1.
-This completes the design and gives:
+----
+Друге місце, залишене відкритим, є альтернатива, де вхідний список `xs` складається з деякого заголовка `x`, за яким слідує хвіст `xs1`. В цьому випадку результат також є непорожнім списком. Щоб сконструювати непорожній список, вам треба знати, якими має бути голова та хвіст цього списку. Ви знаєте, що перший елемент результуючого списку є `x`. Як щодо залишку елементів, вони можуть бути обчислені через додавання другого списку, `ys`, до залишку першого списку, `xs1`.
+
+Це завершує дизайн, та дає таке:
+[source,scala]
+----
 def append[T](xs: List[T], ys: List[T]): List[T] =
-xs match {
-case List() => ys
-case x :: xs1 => x :: append(xs1, ys)
-}
-The computation of the second alternative illustrated the "conquer" part of the divide and conquer
-principle: Think first what the shape of the desired output should be, then compute the individual parts
-of that shape, using recursive invocations of the algorithm where appropriate. Finally, construct the
-output from these parts.
-Taking the length of a list: length
-The length method computes the length of a list.
+  xs match {
+    case List() => ys
+    case x :: xs1 => x :: append(xs1, ys)
+  }
+----
+Обчислення другої альтернативи ілюструє частину "володій" принципа розділення та заволодіння: думайте спочатку, який контур бажаного виходу має бути, потім обчислюйте індивідуальні частини цього контура, використовуючи рекурсивні виклики алгоритма, коли це доцільно. Нарешті, сконструюйте вихід з ціх частин.
+
+Отримання довжини списку: `length`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `length` обчислює довжину списка.
+[source,scala]
+----
 scala> List(1, 2, 3).length
 res3: Int = 3
-On lists, unlike arrays, length is a relatively expensive operation. It needs to traverse the whole list to
-find its end, and therefore takes time proportional to the number of elements in the list. That's why it's
-not a good idea to replace a test such as xs.isEmpty by xs.length == 0. The result of the two tests is
-equivalent, but the second one is slower, in particular if the list xs is long.
-Accessing the end of a list: init and last
-You know already the basic operations head and tail, which respectively take the first element of a list,
-and the rest of the list except the first element. They each have a dual operation: lastreturns the last
-element of a (non-empty) list, whereas init returns a list consisting of all elements except the last one:
+----
+На списках, на відміну від масивів, `length` є відносно коштовною операцією. Він змушує подорожувати по цілому списку, щоб знайти кінець, і, таким чином, займає час, пропорційний до числу елементів в списку. Ось чому не є гарною ідеєю замінити тест, такий як `xs.isEmpty` на `xs.length == 0`. Результат двох тестів еквівалентний, але другий повільніший, зокрема якщо список `xs` довгий.
+
+Доступ до кінця списку: `init` та `last`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ви вже знаєте базові операції, `head` та `tail`, що, відповідно, вибирає перший елемент списку, та залишок списку, крім першого елементу. Вони обоє мають операцію двійника: `last` повертає останній елемент (непорожнього) списку, тоді як `init` повертає список, що складається з усіх елементів, крім останнього:
+[source,scala]
+----
 scala> val abcde = List('a', 'b', 'c', 'd', 'e')
 abcde: List[Char] = List(a, b, c, d, e)
+
 scala> abcde.last
 res4: Char = e
+
 scala> abcde.init
 res5: List[Char] = List(a, b, c, d)
-Like head and tail, these methods throw an exception when applied to an empty list:
+----
+Як `head` та `tail`, ці методи закидають виключення, коли застосовуються до порожніх списків:
+[source,scala]
+----
 scala> List().init
 java.lang.UnsupportedOperationException: Nil.init
 at scala.List.init(List.scala:544)
 at ...
+
 scala> List().last
 java.util.NoSuchElementException: Nil.last
 at scala.List.last(List.scala:563)at ...
-Unlike head and tail, which both run in constant time, init and last need to traverse the whole list to
-compute their result. As a result, they take time proportional to the length of the list.
-It's a good idea to organize your data so that most accesses are at the head of a list, rather than the last
-element.
-Reversing lists: reverse
-If at some point in the computation an algorithm demands frequent accesses to the end of a list, it's
-sometimes better to reverse the list first and work with the result instead. Here's how to do the reversal:
+----
+На відміну від `head` та `tail`, які обоє виконуються за сталий час, `init` та `last` подорожують по цілому списку, щоб отримати свій результат. Як результат, вони займають час, пропорційний до довжини списку.
+
+Є гарною ідеєю організувати ваші дані так, щоб більшість доступів приходились на початок списку, скоріше, ніж на останній елемент.
+
+Реверс списку: `reverse`
+~~~~~~~~~~~~~~~~~~~~~~~~
+Якщо в деякій точці обчислень алгоритм вимагає частого доступу до кінця списку, іноді буває кращим спочатку реверсувати список, та потім робити з результатом. Ось як це робиться:
+[source,scala]
+----
 scala> abcde.reverse
 res6: List[Char] = List(e, d, c, b, a)
-Like all other list operations, reverse creates a new list rather than changing the one it operates on.
-Since lists are immutable, such a change would not be possible anyway. To verify this, check that the
-original value of abcde is unchanged after the reverse operation:
+----
+Як всі інші операції зі списками, `reverse` створює новий список, скоріше ніж змінювати той, з яким робить. Оскільки списки незмінні, така заміна все одно не була б можливою. Щоб перевірити це, перевірте, що оригінальне значення `abcde` незмінне після операції `reverse`:
+[source,scala]
+----
 scala> abcde
 res7: List[Char] = List(a, b, c, d, e)
-The reverse, init, and last operations satisfy some laws that can be used for reasoning about
-computations and for simplifying programs.
-1. reverse is its own inverse:
-xs.reverse.reverse
-equals
-xs
-2. reverse turns init to tail and last to head, except that the elements are reversed:
-xs.reverse.init
-xs.reverse.tail
-xs.reverse.head
-xs.reverse.last
-equals
-equals
-equals
-equals
-xs.tail.reverse
-xs.init.reverse
-xs.last
-xs.head
-Reverse could be implemented using concatenation (:::), like in the following method, rev:
+----
+Операції `reverse`, `init` та `last` задовільняють деяким законам, що може бути використане для міркувань щодо обчислень та для спрощення програм.
+
+1. `reverse` є інверсією самого себе:
+[source,scala]
+----
+xs.reverse.reverse _equals_ xs
+----
+
+2. `reverse` перетворює `init` на `tail`, та `last` на `head`, за винятком того, що елементи реверсовані:
+[source,scala]
+----
+xs.reverse.init _equals_ xs.tail.reverse
+xs.reverse.tail _equals_ xs.init.reverse
+xs.reverse.head _equals_ xs.last
+xs.reverse.last _equals_ xs.head
+----
+Реверс може бути реалізований з використанням конкатенації (`:::`), як наступний метод, `rev`:
+[source,scala]
+----
 def rev[T](xs: List[T]): List[T] = xs match {
-case List() => xs
-case x :: xs1 => rev(xs1) ::: List(x)
+  case List() => xs
+  case x :: xs1 => rev(xs1) ::: List(x)
 }
-However, this method is less efficient than one would hope for. To study the complexity ofrev, assume
-that the list xs has length n. Notice that there are n recursive calls to rev. Each call except the last
-involves a list concatenation. List concatenation xs ::: ys takes time proportional to the length of its first
-argument xs. Hence, the total complexity of rev is:
-n + (n - 1) + ... + 1 = (1 + n) * n / 2In other words, rev's complexity is quadratic in the length of its input argument. This is disappointing
-when compared to the standard reversal of a mutable, linked list, which has linear complexity.
-However, the current implementation of rev is not the best implementation possible. In the example
-starting here, you will see how to speed it up.
-Prefixes and suffixes: drop, take, and splitAt
-The drop and take operations generalize tail and init in that they return arbitrary prefixes or suffixes of
-a list. The expression "xs take n" returns the first n elements of the list xs. If n is greater than xs.length,
-the whole list xs is returned. The operation "xs drop n" returns all elements of the list xs, except for the
-first n ones. If n is greater than xs.length, the empty list is returned.
-The splitAt operation splits the list at a given index, returning a pair of two lists.footnote:[As mentioned in Section 10.12, the term pair is an informal name for Tuple2.] It is defined by the
-equality:
-xs splitAt n
-equals
-(xs take n, xs drop n)
-However, splitAt avoids traversing the list xs twice. Here are some examples of these three methods:
+----
+Однак, цей метод менш ефективний, ніж дехто може сподіватись. Щоб вивчити складність `rev`, вважаючи, що список `xs` має довжину `n`. Зауважте, що існує `n` рекурсивних викликів до `rev`. Кожний виклик, крім останнього, включає конкатенацію списків. Конкатенація списків, `xs ::: ys`, займає час, пропорційний до довжини свого першого аргументу, `xs`. Таким чином, загальна складність `rev` є:
+[source,scala]
+----
+n + (n - 1) + ... + 1 = (1 + n) * n / 2
+----
+Іншими словами, складність `rev` є квадратичною до довжини свого вхідного аргументу. Це невтішно, порівнюючи до реверсу змінного зв'язанного списку, що має лінійну складність. Однак поточна реалізація `rev` не є кращою можливою реалізацією. В прикладі, що починається тут, ви побачите, як прискорити її.
+
+Префікси та суфікси: `drop`, `take`, `splitAt`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Операції `drop` та `take` узагальнують `tail` та `init` в тому, що вони повертають довільні префікси або суфікси списку. Вираз `xs take n` повертає перші `n` елементів списку `xs`. Якщо `n` більше, ніж `xs.length`, повертається цілий список `xs`. Операція `xs drop n` повертає всі елементи списку `xs`, за винятком перших `n`. Якщо `n` більше, ніж `xs.length`, повертається порожній список.
+
+Операція `splitAt` розділяє список по наданому індексу, повертаючи пару з двох списків.footnote:[Як зазначалось в Розділі 10.12, термін пара є неформальним ім'ям для `Tuple2`.] Вона визначається рівністю:
+[source,scala]
+----
+xs splitAt n _equals_ (xs take n, xs drop n)
+----
+Однак `splitAt` уникає подвійної подорожі по списку `xs`. Ось деякі приклади ціх трьох методів:
+[source,scala]
+----
 scala> abcde take 2
 res8: List[Char] = List(a, b)
+
 scala> abcde drop 2
 res9: List[Char] = List(c, d, e)
+
 scala> abcde splitAt 2
 res10: (List[Char], List[Char]) = (List(a, b),List(c, d, e))
-Element selection: apply and indices
-Random element selection is supported through the apply method; however it is a less common
-operation for lists than it is for arrays.
-scala> abcde apply 2 // rare in Scala
+----
+Вибір елементів: `apply` та `indices`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Вибір довільних елементів підтримується через метод `apply`; однак це менш поширена операція для списків, ніж для масивів.
+[source,scala]
+----
+scala> abcde apply 2 // рідкість в Scala
 res11: Char = c
-As for all other types, apply is implicitly inserted when an object appears in the function position in a
-method call. So the line above can be shortened to:
-scala> abcde(2)
+----
+Як і для інших типів, `apply` вставляється неявно, коли об'єкт з'являється в функціональній позиції в виклику метода. Так що рядок вище може бути скорочено:
+[source,scala]
+----
+scala> abcde(2) // рідкість в Scala
 res12: Char = c
-// rare in Scala
-One reason why random element selection is less popular for lists than for arrays is that xs(n)takes time
-proportional to the index n. In fact, apply is simply defined by a combination of dropand head:
-xs apply n
-equals
-(xs drop n).head
-This definition also makes clear that list indices range from 0 up to the length of the list minus one, the
-same as for arrays. The indices method returns a list consisting of all valid indices of a given list:
+----
+Одна з причин, чому вибір довільного елемента є менш популярним для списків, ніж для масивів, в тому, що `xs(n)` займає час, пропорційний до індексу `n`. Фактично, `apply` просто визначена через комбінацію `drop` та `head`:
+[source,scala]
+----
+xs apply n _equals_ (xs drop n).head
+----
+Це визначення також робить зрозумілим, що індекси списків знаходяться в диапазоні від 0 до довжини списку мінус один, так само, як для масивів. Метод `indices` повертає список, що складається з усіх валідних індексів для даного списку:
+[source,scala]
+----
 scala> abcde.indices
 res13: scala.collection.immutable.Range= Range(0, 1, 2, 3, 4)
-Flattening a list of lists: flatten
-The flatten method takes a list of lists and flattens it out to a single list:
+----
+Зплющення списка списків: `flatten`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `flatten` приймає список списків, та зплющує його до одного списку:
+[source,scala]
+----
 scala> List(List(1, 2), List(3), List(), List(4, 5)).flatten
 res14: List[Int] = List(1, 2, 3, 4, 5)
+
 scala> fruit.map(_.toCharArray).flatten
 res15: List[Char] = List(a, p, p, l, e, s, o, r, a, n, g, e,
 s, p, e, a, r, s)
-It can only be applied to lists whose elements are all lists. Trying to flatten any other list will give a
-compilation error:
+----
+Він може бути застосований тільки до списків, всі елементи яких є списками. Спроба зплющити любі інші списки буде давати помилку компіляції:
+[source,scala]
+----
 scala> List(1, 2, 3).flatten
 <console>:8: error: No implicit view available from Int =>
 scala.collection.GenTraversableOnce[B].
 List(1, 2, 3).flatten
 ^
-Zipping lists: zip and unzip
-The zip operation takes two lists and forms a list of pairs:
+----
+Стиснення списків: `zip` та `unzip`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Операція `zip` приймає два списки, та формує список пар:
+[source,scala]
+----
 scala> abcde.indices zip abcde
 res17: scala.collection.immutable.IndexedSeq[(Int, Char)] =
-Vector((0,a), (1,b), (2,c), (3,d), (4,e))
-If the two lists are of different length, any unmatched elements are dropped:
+    Vector((0,a), (1,b), (2,c), (3,d), (4,e))
+----
+Якщо два списки мають різні довжини, любий неспівпавший елемент відкидається:
+[source,scala]
+----
 scala> val zipped = abcde zip List(1, 2, 3)
 zipped: List[(Char, Int)] = List((a,1), (b,2), (c,3))
-A useful special case is to zip a list with its index. This is done most efficiently with
-thezipWithIndex method, which pairs every element of a list with the position where it appears in the
-list.
+----
+Корисний особливий випадок є `zip` списку з його індексом. Це робиться більш ефективно за допомогою метода `zipWithIndex`, що парує кожний елемент списку з позицією, де він з'являється в списку.
+[source,scala]
+----
 scala> abcde.zipWithIndex
 res18: List[(Char, Int)] = List((a,0), (b,1), (c,2), (d,3),
-(e,4))
-Any list of tuples can also be changed back to a tuple of lists by using the unzip method:
+    (e,4))
+----
+Любий список таплів також може бути змінений назад, та таплу списків, використовуючи метод `unzip`:
+[source,scala]
+----
 scala> zipped.unzip
 res19: (List[Char], List[Int])
-= (List(a, b, c),List(1, 2, 3))
-The zip and unzip methods provide one way to operate on multiple lists together. See Section 16.9 for a
-more concise way to do this.
-Displaying lists: toString and mkString
-The toString operation returns the canonical string representation of a list:scala> abcde.toString
+  = (List(a, b, c),List(1, 2, 3))
+----  
+Методи `zip` та `unzip` провадять один шлях для обробки декількох списків разом. Дивіться Розділ 16.9 для більш стислого шляху робити це.
+
+Відображення списків: `toString` та `mkString`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Операція `toString` повертає канонічну рядкову репрезентацію списку:
+[source,scala]
+----
+scala> abcde.toString
 res20: String = List(a, b, c, d, e)
-If you want a different representation you can use the mkString method. The
-operationxs mkString (pre, sep, post) involves four operands: the list xs to be displayed, a prefix
-string preto be displayed in front of all elements, a separator string sep to be displayed between
-successive elements, and a postfix string post to be displayed at the end.
-The result of the operation is the string:
+----
+Якщо ви бажаєте іншу репрезентацію, ви можете використати метод `mkString`. Операція `xs mkString (pre, sep, post)` включає чотири операнди: список `xs`, що буде відображений, рядок `prefix`, що буде відображений перед усіма елементами, рядок роздільника `sep`, що буде відображений між послідовними елементами, та рядок `postfix`, що буде відображений в кінці.
+
+Результатом операції є рядок:
+[source,scala]
+----
 pre + xs(0) + sep + ...+ sep + xs(xs.length - 1) + post
-The mkString method has two overloaded variants that let you drop some or all of its arguments. The
-first variant only takes a separator string:
-xs mkString sep
-equals
-xs mkString ("", sep, "")
-The second variant lets you omit all arguments:
-xs.mkString
-equals
-xs mkString ""
-Here are some examples:
+----
+Метод `mkString` має два перевантажені варіанти, що дозволяють вам відкинути деякі або всі його пргументи. Перший вариант приймає тільки рядок роздільника:
+[source,scala]
+----
+xs mkString sep _equals_ xs mkString ("", sep, "")
+----
+Другий варіант дозволяє вам оминути всі аргументи:
+[source,scala]
+----
+xs.mkString _equals_ xs mkString ""
+----
+Ось деякі приклади:
+[source,scala]
+----
 scala> abcde mkString ("[", ",", "]")
 res21: String = [a,b,c,d,e]
+
 scala> abcde mkString ""
 res22: String = abcde
+
 scala> abcde.mkString
 res23: String = abcde
+
 scala> abcde mkString ("List(", ", ", ")")
 res24: String = List(a, b, c, d, e)
-There are also variants of the mkString methods called addString which append the constructed string
-to a StringBuilder object,footnote:[This is class scala.StringBuilder, not java.lang.StringBuilder.] rather than returning them as a result:
+----
+Також є варіанти методів `mkString`, названі `addString`, що додають сконструйований рядок до об'єкту `StringBuilder`,footnote:[Це клас `scala.StringBuilder`, не `java.lang.StringBuilder`.], скоріше ніж повертати результат:
+[source,scala]
+----
 scala> val buf = new StringBuilder
 buf: StringBuilder =
+
 scala> abcde addString (buf, "(", ";", ")")
 res25: StringBuilder = (a;b;c;d;e)
-The mkString and addString methods are inherited from List's super trait Traversable, so they are
-applicable to all other collections as well.
-Converting lists: iterator, toArray, copyToArray
-To convert data between the flat world of arrays and the recursive world of lists, you can use
-method toArray in class List and toList in class Array:
+----
+Методи `mkString` та `addString` наслідуються від супертрейта `List`, трейта `Traversable`, так що вони також застосовуються до всіх інших колекцій.
+
+Перетворення списків: `iterator`, `toArray`, `copyToArray`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Щоб перетворити дані між пласким світом масиву, та рекурсивним світом списків, ви можете використовувати метод `toArray` в класі `List`, та `toList` в класі `Array`:
+[source,scala]
+----
 scala> val arr = abcde.toArray
-arr: Array[Char] = Array(a, b, c, d, e)scala> arr.toList
+arr: Array[Char] = Array(a, b, c, d, e)
+
+scala> arr.toList
 res26: List[Char] = List(a, b, c, d, e)
-There's also a method copyToArray, which copies list elements to successive array positions within
-some destination array. The operation:
+----
+Також є метод `copyToArray`, що копіює список елементів в послідовні позиції в деякому масиві призначення. Операція:
+[source,scala]
+----
 xs copyToArray (arr, start)
-copies all elements of the list xs to the array arr, beginning with position start. You must ensure that the
-destination array arr is large enough to hold the list in full. Here's an example:
+----
+копіює всі елементи списку `xs` до масива `arr`, починаючи з позиції `start`. Ви маєте переконатись, що масив призначення `arr` досить довгий, щоб містити список повністю. Ось приклад:
+[source,scala]
+----
 scala> val arr2 = new Array[Int](10)
 arr2: Array[Int] = Array(0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+
 scala> List(1, 2, 3) copyToArray (arr2, 3)
+
 scala> arr2
 res28: Array[Int] = Array(0, 0, 0, 1, 2, 3, 0, 0, 0, 0)
-Finally, if you need to access list elements via an iterator, you can use the iterator method:
+----
+Нарешті, якщо вам треба отримати доступ до елементів списку через ітератор, ви можете використовувати метод `iterator`:
+[source,scala]
+----
 scala> val it = abcde.iterator
 it: Iterator[Char] = non-empty iterator
+
 scala> it.next
 res29: Char = a
+
 scala> it.next
 res30: Char = b
-Example: Merge sort
-The insertion sort presented earlier is concise to write, but it is not very efficient. Its average
-complexity is proportional to the square of the length of the input list. A more efficient algorithm
-is merge sort.
-THE FAST TRACK
-This example provides another illustration of the divide and conquer principle and currying, as well as
-a useful discussion of algorithmic complexity. If you prefer to move a bit faster on your first pass
-through this book, however, you can safely skip to Section 16.7.
-Merge sort works as follows: First, if the list has zero or one elements, it is already sorted, so the list
-can be returned unchanged. Longer lists are split into two sub-lists, each containing about half the
-elements of the original list. Each sub-list is sorted by a recursive call to the sort function, and the
-resulting two sorted lists are then combined in a merge operation.
-For a general implementation of merge sort, you want to leave open the type of list elements to be
-sorted and the function to be used for the comparison of elements. You obtain a function of maximalgenerality by passing these two items as parameters. This leads to the implementation shown in Listing
-16.1.
+----
+Приклад: сортування злиттям
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Сортування вставкою, презентоване раніше, є стислим для написання, але не дуже ефективним. Його середня складність пропорційна квадрату довжини вхідного списку. Більш ефективний алгоритм є сортування злиттям.
+
+Швидкий шлях
+------------
+Цей приклад провадить іншу ілюстрацію принципу розділяй та володій, карування, а також корисну дискусію по алгоритмічній складності. Якщо ви бажаєте рухатись трохи швидше при першому проходженні цієї книги, ви можете безпечно пропустити Розділ 16.7.
+
+Сортування злиттям робить наступним чином: зпершу, якщо список має нуль або один елемент, він вже впорядкований, так що список може бути повернений без змін. Інши списки поділяються на два суб-списки, кожний містить близько половини елементів оригінального списку. Кожний субсписок впорядковується рекурсивним викликом, та отримані два відсортовані списки поєднуються операцією злиття.
+
+Для загальної реалізації сортування злиттям ви бажаєте залишити відкритим тип елементів списку, що будуть сортуватись, та функцію, що буде використана для порівняння елементів. Ви отримаєте функцію максімальної загальності, передавши ці два елементи як параметри. Це призводить до реалізації, показаній в Лістингу 16.1.
+[source,scala]
+----
 def msort[T](less: (T, T) => Boolean)
-(xs: List[T]): List[T] = {
-def merge(xs: List[T], ys: List[T]): List[T] =
-(xs, ys) match {
-case (Nil, _) => ys
-case (_, Nil) => xs
-case (x :: xs1, y :: ys1) =>
-if (less(x, y)) x :: merge(xs1, ys)
-else y :: merge(xs, ys1)
+    (xs: List[T]): List[T] = {
+
+  def merge(xs: List[T], ys: List[T]): List[T] =
+    (xs, ys) match {
+      case (Nil, _) => ys
+      case (_, Nil) => xs
+      case (x :: xs1, y :: ys1) =>
+        if (less(x, y)) x :: merge(xs1, ys)
+        else y :: merge(xs, ys1)
+    }
+
+  val n = xs.length / 2
+  if (n == 0) xs
+  else {
+    val (ys, zs) = xs splitAt n
+    merge(msort(less)(ys), msort(less)(zs))
+  }
 }
-val n = xs.length / 2
-if (n == 0) xs
-else {
-val (ys, zs) = xs splitAt n
-merge(msort(less)(ys), msort(less)(zs))
-}
-}
-Listing 16.1 - A merge sort function for Lists.
-The complexity of msort is order (n log(n)), where n is the length of the input list. To see why, note that
-splitting a list in two and merging two sorted lists each take time proportional to the length of the
-argument list(s). Each recursive call of msort halves the number of elements in its input, so there are
-about log(n) consecutive recursive calls until the base case of lists of length 1 is reached. However, for
-longer lists each call spawns off two further calls. Adding everything up, we obtain at each of the log(n)
-call levels, every element of the original lists takes part in one split operation and one merge operation.
-Hence, every call level has a total cost proportional to n. Since there are log(n) call levels, we obtain an
-overall cost proportional to n log(n). That cost does not depend on the initial distribution of elements in
-the list, so the worst case cost is the same as the average case cost. This property makes merge sort an
-attractive algorithm for sorting lists.
-Here is an example of how msort is used:
+----
+Лістинг 16.1 - Функція сортування злиттям для List.
+
+Складність `msort` має порядок (_n log(n)_), де `n` є довжина вхідного списку. Щоб побачити чому, зауважте, що розділення списку на два та злиття двох відсортованих списків, кожне займає час, пропорційний до довжини списків-аргументів. Кожний рекурсивний виклик зменшує навпіл число елементів на вході, так що відбудеться  близько `log(n)` послідовних рекурсивних викликів, доки буде досягнуто базового випадку зі списками довжиною 1. Однак для довших списків кожний виклик відгалужує два інші виклики. Додаючи все разом, ми отримаємо, що на кожному рівні викликів _log(n)_ кожний елемент оригінальних списків прийме участь в одній операції розділення, та в одній операції злиття.
+
+Таким чином, кожний рівень викликів має загальну вартість, пропорційну до `n`. Оскільки загалом _log(n)_ рівнів виклику, ми отримаємо загальну вартість, пропорційну до _n log(n)_. Ця вартість не залежить від початкового розподілення елементів в списку, так що найгірша вартість є такою самою, що і середня вартість. Ця властивість робить сортування злиттям привабливим алгоритмом для сортування списків.
+
+Ось приклад того, як використовується `msort`:
+[source,scala]
+----
 scala> msort((x: Int, y: Int) => x < y)(List(5, 7, 1, 3))
 res31: List[Int] = List(1, 3, 5, 7)
-The msort function is a classical example of the currying concept discussed in Section 9.3.
-Currying makes it easy to specialize the function for particular comparison functions. Here's an
-example:
+----
+Функція `msort` є класичним прикладом концепції карування, обговореної в Розділі 9.3. Карування робить простим спеціалізувати функцію для певних функцій порівняння. Ось приклад:
+[source,scala]
+----
 scala> val intSort = msort((x: Int, y: Int) => x < y) _
 intSort: List[Int] => List[Int] = <function1>
-The intSort variable refers to a function that takes a list of integers and sorts them in numerical
-order. As described in Section 8.6, an underscore stands for a missing argument list. In this case, themissing argument is the list that should be sorted. As another example, here's how you could define a
-function that sorts a list of integers in reverse numerical order:
+----
+Змінна `intSort` посилається на функцію, що приймає список цілих, та сортує їх в числовому порядку. Як описане в Розділі 8.6, підкреслення стоїть замість відсутнього списку аргументів. В цьому випадку відсутній аргумент це список, що має бути впорядкований. Як інший приклад, ось як ви можете визначити функцію, що сортує  список цілих в зворотньому числовому порядку:
+[source,scala]
+----
 scala> val reverseIntSort = msort((x: Int, y: Int) => x > y) _
 reverseIntSort: (List[Int]) => List[Int] = <function>
-Because you provided the comparison function already via currying, you now need only provide the list
-to sort when you invoke the intSort or reverseIntSort functions. Here are some examples:
+----
+Оскільки ви вже провадите функцію порівняння через карування, тепер вам треба провадити список для сортування, коли ви викликаєте функції `intSort` або `reverseIntSort`. Ось деякі приклади:
+[source,scala]
+----
 scala> val mixedInts = List(4, 1, 9, 0, 5, 8, 3, 6, 2, 7)
 mixedInts: List[Int] = List(4, 1, 9, 0, 5, 8, 3, 6, 2, 7)
+
 scala> intSort(mixedInts)
 res0: List[Int] = List(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
+
 scala> reverseIntSort(mixedInts)
 res1: List[Int] = List(9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
-16.7 HIGHER-ORDER METHODS ON CLASS LIST
-Many operations over lists have a similar structure. Several patterns appear time and time again. Some
-examples are: transforming every element of a list in some way, verifying whether a property holds for
-all elements of a list, extracting from a list elements satisfying a certain criterion, or combining the
-elements of a list using some operator. In Java, such patterns would usually be expressed by idiomatic
-combinations of for or while loops. In Scala, they can be expressed more concisely and directly using
-higher-order operators,footnote:[By higher-order operators, we mean higher-order functions used in operator notation. As mentioned in Section 9.1, a function is "higher-order" if it takes one or more other functions as a parameters.] which are implemented as methods in class List. These higher-order
-operators are discussed in this section.
-Mapping over lists: map, flatMap and foreach
-The operation xs map f takes as operands a list xs of type List[T] and a function f of type T => U. It
-returns the list that results from applying the function f to each list element in xs. For instance:
+----
+16.7 Методи вищих порядків класу List
+-------------------------------------
+Багато операцій зі списками мають подібну структуру. Декілька шаблонів з'являються раз за разом. Деякі приклади: трансформація кожного елементу списка в деякий спосіб, перевірка, чи властивість дотримується для всіх елементів в списку, виділення зі списку елементів, що задовільняють певному критерію, або комбінування елементів списку з використанням деякого оператора. В Java такі шаблони будуть зазвичай виражені ідіоматичними комбінаціями циклів `for` або `while`. В Scala вони можуть бути виражені більш стисло та напряму, використовуючи оператори вищих порядків,footnote:[Під операторами вищих порядків ми розуміємо функції вищих порядків, використані в операторній нотації. Як зазначено в Розділі 9.1, функція є "вищого порядку", якщо вона сприймає одну або більше інших функцій в якості параметрів.] що реалізовані як методи в класі `List`. Ці оператори вищого порядку обговорюються в цьому розділі.
+
+Відзеркалення списків: `map`, `flatMap`, `foreach`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Операція `xs map f` бере як операнди список `xs` типу `List[T]`, та функцію `f` типу `T => U`. Вона повертає список, що утворюється застосуванням функції `f` до кожного елементу в `xs`. Наприклад:
+[source,scala]
+----
 scala> List(1, 2, 3) map (_ + 1)
 res32: List[Int] = List(2, 3, 4)
+
 scala> val words = List("the", "quick", "brown", "fox")
 words: List[String] = List(the, quick, brown, fox)
+
 scala> words map (_.length)
 res33: List[Int] = List(3, 5, 5, 3)
+
 scala> words map (_.toList.reverse.mkString)
 res34: List[String] = List(eht, kciuq, nworb, xof)
-The flatMap operator is similar to map, but it takes a function returning a list of elements as its right
-operand. It applies the function to each list element and returns the concatenation of all function results.
-The difference between map and flatMap is illustrated in the following example:
+----
+Оператор `flatMap` подібний до `map`, але він приймає функцію, що повертає список елементів в якості свого правого операнда. Він застосовує функцію до кожного елемена списку, та повертає конкатенацію всіх результатів функції. Різниця між `map` та `flatMap` проілюстрована в наступному прикладі:
+[source,scala]
+----
 scala> words map (_.toList)
 res35: List[List[Char]] = List(List(t, h, e), List(q, u, i,
-c, k), List(b, r, o, w, n), List(f, o, x))scala> words flatMap (_.toList)
+c, k), List(b, r, o, w, n), List(f, o, x))
+
+scala> words flatMap (_.toList)
 res36: List[Char] = List(t, h, e, q, u, i, c, k, b, r, o, w,
 n, f, o, x)
-You see that where map returns a list of lists, flatMap returns a single list in which all element lists are
-concatenated.
-The differences and interplay between map and flatMap are also demonstrated by the following
-expression, which constructs a list of all pairs (i, j) such that 1 ≤ j < i < 5:
+----
+Ви бачите, що коли `map` повертає список зі списків, `flatMap` повертає єдиний список, в якому всі елементи списку конкатеновані.
+
+Відмінність та взаємодія між `map` та `flatMap` також продемонстрована в наступному виразі, що конструює список з усіх пар `(i, j)`, таких що `1 ≤ j < i < 5`:
+[source,scala]
+----
 scala> List.range(1, 5) flatMap (
-i => List.range(1, i) map (j => (i, j))
+  i => List.range(1, i) map (j => (i, j))
 )
 res37: List[(Int, Int)] = List((2,1), (3,1), (3,2), (4,1),
 (4,2), (4,3))
-List.range is a utility method that creates a list of all integers in some range. It is used twice in this
-example: once to generate a list of integers from 1 (including) until 5 (excluding), and a second time to
-generate a list of integers from 1 until i, for each value of i taken from the first list. The map in this
-expression generates a list of tuples (i, j) where j < i. The outer flatMap in this example generates this
-list for each i between 1 and 5, and then concatenates all the results. Alternatively, the same list can be
-constructed with a for expression:
+----
+`List.range` є допоміжний метод, що створює список з усіх цілих в деякому диапазоні. Він використовується двічи в цьому прикладі: один раз для генерації списку цілих від `1` (включно) до `5` (виключно), та другий раз для генерації списку цілих від `1` до `i`, для кожного значення `i`, взятого з першого списку. `map` в цьому виразі генерує список таплів `(i, j)`, де `j < i`. Зовнішній `flatMap` в цьому прикладі генерую цей список для кожного `i` між `1` та `5`, та потім конкатенує всі результати. Альтернативно, той самий список може бути сконструйований за допомогою виразу `for`:
+[source,scala]
+----
 for (i <- List.range(1, 5); j <- List.range(1, i)) yield (i, j)
-You'll learn more about the interplay of for expressions and list operations in Chapter 23.
-The third map-like operation is foreach. Unlike map and flatMap, however, foreach takes a procedure
-(a function with result type Unit) as right operand. It simply applies the procedure to each list element.
-The result of the operation itself is again Unit; no list of results is assembled. As an example, here is a
-concise way of summing up all numbers in a list:
+----
+Ви вивчите більше щодо взаємодії між виразами `for` та операціями списків в Главі 23.
+
+Третя `map`-подібна операція є `foreach`. Однак на відміну від `map` та `flatMap`, `foreach` приймає процедуру (функцію, тип якої `Unit`) в якості правого операнда. Він просто застосовує процедуру до кожного елементу списку. Результат самої операції знову `Unit`; список результатів не збирається. Як приклад, ось стислий спосіб підсумувати всі числа в списку:
+[source,scala]
+----
 scala> var sum = 0
 sum: Int = 0
+
 scala> List(1, 2, 3, 4, 5) foreach (sum += _)
+
 scala> sum
 res39: Int = 15
-Filtering lists: filter, partition, find, takeWhile, dropWhile, and span
-The operation "xs filter p" takes as operands a list xs of type List[T] and a predicate function pof
-type T => Boolean. It yields the list of all elements x in xs for which p(x) is true. For instance:
+----
+=== Фільтрування списків: `filter`, `partition`, `find`, `takeWhile`, `dropWhile`, `span`
+
+Операця `xs filter p` приймає як операнди список `xs` типу `List[T]`, та функцію предикат `pof` типу `T => Boolean`. Вона видає список всіх елементів `x` в `xs`, для яких `p(x)` є `true`. Наприклад:
+[source,scala]
+----
 scala> List(1, 2, 3, 4, 5) filter (_ % 2 == 0)
 res40: List[Int] = List(2, 4)
+
 scala> words filter (_.length == 3)
-res41: List[String] = List(the, fox)The partition method is like filter but returns a pair of lists. One list contains all elements for which the
-predicate is true, while the other contains all elements for which the predicate is false. It is defined by
-the equality:
-xs partition p
-equals
-(xs filter p, xs filter (!p(_)))
-Here's an example:
+res41: List[String] = List(the, fox)
+----
+Метод `partition` подібна до `filter`, але повертає пару списків. Один список містить всі елементи, для яких предикат є `true`, доки інший містить всі елементи, для яких предикат є `false`. Це визначено через еквівалентність:
+[source,scala]
+----
+xs partition p _equals_ (xs filter p, xs filter (!p(_)))
+----
+Ось приклад:
+[source,scala]
+----
 scala> List(1, 2, 3, 4, 5) partition (_ % 2 == 0)
 res42: (List[Int], List[Int]) = (List(2, 4),List(1, 3, 5))
-The find method is also similar to filter, but it returns the first element satisfying a given predicate,
-rather than all such elements. The operation xs find p takes a list xs and a predicatep as operands. It
-returns an optional value. If there is an element x in xs for which p(x) is true,Some(x) is returned.
-Otherwise, p is false for all elements, and None is returned. Here are some examples:
+----
+Метод `find` також подібний до `filter`, але він повертає перший елемент, що задовільняє наданому предикату, скоріше ніж всі такі елементи. Операція `xs find p` приймає список `xs` та предикат `ep` як операнди. Він повертає опціональне значення. Якщо існує елемент `x` в `xs`, для якого `p(x)` є `true`, повертається `Some(x)`. Інакше `p` є `false` для всіх елементів, та повертається `None`. Ось деякі приклади:
+[source,scala]
+----
 scala> List(1, 2, 3, 4, 5) find (_ % 2 == 0)
 res43: Option[Int] = Some(2)
+
 scala> List(1, 2, 3, 4, 5) find (_ <= 0)
 res44: Option[Int] = None
-The takeWhile and dropWhile operators also take a predicate as their right operand. The
-operation xs takeWhile p takes the longest prefix of list xs such that every element in the prefix
-satisfies p. Analogously, the operation xs dropWhile p removes the longest prefix from list xssuch that
-every element in the prefix satisfies p. Here are some examples:
+----
+Оператори `takeWhile` та `dropWhile` також приймають предикат як свій правий операнд. Операція `xs takeWhile p` бере найдовший префікс списку `xs`, такий що для кожного елементу в префіксі задовільняється `p`. Аналогічно, операція `xs dropWhile p` видаляє найдовший префікс зі списку `xs`, такий, що для кожного елементу в префіксі задовільняється `p`. Ось деякі приклади:
+[source,scala]
+----
 scala> List(1, 2, 3, -4, 5) takeWhile (_ > 0)
 res45: List[Int] = List(1, 2, 3)
+
 scala> words dropWhile (_ startsWith "t")
 res46: List[String] = List(quick, brown, fox)
-The span method combines takeWhile and dropWhile in one operation, just
-like splitAt combinestake and drop. It returns a pair of two lists, defined by the equality:
-xs span p
-equals
-(xs takeWhile p, xs dropWhile p)
-Like splitAt, span avoids traversing the list xs twice:
+----
+Метод `span` комбінує `takeWhile` та `dropWhile` в одній операції, так само, як `splitAt` комбінує `take` та `drop`. Він повертає пару з двох списків, визначених еквівалентістю:
+[source,scala]
+----
+xs span p _equals_ (xs takeWhile p, xs dropWhile p)
+----
+Як і `splitAt`, `span` уникає подвійного подорожування списком `xs`:
+[source,scala]
+----
 scala> List(1, 2, 3, -4, 5) span (_ > 0)
 res47: (List[Int], List[Int]) = (List(1, 2, 3),List(-4, 5))
-Predicates over lists: forall and exists
-The operation xs forall p takes as arguments a list xs and a predicate p. Its result is true if all elements
-in the list satisfy p. Conversely, the operation xs exists p returns true if there is an element in xs that
-satisfies the predicate p. For instance, to find out whether a matrix represented as a list of lists has a
-row with only zeroes as elements:
+----
+Предикати на списках: `forall` та `exists`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Операція `xs forall p` приймає як аргументи список `xs` та предикат `p`. Її результат є `true`, якщо всі елементи в списку задовільняють `p`. Відповідно, операція `xs exists p` повертає `true`, якщо існує елемент в `xs`, що задовільняє предикату `p`. Наприклад, щоб з'ясувати, чи матриця, представлена як список списків, має рядок з тільки нульовими елементами:
+[source,scala]
+----
 scala> def hasZeroRow(m: List[List[Int]]) =
-m exists (row => row forall (_ == 0))hasZeroRow: (m: List[List[Int]])Boolean
+m exists (row => row forall (_ == 0))
+hasZeroRow: (m: List[List[Int]])Boolean
+
 scala> hasZeroRow(diag3)
 res48: Boolean = false
-Folding lists: /: and :\
-Another common kind of operation combines the elements of a list with some operator. For instance:
-sum(List(a, b, c))
-equals
-0 + a + b + c
-This is a special instance of a fold operation:
+----
+Згортання списків: `/:` та `:\`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Інший загальний різновид операцій комбінують елементи списку за допомогою деякого оператору. Наприклад:
+[source,scala]
+----
+sum(List(a, b, c)) _equals_ 0 + a + b + c
+----
+Це спеціальний примірник операції згортання:
+[source,scala]
+----
 scala> def sum(xs: List[Int]): Int = (0 /: xs) (_ + _)
 sum: (xs: List[Int])Int
-Similarly:
-product(List(a, b, c))
-equals
-1 * a * b * c
-is a special instance of this fold operation:
+----
+Подібно до цього:
+[source,scala]
+----
+product(List(a, b, c)) _equals_ 1 * a * b * c
+----
+є особливим примірником цього оператора:
+[source,scala]
+----
 scala> def product(xs: List[Int]): Int = (1 /: xs) (_ * _)
 product: (xs: List[Int])Int
-A fold left operation "(z /: xs) (op)" involves three objects: a start value z, a list xs, and a binary
-operation op. The result of the fold is op applied between successive elements of the list prefixed by z.
-For instance:
-(z /: List(a, b, c)) (op)
-equals
-op(op(op(z, a), b), c)
-Or, graphically:
-Here's another example that illustrates how /: is used. To concatenate all words in a list of strings with
-spaces between them and in front, you can write this:
+----
+Операція лівого згортання `(z /: xs) (op)` включає три об'єкти: початкове значення `z`, список `xs`, та двомісну операцію `op`. Результат згортання є `op`, застосований між послідовними елементами списку з префіксом `z`.
+
+Наприклад:
+[source,scala]
+----
+(z /: List(a, b, c)) (op) _equals_ op(op(op(z, a), b), c)
+----
+Або графічно:
+
+Ось інший приклад, що ілючтрує, як використовується `/:`. Щоб конкатенувати всі слова в списку рядків з проміжками між ними та напочатку, ви можете записати таке:
+[source,scala]
+----
 scala> ("" /: words) (_ + " " + _)
 res49: String = " the quick brown fox"
-This gives an extra space at the beginning. To remove the space, you can use this slight variation:
+----
+Це дає зайвий проміжок на початку. Щоб видалити цей проміжок ви можете використати невелику варіацію:
+[source,scala]
+----
 scala> (words.head /: words.tail) (_ + " " + _)
-res50: String = the quick brown foxThe /: operator produces left-leaning operation trees (its syntax with the slash rising forward is intended
-to be a reflection of that). The operator has :\ as an analog that produces right-leaning trees. For
-instance:
-(List(a, b, c) :\ z) (op)
-equals
-op(a, op(b, op(c, z)))
-Or, graphically:
-The :\ operator is pronounced fold right. It involves the same three operands as fold left, but the first
-two appear in reversed order: The first operand is the list to fold, the second is the start value.
-For associative operations, fold left and fold right are equivalent, but there might be a difference in
-efficiency. Consider for instance an operation corresponding to the flattenmethod, which concatenates
-all elements in a list of lists. This could be implemented with either fold left or fold right:
+res50: String = the quick brown fox
+----
+Оператор `/:` продукує ліво-сторонні дерева операцій (його синтаксис з косою, що підіймається по ходу має бути відображенням цього). Оператор має `:\` як аналог, що продукує право-сторонні дерева. Наприклад:
+[source,scala]
+----
+(List(a, b, c) :\ z) (op) _equals_ op(a, op(b, op(c, z)))
+----
+Або графічно:
+
+Оператор `:\` промовляється як праве згортання. Він включає ті самі три операнди що і ліве згортання, але перші два ідуть в зворотньому порядку: перший операнд є список для згортання, другий є початковим значенням.
+
+Для асоціативних операцій праве і ліве згортання еквівалентні, але може бути різниця в ефективності. Для приклада розгляньте операцію, відповідну до метода `flatten`, що конкатенує всі елементи в списку списків. Це може бути реалізоване за допомогою або лівого, або правого згортання:
+[source,scala]
+----
 def flattenLeft[T](xss: List[List[T]]) =
-(List[T]() /: xss) (_ ::: _)
+  (List[T]() /: xss) (_ ::: _)
+
 def flattenRight[T](xss: List[List[T]]) =
-(xss :~List[T]()) (_ ::: _)
-Because list concatenation, xs ::: ys, takes time proportional to its first argument xs, the implementation
-in terms of fold right in flattenRight is more efficient than the fold left implementation in flattenLeft.
-The problem is that flattenLeft(xss) copies the first element listxss.head n-1 times, where n is the length
-of the list xss.
-Note that both versions of flatten require a type annotation on the empty list that is the start value of the
-fold. This is due to a limitation in Scala's type inferencer, which fails to infer the correct type of the list
-automatically. If you try to leave out the annotation, you get the following:
+  (xss :~List[T]()) (_ ::: _)
+----
+Оскікльи конкатенація списку `xs ::: ys` займає час, пропорційний до свого першого елемента `xs`, реалізація в термінах правого згортання в `flattenRight` більш ефективна, ніж реалізація лівого згортання в `flattenLeft`. Проблема в тому, що `flattenLeft(xss)` копіює перший елемент списку `xss.head` `n-1` разів, де `n` є довжина списку `xss`.
+
+Зауважте, що обоє версії `flatten` потребують анотацію типу на порожніх списках, що є початковим значенням згортання. Це через обмеженість виводу типів в Scala, що відмовляється виводити коректний тип списків автоматично. Якщо ви приберете анотацію, ви отримаєте наступне:
+[source,scala]
+----
 scala> def flattenRight[T](xss: List[List[T]]) =
-(xss :~List()) (_ ::: _)
+           (xss :~List()) (_ ::: _)
 <console>:8: error: type mismatch;
-found
-: List[T]
+found   : List[T]
 required: List[Nothing]
-(xss :~List()) (_ ::: _)
-^
-To find out why the type inferencer goes wrong, you'll need to know about the types of the fold
-methods and how they are implemented. More on this in Section 16.10. Lastly, although
-the /: and :\ operators have the advantage that the direction of the slash resembles the graphical
-depiction of their respective left or right-leaning trees, and the associativity of the colon character
-places the start value in the same position in the expression as it is in the tree, some may find theresulting code less than intuitive. If you prefer, you can use the methods
-named foldLeft and foldRight instead, which are also defined on class List.
-Example: List reversal using fold
-Earlier in the chapter you saw an implementation of method reverse, named rev, whose running time
-was quadratic in the length of the list to be reversed. Here is a different implementation of reverse that
-has linear cost. The idea is to use a fold left operation based on the following scheme:
+           (xss :~List()) (_ ::: _)
+                              ^
+----
+Щоб з'ясувати, чому вивід типів не здолав ситуацію, вам треба знати щодо типів методів `fold`, та як вони реалізовані. Більше про це в Розділі 16.10. Нарешті, хоча оператори `/:` та `:\` мають перевагу в тому, що напрямок косої нагадує графічне зображення відповідних ліво- та право-сторонніх дерев, та асоциативність символа двокрапки покладає початкове значення в ту саму позицію в виразі, що і в дереві, дехто може винайти результуючий код недостатньо інтуітивним. Якщо вам подобається, ви можете використовувати замість цього методи `foldLeft` та `foldRight`, що також визначені в класі `List`.
+
+Приклад: реверс `List` з використанням `fold`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Раніше в цій главі ви бачили реалізацію метода `reverse`, названу `rev`, чий час виконання був квадратичним відносно довжини списку, який він обертав. Ось інша реалізація реверсу, що має лінійну ціну. Ідея полягає в використанні лівого згортання, базуючись на наступній схемі:
+[source,scala]
+----
 def reverseLeft[T](xs: List[T]) = (startvalue /: xs)(operation)
-What remains is to fill in the startvalue and operation parts. In fact, you can try to deduce these parts
-from some simple examples. To deduce the correct value of startvalue, you can start with the smallest
-possible list, List(), and calculate as follows:
-List()
-equals (by the properties of reverseLeft)
-reverseLeft(List())
-equals (by the template for reverseLeft)
-(startvalue /: List())(operation)
-equals (by the definition of /:)
+----
+Що залишилось, це заповнити частини _startvalue_ та _operation_. Фактично, ви можете спробувати вгадати ці частини з деяких простих прикладів. Щоб вивести коректне значення для `startvalue`, ви можете почати з найменьшим можливим списком, `List()`, та рахувати так:
+[source,scala]
+----
+List() _equals_ (за властивостями reverseLeft) 
+
+reverseLeft(List()) _equals_ (за шаблоном reverseLeft)
+
+(startvalue /: List())(operation) _equals_ (за визначенням /:)
+
 startvalue
-Hence, startvalue must be List(). To deduce the second operand, you can pick the next smallest list as
-an example case. You know already that startvalue is List(), so you can calculate as follows:
-List(x)
-equals (by the properties of reverseLeft)
-reverseLeft(List(x))
-equals (by the template for reverseLeft, with startvalue = List())
-(List() /: List(x)) (operation)
-equals (by the definition of /:)
+----
+Таким чином, _startvalue_ має бути `List()`. Щоб вивести другий операнд, ви можете взяти наступний найменььший список як приклад. Ви вже знаєте, що_startvalue_ є List(), так що ви можете рахувати так:
+[source,scala]
+----
+List(x) _equals_ (за властивостями  reverseLeft)
+
+reverseLeft(List(x)) _equals_ (за шаблоном reverseLeft, з startvalue = List())
+
+(List() /: List(x)) (operation) _equals_ (за визначенням /:)
+
 operation(List(), x)
-Hence, operation(List(), x) equals List(x), which can also be written as x :: List(). This suggests taking
-as operation the :: operator with its operands exchanged. (This operation is sometimes called "snoc," in
-reference to ::, which is called cons.) We arrive then at the following implementation for reverseLeft:
+----
+Таким чином, _operation_ `(List(), x)` еквівалентне `List(x)`, що також може бути записане як `x :: List()`. Це підказує взяти за операцію оператор `::` з переставленими операндами. (Ця операція іноді називається `snoc`, з посиланням на `::`, що називається `cons`.) Ми підходимо до наступної реалізації для `reverseLeft`:
+[source,scala]
+----
 def reverseLeft[T](xs: List[T]) =
-(List[T]() /: xs) {(ys, y) => y :: ys}
-Again, the type annotation in List[T]() is needed to make the type inferencer work. If you analyze the
-complexity of reverseLeft, you'll find that it applies a constant-time operation ("snoc") n times,
-where n is the length of the argument list. Thus, the complexity ofreverseLeft is linear.Sorting lists: sortWith
-The operation xs sortWith before, where "xs" is a list and "before" is a function that can be used to
-compare two elements, sorts the elements of list xs. The expression x before y should
-returntrue if x should come before y in the intended ordering for the sort. For instance:
+  (List[T]() /: xs) {(ys, y) => y :: ys}
+----
+І знову, анотація типу в `List[T]()` є необхідною, щоб вивід типів почав робити. Якщо ви аналізуєте складність `reverseLeft`, ви винайдете, що він застосовує операцію сталого часу (`snoc`) `n` раз, де `n` є довжиною списка аргумента. Таким чином, складність `reverseLeft` є лінійною.
+
+Сортування списків: `sortWith`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Операція `xs sortWith before`, де `xs` є списком, а `before` функцією, що може використовуватись для порівняння двох елементів, сортує елементи списку `xs`. Вираз `x before y` повинен повертати `true`, якщо `x` повинен іти перед `y` в бажаному впорядкуванні. Наприклад:
+[source,scala]
+----
 scala> List(1, -3, 4, 2, 6) sortWith (_ < _)
 res51: List[Int] = List(-3, 1, 2, 4, 6)
+
 scala> words sortWith (_.length > _.length)
 res52: List[String] = List(quick, brown, the, fox)
-Note that sortWith performs a merge sort similar to the msort algorithm shown in the last section.
-But sortWith is a method of class List, whereas msort is defined outside lists.
-16.8 METHODS OF THE LIST OBJECT
-So far, all operations you have seen in this chapter are implemented as methods of class List, so you
-invoke them on individual list objects. There are also a number of methods in the globally accessible
-object scala.List, which is the companion object of class List. Some of these operations are factory
-methods that create lists. Others are operations that work on lists of some specific shape. Both kinds of
-methods will be presented in this section.
-Creating lists from their elements: List.apply
-You've already seen on several occasions list literals such as List(1, 2, 3). There's nothing special about
-their syntax. A literal like List(1, 2, 3) is simply the application of the object Listto the elements 1, 2, 3.
-That is, it is equivalent to List.apply(1, 2, 3):
+----
+Зауважте, що `sortWith` виконує сортування злиттям, подібне до алгоритму `msort`, показаному в останньому розділі. Але `sortWith` є методом класу `List`, тоді як `msort` визначений за межами списків.
+
+16.8 Методи об'єкта List
+------------------------
+Досі всі операції, що ви бачили в цій главі, реалізовані як методи класу `List`, так що ви викликаєте їх на окремих об'єктах списків. Також є декілька методів в глобально досяжному об'єкті `scala.List`, що є об'єктом компанйоном класу `List`. Деякі з ціх операцій є методами фабрик, що створюють списки. Інші є операціями, що роблять зі списками деякої специфічної форми. Обоє типи методів будуть представлені в цьому розділі.
+
+Створення списків зі своїх елементів: `List.apply`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ви вже бачили при нагоді літерали списків, такі як `List(1, 2, 3)`. Немає нічого особливого щодо їх синтаксису. Літерал як `List(1, 2, 3)` є простим застосуванням об'єкта `List` до елементів `1, 2, 3`. Тобто, це еквівалентно до `List.apply(1, 2, 3)`:
+[source,scala]
+----
 scala> List.apply(1, 2, 3)
 res53: List[Int] = List(1, 2, 3)
-Creating a range of numbers: List.range
-The range method, which you saw briefly earlier in the discussion of map and flatmap, creates a list
-consisting of a range of numbers. Its simplest form is List.range(from, until), which creates a list of all
-numbers starting at from and going up to until minus one. So the end value, until, does not form part of
-the range.
-There's also a version of range that takes a step value as third parameter. This operation will yield list
-elements that are step values apart, starting at from. The step can be positive or negative:
+----
+Створення диапазона цілих: `List.range`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `range`, що ви мимохідь бачили раніше в дискусії про `map` та `flatmap`, створює список, що відповідає диапазону чисел. Його найпростіша форма є `List.range(from, until)`, що створює список з усіх чисел, що починається з `from`, та іде до `until` мінус один. Так що кінцеве значення, `until`, не формує частину диапазону.
+
+Також існує версія `range`, що приймає значення `step` як третій параметр. Ця операція буде давати списко елементів, що відстоять один від одного на відстані `step`. Значення `step` може бути додатнім або від'ємним:
+[source,scala]
+----
 scala> List.range(1, 5)
 res54: List[Int] = List(1, 2, 3, 4)
+
 scala> List.range(1, 9, 2)
 res55: List[Int] = List(1, 3, 5, 7)
+
 scala> List.range(9, 1, -3)
-res56: List[Int] = List(9, 6, 3)Creating uniform lists: List.fill
-The fill method creates a list consisting of zero or more copies of the same element. It takes two
-parameters: the length of the list to be created, and the element to be repeated. Each parameter is given
-in a separate list:
+res56: List[Int] = List(9, 6, 3)
+----
+Створення уніформних списків: `List.fill`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `fill` створює список, що складається з нуля або більше копій того самого елемента. Він приймає два параметри: довжину створюваного списку, та елемент, що треба повторити. Кожний параметр наданий як окремий список:
+[source,scala]
+----
 scala> List.fill(5)('a')
 res57: List[Char] = List(a, a, a, a, a)
+
 scala> List.fill(3)("hello")
 res58: List[String] = List(hello, hello, hello)
-If fill is given more than two arguments, then it will make multi-dimensional lists. That is, it will make
-lists of lists, lists of lists of lists, etc. The additional arguments go in the first argument list.
+----
+Якщо в `fill` надати більше ніж два аргументи, тоді він бути створювати багато-вимірні списки. Тобто він буде створювати списки списків, спискі списків списків, і так далі. Додаткові аргументи ідуть в першому списку аргументів.
+[source,scala]
+----
 scala> List.fill(2, 3)('b')
 res59: List[List[Char]] = List(List(b, b, b), List(b, b, b))
-Tabulating a function: List.tabulate
-The tabulate method creates a list whose elements are computed according to a supplied function. Its
-arguments are just like those of List.fill: the first argument list gives the dimensions of the list to create,
-and the second describes the elements of the list. The only difference is that instead of the elements
-being fixed, they are computed from a function:
+----
+Функція табуляції: `List.tabulate`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `tabulate` створює список, чиї елементи обчислені згідно наданої функції. Її аргументи такі самі, як для `List.fill`: перший аргумент `list`надає розмірність створюваного списку, та другий описує елементи списку. Єдина відміність в тому, що замість фіксованих елементів вони обчислюються функцією:
+[source,scala]
+----
 scala> val squares = List.tabulate(5)(n => n * n)
 squares: List[Int] = List(0, 1, 4, 9, 16)
+
 scala> val multiplication = List.tabulate(5,5)(_ * _)
 multiplication: List[List[Int]] = List(List(0, 0, 0, 0, 0),
-List(0, 1, 2, 3, 4), List(0, 2, 4, 6, 8),
-List(0, 3, 6, 9, 12), List(0, 4, 8, 12, 16))
-Concatenating multiple lists: List.concat
-The concat method concatenates a number of element lists. The lists to be concatenated are supplied as
-direct arguments to concat:
+    List(0, 1, 2, 3, 4), List(0, 2, 4, 6, 8),
+    List(0, 3, 6, 9, 12), List(0, 4, 8, 12, 16))
+----
+Конкатенація декількох списків: `List.concat`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `concat` конкатенує елементи декількох списків. Списки, що будуть конкатеновані, надаються як прямі аргументи до `concat`:
+[source,scala]
+----
 scala> List.concat(List('a', 'b'), List('c'))
 res60: List[Char] = List(a, b, c)
+
 scala> List.concat(List(), List('b'), List('c'))
 res61: List[Char] = List(b, c)
+
 scala> List.concat()
 res62: List[Nothing] = List()
-16.9 PROCESSING MULTIPLE LISTS TOGETHER
-The zipped method on tuples generalizes several common operations to work on multiple lists instead
-of just one. One such operation is map. The map method for two zipped lists maps pairs of elements
-rather than individual elements. One pair is for the first element of each list, another pair is for thesecond element of each list, and so on—as many pairs as the lists are long. Here is an example of its
-use:
+----
+16.9 Обробка декількох списків разом
+------------------------------------
+Метод `zipped` на таплах узагальнює декілька загальних операцій для роботи з декількома списками замість одного. Одна така операція є `map`. Метод `map` для двох з'єднаних списків відображує пари елементів, скоріше ніж окремі елементи. Одна пара для перших елементів кожного списку, інша пара для другого елементу кожного списку, і так далі — так багато пар, що і довжина списків. Ось приклад його використання:
+[source,scala]
+----
 scala> (List(10, 20), List(3, 4, 5)).zipped.map(_ * _)
 res63: List[Int] = List(30, 80)
-Notice that the third element of the second list is discarded. The zipped method zips up only as many
-elements as appear in all the lists together. Any extra elements on the end are discarded.
-There are also zipped analogs to exists and forall. They are just like the single-list versions of those
-methods except they operate on elements from multiple lists instead of just one:
+----
+Зауважте, що третій елемент другого списку відкидається. Метод `zipped` поєднує тільки стільки елементів, скільки з'являється в усіх списках одночасно. Любі додаткові елементи в кінці відкидаються.
+
+Існують також `zipped` аналоги для `exists` та `forall`. Вони подібні до версій з одним списком для ціх методів, за винятком, що вони оперують на елементах з декількох списків замість одного:
+[source,scala]
+----
 scala> (List("abc", "de"), List(3, 2)).zipped.
-forall(_.length == _)
+        forall(_.length == _)
 res64: Boolean = true
+
 scala> (List("abc", "de"), List(3, 2)).zipped.
-exists(_.length != _)
+        exists(_.length != _)
 res65: Boolean = false
-THE FAST TRACK
-In the next (and final) section of this chapter, we provide insight into Scala's type inference algorithm.
-If you're not interested in such details right now, you can skip the entire section and go straight to the
-conclusion here.
-16.10 UNDERSTANDING SCALA'S TYPE INFERENCE ALGORITHM
-One difference between the previous uses of sortWith and msort concerns the admissible syntactic
-forms of the comparison function.
-Compare:
+----
+Швидкий шлях
+------------
+В настуному (і заключному) розділі цієї глави ми зробимо огляд алгоритму виводу типів Scala. Якщо ви не зацікавлені в таких деталях прямо зараз, ви можете пропустити цілий розділ, та перейти прямо до підсумків.
+
+16.10 Розуміння алгоритма виводу типів Scala
+--------------------------------------------
+Одна відмінність між попереднім використанням `sortWith` та `msort` стосується допустимих синтаксичних форм функції порівняння.
+
+Порівняйте:
+[source,scala]
+----
 scala> msort((x: Char, y: Char) => x > y)(abcde)
 res66: List[Char] = List(e, d, c, b, a)
-with:
+----
+з:
+[source,scala]
+----
 scala> abcde sortWith (_ > _)
 res67: List[Char] = List(e, d, c, b, a)
-The two expressions are equivalent, but the first uses a longer form of comparison function with named
-parameters and explicit types. The second uses the concise form, (_ > _), where named parameters are
-replaced by underscores. Of course, you could also use the first, longer form of comparison
-with sortWith.
-However, the short form cannot be used with msort.
+----
+Два виразу еквівалентні, але перший використовує довшу форму функції порівняння, з іменованими параметрами та явними типами. Другий використовує стислу форму, `(_ > _)`, де іменовані параметри замінені на підкреслення. Звичайно, ви також можете використовувати першу, довшу форму порівняння в `sortWith`.
+
+Однак коротша форма не може бути використана з `msort`.
+[source,scala]
+----
 scala> msort(_ > _)(abcde)
 <console>:12: error: missing parameter type for expanded
 function ((x$1, x$2) => x$1.$greater(x$2))
-msort(_ > _)(abcde)
-^To understand why, you need to know some details of Scala's type inference algorithm. Type inference
-in Scala is flow based. In a method application m(args), the inferencer first checks whether the
-method m has a known type. If it does, that type is used to infer the expected type of the arguments. For
-instance, in abcde.sortWith(_ > _), the type of abcde is List[Char]. Hence,sortWith is known to be a
-method that takes an argument of type (Char, Char) => Boolean and produces a result of
-type List[Char]. Since the parameter types of the function arguments are known, they need not be
-written explicitly. With what it knows about sortWith, the inferencer can deduce that (_ > _) should
-expand to ((x: Char, y: Char) => x > y) where x and y are some arbitrary fresh names.
-Now consider the second case, msort(_ > _)(abcde). The type of msort is a curried, polymorphic
-method type that takes an argument of type (T, T) => Boolean to a function
-from List[T] toList[T] where T is some as-yet unknown type. The msort method needs to be
-instantiated with a type parameter before it can be applied to its arguments.
-Because the precise instance type of msort in the application is not yet known, it cannot be used to infer
-the type of its first argument. The type inferencer changes its strategy in this case; it first type checks
-method arguments to determine the proper instance type of the method. However, when tasked to type
-check the short-hand function literal, (_ > _), it fails because it has no information about the types of
-the implicit function parameters that are indicated by underscores.
-One way to resolve the problem is to pass an explicit type parameter to msort, as in:
+      msort(_ > _)(abcde)
+            ^
+----
+Щоб зрозуміти чому, вам треба знати деякі деталі алгоритму виводу типів в Scala. Виведення типів в Scala базується на потоці. В застосуванні методу `m(args)`, вивід типів спершу перевіряє, чи метод `m` має відомий тип. Якщо це так, цей тип використовується для виведення очікуваних типів аргументів. Наприклад, в `abcde.sortWith(_ > _)`, тип `abcde` є `List[Char]`. Таким чином,  `sortWith` відомий як метод, що приймає аргумент типу `(Char, Char) => Boolean`, та продукує результат типу `List[Char]`. Оскільки параметри типу аргументів функції відомі, їх не треба записувати явно. Маючи те, що відомо про `sortWith`, вивід може здогадатись, що `(_ > _)` має розширюватись до `((x: Char, y: Char) => x > y)`, що `x` та `y` є деякими довільними новими іменами.
+
+Тепер розглянемо другий випадок, `msort(_ > _)(abcde)`. Тип `msort` є карований, поліморфний тип методу, що приймає аргумент типу `(T, T) => Boolean` до функції від `List[T]` до `List[T]`, де `T` є досі невідомий тип. Метод `msort` потребує бути створений з параметром типу, перед тим як він може бути застосований до його аргументів.
+
+Оскільки точний тип примірника `msort` в застосуванні досі не відома, він не може бути використаний для виведення типу його першого аргументу. Вивід типу змінює свою стратегію в цьому випадку; він спочатку перевіряє аргументи методу, щоб визначити відповідний тип примірника метода. Однак, коли він отримує завдання перевірити тип скороченого функціонального літерала, `(_ > _)`, він схибить, бо він не має інформації щодо типів неявних функціональних параметрів, що вказані як підкреслення.
+
+Один спосіб розв'язати проблему є передати явний параметр типу до `msort`, як тут:
+[source,scala]
+----
 scala> msort[Char](_ > _)(abcde)
 res68: List[Char] = List(e, d, c, b, a)
-Because the correct instance type of msort is now known, it can be used to infer the type of the
-arguments. Another possible solution is to rewrite the msort method so that its parameters are swapped:
+----
+Оскікльи коректний тип примірника `msort` тепер відомий, він може бути використаний для вивідення типу аргументів. Інше можливе рішення є переписати метод `msort`, так що його параметри були переставлені місцями:
+[source,scala]
+----
 def msortSwapped[T](xs: List[T])(less:
-(T, T) => Boolean): List[T] = {
-// same implementation as msort,
-// but with arguments swapped
+    (T, T) => Boolean): List[T] = {
+// така сама реалізація, що і msort,
+// але з переставленими аргументами
 }
-Now type inference would succeed:
+----
+Тепер вивід типу буде успішний:
+[source,scala]
+----
 scala> msortSwapped(abcde)(_ > _)
 res69: List[Char] = List(e, d, c, b, a)
-What has happened is that the inferencer used the known type of the first parameter abcde to determine
-the type parameter of msortSwapped. Once the precise type of msortSwapped was known, it could be
-used in turn to infer the type of the second parameter, (_ > _).
-Generally, when tasked to infer the type parameters of a polymorphic method, the type inferencer
-consults the types of all value arguments in the first parameter list but no arguments beyond that.
-Since msortSwapped is a curried method with two parameter lists, the second argument (i.e., the
-function value) did not need to be consulted to determine the type parameter of the method.This inference scheme suggests the following library design principle: When designing a polymorphic
-method that takes some non-function arguments and a function argument, place the function argument
-last in a curried parameter list on its own. That way, the method's correct instance type can be inferred
-from the non-function arguments, and that type can in turn be used to type check the function
-argument. The net effect is that users of the method will be able to give less type information and write
-function literals in more compact ways.
-Now to the more complicated case of a fold operation. Why is there the need for an explicit type
-parameter in an expression like the body of the flattenRight method shown here?
+----
+Що тут трапилось, це те, що вивід використав відомий тип першого параметра, `abcde`, для визначення параметру типа `msortSwapped`. Як тільки точний тип `msortSwapped` став відомий, він, в свою чергу, може бути використаний для виведення типу другого параметру, `(_ > _)`.
+
+Загалом, коли завданням є вивід параметру типу для поліморфного методу, вивід типу консультується з типами всіх значень аргументів в першому списку параметрів, але не з аргументами за його межами. Оскільки `msortSwapped` є карований метод з двома списками параметрів, не має потреби перевіряти другий аргумент (тобто, функціональне значення) для визначення параметру типа метода.
+
+Ця схема виведення підказує наступний принцип розробки бібліотеки: коли розробляється поліморфний метод, що приймає не-функціональні аргументи, та функціональний аргумент, поставьте функціональний аргумент останнім окремо, у власному карованому списку аргументів. В такий спосіб, коректний тип примірника метода може бути виведений з не-функціональних аргументів, і цей тип може, в свою чергу, бути використаний для перевірки типу функціонального аргументу. Загальний ефект в тому, що користувачі метода будуть в змозі надавати менше інформації типу, та писати літерали в більш компактний спосіб.
+
+Тепер перейдемо до більш складного випадку операції `fold`. Чому треба задавати явний параметр типу в такому виразі, як тіло метода `flattenRight`, показаного нижче?
+[source,scala]
+----
 (xss :~List[T]()) (_ ::: _)
-The type of the fold-right operation is polymorphic in two type variables. Given an expression:
+----
+Тип операції правого згортання поліморфний по двох змінних. Візьмемо вираз:
+[source,scala]
+----
 (xs :~z) (op)
-The type of xs must be a list of some arbitrary type A, say xs: List[A]. The start value z can be of some
-other type B. The operation op must then take two arguments of type A and B, and return a result of
-type B, i.e., op: (A, B) => B. Because the type of z is not related to the type of the listxs, type inference
-has no context information for z.
-Now consider the expression in the erroneous version of flattenRight, also shown here:
-(xss :~List()) (_ ::: _)
-// this won't compile
-The start value z in this fold is an empty list, List(), so without additional type information its type is
-inferred to be a List[Nothing]. Hence, the inferencer will infer that the B type of the fold
-is List[Nothing]. Therefore, the operation (_ ::: _) of the fold is expected to be of the following type:
+----
+Тип `xs` має бути списком деякого довільного типу `A`, скажімо,  `xs: List[A]`. Початкове значення `z` може бути деякого іншого типу `B`. Операція `op` після цього приймає два аргументи типів `A` та `B`, та повертає результат типу `B`, тобто, `op: (A, B) => B`. Оскільки тип `z` не пов'язаний до типу списка `xs`, вивід типу не має контекстної інформації для `z`.
+
+Тепер розглянемо вираз в помилковій версії `flattenRight`, також показаній тут:
+[source,scala]
+----
+(xss :~List()) (_ ::: _) // це не буде компілюватись
+----
+Початкове значення `z` в цьому `fold` є порожнім списком, `List()`, так що без додаткової інформації про тип, його тип виводиться як  `List[Nothing]`. Таким чином, вивід буде виводити, що тип `B` в `fold` є `List[Nothing]`. Таким чином, операція `(_ ::: _)` у `fold`, як очікується, має бути такого типу:
+[source,scala]
+----
 (List[T], List[Nothing]) => List[Nothing]
-This is indeed a possible type for the operation in that fold but it is not a very useful one! It says that
-the operation always takes an empty list as second argument and always produces an empty list as
-result.
-In other words, the type inference settled too early on a type for List(); it should have waited until it
-had seen the type of the operation op. So the (otherwise very useful) rule to only consider the first
-argument section in a curried method application for determining the method's type is at the root of the
-problem here. On the other hand, even if that rule were relaxed, the inferencer still could not come up
-with a type for op because its parameter types are not given. Hence, there is a Catch-22 situation that
-can only be resolved by an explicit type annotation from the programmer.
-This example highlights some limitations of the local, flow-based type inference scheme of Scala. It is
-not present in the more global Hindley-Milner style of type inference used in functional languages,
-such as ML or Haskell. However, Scala's local type inference deals much more gracefully with object-
-oriented subtyping than the Hindley-Milner style does. Fortunately, the limitations show up only in
-some corner cases, and are usually easily fixed by adding an explicit type annotation.Adding type annotations is also a useful debugging technique when you get confused by type error
-messages related to polymorphic methods. If you are unsure what caused a particular type error, just
-add some type arguments or other type annotations, which you think are correct. Then you should be
-able to quickly see where the real problem is.
-16.11 CONCLUSION
-Now you have seen many ways to work with lists. You have seen the basic operations like headand tail,
-the first-order operations like reverse, the higher-order operations like map, and the utility methods in
-the List object. Along the way, you learned a bit about how Scala's type inference works.
-Lists are a real work horse in Scala, so you will benefit from knowing how to use them. For that reason,
-this chapter has delved deeply into how to use lists. Lists are just one kind of collection that Scala
-supports, however. The next chapter is broad, rather than deep, and shows you how to use a variety of
-Scala's collection types.
+----
+Це, очевидно, є можливим типом для операції, такої як `fold`, але це не дуже корисний тип! Він каже, що операція завжди приймає порожній список в якості другого аргументу, та завжди продукує порожній список як результат.
+
+Іншими словами, вивід типів стабілізується дуже рано для типу `List()`; він мав би дочекатись, доки він не побачить тип операції `op`. Так що (інакше дуже корисне) правило брати до уваги тільки перший розділ аргументів в застосуванні карованого метода для визначення типу метода, тут є коренем проблеми. З іншого боку, якщо це правило пом'якшити, вивід все ще не зможе надати тип для `op`, оскільки типи його параметрів не надані. Таким чином, це ситуація Catch-22, що може бути розрішена тільки через явну анотацію типу з боку програміста.
+
+Цей приклад підкреслює деякі обмеження локальної, базованої на потоці, схеми виводу типів в Scala. Вона не присутня в більш глобальному стилі виводу типів Hindley-Milner, що використовується в функціональних мовах, як ML або Haskell. Однак локальний вивід типів Scala значно краще поводиться з об'єктно-орієнтовними субтипами, ніж стиль Hindley-Milner. На щастя, обмеження виявляють себе тільки в граничних випадках, та звичайно просто лагодяться додаванням явних анотацій типів.
+
+Додавання анотацій типу також є корисною технікою зневадження, коли ви здивовані повідомленнями помилок типів, пов'язаних з поліморфними методами. Якщо ви невпевнені, що спричинило певну помилку типу, просто додайте аргументи типу або інші анотації типів, яка за вашою думкою коректна. Після цього ви будете в змозі швидко подивитись, в чому полягала реальна проблема.
+
+16.11 Висновок
+--------------
+Тепер ви бачили багато шляхів роботи зі списками. Ви бачили базові операції, як `head` та `tail`, операції першого порядку, як `reverse`, операції вищого порядку, як `map`, та допоміжні методи в об'єкті `List`. По мірі цього ви трохи вивчили щодо того, як робить вивід типів Scala.
+
+Списки є реальною робочою конячкою в Scala, так що ви отримаєте перевагу, якщо будете знати, як використовувати її. З цієї причини ця глава глибоко занурюється в те, як використовувати списки. Однак списки є тільки одним різновидом колекцій, що підтримує Scala. наступна глава є широкою, скоріше ніж глибокою, та показує вам, як використовувати різноманітні типи колекцій в Scala.

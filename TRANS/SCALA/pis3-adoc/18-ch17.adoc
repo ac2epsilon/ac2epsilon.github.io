@@ -6,78 +6,91 @@ include::headers.adoc[]
 Робота з іншими колекціями
 ==========================
 
-Scala has a rich collection library. This chapter gives you a tour of the most commonly used collection
-types and operations, showing just the parts you will use most frequently. Chapter 24 will provide a
-more comprehensive tour of what's available, and Chapter 25 will show how Scala's composition
-constructs are used to provide such a rich API.
-17.1 SEQUENCES
-Sequence types let you work with groups of data lined up in order. Because the elements are ordered,
-you can ask for the first element, second element, 103rd element, and so on. In this section, we'll give
-you a quick tour of the most important sequences.
-Lists
-Perhaps the most important sequence type to know about is class List, the immutable linked-list
-described in detail in the previous chapter. Lists support fast addition and removal of items to the
-beginning of the list, but they do not provide fast access to arbitrary indexes because
-the implementation must iterate through the list linearly.
-This combination of features might sound odd, but they hit a sweet spot that works well for many
-algorithms. The fast addition and removal of initial elements means that pattern matching works well,
-as described in Chapter 15. The immutability of lists helps you develop correct, efficient algorithms
-because you never need to make copies of a list.
-Here's a short example showing how to initialize a list, and access its head and tail:
+Scala має багату бібліотеку колекцій. Ця глава дає вам тур по найбільш загально уживаних типах колекцій та операціях, показуючи тільки частини, які ви будете використовувати найбільш часто. Глава 24 провадить більш повний тур по тому, що доступно, та Глава 25 покаже, як конструкції композиції Scala використовуються для провадження такого багатого API.
+
+17.1 Послідовності
+------------------
+Типи послідовностей дозволяють вам робити з групами даних, впорядкованих один за одним. Оскільки елементи впорядковані, ви можете запросити перший елемент, другий елемент, 103й елемент, і так далі. В цій главі ми дамо вам короткий тур по найбільш важливим послідовностям.
+
+Списки
+~~~~~~
+Можливо, найбільш важливий тип послідовністі, про який треба знати, це клас `List`, незмінний пов'язаний список, описаний в деталях в попередній главі. Списки підтримують швидке додавання та видалення елементів з початку списку, але вони не провадять швидкого доступу до довільних індексів, оскільки реалізація має лінійно ітерувати вздовж всього списку.
+
+Ця комбінація можливостей може виглядати дивною, але вони б'ють в яблучко, та гарно роблять з багатьма алгоритмами. Швидке додавання та видалення перших елементів означає, що порівняння шаблонів також робить гарно, як описано в Главі 15. Незмінність списків допомагає вам розробляти коректні, ефективні алгоритми, тому що вам ніколи не треба робити копії зі списків.
+
+Ось короткий приклад, що показує, як ініціалізувати список, та отримати доступ до його голови та хвоста:
+[source,scala]
+----
 scala> val colors = List("red", "blue", "green")
 colors: List[String] = List(red, blue, green)
+
 scala> colors.head
 res0: String = red
+
 scala> colors.tail
 res1: List[String] = List(blue, green)
-For a refresher on lists, see Step 8 in Chapter 3. You can find details on using lists in Chapter 16. Lists
-will also be discussed in Chapter 22, which provides insight into how lists are implemented in Scala.
-Arrays
-Arrays allow you to hold a sequence of elements and efficiently access an element at an arbitrary
-position, either to get or update the element, with a zero-based index. Here's how you create an array
-whose size you know, but for which you don't yet know the element values:
+---- 
+Щоб нагадати собі про списки, дивіться Крок 8 в Главі 3. Ви можете знайти деталі використання списків в Главі 16. Списки також обговорюються в Главі 22, що провадить погляд на те, як списки реалізовані в Scala.
+
+Масиви
+~~~~~~
+Масиви дозволяють вам зберігати послідовність елементів, та ефективно отримувати доступ до елемента в довільній позиції, або отримуючи, або оновлюючі елемент, рахуючи від нульового індексу. Ось як ви створюєте масив, розмір якого ви знаєте, але для якого ви досі не знаєте значень елементів:
+[source,scala]
+----
 scala> val fiveInts = new Array[Int](5)
-fiveInts: Array[Int] = Array(0, 0, 0, 0, 0)Here's how you initialize an array when you do know the element values:
+fiveInts: Array[Int] = Array(0, 0, 0, 0, 0)
+----
+Ось як ви ініціалізуєте масив, коли ви знаєте значення елементів:
+[source,scala]
+----
 scala> val fiveToOne = Array(5, 4, 3, 2, 1)
 fiveToOne: Array[Int] = Array(5, 4, 3, 2, 1)
-As mentioned previously, arrays are accessed in Scala by placing an index in parentheses, not square
-brackets as in Java. Here's an example of both accessing and updating an array element:
+----
+Як зазначалось раніше, масиви мають доступ в Scala, розташовуючи індекс в дужки, не в прямокутні дужки, як в Java. Ось приклад обох, доступу та зміни елемента масива:
+[source,scala]
+----
 scala> fiveInts(0) = fiveToOne(4)
+
 scala> fiveInts
 res3: Array[Int] = Array(1, 0, 0, 0, 0)
-Scala arrays are represented in the same way as Java arrays. So, you can seamlessly use existing Java
-methods that return arrays.footnote:[The difference in variance of Scala's and Java's arrays—i.e., whether Array[String] is a subtype of Array[AnyRef]—will be discussed in Section 19.3.]
-You have seen arrays in action many times in previous chapters. The basics are in Step 7 inChapter 3.
-Several examples of iterating through the elements of an array with a forexpression are shown
-in Section 7.3. Arrays also figure prominently in the two-dimensional layout library of Chapter 10.
-List buffers
-Class List provides fast access to the head of the list, but not the end. Thus, when you need to build a
-list by appending to the end, consider building the list backwards by prepending elements to the front.
-Then when you're done, call reverse to get the elements in the order you need.
-Another alternative, which avoids the reverse operation, is to use a ListBuffer. A ListBuffer is a
-mutable object (contained in package scala.collection.mutable), which can help you build lists more
-efficiently when you need to append. ListBuffer provides constant time append and prepend operations.
-You append elements with the += operator, and prepend them with the+=: operator. When you're done
-building, you can obtain a List by invoking toList on theListBuffer. Here's an example:
+----
+Масиви Scala представлені в той самий спосіб, що і масиви Java. Так що ви можете без проблем використовувати існуючі методи Java, що повертають масиви.footnote:[Різниця в варіантності масивів Scala та Java — тобто, коли `Array[String]` є субтипом `Array[AnyRef]` — це буде розглядатись в Розділі 19.3.]
+
+Ви мали бачити масиви в дії багато раз в попередніх главах. Основи в Кроці в Главі 3. Декіклька прикладів ітерування по елементах масивів за допомогою вираза `for` показані в Розділі 7.3. Масиви також яскраво фігурують в бібліотеці двомірних розташувань в Главі 10.
+
+Буфери списків
+~~~~~~~~~~~~~~
+Клас `List` провадить швидкий доступ до голови списку, але не до кінця. Таким чином, коли вам треба побудувати список через додавання в кінець, розгляньте побудування списку навпаки, додаючи елементи до начала. Коли ви скінчите, викличте `reverse`, щоб отримати елементи в порядку, що вам потрібен.
+
+Інша альтернатива, що уникає операції `reverse`, це використання `ListBuffer`. `ListBuffer` є змінним об'єктом (що міститься в пакунку `scala.collection.mutable`), що може допомогти вам побудувати списки більш ефективно, коли вам треба дописувати в кінець. `ListBuffer` провадить сталий час виконання операцій додавання з обох кінців. Ви додаєте елементи за допомогою оператора `+=`, та ставите на початок за допомогою оператора `+=:`. Коли ви завершуєте побудову, ви можете отримати `List` через виклик `toList` на `ListBuffer`. Ось приклад:
+[source,scala]
+----
 scala> import scala.collection.mutable.ListBuffer
 import scala.collection.mutable.ListBuffer
+
 scala> val buf = new ListBuffer[Int]
 buf: scala.collection.mutable.ListBuffer[Int] = ListBuffer()
+
 scala> buf += 1
 res4: buf.type = ListBuffer(1)
+
 scala> buf += 2
 res5: buf.type = ListBuffer(1, 2)
+
 scala> buf
 res6: scala.collection.mutable.ListBuffer[Int] =
 ListBuffer(1, 2)
+
 scala> 3 +=: buf
 res7: buf.type = ListBuffer(3, 1, 2)
+
 scala> buf.toList
-res8: List[Int] = List(3, 1, 2)Another reason to use ListBuffer instead of List is to prevent the potential for stack overflow.If you can
-build a list in the desired order by prepending, but the recursive algorithm that would be required is not
-tail recursive, you can use a for expression or while loop and aListBuffer instead. You'll
-see ListBuffer being used in this way in Section 22.2.
-Array buffers
+res8: List[Int] = List(3, 1, 2)
+----
+Інша причина використовувати `ListBuffer` замість `List` є запобігання потенційному переповненню стека. Якщо ви можете будувати список в бажаному порядку, додаючи спереду, але потрібний рекурсивний алгоритм не має хвостової рекурсії, замість цього ви можете використовувати вираз `for` або цикл `while` разом з `ListBuffer`. Ви побачите, як `ListBuffer`буде використаний в цей спосіб в Розділі 22.2.
+
+Буфери масивів
+~~~~~~~~~~~~~~
 An ArrayBuffer is like an array, except that you can additionally add and remove elements from the
 beginning and end of the sequence. All Array operations are available, though they are a little slower
 due to a layer of wrapping in the implementation. The new addition and removal operations are
@@ -595,7 +608,9 @@ you want to add some methods to the combination, it is better to go ahead and cr
 example, do not use a 3-tuple for the combination of a month, a day, and a year. Make a Date class. It
 makes your intentions explicit, which both clears up the code for human readers and gives the compiler
 and language opportunities to help you catch mistakes.
-17.6 CONCLUSION
+
+17.6 Висновок
+-------------
 This chapter has given an overview of the Scala collections library and the most important classes and
 traits in it. With this foundation you should be able to work effectively with Scala collections, and
 know where to look in Scaladoc when you need more information. For more detailed information about

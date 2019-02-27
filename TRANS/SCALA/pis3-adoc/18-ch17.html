@@ -804,79 +804,82 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="____">Робота з іншими колекціями</h1>
-<div class="paragraph"><p>Scala has a rich collection library. This chapter gives you a tour of the most commonly used collection
-types and operations, showing just the parts you will use most frequently. Chapter 24 will provide a
-more comprehensive tour of what&#8217;s available, and Chapter 25 will show how Scala&#8217;s composition
-constructs are used to provide such a rich API.
-17.1 SEQUENCES
-Sequence types let you work with groups of data lined up in order. Because the elements are ordered,
-you can ask for the first element, second element, 103rd element, and so on. In this section, we&#8217;ll give
-you a quick tour of the most important sequences.
-Lists
-Perhaps the most important sequence type to know about is class List, the immutable linked-list
-described in detail in the previous chapter. Lists support fast addition and removal of items to the
-beginning of the list, but they do not provide fast access to arbitrary indexes because
-the implementation must iterate through the list linearly.
-This combination of features might sound odd, but they hit a sweet spot that works well for many
-algorithms. The fast addition and removal of initial elements means that pattern matching works well,
-as described in Chapter 15. The immutability of lists helps you develop correct, efficient algorithms
-because you never need to make copies of a list.
-Here&#8217;s a short example showing how to initialize a list, and access its head and tail:
-scala&gt; val colors = List("red", "blue", "green")
-colors: List[String] = List(red, blue, green)
-scala&gt; colors.head
-res0: String = red
-scala&gt; colors.tail
-res1: List[String] = List(blue, green)
-For a refresher on lists, see Step 8 in Chapter 3. You can find details on using lists in Chapter 16. Lists
-will also be discussed in Chapter 22, which provides insight into how lists are implemented in Scala.
-Arrays
-Arrays allow you to hold a sequence of elements and efficiently access an element at an arbitrary
-position, either to get or update the element, with a zero-based index. Here&#8217;s how you create an array
-whose size you know, but for which you don&#8217;t yet know the element values:
-scala&gt; val fiveInts = new Array[Int](5)
-fiveInts: Array[Int] = Array(0, 0, 0, 0, 0)Here&#8217;s how you initialize an array when you do know the element values:
-scala&gt; val fiveToOne = Array(5, 4, 3, 2, 1)
-fiveToOne: Array[Int] = Array(5, 4, 3, 2, 1)
-As mentioned previously, arrays are accessed in Scala by placing an index in parentheses, not square
-brackets as in Java. Here&#8217;s an example of both accessing and updating an array element:
-scala&gt; fiveInts(0) = fiveToOne(4)
-scala&gt; fiveInts
-res3: Array[Int] = Array(1, 0, 0, 0, 0)
-Scala arrays are represented in the same way as Java arrays. So, you can seamlessly use existing Java
-methods that return arrays.<span class="footnote"><br />[The difference in variance of Scala&#8217;s and Java&#8217;s arrays—i.e., whether Array[String]<br /></span> is a subtype of Array[AnyRef]—will be discussed in Section 19.3.]
-You have seen arrays in action many times in previous chapters. The basics are in Step 7 inChapter 3.
-Several examples of iterating through the elements of an array with a forexpression are shown
-in Section 7.3. Arrays also figure prominently in the two-dimensional layout library of Chapter 10.
-List buffers
-Class List provides fast access to the head of the list, but not the end. Thus, when you need to build a
-list by appending to the end, consider building the list backwards by prepending elements to the front.
-Then when you&#8217;re done, call reverse to get the elements in the order you need.
-Another alternative, which avoids the reverse operation, is to use a ListBuffer. A ListBuffer is a
-mutable object (contained in package scala.collection.mutable), which can help you build lists more
-efficiently when you need to append. ListBuffer provides constant time append and prepend operations.
-You append elements with the <code>= operator, and prepend them with the</code>=: operator. When you&#8217;re done
-building, you can obtain a List by invoking toList on theListBuffer. Here&#8217;s an example:
-scala&gt; import scala.collection.mutable.ListBuffer
-import scala.collection.mutable.ListBuffer
-scala&gt; val buf = new ListBuffer[Int]
-buf: scala.collection.mutable.ListBuffer[Int] = ListBuffer()
-scala&gt; buf <code>= 1
-res4: buf.type = ListBuffer(1)
-scala&gt; buf += 2
-res5: buf.type = ListBuffer(1, 2)
-scala&gt; buf
-res6: scala.collection.mutable.ListBuffer[Int] =
-ListBuffer(1, 2)
-scala&gt; 3 +=: buf
-res7: buf.type = ListBuffer(3, 1, 2)
-scala&gt; buf.toList
-res8: List[Int] = List(3, 1, 2)Another reason to use ListBuffer instead of List is to prevent the potential for stack overflow.If you can
-build a list in the desired order by prepending, but the recursive algorithm that would be required is not
-tail recursive, you can use a for expression or while loop and aListBuffer instead. You&#8217;ll
-see ListBuffer being used in this way in Section 22.2.
-Array buffers
-An ArrayBuffer is like an array, except that you can additionally add and remove elements from the
+<div class="paragraph"><p>Scala має багату бібліотеку колекцій. Ця глава дає вам тур по найбільш загально уживаних типах колекцій та операціях, показуючи тільки частини, які ви будете використовувати найбільш часто. Глава 24 провадить більш повний тур по тому, що доступно, та Глава 25 покаже, як конструкції композиції Scala використовуються для провадження такого багатого API.</p></div>
+<div class="sect1">
+<h2 id="_17_1_">17.1 Послідовності</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Типи послідовностей дозволяють вам робити з групами даних, впорядкованих один за одним. Оскільки елементи впорядковані, ви можете запросити перший елемент, другий елемент, 103й елемент, і так далі. В цій главі ми дамо вам короткий тур по найбільш важливим послідовностям.</p></div>
+<div class="sect2">
+<h3 id="_">Списки</h3>
+<div class="paragraph"><p>Можливо, найбільш важливий тип послідовністі, про який треба знати, це клас <code>List</code>, незмінний пов'язаний список, описаний в деталях в попередній главі. Списки підтримують швидке додавання та видалення елементів з початку списку, але вони не провадять швидкого доступу до довільних індексів, оскільки реалізація має лінійно ітерувати вздовж всього списку.</p></div>
+<div class="paragraph"><p>Ця комбінація можливостей може виглядати дивною, але вони б'ють в яблучко, та гарно роблять з багатьма алгоритмами. Швидке додавання та видалення перших елементів означає, що порівняння шаблонів також робить гарно, як описано в Главі 15. Незмінність списків допомагає вам розробляти коректні, ефективні алгоритми, тому що вам ніколи не треба робити копії зі списків.</p></div>
+<div class="paragraph"><p>Ось короткий приклад, що показує, як ініціалізувати список, та отримати доступ до його голови та хвоста:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">colors</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="s">&quot;red&quot;</span><span class="o">,</span> <span class="s">&quot;blue&quot;</span><span class="o">,</span> <span class="s">&quot;green&quot;</span><span class="o">)</span>
+<span class="n">colors</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">red</span><span class="o">,</span> <span class="n">blue</span><span class="o">,</span> <span class="n">green</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">colors</span><span class="o">.</span><span class="n">head</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">red</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">colors</span><span class="o">.</span><span class="n">tail</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">blue</span><span class="o">,</span> <span class="n">green</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб нагадати собі про списки, дивіться Крок 8 в Главі 3. Ви можете знайти деталі використання списків в Главі 16. Списки також обговорюються в Главі 22, що провадить погляд на те, як списки реалізовані в Scala.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__2">Масиви</h3>
+<div class="paragraph"><p>Масиви дозволяють вам зберігати послідовність елементів, та ефективно отримувати доступ до елемента в довільній позиції, або отримуючи, або оновлюючі елемент, рахуючи від нульового індексу. Ось як ви створюєте масив, розмір якого ви знаєте, але для якого ви досі не знаєте значень елементів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fiveInts</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="mi">5</span><span class="o">)</span>
+<span class="n">fiveInts</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось як ви ініціалізуєте масив, коли ви знаєте значення елементів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fiveToOne</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">fiveToOne</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">5</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як зазначалось раніше, масиви мають доступ в Scala, розташовуючи індекс в дужки, не в прямокутні дужки, як в Java. Ось приклад обох, доступу та зміни елемента масива:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">fiveInts</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="k">=</span> <span class="n">fiveToOne</span><span class="o">(</span><span class="mi">4</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fiveInts</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Масиви Scala представлені в той самий спосіб, що і масиви Java. Так що ви можете без проблем використовувати існуючі методи Java, що повертають масиви.<span class="footnote"><br />[Різниця в варіантності масивів Scala та Java — тобто, коли <code>Array[String]</code> є субтипом <code>Array[AnyRef]</code> — це буде розглядатись в Розділі 19.3.]<br /></span></p></div>
+<div class="paragraph"><p>Ви мали бачити масиви в дії багато раз в попередніх главах. Основи в Кроці в Главі 3. Декіклька прикладів ітерування по елементах масивів за допомогою вираза <code>for</code> показані в Розділі 7.3. Масиви також яскраво фігурують в бібліотеці двомірних розташувань в Главі 10.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__">Буфери списків</h3>
+<div class="paragraph"><p>Клас <code>List</code> провадить швидкий доступ до голови списку, але не до кінця. Таким чином, коли вам треба побудувати список через додавання в кінець, розгляньте побудування списку навпаки, додаючи елементи до начала. Коли ви скінчите, викличте <code>reverse</code>, щоб отримати елементи в порядку, що вам потрібен.</p></div>
+<div class="paragraph"><p>Інша альтернатива, що уникає операції <code>reverse</code>, це використання <code>ListBuffer</code>. <code>ListBuffer</code> є змінним об'єктом (що міститься в пакунку <code>scala.collection.mutable</code>), що може допомогти вам побудувати списки більш ефективно, коли вам треба дописувати в кінець. <code>ListBuffer</code> провадить сталий час виконання операцій додавання з обох кінців. Ви додаєте елементи за допомогою оператора <code>+=</code>, та ставите на початок за допомогою оператора <code>+=:</code>. Коли ви завершуєте побудову, ви можете отримати <code>List</code> через виклик <code>toList</code> на <code>ListBuffer</code>. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.collection.mutable.ListBuffer</span>
+<span class="k">import</span> <span class="nn">scala.collection.mutable.ListBuffer</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">buf</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ListBuffer</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+<span class="n">buf</span><span class="k">:</span> <span class="kt">scala.collection.mutable.ListBuffer</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ListBuffer</span><span class="o">()</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">buf</span> <span class="o">+=</span> <span class="mi">1</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">buf.</span><span class="k">type</span> <span class="o">=</span> <span class="nc">ListBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">buf</span> <span class="o">+=</span> <span class="mi">2</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">buf.</span><span class="k">type</span> <span class="o">=</span> <span class="nc">ListBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">buf</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">scala.collection.mutable.ListBuffer</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
+<span class="nc">ListBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="mi">3</span> <span class="o">+=:</span> <span class="n">buf</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">buf.</span><span class="k">type</span> <span class="o">=</span> <span class="nc">ListBuffer</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">buf</span><span class="o">.</span><span class="n">toList</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Інша причина використовувати <code>ListBuffer</code> замість <code>List</code> є запобігання потенційному переповненню стека. Якщо ви можете будувати список в бажаному порядку, додаючи спереду, але потрібний рекурсивний алгоритм не має хвостової рекурсії, замість цього ви можете використовувати вираз <code>for</code> або цикл <code>while</code> разом з <code>ListBuffer</code>. Ви побачите, як `ListBuffer`буде використаний в цей спосіб в Розділі 22.2.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___2">Буфери масивів</h3>
+<div class="paragraph"><p>An ArrayBuffer is like an array, except that you can additionally add and remove elements from the
 beginning and end of the sequence. All Array operations are available, though they are a little slower
 due to a layer of wrapping in the implementation. The new addition and removal operations are
 constant time on average, but occasionally require linear time due to the implementation needing to
@@ -889,7 +892,7 @@ length. The ArrayBuffer will adjust the allocated space automatically as needed:
 scala&gt; val buf = new ArrayBuffer[Int]()
 buf: scala.collection.mutable.ArrayBuffer[Int] =
 ArrayBuffer()
-You can append to an ArrayBuffer using the += method:
+You can append to an ArrayBuffer using the <code>= method:
 scala&gt; buf += 12
 res9: buf.type = ArrayBuffer(12)
 scala&gt; buf += 15
@@ -1392,19 +1395,26 @@ has no meaning beyond "an A and a B." However, whenever the combination has some
 you want to add some methods to the combination, it is better to go ahead and create a class. For
 example, do not use a 3-tuple for the combination of a month, a day, and a year. Make a Date class. It
 makes your intentions explicit, which both clears up the code for human readers and gives the compiler
-and language opportunities to help you catch mistakes.
-17.6 CONCLUSION
-This chapter has given an overview of the Scala collections library and the most important classes and
+and language opportunities to help you catch mistakes.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_17_6_">17.6 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>This chapter has given an overview of the Scala collections library and the most important classes and
 traits in it. With this foundation you should be able to work effectively with Scala collections, and
 know where to look in Scaladoc when you need more information. For more detailed information about
 Scala collections, look ahead to Chapter 24 and Chapter 25. For now, in the next chapter, we&#8217;ll turn our
 attention from the Scala library back to the language and discuss Scala&#8217;s support for mutable objects.</p></div>
 </div>
+</div>
+</div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-17 23:10:25 EET
+ 2019-02-27 04:02:16 EET
 </div>
 </div>
 </body>
