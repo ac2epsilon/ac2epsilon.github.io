@@ -851,15 +851,15 @@ asciidoc.install();
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">account</span> <span class="n">withdraw</span> <span class="mi">80</span>
 <span class="n">res2</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Note that the two final withdrawals in the previous interaction returned different results. The first withdraw operation returned true because the bank account contained sufficient funds to allow the withdrawal. The second operation, although the same as the first one, returnedfalse because the balance of the account had been reduced so that it no longer covered the requested funds. So, clearly, bank accounts have mutable state, because the same operation can return different results at different times.</p></div>
-<div class="paragraph"><p>You might think that the mutability of BankAccount is immediately apparent because it contains a var definition. Mutation and vars usually go hand in hand, but things are not always so clear cut. For instance, a class might be mutable without defining or inheriting any vars because it forwards method calls to other objects that have mutable state. The reverse is also possible: A class might contain vars and still be purely functional. An example would be a class that caches the result of an expensive operation in a field for optimization purposes. To pick an example, assume the following unoptimized class Keyed with an expensive operationcomputeKey:</p></div>
+<div class="paragraph"><p>Зауважте, що два останні списання в попередній взаємодії повернули різні результати. Перша операція списання повернула <code>true</code>, оскільки банківський рахунок містив достатньо коштів, щоб дозволити списання. Друга операція, хоча така сама, як і перша, повертає <code>false</code>, оскільки баланс на рахунку було зменшено, так що він більше не покриває запитані кошти. Так що, як це зрозуміло, банківські рахунки мають змінній стан, оскільки та сама операція може повертати різні результати в різний час.</p></div>
+<div class="paragraph"><p>Ви можете подумати, що змінність <code>BankAccount</code> безпосередньо наочна, оскільки він містить визначення <code>var</code>. Змінність та <code>var</code> звичайно ідуть рука в руку, але речі не завжди так чітко окреслені. Наприклад, клас може бути змінним без визначення або наслідування любих <code>var</code>, оскільки він перенаправляє викликів методів до інших об'єктів, що мають змінний стан. Зворотнє також можливе: клас може містити <code>var</code>, та все одне залишатись чисто функціональним. Прикладом може бути клас, що кешує результат коштовної операції в полі для цілей оптимізації. Щоб зрозуміти приклад, розглянемо наступний неоптимізований клас <code>Keyed</code> з коштовною операцією <code>computeKey</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Keyed</span> <span class="o">{</span>
-  <span class="k">def</span> <span class="n">computeKey</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">...</span> <span class="c1">// this will take some time</span>
+  <span class="k">def</span> <span class="n">computeKey</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">...</span> <span class="c1">// це займає деякий час</span>
   <span class="o">...</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Provided that computeKey neither reads nor writes any vars, you can make Keyed more efficient by adding a cache:</p></div>
+<div class="paragraph"><p>За умови, що <code>computeKey</code> не читає та не записує жодні <code>var</code>, ви можете зробити <code>Keyed</code> більш ефективним через додавання кешу:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">MemoKeyed</span> <span class="k">extends</span> <span class="nc">Keyed</span> <span class="o">{</span>
   <span class="k">private</span> <span class="k">var</span> <span class="n">keyCache</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span>
@@ -869,20 +869,20 @@ asciidoc.install();
   <span class="o">}</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Using MemoKeyed instead of Keyed can speed things up because the second time the result of thecomputeKey operation is requested, the value stored in the keyCache field can be returned instead of running computeKey once again. But except for this speed gain, the behavior of class Keyed andMemoKeyed is exactly the same. Consequently, if Keyed is purely functional, then so is MemoKeyed, even though it contains a reassignable variable.</p></div>
+<div class="paragraph"><p>Використання <code>MemoKeyed</code> замість <code>Keyed</code> може прискорити речі, бо коли результат операції <code>computeKey</code> запитується в  другий раз, замість виконання <code>computeKey</code> ще раз може бути повернене значення, збережене в полі <code>keyCache</code>. Але, за винятком цього прискорення, поведінка класу <code>Keyed</code> та <code>MemoKeyed</code> в точності така сама. Відповідно, якщо <code>Keyed</code> є чисто функціональним, так само буде <code>MemoKeyed</code>, навіть якщо він містить переприсвоювану змінну.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_18_2____">18.2 Переприсвоєння змінних та властивостей</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>You can perform two fundamental operations on a reassignable variable: get its value or set it to a new value. In libraries such as JavaBeans, these operations are often encapsulated in separate getter and setter methods, which need to be defined explicitly.</p></div>
-<div class="paragraph"><p>In Scala, every var that is a non-private member of some object implicitly defines a getter and a setter method with it. These getters and setters are named differently from the Java convention, however. The getter of a var x is just named "x", while its setter is named "x_=".</p></div>
-<div class="paragraph"><p>For example, if it appears in a class, the var definition:</p></div>
+<div class="paragraph"><p>Ви можете виконати дві фундаментальні операції на переприсвоюваних змінних: отримати її значення, або встановити її в нове значення. В бібліотеках, таких, як JavaBeans, ці операції часто інкапсульовані в окремі методи геттера та сеттера, що повинні бути визначені явно.</p></div>
+<div class="paragraph"><p>В Scala кожна <code>var</code>, що є не-приватним членом деякого об'єкту, одночасно неявно визначає методи геттера та сеттера. Однак ці геттери та сеттери іменуються інакше, ніж за Java домовленістю. Геттер <code>var x</code> називається просто <code>x</code>, тоді як сеттер називається <code>x_=</code>.</p></div>
+<div class="paragraph"><p>Наприклад, якщо воно з'являється в класі, визначення <code>var</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">hour</span> <span class="k">=</span> <span class="mi">12</span>
 </pre></div></div></div>
-<div class="paragraph"><p>generates a getter, "hour", and setter, "hour_=", in addition to a reassignable field. The field is always marked private[this], which means it can be accessed only from the object that contains it. The getter and setter, on the other hand, get the same visibility as the original var. If the var definition is public, so are its getter and setter. If it is protected, they are alsoprotected, and so on.</p></div>
-<div class="paragraph"><p>For instance, consider the class Time shown in Лістинг 18.2, which defines two public vars named hour and minute:</p></div>
+<div class="paragraph"><p>генерує геттер <code>hour</code>, та сеттер <code>hour_=</code>, на додаток до переприсвоюваного поля. Поле завжди маркується як <code>private[this]</code>, що означає, що воно може отримувати доступ тільки з об'єкта, що містить його. З іншого боку, геттер та сеттер отримують ту саму оглядовість, що і оригінальна <code>var</code>. Якщо визначення <code>var</code> є публічним, таким будуть його геттер та сеттер. Якщо воно <code>protected</code>, вони також будуть <code>protected</code>, і так далі.</p></div>
+<div class="paragraph"><p>Наприклад, розглянемо клас <code>Time</code>, показаний на Лістингу 18.2, що визначає дві публічні змінні, з назвами <code>hour</code> та <code>minute</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Time</span> <span class="o">{</span>
   <span class="k">var</span> <span class="n">hour</span> <span class="k">=</span> <span class="mi">12</span>
@@ -890,7 +890,7 @@ asciidoc.install();
 <span class="o">}</span>
 </pre></div></div></div>
 <div class="paragraph"><p>Лістинг 18.2 - Клас з публічними <code>var</code>.</p></div>
-<div class="paragraph"><p>This implementation is exactly equivalent to the class definition shown in Лістинг 18.3. In the definitions shown in Лістинг 18.3, the names of the local fields h and m are arbitrarily chosen so as not to clash with any names already in use.</p></div>
+<div class="paragraph"><p>Ця реалізація в точності еквівалентна до визначення класу, показаному в Лістингу 18.3. В визначенні, показаному в Лістингу 18.3, імена локальних полів <code>h</code> та <code>m</code> обрані довільно, так щоб вони не стикались з любими іменами, що вже використовуються.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Time</span> <span class="o">{</span>
   <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">var</span> <span class="n">h</span> <span class="k">=</span> <span class="mi">12</span>
@@ -904,7 +904,7 @@ asciidoc.install();
 <span class="o">}</span>
 </pre></div></div></div>
 <div class="paragraph"><p>Лістинг 18.3 - Як публічні <code>var</code> розширюються в методи геттерів та сеттерів.</p></div>
-<div class="paragraph"><p>An interesting aspect about this expansion of vars into getters and setters is that you can also choose to define a getter and a setter directly, instead of defining a var. By defining these access methods directly you can interpret the operations of variable access and variable assignment as you like. For instance, the variant of class Time shown in Лістинг 18.4 contains requirements that catch all assignments to hour and minute with illegal values.</p></div>
+<div class="paragraph"><p>Цікавий аспект щодо цього розширення <code>var</code> в геттери та сеттери в тому, що ви за бажанням також можете визначити геттери та сеттери напряму, замість визначення <code>var</code>. Через визначення ціх методів напряму ви можете інтерпретувати операції доступу до змінної, або присвоєння змінної, як вам завгодно. Наприклад, варіант класу <code>Time</code>, показаний в Лістингу 18.4, містить вимоги, щоб перехоплювати всі присвоєння до годин та хвилин з нелегальними значеннями.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Time</span> <span class="o">{</span>
 
@@ -923,117 +923,106 @@ asciidoc.install();
     <span class="n">m</span> <span class="k">=</span> <span class="n">x</span>
   <span class="o">}</span>
 <span class="o">}</span>
-
-<span class="n">Лістинг</span> <span class="mf">18.4</span> <span class="o">-</span> <span class="n">Визначення</span> <span class="n">методів</span> <span class="n">геттера</span> <span class="n">та</span> <span class="n">сеттера</span> <span class="n">напряму</span><span class="o">.</span>
-
-<span class="nc">Some</span> <span class="n">languages</span> <span class="n">have</span> <span class="n">a</span> <span class="n">special</span> <span class="n">syntactic</span> <span class="n">construct</span> <span class="k">for</span> <span class="n">these</span> <span class="n">variable</span><span class="o">-</span><span class="n">like</span> <span class="n">quantities</span> <span class="n">that</span> <span class="n">are</span> <span class="n">not</span> <span class="n">plain</span> <span class="n">variables</span> <span class="n">in</span> <span class="n">that</span> <span class="n">their</span> <span class="n">getter</span> <span class="n">or</span> <span class="n">setter</span> <span class="n">can</span> <span class="n">be</span> <span class="n">redefined</span><span class="o">.</span> <span class="nc">For</span> <span class="n">instance</span><span class="o">,</span> <span class="n">C</span><span class="k">#</span> <span class="n">has</span> <span class="n">properties</span><span class="o">,</span> <span class="n">which</span> <span class="n">fulfill</span> <span class="k">this</span> <span class="n">role</span><span class="o">.</span> <span class="nc">In</span> <span class="n">effect</span><span class="o">,</span> <span class="nc">Scala</span><span class=" -Symbol">&#39;s</span> <span class="n">convention</span> <span class="n">of</span> <span class="n">always</span> <span class="n">interpreting</span> <span class="n">a</span> <span class="n">variable</span> <span class="n">as</span> <span class="n">a</span> <span class="n">pair</span> <span class="n">of</span> <span class="n">setter</span> <span class="n">and</span> <span class="n">getter</span> <span class="n">methods</span> <span class="n">gives</span> <span class="n">you</span> <span class="n">the</span> <span class="n">same</span> <span class="n">capabilities</span> <span class="n">as</span> <span class="n">C</span><span class="k">#</span> <span class="n">properties</span> <span class="n">without</span> <span class="n">requiring</span> <span class="n">special</span> <span class="n">syntax</span><span class="o">.</span>
-
-<span class="nc">Properties</span> <span class="n">can</span> <span class="n">serve</span> <span class="n">many</span> <span class="n">different</span> <span class="n">purposes</span><span class="o">.</span> <span class="nc">In</span> <span class="n">the</span> <span class="n">example</span> <span class="n">shown</span> <span class="n">in</span> <span class="n">Лістинг</span> <span class="mf">18.4</span><span class="o">,</span> <span class="n">the</span> <span class="n">setters</span> <span class="n">enforced</span> <span class="n">an</span> <span class="n">invariant</span><span class="o">,</span> <span class="n">thus</span> <span class="n">protecting</span> <span class="n">the</span> <span class="n">variable</span> <span class="n">from</span> <span class="n">being</span> <span class="n">assigned</span> <span class="n">illegal</span> <span class="n">values</span><span class="o">.</span> <span class="nc">You</span> <span class="n">could</span> <span class="n">also</span> <span class="n">use</span> <span class="n">a</span> <span class="n">property</span> <span class="n">to</span> <span class="n">log</span> <span class="n">all</span> <span class="n">accesses</span> <span class="n">to</span> <span class="n">getters</span> <span class="n">or</span> <span class="n">setters</span> <span class="n">of</span> <span class="n">a</span> <span class="n">variable</span><span class="o">.</span> <span class="nc">Or</span> <span class="n">you</span> <span class="n">could</span> <span class="n">integrate</span> <span class="n">variables</span> <span class="k">with</span> <span class="n">events</span><span class="o">,</span> <span class="k">for</span> <span class="n">instance</span> <span class="n">by</span> <span class="n">notifying</span> <span class="n">some</span> <span class="n">subscriber</span> <span class="n">methods</span> <span class="n">each</span> <span class="n">time</span> <span class="n">a</span> <span class="n">variable</span> <span class="n">is</span> <span class="n">modified</span> <span class="o">(</span><span class="n">you</span><span class=" -Symbol">&#39;ll</span> <span class="n">see</span> <span class="n">examples</span> <span class="n">of</span> <span class="k">this</span> <span class="n">in</span> <span class="nc">Chapter</span> <span class="mi">35</span><span class="o">).</span>
-
-<span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">also</span> <span class="n">possible</span><span class="o">,</span> <span class="n">and</span> <span class="n">sometimes</span> <span class="n">useful</span><span class="o">,</span> <span class="n">to</span> <span class="n">define</span> <span class="n">a</span> <span class="n">getter</span> <span class="n">and</span> <span class="n">a</span> <span class="n">setter</span> <span class="n">without</span> <span class="n">an</span> <span class="n">associated</span> <span class="n">field</span><span class="o">.</span> <span class="nc">For</span> <span class="n">example</span><span class="o">,</span> <span class="n">Лістинг</span> <span class="mf">18.5</span> <span class="n">shows</span> <span class="n">a</span> <span class="nc">Thermometer</span> <span class="n">class</span><span class="o">,</span> <span class="n">which</span> <span class="n">encapsulates</span> <span class="n">a</span> <span class="n">temperature</span> <span class="n">variable</span> <span class="n">that</span> <span class="n">can</span> <span class="n">be</span> <span class="n">read</span> <span class="n">and</span> <span class="n">updated</span><span class="o">.</span> <span class="nc">Temperatures</span> <span class="n">can</span> <span class="n">be</span> <span class="n">expressed</span> <span class="n">in</span> <span class="nc">Celsius</span> <span class="n">or</span> <span class="nc">Fahrenheit</span> <span class="n">degrees</span><span class="o">.</span> <span class="nc">This</span> <span class="k">class</span> <span class="nc">allows</span> <span class="n">you</span> <span class="n">to</span> <span class="n">get</span> <span class="n">and</span> <span class="n">set</span> <span class="n">the</span> <span class="n">temperature</span> <span class="n">in</span> <span class="n">either</span> <span class="n">measure</span><span class="o">.</span>
-<span class="o">[</span><span class="kt">source</span>,<span class="kt">scala</span><span class="o">]</span>
 </pre></div></div></div>
-<div class="paragraph"><p>class Thermometer {</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>var celsius: Float = _</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def fahrenheit = celsius * 9 / 5 + 32</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def fahrenheit_= (f: Float) = {
-    celsius = (f - 32) * 5 / 9
-  }
-  override def toString = fahrenheit + "F/" + celsius + "C"
-}</code></pre>
-</div></div>
+<div class="paragraph"><p>Лістинг 18.4 - Визначення методів геттера та сеттера напряму.</p></div>
+<div class="paragraph"><p>Деякі мови мають спеціальні синтаксичні конструкції для змінно-подібних кількостей, що не є звичайними змінними, де їх сеттери та геттери можуть бути перевизначені. Наприклад, C# має властивості, що виконують цю роль. Ефективно, довленість Scala завжди інтерпретувати змінну як пару з сеттера та геттера надає вам ті самі можливості, що і властивості C#, без потреби в спеціальному синтаксисі.</p></div>
+<div class="paragraph"><p>Властивості можуть служити для багатьох різних призначень. В прикладі, показаному в Лістингу 18.4, сеттери примушують виконання інваріантів, таким чином захищаючи змінну від присвоєння нелегальних значень. Також ви можете використовувати властивість для журналювання всіх доступів до сеттера та геттера змінної. Або ви можете інтегрувати змінні з подіями, наприклад, для нотифікації деяких методів підписчикив, кожного разу, коли змінна модифікується (ви побачите приклади цього в Главі 35).</p></div>
+<div class="paragraph"><p>Також можливо, і іноді корисно, визначити геттер та сеттер без асоційованого поля. Наприклад, Лістинг 18.5 показує клас <code>Thermometer</code>, що інкапсулює змінну <code>temperature</code>, що може бути прочитана та оновлена. Температури можуть бути виражені в градусах Цельсія або Фаренгейта. Цей клас дозволяє вам отримати та встановити температуру в будь-яких одиницях.</p></div>
 <div class="listingblock">
-<div class="content">
-<pre><code>Лістинг 18.5 - Визначення геттера та сеттера без асоційованого поля.
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Thermometer</span> <span class="o">{</span>
 
-The first line in the body of this class defines a var, celsius, which will contain the temperature in degrees Celsius. The celsius variable is initially set to a default value by specifying `_' as the "initializing value" of the variable. More precisely, an initializer "= _" of a field assigns a zero value to that field. The zero value depends on the field's type. It is 0 for numeric types, falsefor booleans, and null for reference types. This is the same as if the same variable was defined in Java without an initializer.
+  <span class="k">var</span> <span class="n">celsius</span><span class="k">:</span> <span class="kt">Float</span> <span class="o">=</span> <span class="k">_</span>
 
-Note that you cannot simply leave off the "= _" initializer in Scala. If you had written:
-[source,scala]</code></pre>
-</div></div>
-<div class="paragraph"><p>var celsius: Float</p></div>
+  <span class="k">def</span> <span class="n">fahrenheit</span> <span class="k">=</span> <span class="n">celsius</span> <span class="o">*</span> <span class="mi">9</span> <span class="o">/</span> <span class="mi">5</span> <span class="o">+</span> <span class="mi">32</span>
+
+  <span class="k">def</span> <span class="n">fahrenheit_=</span> <span class="o">(</span><span class="n">f</span><span class="k">:</span> <span class="kt">Float</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">celsius</span> <span class="k">=</span> <span class="o">(</span><span class="n">f</span> <span class="o">-</span> <span class="mi">32</span><span class="o">)</span> <span class="o">*</span> <span class="mi">5</span> <span class="o">/</span> <span class="mi">9</span>
+  <span class="o">}</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">fahrenheit</span> <span class="o">+</span> <span class="s">&quot;F/&quot;</span> <span class="o">+</span> <span class="n">celsius</span> <span class="o">+</span> <span class="s">&quot;C&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 18.5 - Визначення геттера та сеттера без асоційованого поля.</p></div>
+<div class="paragraph"><p>Перший рядок тіла цього класу визначає <code>var</code>, <code>celsius</code>, що буде містити температуру в градусах Цельсія. Змінна <code>celsius</code> напочатку встановлена в значення по замовчанню, через вказання <code>_</code> як "ініціалізуючого значення" змінної. Більш точно, ініціалізатор <code>= _</code> поля присвоює нульове значення до цього поля. Нульове значення залежить від типу поля. Це <code>0</code> для числових типів, <code>false</code> для логічних, <code>null</code> для типів посилань. Це те саме, якби та сама змінна була визначена в Java без ініціалізатора.</p></div>
+<div class="paragraph"><p>Зауважте, що ви не можете просто відкинути ініціалізатор <code>= _</code> в Scala. Якщо ви напишете:</p></div>
 <div class="listingblock">
-<div class="content">
-<pre><code>this would declare an abstract variable, not an uninitialized one.footnote:[Abstract variables will be explained in Chapter 20.]
-
-The celsius variable definition is followed by a getter, "fahrenheit", and a setter, "fahrenheit_=", which access the same temperature, but in degrees Fahrenheit. There is no separate field that contains the current temperature value in Fahrenheit. Instead the getter and setter methods for Fahrenheit values automatically convert from and to degrees Celsius, respectively. Here's an example of interacting with a Thermometer object:
-[source,scala]</code></pre>
-</div></div>
-<div class="paragraph"><p>scala&gt; val t = new Thermometer
-t: Thermometer = 32.0F/0.0C</p></div>
-<div class="paragraph"><p>scala&gt; t.celsius = 100
-t.celsius: Float = 100.0</p></div>
-<div class="paragraph"><p>scala&gt; t
-res3: Thermometer = 212.0F/100.0C</p></div>
-<div class="paragraph"><p>scala&gt; t.fahrenheit = -40
-t.fahrenheit: Float = -40.0</p></div>
-<div class="paragraph"><p>scala&gt; t
-res4: Thermometer = -40.0F/-40.0C</p></div>
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">celsius</span><span class="k">:</span> <span class="kt">Float</span>
+</pre></div></div></div>
+<div class="paragraph"><p>це декларує абстрактну змінну, не неініціалізовану зміну.<span class="footnote"><br />[Абстрактні змінні будуть пояснені в Главі 20.]<br /></span></p></div>
+<div class="paragraph"><p>За визначенням змінної <code>celsius</code> іде геттер, <code>fahrenheit</code>, та сеттер, <code>fahrenheit_=</code>, що отримує доступ до такої самої температури, але в градусах Фаренгейту. Немає окремого поля, що містить поточне значення температури в фаренгейтах. Замість цього, методи геттера та сеттера для значень фаренгейта автоматично конвертують з градусів Цельсія, відповідно. Ось приклад взаємодії з об'єктом <code>Thermometer</code>:</p></div>
 <div class="listingblock">
-<div class="content">
-<pre><code>18.3 Дослідження: симуляція дескретних подій</code></pre>
-</div></div>
-<div class="paragraph"><p>The rest of this chapter shows by way of an extended example how mutable objects can be combined with first-class function values in interesting ways. You&#8217;ll see the design and implementation of a simulator for digital circuits. This task is broken down into several subproblems, each of which is interesting individually.</p></div>
-<div class="paragraph"><p>First, you&#8217;ll see a little language for digital circuits. The definition of this language will highlight a general method for embedding domain-specific languages (DSL) in a host language like Scala. Second, we&#8217;ll present a simple but general framework for discrete event simulation. Its main task will be to keep track of actions that are performed in simulated time. Finally, we&#8217;ll show how discrete simulationprograms can be structured and built. The idea of such simulations is to model physical objects by simulated objects, and use the simulation framework to model physical time.</p></div>
-<div class="paragraph"><p>The example is taken from the classic textbook <em>Structure and Interpretation of Computer Programs</em> by Abelson and Sussman [Abe96]. What&#8217;s different here is that the implementation language is Scala instead of Scheme, and that the various aspects of the example are structured into four software layers: one for the simulation framework, another for the basic circuit simulation package, a third for a library of user-defined circuits, and the last layer for each simulated circuit itself. Each layer is expressed as a class, and more specific layers inherit from more general ones.</p></div>
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">t</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Thermometer</span>
+<span class="n">t</span><span class="k">:</span> <span class="kt">Thermometer</span> <span class="o">=</span> <span class="mf">32.0F</span><span class="o">/</span><span class="mf">0.0</span><span class="n">C</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">t</span><span class="o">.</span><span class="n">celsius</span> <span class="k">=</span> <span class="mi">100</span>
+<span class="n">t</span><span class="o">.</span><span class="n">celsius</span><span class="k">:</span> <span class="kt">Float</span> <span class="o">=</span> <span class="mf">100.0</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">t</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Thermometer</span> <span class="o">=</span> <span class="mf">212.0F</span><span class="o">/</span><span class="mf">100.0</span><span class="n">C</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">t</span><span class="o">.</span><span class="n">fahrenheit</span> <span class="k">=</span> <span class="o">-</span><span class="mi">40</span>
+<span class="n">t</span><span class="o">.</span><span class="n">fahrenheit</span><span class="k">:</span> <span class="kt">Float</span> <span class="o">=</span> <span class="o">-</span><span class="mf">40.0</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">t</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">Thermometer</span> <span class="o">=</span> <span class="o">-</span><span class="mf">40.0F</span><span class="o">/-</span><span class="mf">40.0</span><span class="n">C</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_18_3____">18.3 Дослідження: симуляція дескретних подій</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Залишок цієї глави, поміж іншим, показує розширений приклад, як змінні об'єкти можуть бути комбіновані зі значеннями першокласних функцій в цікавий спосіб. Ви побачите розробку та реалізацію симулятора для цифрових пристроїв. Це завдання розбите на декілька субпроблем, кожне з яких цікаві самі по собі.</p></div>
+<div class="paragraph"><p>Спочатку, ви побачите невелику мову для цифрових пристроїв. Визначення цієї мови буде висвічувати загальний метод для вбудованих домен-специфічних мов (DSL) в основній мові, як Scala. Друге, ми представимо простий, але загальний фреймворк для симуляції дискретних подій. Його головне завдання буде відстеження дій, що виконуються в симульованому часу. Нарешті, ми покажемо, як програми дискретної симуляції можуть бути структуровані та побудовані. Ідея такої симуляції є моделювання фізичних об'єктів через симульовані об'єкти, та використання фреймворка симуляції для моделювання фізичного часу.</p></div>
+<div class="paragraph"><p>Приклад взятий з класичного підручника <em>Structure and Interpretation of Computer Programs</em> від Abelson та Sussman [Abe96]. Що тут відрізняється, це те, що мова реалізації є Scala замість Scheme, та що різні аспекти приклада структуровані в шари програмного забезпечення: один для фреймворка симуляції, інший для базового пакунку симуляції схем, третій для бібліотеки визначених користувачем пристроїв, та останній шар для кожного окремого симульованого пристрою. Кожний з рівнів виражений як клас, та більш специфічні шари наслідують від більш загальних.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="__">Швидкий шлях</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Understanding the discrete event simulation example presented in this chapter will take some time. If you feel you want to get on with learning more Scala instead, it&#8217;s safe to skip ahead to the next chapter.</p></div>
+<div class="paragraph"><p>Розуміння симуляції дескретних подій, представленої в цій главі, займе деякий час. Якщо ви відчуваєте, що замість цього бажаєте зайнятись вивченням Scala, безпечно перейти далі, до наступної глави.</p></div>
 <div class="paragraph"><p>Малюнок 18.1 - Базові ключі.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_18_4____">18.4 Мова для цифрових пристроїв</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>We&#8217;ll start with a "little language" to describe digital circuits. A digital circuit is built fromwires and function boxes. Wires carry signals, which are transformed by function boxes. Signals are represented by booleans: true for signal-on and false for signal-off.</p></div>
-<div class="paragraph"><p>Figure 18.1 shows three basic function boxes (or gates):</p></div>
+<div class="paragraph"><p>Ми почнемо з "малої мови" для опису дискретних цифрових пристроїв. Цифровий пристрій побудований з дротів та функціональних блоків. Дроти передають сигнали, що перетворюються функціональними блоками. Сигнали представлені як логічні рівні: <code>true</code> для вімкненого сигналу, <code>false</code> для вимкненого.</p></div>
+<div class="paragraph"><p>Малюнок 18.1 показує базові функціональні блоки (або вентилі):</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-An <em>inverter</em>, which negates its signal.
+<em>Інвертор</em>, що обертає свій сигнал.
 </p>
 </li>
 <li>
 <p>
-An <em>and-gate</em>, which sets its output to the conjunction of its inputs.
+<em>ТА-вентиль</em>, що встановлює свій вихід в кон'юкцію своїх входів.
 </p>
 </li>
 <li>
 <p>
-An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
+<em>АБО-вентиль</em>, що встановлює свій вихід в діз'юкцію своїх входів.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>These gates are sufficient to build all other function boxes. Gates have delays, so an output of a gate will change only some time after its inputs change.</p></div>
-<div class="paragraph"><p>We&#8217;ll describe the elements of a digital circuit by the following set of Scala classes and functions. First, there is a class Wire for wires. We can construct wires like this:</p></div>
+<div class="paragraph"><p>Ці вентилі достатні для побудови всіх інших функціональних блоків. Ключі мають затримки, так що вихід з вентиля буде змінюватись тільки через деякий час після зміни входу.</p></div>
+<div class="paragraph"><p>Ми опишемо елементи цифрової схеми через наступний набір класів та функцій Scala. Перше, існує клас <code>Wire</code> для дротів. Ми можемо конструювати дроти таким чином:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Wire</span>
 <span class="k">val</span> <span class="n">b</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Wire</span>
 <span class="k">val</span> <span class="n">c</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Wire</span>
 </pre></div></div></div>
-<div class="paragraph"><p>or, equivalent but shorter, like this:</p></div>
+<div class="paragraph"><p>або, еквівалентно, але коротше, ось так:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">,</span> <span class="n">c</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Wire</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Second, there are three procedures which "make" the basic gates we need:</p></div>
+<div class="paragraph"><p>Друге, існують три процедури, що "виготовляють" базові вентилі, що нам знадобляться:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">inverter</span><span class="o">(</span><span class="n">input</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">output</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span>
 <span class="k">def</span> <span class="n">andGate</span><span class="o">(</span><span class="n">a1</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">a2</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">output</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span>
 <span class="k">def</span> <span class="n">orGate</span><span class="o">(</span><span class="n">o1</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">o2</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">output</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>What&#8217;s unusual, given the functional emphasis of Scala, is that these procedures construct the gates as a side effect, instead of returning the constructed gates as a result. For instance, an invocation of inverter(a, b) places an inverter between the wires a and b. It turns out that this side-effecting construction makes it easier to construct complicated circuits gradually. Also, although methods most often have verb names, these have noun names that indicate which gate they are making. This reflects the declarative nature of the DSL: it should describe a circuit, not the actions of making one.</p></div>
-<div class="paragraph"><p>More complicated function boxes can be built from the basic gates. For instance, the method shown in Лістинг 18.6 constructs a half-adder. The halfAdder method takes two inputs, a and b, and produces a sum, s, defined by "s = (a + b) % 2" and a carry, c, defined by "c = (a + b) / 2". A diagram of the half- adder is shown in Figure 18.2.</p></div>
+<div class="paragraph"><p>Що є незвичним, беручи функціональну схильність Scala, це те, що ці процедури конструюють вентилі як побічний ефект, замість повернення сконструйованих вентилів в якості результата. Наприклад, виклик <code>inverter(a, b)</code> покладає інвертор між дротами <code>a</code> та <code>b</code>. З'ясовується, що таке побічно-ефектне конструювання спрощує конструювання складних пристроїв поступово. Також, хоча методи більш часто мають імена-дієслова, ці називаються як прикметники, що вказує на вентилі, що вони виробляють. Це відображує декларативну природу DSL: це має описувати схему, а не дії по їх створенню.</p></div>
+<div class="paragraph"><p>Більш складні функціональні блоки можуть бути побудовані з базових вентилів. Наприклад, метод, показаний в Лістингу 18.6, конструює напів-суматор. Метод <code>halfAdder</code> приймає два входи, <code>a</code> та <code>b</code>, та продукує суму, <code>s</code>, визначене як <code>s = (a + b) % 2</code> та перенос, <code>c</code>, визначене як <code>c = (a + b) / 2</code>. Діаграма напів-суматора показана на Малюнку 18.2.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">halfAdder</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">s</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">c</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
   <span class="k">val</span> <span class="n">d</span><span class="o">,</span> <span class="n">e</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Wire</span>
@@ -1045,7 +1034,7 @@ An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
 </pre></div></div></div>
 <div class="paragraph"><p>Лістинг 18.6 - Метод <code>halfAdder</code>.</p></div>
 <div class="paragraph"><p>Малюнок 18.2 - Схема напів-суматора.</p></div>
-<div class="paragraph"><p>Note that halfAdder is a parameterized function box just like the three methods that construct the primitive gates. You can use the halfAdder method to construct more complicated circuits. For instance, Лістинг 18.7 defines a full, one-bit adder, shown in Figure 18.3, which takes two inputs, a and b, as well as a carry-in, cin, and which produces a sum output defined by "sum = (a + b + cin) % 2" and a carry-out output defined by "cout = (a + b + cin) / 2".</p></div>
+<div class="paragraph"><p>Зауважте, що <code>halfAdder</code> є параметризованим функціональним блоком, так само, як три методи, що конструюють примітивні вентилі. Ви можете використовувати метод <code>halfAdder</code> для побудови більш складних схем. Наприклад, Лістинг 18.7 визначає повний однобітний суматор, показаний на Малюнку 18.3, що приймає два входи, <code>a</code> та <code>b</code>, так само, як вхідний перенос, <code>cin</code>, та який продукує на виході <code>sum</code>, визначений як <code>sum = (a + b + cin) % 2</code>, та вихідний перенос, визначений як <code>cout = (a + b + cin) / 2</code>.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">fullAdder</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">cin</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span>
     <span class="n">sum</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">cout</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
@@ -1055,18 +1044,17 @@ An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
   <span class="n">halfAdder</span><span class="o">(</span><span class="n">b</span><span class="o">,</span> <span class="n">s</span><span class="o">,</span> <span class="n">sum</span><span class="o">,</span> <span class="n">c2</span><span class="o">)</span>
   <span class="n">orGate</span><span class="o">(</span><span class="n">c1</span><span class="o">,</span> <span class="n">c2</span><span class="o">,</span> <span class="n">cout</span><span class="o">)</span>
 <span class="o">}</span>
-
-<span class="n">Лістинг</span> <span class="mf">18.7</span> <span class="o">-</span> <span class="n">Метод</span> <span class="n">`fullAdder`</span><span class="o">.</span>
-
-<span class="nc">Class</span> <span class="nc">Wire</span> <span class="n">and</span> <span class="n">functions</span> <span class="n">inverter</span><span class="o">,</span> <span class="n">andGate</span><span class="o">,</span> <span class="n">and</span> <span class="n">orGate</span> <span class="n">represent</span> <span class="n">a</span> <span class="n">little</span> <span class="n">language</span> <span class="k">with</span> <span class="n">which</span> <span class="n">users</span> <span class="n">can</span> <span class="n">define</span> <span class="n">digital</span> <span class="n">circuits</span><span class="o">.</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">a</span> <span class="n">good</span> <span class="n">example</span> <span class="n">of</span> <span class="n">an</span> <span class="nc">_internal_</span> <span class="nc">DSL</span><span class="o">,</span> <span class="n">a</span> <span class="n">domain</span><span class="o">-</span><span class="n">specific</span> <span class="n">language</span> <span class="n">defined</span> <span class="n">as</span> <span class="n">a</span> <span class="n">library</span> <span class="n">in</span> <span class="n">a</span> <span class="n">host</span> <span class="n">language</span> <span class="n">instead</span> <span class="n">of</span> <span class="n">being</span> <span class="n">implemented</span> <span class="n">on</span> <span class="n">its</span> <span class="n">own</span><span class="o">.</span>
-
-<span class="n">Малюнок</span> <span class="mf">18.3</span> <span class="o">-</span> <span class="n">Схема</span> <span class="n">повного</span> <span class="n">суматора</span><span class="o">.</span>
-
-<span class="nc">The</span> <span class="n">implementation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">circuit</span> <span class="nc">DSL</span> <span class="n">still</span> <span class="n">needs</span> <span class="n">to</span> <span class="n">be</span> <span class="n">worked</span> <span class="n">out</span><span class="o">.</span> <span class="nc">Since</span> <span class="n">the</span> <span class="n">purpose</span> <span class="n">of</span> <span class="n">defining</span> <span class="n">a</span> <span class="n">circuit</span> <span class="n">in</span> <span class="n">the</span> <span class="nc">DSL</span> <span class="n">is</span> <span class="n">simulating</span> <span class="n">the</span> <span class="n">circuit</span><span class="o">,</span> <span class="n">it</span> <span class="n">makes</span> <span class="n">sense</span> <span class="n">to</span> <span class="n">base</span> <span class="n">the</span> <span class="nc">DSL</span> <span class="n">implementation</span> <span class="n">on</span> <span class="n">a</span> <span class="n">general</span> <span class="nc">API</span> <span class="k">for</span> <span class="n">discrete</span> <span class="n">event</span> <span class="n">simulation</span><span class="o">.</span> <span class="nc">The</span> <span class="n">next</span> <span class="n">two</span> <span class="n">sections</span> <span class="n">will</span> <span class="n">present</span> <span class="n">first</span> <span class="n">the</span> <span class="n">simulation</span> <span class="nc">API</span> <span class="n">and</span> <span class="n">then</span> <span class="n">the</span> <span class="n">implementation</span> <span class="n">of</span> <span class="n">the</span> <span class="n">circuit</span> <span class="nc">DSL</span> <span class="n">on</span> <span class="n">top</span> <span class="n">of</span> <span class="n">it</span><span class="o">.</span>
-
-<span class="mf">18.5</span> <span class="nc">API</span> <span class="n">симуляції</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The simulation API is shown in Лістинг 18.8. It consists of class Simulation in packageorg.stairwaybook.simulation. Concrete simulation libraries inherit this class and augment it with domain-specific functionality. The elements of the Simulation class are presented in this section.</p></div>
+<div class="paragraph"><p>Лістинг 18.7 - Метод <code>fullAdder</code>.</p></div>
+<div class="paragraph"><p>Клас <code>Wire</code> та функції <code>inverter</code>, <code>andGate</code>, та <code>orGate</code> представляють малу мову, за допомогою якої користувачі можуть визначати цифрові пристрої. Це гарний приклад визначення <em>внутрішнього</em> DSL, домен-специфічної мови, визначеної як бібліотека в основній мові, замість бути реалізованій сама по собі.</p></div>
+<div class="paragraph"><p>Малюнок 18.3 - Схема повного суматора.</p></div>
+<div class="paragraph"><p>Реалізація DSL пристроїв все ще має бути пропрацьована. Оскільки призначення визначення пристрою в DSL є симуляція пристрою. має сенс базувати реалізацію DSL на загальному API для симуляції дескретних подій. Наступні два розділи будуть презентувати спочатку API симуляції, та потім реалізацію DSL пристроїв зверху нього.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_18_5_api_">18.5 API симуляції</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>API симуляції показаний в Лістингу 18.8. Він складається з класа <code>Simulation</code> в пакунку <code>org.stairwaybook.simulation</code>. Конкретна бібліотека симуляції наслідує цей клас, та додає до неї домен-специфічну функціональність. Елементи класу <code>Simulation</code> представлені в цьому розділі.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Simulation</span> <span class="o">{</span>
 
@@ -1109,42 +1097,42 @@ An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
   <span class="o">}</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Лістинг 18.8 - Клас Simulation.</p></div>
-<div class="paragraph"><p>A discrete event simulation performs user-defined actions at specified times. The actions, which are defined by concrete simulation subclasses, all share a common type:</p></div>
+<div class="paragraph"><p>Лістинг 18.8 - Клас <code>Simulation</code>.</p></div>
+<div class="paragraph"><p>Симуляція дискретних подій виконує визначені користувачем дії у вказаний час. Дії, що визначені в субкласі конкретної симуляції, всі поділяють єдиний тип:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">type</span> <span class="kt">Action</span> <span class="o">=</span> <span class="o">()</span> <span class="k">=&gt;</span> <span class="nc">Unit</span>
 </pre></div></div></div>
-<div class="paragraph"><p>This statement defines Action to be an alias of the type of procedure that takes an empty parameter list and returns Unit. Action is a <em>type member</em> of class Simulation. You can think of it as a more readable name for type () &#8658; Unit. Type members will be described in detail inSection 20.6.</p></div>
-<div class="paragraph"><p>The time at which an action is performed is simulated time; it has nothing to do with the actual "wall clock" time. Simulated times are represented simply as integers. The current simulated time is kept in a private variable:</p></div>
+<div class="paragraph"><p>Це твердження визначає <code>Action</code> як псевдоним для типу процедури, що приймає порожній список параметрів, та повертає <code>Unit</code>. <code>Action</code> є <em>членом типу</em> класу <code>Simulation</code>. Ви можуту думати про це, як про більш читаєме ім'я для типу <code>() =&gt; Unit</code>. Члени типів будуть описані в деталях в Розділі 20.6.</p></div>
+<div class="paragraph"><p>Час, в який виконується дія, є симульований час; він не має нічого спільного зі справжнім часом "годинника на стіні". Симульований час представлений просто як ціле. Поточний симульований час утримується як приватна змінніа:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">private</span> <span class="k">var</span> <span class="n">curtime</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">0</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The variable has a public accessor method, which retrieves the current time:</p></div>
+<div class="paragraph"><p>Змінна має публічний метод аксессора, що повертає поточний час:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">currentTime</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">curtime</span>
 </pre></div></div></div>
-<div class="paragraph"><p>This combination of private variable with public accessor is used to make sure that the current time cannot be modified outside the Simulation class. After all, you don&#8217;t usually want your simulation objects to manipulate the current time, except possibly if your simulation models time travel.</p></div>
-<div class="paragraph"><p>An action that needs to be executed at a specified time is called a work item. Work items are implemented by the following class:</p></div>
+<div class="paragraph"><p>Ця комбінація приватної змінної з публічним аксессором використовується для переконання, що поточний час не може бути модифікований за межами класу <code>Simulation</code>. Кінець кінцем, звичайно ви не бажаєте, щоб ваші об'єкти симуляції маніпулювали поточним часом, можливо, за винятком, якщо ваша модель симуляції подорожує в часі.</p></div>
+<div class="paragraph"><p>Дія, що має бути виконана у вказаний час, називається робочим елементом. Робочий елемент реалізований як наступний клас:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="k">class</span> <span class="nc">WorkItem</span><span class="o">(</span><span class="n">time</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">action</span><span class="k">:</span> <span class="kt">Action</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>We made the WorkItem class a case class because of the syntactic conveniences this entails: You can use the factory method, WorkItem, to create instances of the class, and you get accessors for the constructor parameters time and action for free. Note also that class WorkItem is nested inside class Simulation. Nested classes in Scala are treated similarly to Java. Section 20.7 will give more details.</p></div>
-<div class="paragraph"><p>The Simulation class keeps an agenda of all remaining work items that have not yet been executed. The work items are sorted by the simulated time at which they have to be run:</p></div>
+<div class="paragraph"><p>Ми робимо клас <code>WorkItem</code> кейс класом, оскільки є синтаксичні зручності, що витікають з цього: ви можете використовувати метод фабрики <code>WorkItem</code>, щоб створити примірники класу, та ви задурно отримуєте аксессори для параметрів конструктора <code>time</code> та <code>action</code>. Також зауважте, що клас <code>WorkItem</code> вкладений в клас <code>Simulation</code>. Вкладені класи в Scala розглядаються подібно до Java. Розділ 20.7 надасть більше деталей.</p></div>
+<div class="paragraph"><p>Клас <code>Simulation</code> утримує порядок денний з усіх залишених робочих елементів, що ще не були виконані. Робочі елементи впорядковані по симульованому часу, в який вони мають виконуватись:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">private</span> <span class="k">var</span> <span class="n">agenda</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">WorkItem</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">()</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The agenda list will be kept in the proper sorted order by the insert method, which updates it. You can see insert being called from afterDelay, which is the only way to add a work item to the agenda:</p></div>
+<div class="paragraph"><p>Список <code>agenda</code> буде підтримуватись в потрібному впорядкованому вигляді через метод <code>insert</code>, що оновлює його. Ви можете бачити <code>insert</code>, коли той викликається з <code>afterDelay</code>, що є єдиним шляхом додати робочий елемент до розкладу:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">afterDelay</span><span class="o">(</span><span class="n">delay</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)(</span><span class="n">block</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
   <span class="k">val</span> <span class="n">item</span> <span class="k">=</span> <span class="nc">WorkItem</span><span class="o">(</span><span class="n">currentTime</span> <span class="o">+</span> <span class="n">delay</span><span class="o">,</span> <span class="o">()</span> <span class="k">=&gt;</span> <span class="n">block</span><span class="o">)</span>
   <span class="n">agenda</span> <span class="k">=</span> <span class="n">insert</span><span class="o">(</span><span class="n">agenda</span><span class="o">,</span> <span class="n">item</span><span class="o">)</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>As the name implies, this method inserts an action (given by block) into the agenda so that it is scheduled for execution delay time units after the current simulation time. For instance, the following invocation would create a new work item to be executed at the simulated time,currentTime + delay:</p></div>
+<div class="paragraph"><p>Як натякає ім'я, цей метод вставляє дію (надану як <code>block</code>) в розклад, так що вона планується для виконання з затримкою в одиницях часу, після поточного часу симуляції. Наприклад, наступний виклик буде створювати новий робочий елемент, що буде виконаний в симульований час <code>currentTime + delay</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">afterDelay</span><span class="o">(</span><span class="n">delay</span><span class="o">)</span> <span class="o">{</span> <span class="n">count</span> <span class="o">+=</span> <span class="mi">1</span> <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The code to be executed is contained in the method&#8217;s second argument. The formal parameter for this argument has type "&#8658; Unit" (i.e., it is a computation of type Unit which is passed by name). Recall that by-name parameters are not evaluated when passed to a method. So in the call above, count would be incremented only when the simulation framework calls the action stored in the work item. Note that afterDelay is a curried function. It&#8217;s a good example of the principle set forward in Section 9.5 that currying can be used to make method calls look more like built-in syntax. The created work item still needs to be inserted into the agenda. This is done by the insert method, which maintains the invariant that the agenda is time-sorted:</p></div>
+<div class="paragraph"><p>Код, що буде виконаний, міститься в другому аргументі метода. Формальний параметр для цього аргумента має тип <code>=&gt; Unit</code> (тобто, це обчислення типу <code>Unit</code>, що передається по імені). Згадайте, що параметри за-ім'ям не обчислюються коли передаються в метод. Так що в виклику вище <code>count</code> буде інкрементовано тільки коли фреймворк симуляції викликає дію, що зберігається в робочому елементі. Зауважте, що <code>afterDelay</code> є карованою функцією. Це гарний приклад принципу, викладеного в Розділі 9.5, що каровані функції можуть використовуватись, щоб зробити виклик метода більш схожим на вбудований синтаксис. Створений робочий елемент все ще потребує бути вставленим в розклад. Це робиться через метод <code>insert</code>, що підтримує інваріант, згідно якого <code>agenda</code> впорядкована за часом:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">private</span> <span class="k">def</span> <span class="n">insert</span><span class="o">(</span><span class="n">ag</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">WorkItem</span><span class="o">],</span>
     <span class="n">item</span><span class="k">:</span> <span class="kt">WorkItem</span><span class="o">)</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">WorkItem</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
@@ -1152,7 +1140,7 @@ An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
   <span class="k">else</span> <span class="n">ag</span><span class="o">.</span><span class="n">head</span> <span class="o">::</span> <span class="n">insert</span><span class="o">(</span><span class="n">ag</span><span class="o">.</span><span class="n">tail</span><span class="o">,</span> <span class="n">item</span><span class="o">)</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The core of the Simulation class is defined by the run method:</p></div>
+<div class="paragraph"><p>Основа класу <code>Simulation</code> визначений методом <code>run</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">run</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
   <span class="n">afterDelay</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span> <span class="o">{</span>
@@ -1162,7 +1150,7 @@ An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
   <span class="k">while</span> <span class="o">(!</span><span class="n">agenda</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="n">next</span><span class="o">()</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>This method repeatedly takes the first item in the agenda, removes it from the agenda and executes it. It does this until there are no more items left in the agenda to execute. Each step is performed by calling the next method, which is defined as follows:</p></div>
+<div class="paragraph"><p>Цей метод постійно вибирає перший елемент в <code>agenda</code>, видаляє його з розкладу, та виконує його. Він робить це, доки в роскладі більше не залишиться елементів, що не були виконані. Кожний крок виконується через метод <code>next</code>, що визначений таким чином:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">private</span> <span class="k">def</span> <span class="n">next</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
   <span class="o">(</span><span class="n">agenda</span><span class="k">:</span> <span class="kt">@unchecked</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
@@ -1172,28 +1160,25 @@ An <em>or-gate</em>, which sets its output to the disjunction of its inputs.
       <span class="n">item</span><span class="o">.</span><span class="n">action</span><span class="o">()</span>
   <span class="o">}</span>
 <span class="o">}</span>
-<span class="nc">The</span> <span class="n">next</span> <span class="n">method</span> <span class="n">decomposes</span> <span class="n">the</span> <span class="n">current</span> <span class="n">agenda</span> <span class="k">with</span> <span class="n">a</span> <span class="n">pattern</span> <span class="k">match</span> <span class="n">into</span> <span class="n">a</span> <span class="n">front</span> <span class="n">item</span><span class="o">,</span> <span class="n">item</span><span class="o">,</span> <span class="n">and</span> <span class="n">a</span> <span class="n">remaining</span> <span class="n">list</span> <span class="n">of</span> <span class="n">work</span> <span class="n">items</span><span class="o">,</span> <span class="n">rest</span><span class="o">.</span> <span class="nc">It</span> <span class="n">removes</span> <span class="n">the</span> <span class="n">front</span> <span class="n">item</span> <span class="n">from</span> <span class="n">the</span> <span class="n">current</span> <span class="n">agenda</span><span class="o">,</span> <span class="n">sets</span> <span class="n">the</span> <span class="n">simulated</span> <span class="n">time</span> <span class="n">curtime</span> <span class="n">to</span> <span class="n">the</span> <span class="n">work</span> <span class="n">item</span><span class=" -Symbol">&#39;s</span> <span class="n">time</span><span class="o">,</span> <span class="n">and</span> <span class="n">executes</span> <span class="n">the</span> <span class="n">work</span> <span class="n">item</span><span class=" -Symbol">&#39;s</span> <span class="n">action</span><span class="o">.</span>
-
-<span class="nc">Note</span> <span class="n">that</span> <span class="n">next</span> <span class="n">can</span> <span class="n">be</span> <span class="n">called</span> <span class="n">only</span> <span class="k">if</span> <span class="n">the</span> <span class="n">agenda</span> <span class="n">is</span> <span class="n">non</span><span class="o">-</span><span class="n">empty</span><span class="o">.</span> <span class="nc">There</span><span class=" -Symbol">&#39;s</span> <span class="n">no</span> <span class="k">case</span> <span class="k">for</span> <span class="n">an</span> <span class="n">empty</span> <span class="n">list</span><span class="o">,</span> <span class="n">so</span> <span class="n">you</span> <span class="n">would</span> <span class="n">get</span> <span class="n">a</span> <span class="nc">MatchError</span> <span class="n">exception</span> <span class="k">if</span> <span class="n">you</span> <span class="n">tried</span> <span class="n">to</span> <span class="n">run</span> <span class="n">next</span> <span class="n">on</span> <span class="n">an</span> <span class="n">empty</span> <span class="n">agenda</span><span class="o">.</span>
-
-<span class="nc">In</span> <span class="n">fact</span><span class="o">,</span> <span class="n">the</span> <span class="nc">Scala</span> <span class="n">compiler</span> <span class="n">would</span> <span class="n">normally</span> <span class="n">warn</span> <span class="n">you</span> <span class="n">that</span> <span class="n">you</span> <span class="n">missed</span> <span class="n">one</span> <span class="n">of</span> <span class="n">the</span> <span class="n">possible</span> <span class="n">patterns</span> <span class="k">for</span> <span class="n">a</span> <span class="n">list</span><span class="k">:</span>
-<span class="err">[</span><span class="kt">source</span><span class="o">,</span><span class="n">scala</span><span class="err">]</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Simulator.scala:19: warning: match is not exhaustive!
-missing combination     Nil</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    agenda match {
-    ^
-one warning found</code></pre>
-</div></div>
+<div class="paragraph"><p>Метод <code>next</code> декомпонує потоний розклад за допомогою порівняння шаблонів на перший елемент, <code>item</code>, та залишок списку робочих елементів, <code>rest</code>. Він видаляє передній елемент з поточного розкладу, встановлює симульований час <code>curtime</code> до часу робочого елементу, та виконує дію робочого елемента.</p></div>
+<div class="paragraph"><p>Зауважте, що <code>next</code> може бути викликаний тільки якщо розклад непорожній. Немає <code>case</code> для порожнього списку, так що ви будете отримувати виключення <code>MatchError</code>, якщо ви спробуєте викликати <code>next</code> на порожньому розкладі.</p></div>
+<div class="paragraph"><p>Фактично, компілятор Scala буде звичайно попереджати вас, що ви пропустили один з можливих шаблонів для списку:</p></div>
 <div class="listingblock">
-<div class="content">
-<pre><code>In this case, the missing case is not a problem because you know that next is called only on a non- empty agenda. Therefore, you might want to disable the warning. You saw in Section 15.5 that this can be done by adding an @unchecked annotation to the selector expression of the pattern match. That's why the Simulation code uses "(agenda: @unchecked) match", not "agenda match". That's it. This might look like surprisingly little code for a simulation framework. You might wonder how this framework could possibly support interesting simulations, if all it does is execute a list of work items? In fact the power of the simulation framework comes from the fact that actions stored in work items can themselves install further work items into the agenda when they are executed. That makes it possible to have long-running simulations evolve from simple beginnings.
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Simulator</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">19</span><span class="kt">:</span> <span class="kt">warning:</span> <span class="kt">match</span> <span class="kt">is</span> <span class="kt">not</span> <span class="kt">exhaustive!</span>
+<span class="n">missing</span> <span class="n">combination</span>     <span class="nc">Nil</span>
 
-18.6 Симуляція схеми</code></pre>
-</div></div>
-<div class="paragraph"><p>The next step is to use the simulation framework to implement the domain-specific language for circuits shown in Section 18.4. Recall that the circuit DSL consists of a class for wires and methods that create and-gates, or-gates, and inverters. These are all contained in aBasicCircuitSimulation class, which extends the simulation framework. This class is shown inListings 18.9 and 18.10.</p></div>
+    <span class="n">agenda</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="o">^</span>
+<span class="n">one</span> <span class="n">warning</span> <span class="n">found</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому випадку, відсутній <code>case</code> не є проблемою, оскільки ви знаєте, що <code>next</code> викликається на непорожньому розкладі. Таким чином, ви можете побажати відключити попередження. Ви бачили в Розділі 15.5, що це може бути зроблене через додавання анотації <code>@unchecked</code> до виразу селектора в порівнянні шаблонів. Ось чому код <code>Simulation</code> використовує <code>(agenda: @unchecked) match</code>, не <code>agenda match</code>. Це все. Це може виглядати як дивовижно малий код для фреймворка симуляції. Ви можете здивуватись, як цей фреймворк може потенційно підтримувати цікаві симуляції, якщо все, що він робить, це виконує список робочих елементів? Фактично, потужність фреймворку симуляції походить від факту, що дії, що зберігаються в робочих елементах, самі можуть встановлювати подальші робочі елементи в розклад під час виконання. Це робить можливим мати довготриваючі симуляції, розвинені з простого початку.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_18_6__">18.6 Симуляція схеми</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Наступний крок є використання фреймворку симуляції для реалізації домен-специфічної мови для пристроїв, показаної в Розділі 18.4. Згадайте, що DSL пристроїв складається з класа для дротів, та методів, що створюють ТА-вентилі, АБО-вентилі та інвертори. Всі вони містяться в класі <code>BasicCircuitSimulation</code>, що розширює фреймворк симуляції. Цей клас показаний в Лістингах 18.9 та 18.10.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">org.stairwaybook.simulation</span>
 
@@ -1204,7 +1189,8 @@ one warning found</code></pre>
   <span class="k">def</span> <span class="nc">OrGateDelay</span><span class="k">:</span> <span class="kt">Int</span>
 
   <span class="k">class</span> <span class="nc">Wire</span> <span class="o">{</span>
-    <span class="k">private</span> <span class="k">var</span> <span class="n">sigVal</span> <span class="k">=</span> <span class="n">falseprivate</span> <span class="k">var</span> <span class="n">actions</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Action</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">()</span>
+    <span class="k">private</span> <span class="k">var</span> <span class="n">sigVal</span> <span class="k">=</span> <span class="kc">false</span>
+    <span class="k">private</span> <span class="k">var</span> <span class="n">actions</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Action</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">()</span>
 
     <span class="k">def</span> <span class="n">getSignal</span> <span class="k">=</span> <span class="n">sigVal</span>
 
@@ -1231,7 +1217,7 @@ one warning found</code></pre>
   <span class="o">}</span>
 <span class="c1">// продовження в Лістингу 18.10...</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Лістинг 18.9 - The first half of the BasicCircuitSimulation class.</p></div>
+<div class="paragraph"><p>Лістинг 18.9 - Перша половина класу <code>BasicCircuitSimulation</code>.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="c1">// ...продовження з Лістингу 18.9</span>
   <span class="k">def</span> <span class="n">andGate</span><span class="o">(</span><span class="n">a1</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">a2</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">output</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
@@ -1268,28 +1254,28 @@ one warning found</code></pre>
 <span class="o">}</span>
 </pre></div></div></div>
 <div class="paragraph"><p>Лістинг 18.10 - Друга половина класу <code>BasicCircuitSimulation</code>.</p></div>
-<div class="paragraph"><p>Class BasicCircuitSimulation declares three abstract methods that represent the delays of the basic gates: InverterDelay, AndGateDelay, and OrGateDelay. The actual delays are not known at the level of this class because they depend on the technology of circuits that are simulated. That&#8217;s why the delays are left abstract in class BasicCircuitSimulation, so that their concrete definition is delegated to a subclass.<span class="footnote"><br />[The names of these "delay" methods start with a capital letter because they represent constants. They are methods so they can be overridden in subclasses. You&#8217;ll find out how to do the same thing with vals in Section 20.3.]<br /></span> The implementation of class BasicCircuitSimulation&#8217;s other members is described next.</p></div>
+<div class="paragraph"><p>Клас <code>BasicCircuitSimulation</code> декларує три абстрактні методи, що представляють затримки базових вентилів: <code>InverterDelay</code>, <code>AndGateDelay</code>, та <code>OrGateDelay</code>. Дійсні затримки невідомі на рівні цього класу, оскікльи вони залежать від технології пристроїв, що будуть симульовані. Ось чому затримки залишені абстрактними в класі <code>BasicCircuitSimulation</code>, так що їх суцільне визначення делеговано до субкласів.<span class="footnote"><br />[Імена ціх методів затримки починаються з великої літери, оскільки вони представляють константи. Вони є методами, так що вони можуть бути перекриті в субкласах. Ви винайдете, як робити ті самі речі з <code>val</code> в Розділі 20.3.]<br /></span> Реалізація інших членів класу <code>BasicCircuitSimulation</code> описана далі.</p></div>
 <div class="sect2">
 <h3 id="__wire">Клас Wire</h3>
-<div class="paragraph"><p>A wire needs to support three basic actions:</p></div>
+<div class="paragraph"><p>Дріт має підтримувати три базові дії:</p></div>
 <div class="ulist"><ul>
 <li>
 <p>
-getSignal: Boolean: returns the current signal on the wire.
+<code>getSignal: Boolean</code>: повертає поточний сигнал на дроті.
 </p>
 </li>
 <li>
 <p>
-setSignal(sig: Boolean): sets the wire&#8217;s signal to sig.
+<code>setSignal(sig: Boolean)</code>: встановлює сигнал на дроті в <code>sig</code>.
 </p>
 </li>
 <li>
 <p>
-addAction(p: Action): attaches the specified procedure p to the actions of the wire. The idea is that all action procedures attached to some wire will be executed every time the signal of the wire changes. Typically actions are added to a wire by components connected to the wire. An attached action is executed once at the time it is added to a wire, and after that, every time the signal of the wire changes.
+<code>addAction(p: Action)</code>: приєднує вказану процедуру <code>p</code> до дій на дроті. Ідея полягає в тому, що всі процедури дій, приєднані до деякого дроту, будуть використовуватись кожний раз, коли сигнал на дроті змінюється. Типово акції додаються до дроту через компоненти, приєднані до дроту. Приєднана дія виконується один раз, коли вона додається до дроту, та після цього кожний раз, коли сигнал на дроті змінюється.
 </p>
 </li>
 </ul></div>
-<div class="paragraph"><p>Here is the implementation of the Wire class:</p></div>
+<div class="paragraph"><p>Ось реалізація класу <code>Wire</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Wire</span> <span class="o">{</span>
 
@@ -1310,11 +1296,11 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
   <span class="o">}</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Two private variables make up the state of a wire. The variable sigVal represents the current signal, and the variable actions represents the action procedures currently attached to the wire. The only interesting method implementation is the one for setSignal: When the signal of a wire changes, the new value is stored in the variable sigVal. Furthermore, all actions attached to a wire are executed. Note the shorthand syntax for doing this: "actions foreach (_ ())" applies the function, "_ ()", to each element inthe actions list. As described in Section 8.5, the function "_ ()" is a shorthand for "f &#8658; f ()"—i.e., it takes a function (we&#8217;ll call it f) and applies it to the empty parameter list.</p></div>
+<div class="paragraph"><p>Дві приватні змінні складають стан дроту. Змінна <code>sigVal</code> представляє поточний сигнал, та змінна <code>actions</code> представляє процедури дій, наразі приєднані до дроту. Одна цікава реалізація метода є <code>setSignal</code>: коли сигнал на дроті змінюється, нове значення зберігається в змінній <code>sigVal</code>. Більше того, всі дії, приєднані до дроту, виконуються. Зауважте скорочений синтаксис для виконання цього: <code>actions foreach (_ ())</code> застосовує функцію <code>_ ()</code> до кожного елементу в списку <code>actions</code>. Як описане в Розділі 8.5, функція <code>_ ()</code> є скороченням до <code>f =&gt; f ()</code> — тобто, вона приймає функцію (назвемо її <code>f</code>), та застосовує її до порожнього списку параметрів.</p></div>
 </div>
 <div class="sect2">
 <h3 id="__code_inverter_code">Метод <code>inverter</code></h3>
-<div class="paragraph"><p>The only effect of creating an inverter is that an action is installed on its input wire. This action is invoked once at the time the action is installed, and thereafter every time the signal on the input changes. The effect of the action is that the value of the inverter&#8217;s output value is set (via setSignal) to the inverse of its input value. Since inverter gates have delays, this change should take effect only InverterDelay units of simulated time after the input value has changed and the action was executed. This suggests the following implementation:</p></div>
+<div class="paragraph"><p>Єдиний ефект від створення інвертора в тому, що на його вхідному дроті встановлюється дія. Ця дія викликається кожний раз, коли дія інсталюється, та потім кожного разу, коли сигнал на дроті змінюється. Ефект дії в тому, що значення на виході інвертора встановлюється (через <code>setSignal</code>) на протилежність вхідного значення. Оскільки вентилі інверторів мають затримки, ця зміна повинна набувати ефекту тільки після <code>InverterDelay</code> одиниць симульованого часу після того, як вхідне значення було змінене, та дія була виконана. Це підказує наступну реалізацію:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">inverter</span><span class="o">(</span><span class="n">input</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">output</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
   <span class="k">def</span> <span class="n">invertAction</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
@@ -1326,11 +1312,11 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
   <span class="n">input</span> <span class="n">addAction</span> <span class="n">invertAction</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The effect of the inverter method is to add invertAction to the input wire. This action, when invoked, gets the input signal and installs another action that inverts the output signal into the simulation agenda. This other action is to be executed after InverterDelay units of simulated time. Note how the method uses the afterDelay method of the simulation framework to create a new work item that&#8217;s going to be executed in the future.</p></div>
+<div class="paragraph"><p>Ефект метода <code>inverter</code> є додавання <code>invertAction</code> до вхідного дроту. Ця дія, коли викликана, бере вхідний сигнал, та встанавлює іншу дію, що інвертує вихідний сигнал в симульованому розкладі. Ця інша дія буде виконана через <code>InverterDelay</code> одиниць симульованого часу. Зауважте, як метод використовує метод <code>afterDelay</code> фреймворка симуляції для створення нового робочого елемента, що буде виконаний в майбутньому.</p></div>
 </div>
 <div class="sect2">
 <h3 id="__code_andgate_code__code_orgate_code">Методи <code>andGate</code> та <code>orGate</code></h3>
-<div class="paragraph"><p>The implementation of and-gates is analogous to the implementation of inverters. The purpose of an and-gate is to output the conjunction of its input signals. This should happen atAndGateDelay simulated time units after any one of its two inputs changes. Hence, the following implementation:</p></div>
+<div class="paragraph"><p>Реалізація ТА-вентилів аналогічна реалізації інверторів. Призначення ТА-вентилів є вивід кон'юкції його вхідних сигналів. Це має відбуватись через <code>AndGateDelay</code> одиниць симульованого часу після зміни одного з його вхідних сигналів. З цього випливає наступна реалізація:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">andGate</span><span class="o">(</span><span class="n">a1</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">a2</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">,</span> <span class="n">output</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
   <span class="k">def</span> <span class="n">andAction</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
@@ -1344,11 +1330,11 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
   <span class="n">a2</span> <span class="n">addAction</span> <span class="n">andAction</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The effect of the andGate method is to add andAction to both of its input wires a1 and a2. This action, when invoked, gets both input signals and installs another action that sets the outputsignal to the conjunction of both input signals. This other action is to be executed afterAndGateDelay units ofsimulated time. Note that the output has to be recomputed if either of the input wires changes. That&#8217;s why the same andAction is installed on each of the two input wiresa1 and a2. The orGate method is implemented similarly, except it performs a logical-or instead of a logical-and.</p></div>
+<div class="paragraph"><p>Ефект метода <code>andGate</code> є додавання <code>andAction</code> до обох його вхідних дротів, <code>a1</code> та <code>a2</code>. Ця дія, коли викликається, отримує обоє вхідні сигнали, та інсталює іншу дію, що встанавлює вихідний сигнал в кон'юкцію обох вхідних сигналів. Ця інша дія буде виконана після <code>AndGateDelay</code> одиниць симульованого часу. Зауважте, що вихід буде перерахований, якщо любий з вхідних дротів зміниться. Ось чому та сама акція <code>andAction</code> інсталюється для обох вхідних дротів, <code>a1</code> та <code>a2</code>. Метод <code>orGate</code> реалізований подібно, за винятком того, що він виконує логічне АБО замість логічного ТА.</p></div>
 </div>
 <div class="sect2">
 <h3 id="___2">Вивід симуляції</h3>
-<div class="paragraph"><p>To run the simulator, you need a way to inspect changes of signals on wires. To accomplish this, you can simulate the action of putting a probe on a wire:</p></div>
+<div class="paragraph"><p>Щоб виконати симулятор, вам треба спосіб інспектувати зміни сигналів на дротах. Щоб досягти цього, ви можете симулювати дію покладання проби на дріт:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">probe</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">wire</span><span class="k">:</span> <span class="kt">Wire</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
   <span class="k">def</span> <span class="n">probeAction</span><span class="o">()</span> <span class="k">=</span> <span class="o">{</span>
@@ -1358,11 +1344,11 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
   <span class="n">wire</span> <span class="n">addAction</span> <span class="n">probeAction</span>
 <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The effect of the probe procedure is to install a probeAction on a given wire. As usual, the installed action is executed every time the wire&#8217;s signal changes. In this case it simply prints the name of the wire (which is passed as first parameter to probe), as well as the current simulated time and the wire&#8217;s new value.</p></div>
+<div class="paragraph"><p>Ефект процедури <code>probe</code> є встановити <code>probeAction</code> на обраний дріт. Як звичайно, встановлена дія виконується кожний раз, коли сигнал на дроті змінюється. В цьому випадку вона просто друкує ім'я дроту (що передається як перший параметр до <code>probe</code>), так само, як і поточний час симуляції, та нове значення на дроті.</p></div>
 </div>
 <div class="sect2">
 <h3 id="___3">Запуск симулятора</h3>
-<div class="paragraph"><p>After all these preparations, it&#8217;s time to see the simulator in action. To define a concrete simulation, you need to inherit from a simulation framework class. To see something interesting, we&#8217;ll create an abstract simulation class that extends BasicCircuitSimulation and contains method definitions for half-adders and full-adders as they were presented earlier in this chapter in Listings 18.6 and 18.7, respectively. This class, which we&#8217;ll callCircuitSimulation, is shown in Лістинг 18.11.</p></div>
+<div class="paragraph"><p>Після всіх ціх підготувань настав час побачити симулятор в дії. Щоб визначити суцільну симуляцію, вам треба наслідувати від класу фреймворка симуляції. Щоб побачити щось цікаве, ми створимо клас абстрактної симуляції, що розширює <code>BasicCircuitSimulation</code>, та містить визначення методів для напів-суматора та повного суматора, як вони були представлені раніше в цій главі в Лістингах 18.6 та 18.7, відповідно. Цей клас, що ми назвемо  <code>CircuitSimulation</code>, показаний на Лістингу 18.11.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">org.stairwaybook.simulation</span>
 
@@ -1387,7 +1373,12 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
 <span class="o">}</span>
 </pre></div></div></div>
 <div class="paragraph"><p>Лістинг 18.11 - Клас <code>CircuitSimulation</code>.</p></div>
-<div class="paragraph"><p>A concrete circuit simulation will be an object that inherits from class CircuitSimulation. The object still needs to fix the gate delays according to the circuit implementation technology that&#8217;s simulated. Finally, you will also need to define the concrete circuit that&#8217;s going to be simulated. You can do these steps interactively in the Scala interpreter: scala&gt; import org.stairwaybook.simulation._ import org.stairwaybook.simulation._ First, the gate delays. Define an object (call it MySimulation) that provides some numbers:</p></div>
+<div class="paragraph"><p>Суцільна симуляція пристрою буде об'єктом, що наслідує від класа <code>CircuitSimulation</code>. Об'єкт все ще потребує виправлення затримок вентилів відповідно до технології реалізації пристрою, яка симулюється. Нарешті, вам також треба буде визначити суцільний пристрій, що має бути симульований. Ви можете зробити ці кроки інтерактивно в інтерпретаторі Scala:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">org.stairwaybook.simulation._</span>
+<span class="k">import</span> <span class="nn">org.stairwaybook.simulation._</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зпершу вирішимо затримки вентилів. Визначимо об'єкт (назвемо її <code>MySimulation</code>), що провадить деякі числа:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">object</span> <span class="nc">MySimulation</span> <span class="k">extends</span> <span class="nc">CircuitSimulation</span> <span class="o">{</span>
         <span class="k">def</span> <span class="nc">InverterDelay</span> <span class="k">=</span> <span class="mi">1</span>
@@ -1396,12 +1387,12 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
       <span class="o">}</span>
 <span class="n">defined</span> <span class="n">module</span> <span class="nc">MySimulation</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Because you are going to access the members of the MySimulation object repeatedly, an import of the object keeps the subsequent code shorter:</p></div>
+<div class="paragraph"><p>Оскільки ви збираєтесь постійно отримувати доступ до членів об'єкта <code>MySimulation</code>, імпортування об'єкту підтримує подальший код коротшим:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">MySimulation._</span>
 <span class="k">import</span> <span class="nn">MySimulation._</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Next, the circuit. Define four wires, and place probes on two of them:</p></div>
+<div class="paragraph"><p>Далі - пристрій. Визначте чотири дроти, та покладіть проби на два з них:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">input1</span><span class="o">,</span> <span class="n">input2</span><span class="o">,</span> <span class="n">sum</span><span class="o">,</span> <span class="n">carry</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Wire</span>
 <span class="n">input1</span><span class="k">:</span> <span class="kt">MySimulation.Wire</span> <span class="o">=</span>
@@ -1420,16 +1411,17 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">probe</span><span class="o">(</span><span class="s">&quot;carry&quot;</span><span class="o">,</span> <span class="n">carry</span><span class="o">)</span>
 <span class="n">carry</span> <span class="mi">0</span> <span class="k">new</span><span class="o">-</span><span class="n">value</span> <span class="k">=</span> <span class="kc">false</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Note that the probes immediately print an output. This is because every action installed on a wire is executed a first time when the action is installed.</p></div>
-<div class="paragraph"><p>Now define a half-adder connecting the wires:</p></div>
+<div class="paragraph"><p>Зауважте, що проби безпосередньо друкують вивід. Це тому, що кожна дія, встановлена на дроті, перший раз виконується при встановленні дії.</p></div>
+<div class="paragraph"><p>Тепер визначимо напів-суматор, під'єднавши дроти:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">halfAdder</span><span class="o">(</span><span class="n">input1</span><span class="o">,</span> <span class="n">input2</span><span class="o">,</span> <span class="n">sum</span><span class="o">,</span> <span class="n">carry</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Finally, set the signals, one after another, on the two input wires to true and run the simulation:</p></div>
+<div class="paragraph"><p>Нарешті, встановимо сигнали, один за одним, на двох вхідних дротах, та запустимо симуляцію:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">input1</span> <span class="n">setSignal</span> <span class="kc">true</span>
 
-<span class="n">scala</span><span class="o">&gt;</span> <span class="n">run</span><span class="o">()***</span> <span class="n">simulation</span> <span class="n">started</span><span class="o">,</span> <span class="n">time</span> <span class="k">=</span> <span class="mi">0</span> <span class="o">***</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">run</span><span class="o">()</span>
+<span class="o">***</span> <span class="n">simulation</span> <span class="n">started</span><span class="o">,</span> <span class="n">time</span> <span class="k">=</span> <span class="mi">0</span> <span class="o">***</span>
 <span class="n">sum</span> <span class="mi">8</span> <span class="k">new</span><span class="o">-</span><span class="n">value</span> <span class="k">=</span> <span class="kc">true</span>
 
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">input2</span> <span class="n">setSignal</span> <span class="kc">true</span>
@@ -1445,8 +1437,8 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
 <div class="sect1">
 <h2 id="_18_7_">18.7 Висновок</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>This chapter brought together two techniques that seem disparate at first: mutable state and higher- order functions. Mutable state was used to simulate physical entities whose state changes over time. Higher-order functions were used in the simulation framework to execute actions at specified points in simulated time. They were also used in the circuit simulations astriggers that associate actions with state changes. Along the way, you saw a simple way to define a domain-specific language as a library. That&#8217;s probably enough for one chapter!</p></div>
-<div class="paragraph"><p>If you feel like staying a bit longer, you might want to try more simulation examples. You can combine half-adders and full-adders to create larger circuits, or design new circuits from the basic gates defined so far and simulate them. In the next chapter, you&#8217;ll learn about type parameterization in Scala, and see another example in which a combination of functional and imperative approaches yields a good solution.</p></div>
+<div class="paragraph"><p>Ця глава поєднала дві техніки, що спочатку виглядають окремими: змінний стан та функції вищих порядків. Змінний стан був використаний для симуляції фізичних сутностей, чий стан змінюється з часом. Функції вищих порядків були використані в фреймворку симуляції, щоб виконувати дії у вказаних точках симульованого часу. Вони також були використані в симуляціях пристроїв, що асоціюють дії зі змінами стану. По дорозі ви бачили простий шлях для визначення домен-специфічної мови як бібліотеки. Це, можливо, досить для однієї глави!</p></div>
+<div class="paragraph"><p>Якщо ви хочете залишитись трохи довше, ви можете за бажанням спробувати більше прикладів симуляцій. Ви можете комбінувати напів-суматори та повні суматори для створення більших пристроїв, або розробити нові прилади з визначених досі базових вентилів, та симулювати їх. В наступній главі ми вивчимо щодо параметризації типів в Scala, і побачимо інший приклад, де комбінація функціонального та імперативного підходів дає гарні рішення.</p></div>
 </div>
 </div>
 </div>
@@ -1454,7 +1446,7 @@ addAction(p: Action): attaches the specified procedure p to the actions of the w
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-03-02 05:26:34 EET
+ 2019-03-04 06:28:32 EET
 </div>
 </div>
 </body>
