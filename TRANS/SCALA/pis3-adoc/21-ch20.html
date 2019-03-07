@@ -804,69 +804,59 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="__">Абстрактні члени</h1>
-<div class="paragraph"><p>A member of a class or trait is abstract if the member does not have a complete definition in the
-class. Abstract members are intended to be implemented in subclasses of the class in which they are
-declared. This idea is found in many object-oriented languages. For instance, Java lets you declare
-abstract methods. Scala also lets you declare such methods, as you saw in Section 10.2. But Scala goes
-beyond that and implements the idea in its full generality: Besides methods, you can declare abstract
-fields and even abstract types as members of classes and traits.
-In this chapter we&#8217;ll describe all four kinds of abstract member: vals, vars, methods, and types. Along
-the way we&#8217;ll discuss pre-initialized fields, lazy vals, path-dependent types, and enumerations.
-20.1 A QUICK TOUR OF ABSTRACT MEMBERS
-The following trait declares one of each kind of abstract member: an abstract type (T), method
-(transform), val (initial), and var (current):
-trait Abstract {
-type T
-def transform(x: T): T
-val initial: T
-var current: T
-}
-A concrete implementation of Abstract needs to fill in definitions for each of its abstract members.
-Here is an example implementation that provides these definitions:
-class Concrete extends Abstract {
-type T = String
-def transform(x: String) = x + x
-val initial = "hi"
-var current = initial
-}
-The implementation gives a concrete meaning to the type name T by defining it as an alias of
-type String. The transform operation concatenates a given string with itself, and
-the initial andcurrent values are both set to "hi".
-This example gives you a rough first idea of what kinds of abstract members exist in Scala. The
-remainder of the chapter will present the details and explain what the new forms of abstract members,
-as well as type members in general, are good for.
-20.2 TYPE MEMBERS
-As you can see from the example in the previous section, the term abstract type in Scala means a
-type declared (with the "type" keyword) to be a member of a class or trait, without specifying adefinition. Classes themselves may be abstract, and traits are by definition abstract, but neither of these
-are what are referred to as abstract types in Scala. An abstract type in Scala is always a member of
-some class or trait, such as type T in trait Abstract.
-You can think of a non-abstract (or "concrete") type member, such as type T in class Concrete, as a way
-to define a new name, or alias, for a type. In class Concrete, for example, the typeString is given the
-alias T. As a result, anywhere T appears in the definition of class Concrete, it means String. This
-includes the parameter and result types of transform, initial, and current, which mention T when they
-are declared in supertrait Abstract. Thus, when class Concreteimplements these methods, those Ts are
-interpreted to mean String.
-One reason to use a type member is to define a short, descriptive alias for a type whose real name is
-more verbose, or less obvious in meaning, than the alias. Such type members can help clarify the code
-of a class or trait. The other main use of type members is to declare abstract types that must be defined
-in subclasses. This use, which was demonstrated in the previous section, will be described in detail later
-in this chapter.
-20.3 ABSTRACT VALS
-An abstract val declaration has a form like:
-val initial: String
-It gives a name and type for a val, but not its value. This value has to be provided by a
-concrete val definition in a subclass. For instance, class Concrete implemented the val using:
-val initial = "hi"
-You use an abstract val declaration in a class when you do not know the correct value in the class, but
-you do know that the variable will have an unchangeable value in each instance of the class.
-An abstract val declaration resembles an abstract parameterless method declaration such as:
-def initial: String
-Client code would refer to both the val and the method in exactly the same way (i.e.,obj.initial).
-However, if initial is an abstract val, the client is guaranteed that obj.initial will yield the same value
-every time it is referenced. If initial were an abstract method, that guarantee would not hold because, in
-that case, initial could be implemented by a concrete method that returns a different value every time
-it&#8217;s called.
-In other words, an abstract val constrains its legal implementation: Any implementation must be
+<div class="paragraph"><p>Член класа або трейта є абстрактним, якщо член не має повного визначення в класі. Абстрактні члени призначені бути реалізованими в субкласах класа, в якому вони визначені. Ця ідея знаходиться в багатьох об'єктно-рієнтованих мовах. Наприклад, Java дозволяє вам декларувани абстрактні методи. Scala також дозволяє вам декларувати такі методи, як ви бачили в Розділі 10.2. Але Scala іде далі, і реалізує ідею в своїй повній загальності: крім методів, ви можете декларувати абстрактні поля, та навіть абстрактні типи, як члени класів та трейтів.</p></div>
+<div class="paragraph"><p>В цій главі ми опишемо всі типи абстрактних членів: <code>val</code>, <code>var</code>, методи та типи. По ходу ми обсудимо наперед-ініціалізовані поля, ліниві <code>val</code>, шлях-залежні типи та енумерації.</p></div>
+<div class="sect1">
+<h2 id="_20_1_____">20.1 Швидкий тур для абстрактних членів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Наступний трейт декларує по одному з кожного типу абстрактних членів: абстрактний тип (<code>T</code>), метод (<code>transform</code>), <code>val</code> (<code>initial</code>), та <code>var</code> (<code>current</code>):</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">trait</span> <span class="nc">Abstract</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">T</span>
+  <span class="k">def</span> <span class="n">transform</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+  <span class="k">val</span> <span class="n">initial</span><span class="k">:</span> <span class="kt">T</span>
+  <span class="k">var</span> <span class="n">current</span><span class="k">:</span> <span class="kt">T</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Суцільна реалізація <code>Abstract</code> потребує заповнення визначень для кожного з його абстрактних членів. Ось приклад реалізації, що провадить ці визначення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Concrete</span> <span class="k">extends</span> <span class="nc">Abstract</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">T</span> <span class="o">=</span> <span class="nc">String</span>
+  <span class="k">def</span> <span class="n">transform</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">x</span>
+  <span class="k">val</span> <span class="n">initial</span> <span class="k">=</span> <span class="s">&quot;hi&quot;</span>
+  <span class="k">var</span> <span class="n">current</span> <span class="k">=</span> <span class="n">initial</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Реалізація надає певне значення типу на ім'я <code>T</code>, через його визначення як псевдониму до типу <code>String</code>. Операція <code>transform</code> конкатенує наданий рядок з собою, та значення <code>initial</code> та <code>current</code> обоє встановлені в <code>"hi"</code>.</p></div>
+<div class="paragraph"><p>Цей приклад надає вам грубу першу ідею щодо типів абстрактних членів, що існують в Scala. Залишок глави буде презентувати деталі, та пояснювати, для чого гарні нові форми абстрактних членів, так само, як і типи членів взагалі.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_20_2__">20.2 Члени типів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як ви можете бачити з приклада в попередньому розділі, термін <em>абстрактний тип</em> в Scala означає тип, декларований (за допомогою ключового слова <code>type</code>) як член класу або трейта, без вказання визначення. Класи самі можуть бути абстрактними, та трейти по визначенню абстрактні, але на жодний з них не посилаються як на абстрактні типи в Scala. Абстрактний тип в Scala завжди є членом деякого класу або трейта, як тип <code>T</code> в трейті <code>Abstract</code>.</p></div>
+<div class="paragraph"><p>Ви можете думати про не-абстрактні (або <em>суцільні</em>) члени типів, як тип <code>T</code> в класі <code>Concrete</code>, як шлях для визначення нового визначення, або псевдоним, для типу. Наприклад, в класі <code>Concrete</code>, типу <code>String</code> наданий псевдоним <code>T</code>. Як результат, будь-де, де з'являється <code>T</code> в визначенні класа <code>Concrete</code>, це означає <code>String</code>. Це включає параметр і типи результатів для <code>transform</code>, <code>initial</code> та <code>current</code>, які згадують <code>T</code>, коли вони декларовані в супертрейті <code>Abstract</code>. Таким чином, коли клас <code>Concrete</code> реалізує ці методи, ці <code>T</code> інтерпретуються щоб означати <code>String</code>.</p></div>
+<div class="paragraph"><p>Одна з причин для використання члена типу є визначення коротких, описових псевдонимів для типів, чиє дійсне ім'я більш балакуче, або менш очевидне за значенням, ніж псевдоним. Такі члени типів можуть допомогти прояснити код класа або трейта. Інше головне використання членів типа є декларація абстрактних типів, що мають бути визначені в субкласах. Це використання, що було продемонстроване в попередньому розділі, буде детально описане в цій главі.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_20_3__val">20.3 Абстрактні val</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Абстрактна декларація <code>val</code> має таку форму:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">initial</span><span class="k">:</span> <span class="kt">String</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Вона надає ім'я та тип для <code>val</code>, але не його значення. Це значення має бути запровадження через суцільне визначення <code>val</code> в субкласі. Наприклад, клас <code>Concrete</code> реалізує <code>val</code> з використанням:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">initial</span> <span class="k">=</span> <span class="s">&quot;hi&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви використовуєте абстрактну декларацію <code>val</code> в класі, коли ви не знаєте коректного значення в класі, але ви знаєте, що змінна буде мати незмінне значення для кожного примірника класа.</p></div>
+<div class="paragraph"><p>Абстрактна декларація <code>val</code> повторює декларацію абстрактного безпараметричного метода, декларованого таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">initial</span><span class="k">:</span> <span class="kt">String</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Клієнтській код Client code would refer to both the val and the method in exactly the same way (i.e.,obj.initial). However, if initial is an abstract val, the client is guaranteed that obj.initial will yield the same value every time it is referenced. If initial were an abstract method, that guarantee would not hold because, in that case, initial could be implemented by a concrete method that returns a different value every time it&#8217;s called.</p></div>
+<div class="paragraph"><p>In other words, an abstract val constrains its legal implementation: Any implementation must be
 a val definition; it may not be a var or a def. Abstract method declarations, on the other hand, may be
 implemented by both concrete method definitions and concrete valdefinitions. Given the abstract
 class Fruit shown in Listing 20.1, class Apple would be a legal subclass implementation, but
@@ -1709,11 +1699,13 @@ The type system will then drive the development of your model, just as you saw w
 study. It does not matter whether the unknown is a type, method, variable or value. In Scala, all of these
 can be declared abstract.</p></div>
 </div>
+</div>
+</div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-17 23:45:27 EET
+ 2019-03-07 08:16:27 EET
 </div>
 </div>
 </body>

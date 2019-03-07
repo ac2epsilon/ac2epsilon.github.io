@@ -114,7 +114,7 @@ class Queue[T] private (
 ----
 Лістинг 19.2 - Приховування первинного конструктора через створення його приватним.
 
-The private modifier between the class name and its parameters indicates that the constructor of Queue is private: it can be accessed only from within the class itself and its companion object. The class name Queue is still public, so you can use it as a type, but you cannot call its constructor:
+Модифікатор `private` між ім'ям класу та його параметрами вказує, що конструктор `Queue` є приватним: до нього можна отримати доступ тільки з самого класу, та його об'єкта компанйона. Ім'я класу `Queue` все ще публічне, так що ви можете використовувати його як тип, але ви не можете викликати конструктор:
 [source,scala]
 ----
 scala> new Queue(List(1, 2), List(3))
@@ -123,31 +123,31 @@ be accessed in object $iw
               new Queue(List(1, 2), List(3))
               ^
 ----              
-Now that the primary constructor of class Queue can no longer be called from client code, there needs to be some other way to create new queues. One possibility is to add an auxiliary constructor, like this:
+Тепер, коли цей приватний конструктор класу `Queue` не може бути викликаний з клієнтського коду, виникає потреба в деякому іншому способі створювати нові черги. Одна можливість є добавити додатковий конструктор, ось так:
 [source,scala]
 ----
 def this() = this(Nil, Nil)
 ----
-The auxiliary constructor shown in the previous example builds an empty queue. As a refinement, the auxiliary constructor could take a list of initial queue elements:
+Додатковий конструктор, показаний в попередньому прикладі, будує порожню чергу. Як покращення, додатковий конструктор може приймати список початкових елементів черги:
 [source,scala]
 ----
 def this(elems: T*) = this(elems.toList, Nil)
 ----
-Recall that T* is the notation for repeated parameters, as described in Section 8.8.
+Нагадаємо, що `T*` є нотацією для повторюваних параметрів, як описано в Розділі 8.8.
 
-Another possibility is to add a factory method that builds a queue from such a sequence of initial elements. A neat way to do this is to define an object Queue that has the same name as the class being defined and contains an apply method, as shown in Лістинг 19.3:
+Інша можливість є додати метод фабрики, що будує чергу з такої послідовності початкових елементів. Милий спосіб зробити це є визначення об'єкта `Queue`, що має те саме ім'я, що і клас, що визначається, та містить метод `apply`, як показано в Лістингу 19.3:
 [source,scala]
 ----
 object Queue {
-// constructs a queue with initial elements `xs'
+// конструює чергу з початковими елементами xs
   def apply[T](xs: T*) = new Queue[T](xs.toList, Nil)
 }
 ----
 Лістинг 19.3 - Метод фабрика `apply` в об'єкті компанйоні.
 
-By placing this object in the same source file as class Queue, you make the object a companion object of the class. You saw in Section 13.5 that a companion object has the same access rights as its class. Because of this, the apply method in object Queue can create a new Queue object, even though the constructor of class Queue is private.
+Через покладання цього об'єкту в той самий джерельний файл, що і клас `Queue`, ви робите об'єкт об'єктом компанйоном цього класу. Ви бачили в Розділі 13.5, що об'єкт компанйон має ті самі права доступу, що і його клас. Завдяки цьому метод `apply` в об'єкті `Queue` може створити новий об'єкт `Queue`, навіть якщо конструктор класу `Queue` є приватним.
 
-Note that, because the factory method is called apply, clients can create queues with an expression such as Queue(1, 2, 3). This expression expands to Queue.apply(1, 2, 3) since Queue is an object instead of a function. As a result, Queue looks to clients as if it was a globally defined factory method. In reality, Scala has no globally visible methods; every method must be contained in an object or a class. However, using methods named apply inside global objects, you can support usage patterns that look like invocations of global methods.
+Зауважте, що оскільки метод фабрики названий `apply`, клієнти можуть створювати черги за допомогою виразів, таких як `Queue(1, 2, 3)`. Цей вираз розширюється до `Queue.apply(1, 2, 3)`, оскільки `Queue` є об'єктом, а не функцією. Як результат, `Queue` виглядає для клієнтів так, якби це був глобально визначений метод фабрики. В реальності Scala не має глобально видимих методів; кожний метод має бути розміщений в об'єкті або класі. Однак використовуючи методи, названі `apply`, всередині глобальних об'єктів, ви можете підтримати шаблони використання, що виглядають як виклики глобальних методів.
 [source,scala]
 ----
 trait Queue[T] {
@@ -188,13 +188,13 @@ object Queue {
 
 Альтернатива: приватні класи
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Private constructors and private members are one way to hide the initialization and representation of a class. Another more radical way is to hide the class itself and only export a trait that reveals the public interface of the class. The code in Лістинг 19.4 implements this design. There's a trait Queue, whichdeclares the methods head, tail, and enqueue. All three methods are implemented in a subclass QueueImpl, which is itself a private inner class of objectQueue. This exposes to clients the same information as before, but using a different technique. Instead of hiding individual constructors and methods, this version hides the whole implementation class.
+Приватні конструктори та приватні члени є одним способом приховати ініціалізацію та репрезентацію класу. Інший, більш радикальний шлях є приховати сам клас, та імпортувати тільки трейт, що розкриває публічний інтерфейс класу. Код в Лістингу 19.4 реаліщзує цей дизайн. Це трейт `Queue`, який декларує методи `head`, `tail`, та `enqueue`. Всі три методи реалізовані як субклас `QueueImpl`, що по собі є приватним інутрішнім класом об'єкта `Queue`. Це виставляє клієнтам ту саму інформацію, що і раніше, але використовуючи іншу технологію. Замість приховування індивідуальних конструкторів та методів, ця версія приховує цілий клас реалізації.
 
 19.3 Анотації варіантності
 --------------------------
-Queue, as defined in Лістинг 19.4, is a trait, but not a type. Queue is not a type because it takes a type parameter.
+`Queue`, як визначено в Лістингу 19.4, є трейтом, але не типом. `Queue` не є типом, бо він приймає параметр типу.
 
-As a result, you cannot create variables of type Queue:
+Як результат, ви не можете створити змінні типу `Queue`:
 [source,scala]
 ----
 scala> def doesNotCompile(q: Queue) = {}
@@ -202,33 +202,33 @@ scala> def doesNotCompile(q: Queue) = {}
         def doesNotCompile(q: Queue) = {}
         ^
 ----
-Instead, trait Queue enables you to specify parameterized types, such as Queue[String],Queue[Int], or Queue[AnyRef]:
+Замість цього, трейт `Queue` дозволяє вам вказати параметризовані типи, такі як `Queue[String]`, `Queue[Int]`, або `Queue[AnyRef]`:
 [source,scala]
 ----
 scala> def doesCompile(q: Queue[AnyRef]) = {}
 doesCompile: (q: Queue[AnyRef])Unit
 ----
-Thus, Queue is a trait and Queue[String] is a type. Queue is also called a type constructor because you can construct a type with it by specifying a type parameter. (This is analogous to constructing an object instance with a plain-old constructor by specifying a value parameter.) The type constructor Queue "generates" a family of types, which includes Queue[Int],Queue[String], and Queue[AnyRef].
+Таким чином, `Queue` є трейтом, та `Queue[String]` є типом. `Queue` також називають конструктором типу, оскільки ви можете конструювати тип за допомогою нього, вказавши тип параметра. (Це аналогічно до конструювання примірника об'єкта за допомогою старого доброго конструктора, вказавши значення параметра). Конструктор типа `Queue` "генерує" сімейство типів, що включає `Queue[Int]`, `Queue[String]`, та `Queue[AnyRef]`.
 
-You can also say that Queue is a _generic_ trait. (Classes and traits that take type parameters are "generic," but the types they generate are "parameterized," not generic.) The term "generic" means that you are defining many specific types with one generically written class or trait. For example, trait Queue in Лістинг 19.4 defines a generic queue. Queue[Int] and Queue[String],etc., would be the specific queues.
+Також ви можете сказати, що `Queue` є _дженерік_ трейтом. (Класи та трейти, що приймають параметри типів, є "дженеріками", але типи, що вони генерують, є "параметризованими", не дженеріками). Термін "дженерік" означає, що ви визначаєте багато специфічних типів за допомогою одного загально написаного класу або трейту. Наприклад, трейт `Queue` в Лістингу 19.4 визначає дженерік чергу. `Queue[Int]` та `Queue[String]`, тощо, будуть специфічними чергами.
 
-The combination of type parameters and subtyping poses some interesting questions. For example, are there any special subtyping relationships between members of the family of types generated by Queue[T]? More specifically, should a Queue[String] be considered a subtype of Queue[AnyRef]? Or more generally, if S is a subtype of type T, then should Queue[S] be considered a subtype of Queue[T]? If so, you could say that trait Queue is covariant (or "flexible") in its type parameter T. Or, since it just has one type parameter, you could say simply that Queues are covariant. Covariant Queues would mean, for example, that you could pass a Queue[String] to the doesCompile method shown previously, which takes a value parameter of type Queue[AnyRef]. 
+Комбінація параметрів типів та субтипізація виставляє деякі цікаві питання. Наприклад, чи існують якісь особливі відношення субтипізації між членами сімейства типів, згенерованих `Queue[T]`? Біль точно, чи має `Queue[String]` розглядатись як субтип `Queue[AnyRef]`? Або більш загально, якщо `S` є субтипом типу `T`, тоді чи має `Queue[S]` розглядатись як субтип `Queue[T]`? Якщо так, ви можете сказати, що трейт `Queue` є коваріантним (або "гнучким") по його параметру типу `T`. Або, оскікльи він має тільки один параметр типу, ви можете просто сказати, що `Queue` є коваріантними. Коваріантність `Queue` може означати, наприклад, що ви можете передати `Queue[String]` до метода `doesCompile`, показаного перед цім, що приймає значення параметра типу `Queue[AnyRef]`. 
 
-Intuitively, all this seems OK, since a queue of Strings looks like a special case of a queue ofAnyRefs. In Scala, however, generic types have by default nonvariant (or "rigid") subtyping. That is, with Queue defined as in Лістинг 19.4, queues with different element types would never be in a subtyperelationship. A Queue[String] would not be usable as a Queue[AnyRef]. However, you can demand covariant (flexible) subtyping of queues by changing the first line of the definition of class Queue like this:
+Інтуітивно, все це виглядає OK, оскільки черга `String` виглядає як особливий випадок черги `AnyRefs`. Однак в Scala дженерік типи мають по замовчанню неваріантне (або "жорстку") субтипізацію. Тобто, з `Queue`, визначеним в Лістингу 19.4, черги з разними типами елементів ніколи не будуть в відношенні субтипізації. `Queue[String]` не буде корисним як `Queue[AnyRef]`. Однак, ви можете вимагати коваріантної (гнучкої) субтипізації черг, через зміну першого рядка цього визначення класу `Queue` таким чином:
 [source,scala]
 ----
 trait Queue[+T] { ... }
 ----
-Prefixing a formal type parameter with a + indicates that subtyping is covariant (flexible) in that parameter. By adding this single character, you are telling Scala that you wantQueue[String], for example, to be considered a subtype of Queue[AnyRef]. The compiler will check that Queue is defined in a way that this subtyping is sound.
+Вказуючи префікс `+` перед формальним параметром типу, вказує, що субтипізація коваріантна (гнучка) в цьому параметрі. Через додавання цього одного символа, ви кажете Scala, що ви бажаєте, щоб `Queue[String]`, наприклад, розглядався як субтип `Queue[AnyRef]`. Компілятор буде перевіряти, що `Queue` визначений в спосіб, що така субтипізація має місце.
 
-Besides +, there is also a prefix -, which indicates contravariant subtyping. If Queue were defined like this:
+Крім `+`, також є і префікс `-`, що вказує контрваріантну субтипізацію. Якщо б `Queue` було визначено таким чином:
 [source,scala]
 ----
 trait Queue[-T] { ... }
 ----
-then if T is a subtype of type S, this would imply that Queue[S] is a subtype of Queue[T] (which in the case of queues would be rather surprising!). Whether a type parameter is covariant, contravariant, or nonvariant is called the parameter's variance. The + and - symbols you can place next to type parameters are called variance annotations.
+тоді, якщо `T` є субтипом типу `S`, це буде означати, що `Queue[S]` є субтипом `Queue[T]` (що в випадку черги буде досить несподівано!). Чи є параметр типу коваріантним, контрваріантним або неваріантним, все це називається варіантністю параметра. Символи `+` та `-`, що ви можете покладати коло параметрів типу, називаються анотаціями варіантності.
 
-In a purely functional world, many types are naturally covariant (flexible). However, the situation changes once you introduce mutable data. To find out why, consider the simple type of one-element cells that can be read or written, shown in Лістинг 19.5.
+В чисто функціональному світі багато типів є природно коваріантними (гнучкими). Однак ситуація змінюється, коли ми вводимо змінні дані. Щоб зрозуміти чому, розглянемо простий тип одно-елементних клітин, що можуть бути прочитані та записані, показаний в Лістингу 19.5.
 [source,scala]
 ----
 class Cell[T](init: T) {
@@ -237,9 +237,9 @@ class Cell[T](init: T) {
   def set(x: T) = { current = x }
 }
 ----
-Лістинг 19.5 - A nonvariant (rigid) Cell class.
+Лістинг 19.5 - Неваріантний (жорсткий) клас `Cell`.
 
-The Cell type of Лістинг 19.5 is declared nonvariant (rigid). For the sake of argument, assume for a moment that Cell was declared covariant instead—i.e., it was declared class Cell[+T]—and that this passed the Scala compiler. (It doesn't, and we'll explain why shortly.) Then you could construct the following problematic statement sequence:
+Тип `Cell` в Лістингу 19.5 деклароване як неваріантне (жорстке). Для цілей доказу, уявімо на момент, що замість цього `Cell` був декларований коваріантним, тобто, він був деларований як клас `Cell[+T]` — і в такому вигляді переданий компілятору Scala. (Він не буде, і ми скоро пояснимо чому). Тоді ви можете сконструювати наступну проблематичну послідовність тверджень:
 [source,scala]
 ----
 val c1 = new Cell[String]("abc")
@@ -247,11 +247,11 @@ val c2: Cell[Any] = c1
 c2.set(1)
 val s: String = c1.get
 ----
-Seen by itself, each of these four lines looks OK. The first line creates a cell of strings and stores it in a val named c1. The second line defines a new val, c2, of type Cell[Any], which initialized with c1. This is OK since Cells are assumed to be covariant. The third line sets the value of cell c2 to 1. This is also OK because the assigned value 1 is an instance of c2's element type Any. Finally, the last line assigns the element value of c1 into a string. Nothing strange here, as both the sides are of the sametype. But taken together, these four lines end up assigning the integer 1 to the string s. This is clearly a violation of type soundness.
+Взяті окремо, кожний з ціх чотирьох рядків виглядають OK. Перший рядок створює клітину рядків, та зберігає її в `val` на ім'я `c1`. Другий рядок визначає новий `val`, `c2`, типу `Cell[Any]`, що ініціалізований `c1`. Це OK, оскільки `Cells` вважається контрваріантним. Третій рядок встановлює значення клітинки `c2` в `1`. Це також OK, оскільки присвоєне значення `1` є примірником типу елемента `c2`, `Any`. Нарешті, останній рядок присвоює значення елементу `c1` в рядок. Тут також нічого дивного, бо обоє сторін однакового типу. Вле взяті разом, ці чотири рядка закінчуються присвоєнням цілого `1` до рядка `s`. Це, очевидно, порушення значення типу.
 
-Which operation is to blame for the runtime fault? It must be the second one, which uses covariant subtyping. The other statements are too simple and fundamental. Thus, a Cell ofString is not also a Cell of Any, because there are things you can do with a Cell of Any that you cannot do with a Cell of String. You cannot use set with an Int argument on a Cell of String, for example.
+Яка операція винна в рантайм збої? Це, напевне, другий, що використовує коваріантну субтипізацію. Ініш твердження дуже прості та фундаментальні. Таким чином, `Cell` зі `String` також є `Cell` з `Any`, оскільки є такі речі, які ви можете робити з `Cell` з `Any`, які ви не можете робити з `Cell` з `String`. Наприклад, ви не можете використовувати `set` з аргументом `Int` на `Cell` зі `String`.
 
-In fact, were you to pass the covariant version of Cell to the Scala compiler, you would get a compile- time error:
+Фактично, коли ви передаєте коваріанту версію `Cell` до компілятора `Scala`, ви будете отримувати помилку часу компілятора:
 [source,scala]
 ----
 Cell.scala:7: error: covariant type T occurs in
@@ -261,32 +261,32 @@ contravariant position in type T of value x
 ----               
 Варіантність та масиви
 ~~~~~~~~~~~~~~~~~~~~~~
-It's interesting to compare this behavior with arrays in Java. In principle, arrays are just like cells except that they can have more than one element. Nevertheless, arrays are treated as covariant in Java. You can try an example analogous to the cell interaction described here with Java arrays:
+Цікаво порівняти цю поведінку з масивами в Java. В принципі масиви такі ж, як клітини, за винятком того, що вони можуть мати більше одного елементу. Тим не менш, масиви розглядаються як коваріантні в Java. Ви можете спробувати приклад, аналогічний до взаємодії з клітиною, описаний тут для Java масивів:
 [source,java]
 ----
-// ще Java
+// це Java
 String[] a1 = { "abc" };
 Object[] a2 = a1;
 a2[0] = new Integer(17);
 String s = a1[0];
 ----
-If you try out this example, you will find that it compiles. But executing the program will cause an ArrayStore exception to be thrown when a2[0] is assigned to an Integer:
+Якщо ви спробуєте цей приклад, ви знайдете, що це буде компілюватись. Але виконання програми буде викликати виключення `ArrayStore`, що буде закинуте, коли `a2[0]` присвоюється до `Integer`:
 [source,scala]
 ----
 Exception in thread "main" java.lang.ArrayStoreException:
 java.lang.Integer
         at JavaArrays.main(JavaArrays.java:8)
 ----
-What happens here is that Java stores the element type of the array at runtime. Then, every time an array element is updated, the new element value is checked against the stored type. If it is not an instance of that type, an ArrayStore exception is thrown.
+Що тут відбувається, це те, що Java зберігає тип елементу під час виконання. Потім, кожний раз, коли елемент масиву оновлюється, значення нового елементу перевіряється на збережений тип. Якщо це не примірник цього типу, буде закинуте виключення `ArrayStore`.
 
-You might ask why Java adopted this design, which seems both unsafe and expensive. When asked this question, James Gosling, the principal inventor of the Java language, answered that they wanted to have a simple means to treat arrays generically. For instance, they wanted to be able to write a method to sort all elements of an array, using a signature like the following that takes an array of Object:
+Ви можете запитати, чому Java прийняла цей дизайн, що виглядає одночасно небезпечним та коштовним. Коли йому задавали це питання, James Gosling, головний винахідник мови Java, відповідав, що вони бажали мати прості засоби для загального трактування масивів. Наприклад, вони бажали бути в змозі записати метод для сортування всіх елементів в масиві, використовуючи сигнатуру, подібну до наступної, що приймає массив з `Object`:
 [source,scala]
 ----
 void sort(Object[] a, Comparator cmp) { ... }
 ----
-Covariance of arrays was needed so that arrays of arbitrary reference types could be passed to this sort method. Of course, with the arrival of Java generics, such a sort method can now be writtenwith a type parameter, so the covariance of arrays is no longer necessary. For compatibility reasons, though, it has persisted in Java to this day.
+Коваріантність масивів була необхідною, так щоб масиви довільного типу посилання могли бути передані до метода `sort`. Звичайно, з появою Java дженериків такий метод `sort` тепер може бути написаний з параметром типу, так що коваріантність масивів більше не потрібна. Однак з причин сумісності вона дозволена в Java до цього дня.
 
-Scala tries to be purer than Java in not treating arrays as covariant. Here's what you get if you translate the first two lines of the array example to Scala:
+Scala намагається бути чистішою, ніж Java, не розглядаючи масиви як коваріантні. Ось що ми отримаємо, якщо перенесемо перші два рядкі приклада масива в Scala:
 [source,scala]
 ----
 scala> val a1 = Array("abc")
@@ -299,20 +299,20 @@ scala> val a2: Array[Any] = a1
         val a2: Array[Any] = a1
                              ^
 ----
-What happened here is that Scala treats arrays as nonvariant (rigid), so an Array[String] is not considered to conform to an Array[Any]. However, sometimes it is necessary to interact with legacy methods in Java that use an Object array as a means to emulate a generic array. For instance, you might want to call a sort method like the one described previously with an array of Strings as argument. To make this possible, Scala lets you cast an array of Ts to an array of any supertype of T:
+Що тут відбувається, це те, що Scala розглядає масиви як неваріантні (жорсткі), так що `Array[String]` не розглядається як сумісний з `Array[Any]`. Однак, іноді є необхідним взаємодіяти зі старими методами в Java, що використовують масив `Object`, як спосіб емуляції дженерік масивів. Наприклад, ви можете побажати викликати метод `sort`, як описаний до цього, з масивом `String` в якості аргумента. Щоб зробити це можливим, Scala дозволяє вам привести масив `T` до масива любого супертипу T:
 [source,scala]
 ----
 scala> val a2: Array[Object] =
           a1.asInstanceOf[Array[Object]]
 a2: Array[Object] = Array(abc)
 ----
-The cast is always legal at compile-time, and it will always succeed at run-time because the JVM's underlying run-time model treats arrays as covariant, just as Java the language does. But you might get ArrayStore exceptions afterwards, again just as you would in Java.
+Кастинг завжди легальний під час компіляції, та він буде завжди успішним під час виконання, тому що модель рантайма JVM трактує масиви як коваріантні, так само, як сама мова Java. Але після цього ви можете отримати виключення `ArrayStore`, знову так само, як це відбувається в Java.
 
 19.4 Перевірка анотацій варіантності
 ------------------------------------
-Now that you have seen some examples where variance is unsound, you may be wondering which kind of class definitions need to be rejected and which can be accepted. So far, all violations of type soundness involved some reassignable field or array element. The purely functional implementation of queues, on the other hand, looks like a good candidate for covariance. However, the following example shows that you can "engineer" an unsound situation even if there is no reassignable field.
+Тепер, коли ви бачили деякі приклади, де варіантність не має сенсу, ви можете поцікавитись, які визначення класу треба відсторонити, та які можуть бути прийнятними. Досі всі порушення сенсу типізації включали деяке переприсвоюване поле або елемент масиву. Чисто функціональна реалізація черги, з іншого боку, виглядає як гарний варіант на коваріантність. Однак наступний приклад показує, що ви можете "зінженерити" безглузду ситуацію, навіть якщо немає жодних переприсвоюваних полів.
 
-To set up the example, assume that queues as defined in Лістинг 19.4 are covariant. Then, create a subclass of queues that specializes the element type to Int and overrides the enqueuemethod:
+Щоб налаштувати приклад, будемо вважати, що черги, визначені в Лістингу 19.4, коваріантними. Потім створимо субклас черги, що спеціалізує тип елементу як `Int`, та перекриває метод `enqueue`:
 [source,scala]
 ----
 class StrangeIntQueue extends Queue[Int] {
@@ -322,19 +322,19 @@ class StrangeIntQueue extends Queue[Int] {
   }
 }
 ----
-The enqueue method in StrangeIntQueue prints out the square root of its (integer) argument before doing the append proper.
+Метод `enqueue` з `StrangeIntQueue` роздруковує квадратний корінь свого (цілого) аргументу, перед виконанням власне додавання.
 
-Now, you can write a counterexample in two lines:
+Тепер ми можемо написати контрприклад в два рядки:
 [source,scala]
 ----
 val x: Queue[Any] = new StrangeIntQueue
 x.enqueue("abc")
 ----
-The first of these two lines is valid because StrangeIntQueue is a subclass of Queue[Int] and, assuming covariance of queues, Queue[Int] is a subtype of Queue[Any]. The second line is valid because you can append a String to a Queue[Any]. However, taken together, these two lines have the effect of applying a square root method to a string, which makes no sense.
+Перший з ціх двох рядків валідний, бо `StrangeIntQueue` є субкласом `Queue[Int]`, і, зважаючи на коваріантність черг, `Queue[Int]` є субтипом `Queue[Any]`. Другий рядок є валідним, оскільки ви можете додати `String` до `Queue[Any]`. Однак, взяті разом, ці два рядка мають ефект застосування квадратного кореня до рядка, що не має сенсу.
 
-Clearly it's not just mutable fields that make covariant types unsound. The problem is more general. It turns out that as soon as a generic parameter type appears as the type of a method parameter, the containing class or trait may not be covariant in that type parameter.
+Зрозуміло, що це не тільки змінні поля, що робить коваріантні типи безглуздими. Проблема більш загальна. З'ясовується, що як тільки дженерік параметр типу з'являється як тип параметру метода, клас або трейт, що містить це, не може бути коваріантним по цьому параметру типу.
 
-For queues, the enqueue method violates this condition:
+Для черг метод `enqueue` порушує цю умову:
 [source,scala]
 ----
 class Queue[+T] {
@@ -342,7 +342,7 @@ class Queue[+T] {
 ...
 }
 ----
-Running a modified queue class like the one above through a Scala compiler would yield:
+Виконуючи модифікований клас черги, як вище, через компілятор Scala, буде давати:
 [source,scala]
 ----
 Queues.scala:11: error: covariant type T occurs in
@@ -350,21 +350,21 @@ contravariant position in type T of value x
   def enqueue(x: T) =
              ^
 ----
-Reassignable fields are a special case of the rule that disallows type parameters annotated with + from being used as method parameter types. As mentioned in Section 18.2, a reassignable field, "var x: T", is treated in Scala as a getter method, "def x: T", and a setter method, "def x_=(y: T)". As you can see, the setter method has a parameter of the field's type T. So that type may not be covariant.
+Переприсвоювані поля є особливим випадком правила, що не дозволяє параметрам типу,анотованим з допомогою `+`, бути використаними як паратаметри типів в методах. Як зазначалось в Розділі 18.2, переприсвоюване поле, `var x: T`, трактується в Scala як метод геттер `def x: T`, та метод сеттер, `def x_=(y: T)`. Як ви можете бачити, метод сеттера має параметр типа поля `T`. Так що цей тип не може бути коваріантним.
 
 Швидкий шлях
-============
-In the rest of this section, we'll describe the mechanism by which the Scala compiler checks variance annotations. If you're not interested in such detail right now, you can safely skip toSection 19.5. The most important thing to understand is that the Scala compiler will check any variance annotations you place on type parameters. For example, if you try to declare a type parameter to be covariant (by adding a +), but that could lead to potential runtime errors, your program won't compile.
+------------
+В залишку цього розділу ми опишемо механізм, завдяки якому компілятор Scala перевіряє анотації варіантності. Якщо вам доки досить деталей, ви можете безпечно перейти до Розділу 19.5. Найбільш важлива річ, що треба зрозуміти, це що компілятор Scala буде перевіряти кожну анотацію варіантності, яку ви покладете до параметрів типу. Наприклад, якщо ви спробуєте декларувати параметр типу як коваріантний (через додавання `+`), але це призведе до потенційних помилок під час виконання, ваша програма не буде компілюватись.
 
-To verify correctness of variance annotations, the Scala compiler classifies all positions in a class or trait body as positive, negative or neutral. A "position" is any location in the class or trait (but from now on we'll just write "class") body where a type parameter may be used. For example, every method value parameter is a position because a method value parameter has a type. Therefore a type parameter could appear in that position.
+Щоб перевірити коректність анотацій варіантності, компілятор Scala класифікує всі позиції в тілі класу або трейта як позитівні, негативні, або нейтральні. "Позиція" є люба локація в тілі класу або трейта (відтепер будемо казати просто "клас"), де може використовуватись параметр типу. Наприклад, кожний параметр значення метода є позицією, оскільки значення параметру метода має тип. Таким чином, параметр типу може опинитись в цій позиції.
 
-The compiler checks each use of each of the class's type parameters. Type parameters annotated with + may only be used in positive positions, while type parameters annotated with - may only be usedin negative positions. A type parameter with no variance annotation may be used in any position, and is, therefore, the only kind of type parameter that can be used in neutral positions of the class body.
+Компілятор перевіряє кожне використання кожного з параметрів типу класа. Параметри типів, анотовані за допомогою `+`, можуть використовуватись в позитивних позиціях, тоді як параметри типів, анотовані за допомогою `-`, можуть бути використані тільки в негативних позиціях. Параметр типу, що не має анотації варіантності, може бути використаний в любій позиції, і, таким чином, є одним різновидом параметрів типу, що може використовуватись в нейтральних позиціях тіла класу.
 
-To classify the positions, the compiler starts from the declaration of a type parameter and then moves inward through deeper nesting levels. Positions at the top level of the declaring class are classified as positive. By default, positions at deeper nesting levels are classified the same as that at enclosing levels, but there are a handful of exceptions where the classification changes. Method value parameter positions are classified to the flipped classification relative to positions outside the method, where the flip of a positive classification is negative, the flip of a negative classification is positive, and the flip of a neutral classification is still neutral.
+Щоб класифікувати позиції, компілятор починає з декларації параметру типу, та потім рухається всередину, через глибокі вкладені рівні. Позиції на верхньому рівні декларації класу класифікуються як позитивні. По замовчанню, позиції на глибших вкладених рівнях класифікуються так само, що і на оточуючих рівнях, але є декілька виключень, де класифікація змінюється. Параметри значень методів є позиції, де класифікація обертається відносно кваліфікації за межами метода, де позитивна класифікація стає негативно, негативна позитивною, та обертання нейтральної класифікації буде знову нейтральна.
 
-Besides method value parameter positions, the current classification is also flipped at the type parameters of methods. A classification is sometimes flipped at the type argument position of a type, such as the Arg in C[Arg], depending on the variance of the corresponding type parameter. If C's type parameter is annotated with a + then the classification stays the same. If C's type parameter is annotated with a -, then the current classification is flipped. IfC's type parameter has no variance annotation then the current classification is changed to neutral.
+Крім позицій параметрів значень методів, поточна класифікація обертається на параметрах типів методу. Класифікація іноді обертається в позиції аргумента типу для типу, як в `Arg` в `C[Arg]`, в залежності від варіантності відповідного параметру типу. Якщо параметр типу типу `C` анотований з `+`, тоді класифікація залишається та сама. Якщо параметр типу `C` анотований з  `-`, тоді поточна класифікація обертається. Якщо параметр типу `C` не має анотацій варіантності, тоді поточна класифікація змінюється до нейтральної.
 
-As a somewhat contrived example, consider the following class definition, where several positions are annotated with their classifications, ^+ (for positive) or ^- (for negative):
+Як дещо надуманий приклад, розглянемо наступне визначення класу, де декілька позицій анотовані за допомогою своєї класифікації, `^+` (для позитивної) або `^-` (для негативної):
 [source,scala]
 ----
 abstract class Cat[-T, +U] {
@@ -372,17 +372,17 @@ abstract class Cat[-T, +U] {
     : Cat[Cat[U^+, T^-]^-, U^+]^+
 }
 ----
-The positions of the type parameter, W, and the two value parameters, volume and listener, are all negative. Looking at the result type of meow, the position of the first Cat[U, T] argument is negative because Cat's first type parameter, T, is annotated with a -. The type U inside this argument is again in positive position (two flips), whereas the type T inside that argument is still in negative position. You see from this discussion that it's quite hard to keep track of variance positions.
+Позиції параметру типу, `W`, та двох параметрів значень, `volume` та `listener`, є всі негативними. Дивлячись на результат `meow`, позиція першого аргумента `Cat[U, T]` є негативною, бо перший параметр типу `Cat`, `T`, анотований за допомогою `-`. Тип `U` в цьому аргументі знову в позитивній позиції (два обертання), Тоді як тип `T` в цьому аргументі все ще в негативній позиції. Ви бачите з цієї дискусії, що відстежувати позиції варіантності досить складно.
 
-That's why it's a welcome relief that the Scala compiler does this job for you.
+Ось чому буде приємною новина, що компілятор Scala робить це за вас.
 
-Once the classifications are computed, the compiler checks that each type parameter is only used in positions that are classified appropriately. In this case, T is only used in negative positions, and U is only used in positive positions. So class Cat is type correct.
+Коли класифікація обчислена, компілятор перевіряє кожний параметр типу, що він використовується тільки в позиціях, де він відповідно класифікаваний. В цьому випадку `T` використовується тільки в негативних позиціях, та `U` тільки в позитивних позиціях. Так що клас `Cat` є типово коректним.
 
 19.5 Нижня межа
-===============
-Back to the Queue class. You saw that the previous definition of Queue[T] shown in Лістинг 19.4cannot be made covariant in T because T appears as a type of a parameter of the enqueuemethod, and that's a negative position.
+---------------
+Повертаючись до класу `Queue`. Ви бачили, що попереднє визначення `Queue[T]`, показане в Лістингу 19.4, не може бути зроблене коваріантним по `T`, оскільки `T` з'являється як параметр типу метода `enqueue`, і це негативна позиція.
 
-Fortunately, there's a way to get unstuck: you can generalize enqueue by making it polymorphic (i.e., giving the enqueue method itself a type parameter) and using a lower bound for its type parameter. Лістинг 19.6 shows a new formulation of Queue that implements this idea.
+На щастя, є шлях роблокувати ситуацію: ви можете узагальнити `enqueue`, зробивши його поліморфним (тобто, надавши самому методу `enqueue` параметр типу), та використавши нижню межу для його параметру типу. Лістинг 19.6 показує нове формулювання `Queue`, що реалізує цю ідею.
 [source,scala]
 ----
 class Queue[+T] (private val leading: List[T],
@@ -393,21 +393,21 @@ class Queue[+T] (private val leading: List[T],
 ----
 Лістинг 19.6 - Параметр типу з нижньою межею.
 
-The new definition gives enqueue a type parameter U, and with the syntax, "U >: T", defines T as the lower bound for U. As a result, U is required to be a supertype of T.footnote:[Supertype and subtype relationships are reflexive, which means a type is both a supertype and a subtype of itself. Even though T is a lower bound for U, you could still pass in a T toenqueue.] The parameter toenqueue is now of type U instead of type T, and the return value of the method is now Queue[U]instead of Queue[T].
+Нове визначення надає `enqueue` параметр типу `U`, та за допомогою синтаксиса `U >: T` визначає `T` як нижню межу для `U`. Як результат, від `U` вимагається бути субтипом  `T`.footnote:[Відношення субтипу та супертипу є рефлексивними, що означає, що тип є одночасно супертипом та субтипом себе. Навіть якщо `T` є нижньою межею для `U`, ви все ще можете передати в `enqueue` `T`.] Параметр `enqueue` тепер є типу `U`, замість `T`, та повернене значення метода тепер `Queue[U]`, замість `Queue[T]`.
 
-For example, suppose there is a class Fruit with two subclasses, Apple and Orange. With the new definition of class Queue, it is possible to append an Orange to a Queue[Apple]. The result will be aQueue[Fruit].
+Наприклад, уявімо, що є клас `Fruit` з двома субкласами, `Apple` та `Orange`. З новим визначенням класу `Queue` можливо додати `Orange` до `Queue[Apple]`. Результатом буде `Queue[Fruit]`.
 
-This revised definition of enqueue is type correct. Intuitively, if T is a more specific type than expected (for example, Apple instead of Fruit), a call to enqueue will still work because U (Fruit) will still be a supertype of T (Apple).footnote:[Technically, what happens is a flip occurs for lower bounds. The type parameter U is in a negative position (1 flip), while the lower bound (>: T) is in a positive position (2 flips).]
+Це модифіковане визначення `enqueue` типово коректне. Інтуітивно, якщо `T` є більш специфічним типом, ніж очікується (наприклад, `Apple` замість `Fruit`), виклик до `enqueue` все одно буде робити, оскільки `U` (`Fruit`) буде все ще супертипом типу `T` (`Apple`).footnote:[Технічно, те що відбувається, це обернення для нижньої межі. Параметр типу `U` є в негативній позиції (1 обернення), тоді як нижня межа (`>: T`) в позитивній позиції (2 обернення).]
 
-The new definition of enqueue is arguably better than the old, because it is more general. Unlike the old version, the new definition allows you to append an arbitrary supertype U of the queue element type T. The result is then a Queue[U]. Together with queue covariance, this gives the right kind of flexibility for modeling queues of different element types in a natural way.
+Нове визначення `enqueue` є, можливо, кращим, ніж старе, оскільки воне більш загальне. На відміну від старої версії, нове визначення дозволяє вам додати довільний супертип `U` типу елемента черги `T`. Після цього результатом буде `Queue[U]`. Разом з коваріантністю черги, це дає правильний різновід гнучкості для моделювання черг з різними типами елементів в природний спосіб.
 
-This shows that variance annotations and lower bounds play well together. They are a good example of type-driven design, where the types of an interface guide its detailed design and implementation. In the case of queues, it's likely you would not have thought of the refined implementation of enqueue with a lower bound. But you might have decided to make queues covariant, in which case, the compiler would have pointed out the variance error for enqueue. Correcting the variance error by adding a lower bound makes enqueue more general and queues as a whole more usable.
+Це показує, що анотації варіантності та ніжні межі гарно грають разом. Вони є гарним прикладом типо-рушійної розробки, де типи інтерфейсів направляють її детальний дизайн та реалізацію. В випадку черг, можливо, ви не будете розмірковувати щодо покращеної реалізації `enqueue` з нижньою межею. Але ви можете вирішити зробити чергу коваріантною, в якому випадку компілятор буде вказувати на помилку варіантностів в `enqueue`. Корегування помилки варіантності через додавання нижньої межі робить `enqueue` більш загальним, та черги загалом більш корисними.
 
-This observation is also the main reason that Scala prefers declaration-site variance over use-site variance as it is found in Java's wildcards. With use-site variance, you are on your own designing a class. It will be the clients of the class that need to put in the wildcards, and if they get it wrong, some important instance methods will no longer be applicable. Variance being a tricky business, users usually get it wrong, and they come away thinking that wildcards and generics are overly complicated. With definition-side variance, you express your intent to the compiler, and the compiler will double check that the methods you want available will indeed be available.
+Це дослідження також є головною причиною того, що Scala обирає варіантність на стороні декларації, замість варіантності на боці використання, як це відбувається в замінниках Java. З варіантністю на боці використання, ви наодинці при розробці свого класу. Це буде клієнт класу, той, що покладатиме підстановку, і якщо він зробить щось не так, деякі важливі методи примірників будуть більше незастосовні. Варіантність залишається хитрою справою, користувачі часто розміють її невірно, та вони ідуть геть, думаючи, що підстановки та дженеріки дуже ускладнені. З варіантністю на боці визначення ви викладаєте ваші наміри компілятору, та компілятор двічи перевірить, що методи, які ви бажаєте, будуть доступними.
 
 19.6 Контрваріантність
 ----------------------
-So far in this chapter, all examples you've seen were either covariant or nonvariant. But there are also cases where contravariance is natural. For instance, consider the trait of output channels shown in Лістинг 19.7:
+Докі в цій главі всі приклади, що ви бачили, були або коваріантними, або неваріантними. Але також є випадки, коли є природною контрваріантність. Наприклад, розглянемо трейт вихідного каналу, показаний на Лістингу 19.7:
 [source,scala]
 ----
 trait OutputChannel[-T] {
@@ -416,11 +416,11 @@ trait OutputChannel[-T] {
 ----
 Лістинг 19.7 - Контрваріантний вихідний канал.
 
-Here, OutputChannel is defined to be contravariant in T. So an output channel of AnyRefs, say, is a subtype of an output channel of Strings. Although it may seem non-intuitive, it actually makes sense. To see why, consider what you can do with an OutputChannel[String]. The only supported operation is writing a String to it. The same operation can also be done on anOutputChannel[AnyRef]. So it is safe to substitute an OutputChannel[AnyRef] for anOutputChannel[String]. By contrast, it would not be safe to substitute an OutputChannel[String]where an OutputChannel[AnyRef] is required. After all, you can send any object to anOutputChannel[AnyRef], whereas an OutputChannel[String] requires that the written values are all strings.
+Тут `OutputChannel` визначений бути контрваріантним по `T`. Так що, скажімо, вихідний канал `AnyRefs` є субтипом вихідного каналу `Strings`. Хоча це може виглядати неінтуітивним, насправді це має сенс. Щоб побачити чому, розглянемо, що ви можете робити з `OutputChannel[String]`. Одна підтримувана операція є запис `String` в канал. Та сама операція може також бути виконана на `OutputChannel[AnyRef]`. Так що безпечно підставити `OutputChannel[AnyRef]` замість `OutputChannel[String]`. Для контрасту, може бути небезпечним підставити `OutputChannel[String]` там, де потрібен `OutputChannel[AnyRef]`. Кінець кінцем, ви можете надіслати любий об'єкт до `OutputChannel[AnyRef]`, в той час, коли `OutputChannel[String]` потребує щоб всі записані елементи були рядками.
 
-This reasoning points to a general principle in type system design: It is safe to assume that a type T is a subtype of a type U if you can substitute a value of type T wherever a value of type Uis required. This is called the Liskov Substitution Principle. The principle holds if T supports the same operations as U, and all of T's operations require less and provide more than the corresponding operations in U. In the case of output channels, an OutputChannel[AnyRef] can be a subtype of an OutputChannel[String] because the two support the same write operation, and this operation requires less in OutputChannel[AnyRef] than in OutputChannel[String]. "Less" means the argument is only required to be an AnyRef in the first case, whereas it is required to be a Stringin the second case.
+Ці міркування вказують на загальний принцип в розробці системи типів: безпечно вважати, що тип `T` є субтипом типу `U`, якщо ви можете підставити значення `T` там, де вимагається значення типу `U`. Це називається принципом підстановки Ліскова. Принцип стверджує, що тоді `T` підтримує ті самі операції, що і `U`, та всі операції `T` потребують меньше, та провадять більше, ніж відповідні операції `U`. В цьому випадку з вихідними каналами, `OutputChannel[AnyRef]` може бути субтипом `OutputChannel[String]`, оскільки обоє підтримують ту саму операцію `write`, та ця операція потребує меньше в `OutputChannel[AnyRef]`, ніж в `OutputChannel[String]`. "Меньше" означає, що від аргумента вимагається тільки бути `AnyRef` в першому випадку, тоді як він має бути  `String` в другому випадку.
 
-Sometimes covariance and contravariance are mixed in the same type. A prominent example is Scala's function traits. For instance, whenever you write the function type A => B, Scala expands this to Function1[A, B]. The definition of Function1 in the standard library uses both covariance and contravariance: the Function1 trait is contravariant in the function argument type S and covariant in the result type T, as shown in Лістинг 19.8. This satisfies the Liskov Substitution Principle because arguments are something that's required, whereas results are something that's provided.
+Іноді коваріантність та контрваріантність змішані в одному типі. Яскравий приклад є функціональні трейти Scala. Наприклад, коли ви пишете функціональний тип `A => B`, Scala розширює це до `Function1[A, B]`. Визначення `Function1` в стандартній бібліотеці використовує одночасно коваріантність та контрваріантність: трейт `Function1` є контрваріантним по функціональному типу аргумента `S`, та коваріантним по типу результату `T`, як показано в Лістингу 19.8. Це задовільняє принципу підстановки Ліскова, оскільки аргументи є іноді тим, що вимагається, тоді як результат іноді те, що було запроваджено.
 [source,scala]
 ----
 trait Function1[-S, +T] {
@@ -429,7 +429,7 @@ trait Function1[-S, +T] {
 ----
 Лістинг 19.8 - Коваріантність та контрваріантність `Function1s`.
 
-As an example, consider the application shown in Лістинг 19.9. Here, class Publicationcontains one parametric field, title, of type String. Class Book extends Publication and forwards its string title parameter to the constructor of its superclass. The Library singleton object defines a set of books and a method printBookList, which takes a function, named info, of typeBook => AnyRef. In other words, the type of the lone parameter to printBookList is a function that takes one Book argument and returns an AnyRef. The Customer application defines a method,getTitle, which takes a Publication as its lone parameter and returns a String, the title of the passed Publication.
+Як приклад, розглянемо застосування, показане в Лістингу 19.9. Тут клас `Publication` містить одно параметричне поле, `title`, типу `String`. Клас `Book` розширює `Publication`, та пересилає його параметр `title` в конструктор свого суперкласу. Об'єкт синглтон `Library` визначає набір книжок, та метод `printBookList`, що приймає функцію на ім'я `info`, типу `typeBook => AnyRef`. Іншими словами, тип єдиного параметра `printBookList` є функцією, що приймає один аргумент `Book`, та повертає `AnyRef`. Застосування `Customer` визначає метод `getTitle`, що приймає `Publication` як свій єдиний параметр, та повертає `String`, заголовок переданого `Publication`.
 [source,scala]
 ----
 class Publication(val title: String)
@@ -454,20 +454,20 @@ object Customer extends App {
 ----
 Лістинг 19.9 - Демонстрація варіантності параметру типу функції.
 
-Now take a look at the last line in Customer. This line invokes Library's printBookList method and passes getTitle, wrapped in a function value:
+Тепер поглянемо на останній рядок `Customer`. Цей рядок викликає метод `Library`  `printBookList`, та передає `getTitle`, оточений в функціональне значення:
 [source,scala]
 ----
 Library.printBookList(getTitle)
 ----
-This line of code type checks even though String, the function's result type, is a subtype ofAnyRef, the result type of printBookList's info parameter. This code passes the compiler because function result types are declared to be covariant (the +T in Лістинг 19.8). If you look inside the body of printBookList, you can get a glimpse of why this makes sense.
+Цей рядок коду проходить перевірку типів, навіть якщо `String`, тип результату функції, є субтипом `AnyRef`, типу результата параметра `info` метода `printBookList`. Цей код проходить компілятор, оскільки типи результата функції декларований як коваріантний (`+T` в Лістингу 19.8). Якщо ви подивитесь в тіло `printBookList`, ви можете отримати проблиск, чому це має сенс.
 
-The printBookList method iterates through its book list and invokes the passed function on each book. It passes the AnyRef result returned by info to println, which invokes toString on it and prints the result. This activity will work with String as well as any other subclass of AnyRef, which is what covariance of function result types means.
+Метод `printBookList` ітерує по своєму списку книжок, та викликає передану функцію для кожної книжки. Він передає результат `AnyRef`, що повертає `info`, до `println`, що викликає на ньому `toString`, та друкує результат. Ця активність буде робити зі `String` так само, як і інші субкласи `AnyRef`, що саме і означає коваріантність результату функції.
 
-Now consider the parameter type of the function being passed to the printBookList method. Although printBookList's parameter type is declared as Book, the getTitle we're passing in takes a Publication, a supertype of Book. The reason this works is that since printBookList's parameter type is Book, the body of the printBookList method will only be allowed to pass a Book into the function. And because getTitle's parameter type is Publication, the body of that function will only be able to access on its parameter, p, members that are declared in class Publication. Because any method declared in Publication is also available on its subclass Book, everything should work, which is what contravariance of function parameter types means. You can see all this graphically in Figure 19.1.
+Тепер розглянемо тип параметру функції, коли він передається до метода `printBookList`. Хоча тип параметра `printBookList` декларований як `Book`, `getTitle`, яку ми передаємо туди, приймає `Publication`, супертип `Book`. Причина, чому це робить, полягає в тому, що оскільки тип параметра `printBookList` є `Book`, в тілі метода `printBookList` буде дозволено передати `Book` в функцію. І оскількі тип параметра `getTitle` є `Publication`, тіло цієї функції буде в змозі отримати доступ тільки до свого параметра, `p`, члени якого декларовані в класі `Publication`. Оскільки любий метод, декларований в `Publication` також доступний в субкласі `Book`, все повинно робити, що є саме те, що означає контрваріантність функціонального параметру. Ви можете бачити все це графічно на Малюнку 19.1.
 
-The code in Лістинг 19.9 compiles because Publication => String is a subtype of Book => AnyRef, as shown in the center of the Figure 19.1. Because the result type of a Function1 is defined as covariant, the inheritance relationship of the two result types, shown at the right of the diagram, is in the same direction as that of the two functions shown in the center. By contrast, because the parameter type of a Function1 is defined as contravariant, the inheritance relationship of the two parameter types, shown at the left of the diagram, is in the opposite direction as that of the two functions.
+Код в Лістингу 19.9 компілюється, оскільки `Publication => String` є субтипом `Book => AnyRef`, як показано в центрі Малюнка 19.1. Оскільки тип результата `Function1` є визначеним як коваріантний, відношення наслідування двох типів результату, показані справа діаграми, є в тому самому напрямку, що той у двох функцій, показаних в центрі. По контрасту, оскільки тип параметра `Function1` визначений як контрваріантний, відношення наслідування двох типів параметрів, показаних зліва від діаграми, ідуть в зворотньому напрямку, ніж ті для двох функцій.
 
-Figure 19.1 - Covariance and contravariance in function type parameters.
+Малюнок 19.1 - Коваріантність і контрваріантність в параметрах типів функції.
 [source,scala]
 ----
 class Queue[+T] private (
@@ -497,19 +497,19 @@ class Queue[+T] private (
     new Queue[U](leading, x :: trailing)
 }
 ----
-Лістинг 19.10 - Оптимізована An optimized functional queue.
+Лістинг 19.10 - Оптимізована функціональна черга.
 
 19.7 Приватні дані об'єкта
 --------------------------
-The Queue class seen so far has a problem in that the mirror operation will repeatedly copy thetrailing into the leading list if head is called several times in a row on a list where leading is empty. The wasteful copying could be avoided by adding some judicious side effects. Лістинг 19.10 presents a new implementation of Queue, which performs at most one trailing to leadingadjustment for any sequence of head operations.
+Клас `Queue`, яку ми бачили до цього, має проблему в тому, що операція `mirror` буде постійно копіювати список `trailing` в `leading`, якщо `head` буде викликатись декілька разів поспіль для списку, коли `leading` є порожнім. Марного копіювання можна уникнути, додаючи деякі розсудливі побічні ефекти. Лістинг 19.10 презентує нову реалізацію `Queue`, що виконує щонайбільше одне коригування `trailing` до `leading` для кожної послідовності операцій `head`.
 
-What's different with respect to the previous version is that now leading and trailing are reassignable variables, and mirror performs the reverse copy from trailing to leading as a side effect on the current queue instead of returning a new queue. This side effect is purely internal to the implementation of the Queue operation; since leading and trailing are private variables, the effect is not visible to clients of Queue. So by the terminology established inChapter 18, the new version of Queue still defines purely functional objects, in spite of the fact that they now contain reassignable fields.
+Що тут відмінне з точки зору попередньої версії, є те, що тепер `leading` та `trailing` є переприсвоювані змінні, і `mirror` виконує реверсивну копію від `trailing` до `leading` як побічний ефект на поточній черзі, замість повернення нової черги. Цей побічний ефект чисто внутрішній відносно до реалізації операцій `Queue`; оскільки `leading` та `trailing` є приватними змінними, ефект не є видимий для клієнтів `Queue`. Так що за термінологією, встановленою в Главі 18, нова версія `Queue` все ще визначає чисто функціональні об'єкти, не зважаючи на факт, що вони тепер містять переприсвоювані поля.
 
-You might wonder whether this code passes the Scala type checker. After all, queues now contain two reassignable fields of the covariant parameter type T. Is this not a violation of the variance rules? It would be indeed, except for the detail that leading and trailing have aprivate[this] modifier, and are thus declared to be object private.
+Ви можете поцікавитись, чи цей код пройде перевірку типів Scala. Кінець кінцем, тепер черги містять два переприсвоювані поля коваріантного параметру типу `T`. Чи це не порушення правил варіантності? Це було б так, за винятком тої деталі, що `leading` та `trailing` мають модифікатор `private[this]`, і, таким чином декларовані як приватні до об'єкта.
 
-As mentioned in Section 13.5, object private members can be accessed only from within the object in which they are defined. It turns out that accesses to variables from the same object in which they are defined do not cause problems with variance. The intuitive explanation is that, in order to construct a case where variance would lead to type errors, you need to have a reference to a containing object that has a statically weaker type than the type the object was defined with. For accesses to object private values, however, this is impossible.
+Як зазначалось в Розділі 13.5, приватні до об'єкта члени можуть отримувати доступ тільки з того самого об'єкта, де вони визначені. З'ясовується, що доступ до змінних з того самого об'єкта, в якому вони визначені, не викликають проблем з варіантністю. Інтуітивне пояснення в тому, що щоб сконструювати випадок, коли варіантність призведе до помилки типів, вам треба мати посилання на містячий об'єкт, що має статично слабший тип, ніж тип об'єкта, з яким об'єкт був визначений. Але для доступу до об'єкт приватних значень це неможливо.
 
-Scala's variance checking rules contain a special case for object private definitions. Such definitions are omitted when it is checked that a type parameter with either a + or -annotation occurs only in positions that have the same variance classification. Therefore, the code in Лістинг 19.10 compiles without error. On the other hand, if you had left out the [this]qualifiers from the two private modifiers, you would see two type errors:
+Перевірка варіантності в Scala містить особливий випадок для об'єкт приватних визначень. Такі визначення оминаються при перевірці, що параметр типу з анотаціями `+` або `-` з'являється лише в позиціях, що мають ту саму класифікацію варіантності. Таким чином, код в Лістингу 19.10 компілюється без помилок. З іншого боку, якщо ви приберете кваліфікатор `[this]` для двох  модифікаторів `private`, ви побачите дві помилки типу:
 [source,scala]
 ----
 Queues.scala:1: error: covariant type T occurs in
@@ -525,9 +525,9 @@ setter trailing_=
 ----                                    
 19.8 Верхня межа
 ----------------
-In Listing 16.1 here, we showed a merge sort function for lists that took a comparison function as a first argument and a list to sort as a second, curried argument. Another way you might want to organize such a sort function is by requiring the type of the list to mix in theOrdered trait. As mentioned in Section 12.4, by mixing Ordered into a class and implementingOrdered's one abstract method, compare, you enable clients to compare instances of that class with <, >, <=, and >=. For example, Listing 19.11 shows Ordered being mixed into a Person class.
+В Лістингу 16.1 ми показали функцію сортування злиттям для списків, що приймає функцію порівняння як перший аргумент, і список для сортування в якості другого, каровані аргументи. Інший шлях, як ви можете організувати таку функцію сортування, це змусити тип списку зміксувати трейт `Ordered`. Як зазначалось в Розділі 12.4, через міксування `Ordered` в клас, та реалізуючи єдиний абстрактний метод `Ordered`, `compare`, ви дозволяєте клієнтам порівнювати примірники цього класу за допомогою `<`, `>`, `<=`, та `>=`. Наприклад, Лістинг 19.11 показує `Ordered`, що зміксовано в клас `Person`.
 
-As a result, you can compare two people like this:
+Як результат ви можете порівнювати двох людей, ось так:
 [source,scala]
 ----
 scala> val robert = new Person("Robert", "Jones")
@@ -576,11 +576,11 @@ def orderedMergeSort[T <: Ordered[T]](xs: List[T]): List[T] = {
 ----
 Лістинг 19.12 - Функція сортування злиттям з верхньою межею.
 
-To require that the type of the list passed to your new sort function mixes in Ordered, you need to use an upper bound. An upper bound is specified similar to a lower bound, except instead of the >: symbol used for lower bounds, you use a <: symbol, as shown in Лістинг 19.12.
+Щоб змусити тип списку, що передається в нову функцію сортування, міксувати `Ordered`, вам треба встановити верхню межу. Верхня межа вказується подібно до нижньої межі, за винятком того, що замість символа `>:`, що використовується для нижньої межі, ви використовуєте символ `<:`, як показано в Лістингу 19.12.
 
-With the "T <: Ordered[T]" syntax, you indicate that the type parameter, T, has an upper bound,Ordered[T]. This means that the element type of the list passed to orderedMergeSort must be a subtype of Ordered. Thus, you could pass a List[Person] to orderedMergeSort because Person mixes in Ordered.
+З синтаксисом `T <: Ordered[T]` ви вказуєте, що параметр типу, `T`, має верхню межу,`Ordered[T]`. Це означає, що тип елемента списка, переданого до `orderedMergeSort`, має бути субтипом від `Ordered`. Таким чином, ви можете передати `List[Person]` до `orderedMergeSort`, оскільки `Person` зміксований з `Ordered`.
 
-For example, consider this list:
+Наприклад, розглянемо цей список:
 [source,scala]
 ----
 scala> val people = List(
@@ -593,16 +593,16 @@ scala> val people = List(
 people: List[Person] = List(Larry Wall, Anders Hejlsberg,
   Guido van Rossum, Alan Kay, Yukihiro Matsumoto)
 ----  
-Because the element type of this list, Person, mixes in (and is therefore a subtype of)Ordered[People], you can pass the list to orderedMergeSort:
+Оскільки тип елемента цього списка, `Person`, міксується (і таким чином є його субтипом) `Ordered[People]`, ви можете передати список до `orderedMergeSort`:
 [source,scala]
 ----
 scala> val sortedPeople = orderedMergeSort(people)
 sortedPeople: List[Person] = List(Anders Hejlsberg, Alan Kay,
   Yukihiro Matsumoto, Guido van Rossum, Larry Wall)
 ----
-Now, although the sort function shown in Лістинг 19.12 serves as a useful illustration of upper bounds, it isn't actually the most general way in Scala to design a sort function that takes advantage of the Ordered trait.
+Тепер, хоча функція сортування, показана в Лістингу 19.12, служить як корисна ілюстрація верхньої межі, насправді це не найбільш загальний шлях в Scala для розробки функції сортування, що набуває вигод від трейту `Ordered`.
 
-For example, you couldn't use the orderedMergeSort function to sort a list of integers, because class Int is not a subtype of Ordered[Int]:
+Наприклад, ви не можете використовувати функцію `orderedMergeSort` для сортування списку цілих, оскільки клас `Int` не є субтипом `Ordered[Int]`:
 [source,scala]
 ----
 scala> val wontCompile = orderedMergeSort(List(3, 2, 1))
@@ -612,8 +612,8 @@ scala> val wontCompile = orderedMergeSort(List(3, 2, 1))
         val wontCompile = orderedMergeSort(List(3, 2, 1))
                           ^
 ----  
-In Section 21.6, we'll show you how to use implicit parameters and context bounds to achieve a more general solution.
+В Розділі 21.6 ми побачимо, як використовувати неявні параметри та обмеження контекстів, щоб досягти більш загального рішення.
 
 19.9 Висновок
 -------------
-In this chapter you saw several techniques for information hiding: private constructors, factory methods, type abstraction, and object private members. You also learned how to specify data type variance and what it implies for class implementation. Finally, you saw two techniques which help in obtaining flexible variance annotations: lower bounds for method type parameters and private[this] annotations for local fields and methods.
+В цій главі ви бачили декілька прийомів для приховування інформації: приватні конструктори, методи фабрик, абстракції типів та об'єкт приватні члени. Ви також навчились, як задавати варіантність типів, та що це накладає на реалізацію класів. Нарешті, ви бачили два прийоми, що допоможуть в отриманні гнучких анотацій варіантності: нижні межі для параметрів типу методів, та анотації `private[this]` для локальних полів та методів.
