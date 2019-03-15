@@ -6,308 +6,316 @@ include::headers.adoc[]
 Реалізація списків
 ==================
 
-Lists have been ubiquitous in this book. Class List is probably the most commonly used structured data
-type in Scala. Chapter 16 showed you how to use lists. This chapter "opens up the covers" and explains
-a bit about how lists are implemented in Scala.
-Knowing the internal workings of the List class is useful for several reasons. You gain a better idea of
-the relative efficiency of list operations, which will help you in writing fast and compact code using
-lists. You also gain a toolbox of techniques that you can apply in the design of your own libraries.
-Finally, the List class is a sophisticated application of Scala's type system in general and its genericity
-concepts in particular. So studying class List will deepen your knowledge in these areas.
-22.1 THE LIST CLASS IN PRINCIPLE
-Lists are not "built-in" as a language construct in Scala; they are defined by an abstract classList in
-the scala package, which comes with two subclasses for :: and Nil. In this chapter we will present a
-quick tour through class List. This section presents a somewhat simplified account of the class,
-compared to its real implementation in the Scala standard library, which is covered in Section 22.3.
+Списки стали повсюдними в цій книзі. Клас `List`, можливо, є найбільш загально уживаний тип структурованих даних в Scala. Глава 16 показала вам, як використовувати списки. Ця глава "зриває покривадла", та трохи пояснює щодо того, як списки реалізовані в Scala.
+
+Знаючи внутрішню роботу класу `List` корисне з деяких причин. Ви набудете кращу ідею щодо відносної ефективності операцій списків, що допоможе вам писати швидкий та компактний код з використанням списків. Ви також набудете інструментарій з прийомів, що ви можете застосувати в розробці ваших власних бібліотек. Нарешті, клас `List` є витонченим застосуванням системи типів Scala загалом, та зокрема її узагальнених концепцій. Так що вивчання класу `List` поглибить ваше знання ціх областях.
+
+22.1 Клас List, принципово
+-------------------------- 
+`List` не є "вбудований" як конструкція мови в Scala; списки визначені як абстрактний клас `List` в пакунку `scala`, що іде з двома субкласами, `::` та `Nil`. В цій главі ми презентуємо швидкий тур по класу `List`. Цей розділ представляє дещо спрощене пояснення цього класу, порівняно з його справжньою реалізацією в стандартній бібліотеці Scala, що розкривається в Розділі 22.3.
+[source,scala]
+----
 package scala
 abstract class List[+T] {
-List is an abstract class, so you cannot define elements by calling the empty List constructor. For
-instance the expression "new List" would be illegal. The class has a type parameter T. The +in front of
-this type parameter specifies that lists are covariant, as discussed in Chapter 19.
-Figure 22.1 - Class hierarchy for Scala lists.
-Because of this property, you can assign a value of type List[Int] to a variable of typeList[Any]:
+----
+List є абстрактним класом, так що ви не можете визначити елементи через виклик порожнього конструктора `List`. Наприклад, вираз `new List` буде нелегальним. Клас має параметр типу `T`. Знак `+` перед цім параметром типу вказує, що списки є коваріантними, як обговорюється в Главі 19.
+
+Малюнок 22.1 - Ієрархія класів для списків Scala.
+
+Завдяки цій властивості ви можете присвоїти значення типу `List[Int]` до змінної типу `List[Any]`:
+[source,scala]
+----
 scala> val xs = List(1, 2, 3)
 xs: List[Int] = List(1, 2, 3)
+
 scala> var ys: List[Any] = xs
-ys: List[Any] = List(1, 2, 3)All list operations can be defined in terms of three basic methods:
+ys: List[Any] = List(1, 2, 3)
+----
+Всі операції списків можуть бути виражені в термінах трьох базових методів:
+[source,scala]
+----
 def isEmpty: Boolean
 def head: T
 def tail: List[T]
-These three methods are all abstract in class List. They are defined in the subobject Nil and the
-subclass ::. The hierarchy for List is shown in Figure 22.1.
-The Nil object
-The Nil object defines an empty list. Its definition is shown in Listing 22.1. The Nil object inherits
-from type List[Nothing]. Because of covariance, this means that Nil is compatible with every instance
-of the List type.
+----
+Ці три методи всі абстрактні в класі `List`. Вони визначені в субоб'єкті `Nil` і субкласі `::`. Ієрархія для `List` показана на Малюнку 22.1.
+
+Об'єкт `Nil`
+~~~~~~~~~~~~~~
+Об'єкт `Nil` визначає порожній список. Його визначення показане в Лістингу 22.1. Об'єкт `Nil` наслідує від типу `List[Nothing]`. Завдяки коваріантності це означає, що `Nil` сумісний з кожним примірником типу `List`.
+[source,scala]
+----
 case object Nil extends List[Nothing] {
-override def isEmpty = true
-def head: Nothing =
-throw new NoSuchElementException("head of empty list")
-def tail: List[Nothing] =
-throw new NoSuchElementException("tail of empty list")
+  override def isEmpty = true
+  def head: Nothing =
+    throw new NoSuchElementException("head of empty list")
+  def tail: List[Nothing] =
+    throw new NoSuchElementException("tail of empty list")
 }
-Listing 22.1 - The definition of the Nil singleton object.
-The three abstract methods of class List are implemented in the Nil object in a straightforward way:
-The isEmpty method returns true, and the head and tail methods both throw an exception. Note that
-throwing an exception is not only reasonable, but practically the only possible thing to do for head:
-Because Nil is a List of Nothing, the result type of headmust be Nothing. Since there is no value of this
-type, this means that head cannot return a normal value. It has to return abnormally by throwing an
-exception.footnote:[To be precise, the types would also permit for head to always go into an infinite loop instead of throwing an exception, but this is clearly not what's wanted.]
-The :: class
-Class ::, pronounced "cons" for "construct," represents non-empty lists. It's named that way in order to
-support pattern matching with the infix ::. You have seen in Section 16.5 that every infix operation in a
-pattern is treated as a constructor application of the infix operator to its arguments. So the
-pattern x :: xs is treated as ::(x, xs) where :: is a case class.
-Here is the definition of the :: class:
-final case
-def head
-def tail
-override
+----
+Лістинг 22.1 - Визначення об'єкта синглтона `Nil`.
+
+Три абстрактні метода класу `List` реалізовані в об'єкті `Nil` в прямолінійний спосіб: метод `isEmpty` повертає `true`, та методи `head` та `tail` обоє закидають виключення. Зауважте, що закидання виключення не тільки має сенс, але практично є єдиною можливою річчю, що можна робити для `head`: оскільки `Nil` є `List` з `Nothing`, тип результату `head` має бути `Nothing`. Оскільки немає значення цього типу, це означає, що `head` не може повернути звичайне значення. Він має повертатись ненормально, через закидання виключення.footnote:[Щоб бути точним, типи також дозволяють `head` назавжди пійти в безкінечний цикл, замість закидання виключення, але це очевидно не те, що ми бажаємо.]
+
+Клас `::`
+~~~~~~~
+Клас `::`, вимовляється `"cons"` скорочено від `"construct"`, представляє непорожній список. Він названий в такий спосіб, щоб підтримувати співпадіння шаблонів з інфіксним `::`. Ви вже бачили в Розділі 16.5, що кожна інфіксна операція в шаблоні трактується як застосування конструктора інфіксного оператора до його аргументів. Так що шаблон `x :: xs` трактується як `::(x, xs)`, де `::` є кейс класом.
+
+Ось визначення класу `::`:
+[source,scala]
+----
+final case class ::[T](hd: T, tl: List[T]) extends List[T] {
+  def head = hd
+  def tail = tl
+  override def isEmpty: Boolean = false
 }
-class ::[T](hd: T, tl: List[T]) extends List[T] {
-= hd
-= tl
-def isEmpty: Boolean = false
-The implementation of the :: class is straightforward. It takes two parameters hd and tl, representing the
-head and the tail of the list to be constructed. The definitions of the head andtail method simply return
-the corresponding parameter. In fact, this pattern can be abbreviated by letting the parameters directlyimplement the head and tail methods of the superclass List, as in the following equivalent but shorter
-definition of the :: class:
+----
+Реалізація класу `::` є прямолінійним. Він приймає два параметри, `hd` та `tl`, які представляють голову та хвіст списку, що має бути створений. Визначення методів `head` та `tail` просто повертають відповідний параметр. Фактично, цей шаблон може бути скорочений, дозволяючи параметрам напряму реалізувати методи `head` та `tail` суперкласу `List`, як в наступному еквівалентному, але коротшому визначенні класу `::`:
+[source,scala]
+----
 final case class ::[T](head: T, tail: List[T])
-extends List[T] {
-override def isEmpty: Boolean = false
+    extends List[T] {
+
+  override def isEmpty: Boolean = false
 }
-This works because every case class parameter is implicitly also a field of the class (it's like the
-parameter declaration was prefixed with val). Recall from Section 20.3 that Scala allows you to
-implement an abstract parameterless method such as head or tail with a field. So the code above
-directly uses the parameters head and tail as implementations of the abstract methods head and tail that
-were inherited from class List.
-Some more methods
-All other List methods can be written using the basic three. For instance:
+----
+Це робить, бо кожний параметр кейс класу неявно також є полем класу (це як декларація параметру, перед яким стоїть `val`). Згадайте з Розділу 20.3, що Scala дозволяє вам реалізовати абстрактний безпараметрний метод, як `head` або `tail`, за допомогою поля. Так що код вище напряму використовує параметри `head` та `tail` як реалізації абстрактних методів `head` та `tail`, що були наслідувані від класу `List`.
+
+Ще декілька методів
+~~~~~~~~~~~~~~~~~~~
+Всі інші методи `List` можуть бути записані з використанням троьх базових методів. Наприклад:
+[source,scala]
+----
 def length: Int =
-if (isEmpty) 0 else 1 + tail.length
-or:
+  if (isEmpty) 0 else 1 + tail.length
+----
+або:
+[source,scala]
+----
 def drop(n: Int): List[T] =
-if (isEmpty) Nil
-else if (n <= 0) this
-else tail.drop(n - 1)
-or:
+  if (isEmpty) Nil
+  else if (n <= 0) this
+  else tail.drop(n - 1)
+----
+або:
+[source,scala]
+----
 def map[U](f: T => U): List[U] =
-if (isEmpty) Nil
-else f(head) :: tail.map(f)
-List construction
-The list construction methods :: and ::: are special. Because they end in a colon, they are bound to their
-right operand. That is, an operation such as x :: xs is treated as the method callxs.::(x), not x.::(xs). In
-fact, x.::(xs) would not make sense, as x is of the list element type, which can be arbitrary, so we cannot
-assume that this type would have a :: method.
-For this reason, the :: method should take an element value and yield a new list. What is the required
-type of the element value? You might be tempted to say it should be the same as the list's element type,
-but in fact this is more restrictive than necessary.
-To see why, consider this class hierarchy:
+  if (isEmpty) Nil
+  else f(head) :: tail.map(f)
+----
+Конструювання List
+~~~~~~~~~~~~~~~~~~
+Методи конструювання списків, `::` та `:::`, є особливими. Оскільки вони закінчуються на двокрапку, вони прикріплені до свого правого операнду. Тобто, операція, така як `x :: xs` розглядається як виклик метода `xs.::(x)`, не `x.::(xs)`. Фактично, `x.::(xs)` не мало б сенсу, оскільки `x` має тип елементу списку, що може бути довільним, так що ми не можемо очікувати, що цей тип має метод `::`.
+
+З цієї причини метод `::` має приймати значення елементу та видавати новий список. Який тип має бути в значень елементів? Ви можете спокуситись і сказати, що він має бути такий самий, що і тип елементів списку, але фактично це більш обмежливе, ніж треба.
+
+Щоб бачити чого, розглянемо таку ієрархію класів:
+[source,scala]
+----
 abstract class Fruit
 class Apple extends Fruit
-class Orange extends FruitListing 22.2 shows what happens when you construct lists of fruit:
+class Orange extends Fruit
+----
+Лістинг 22.2 показує, що трапляється, коли ви конструююте списки фруктів:
+[source,scala]
+----
 scala> val apples = new Apple :: Nil
 apples: List[Apple] = List(Apple@e885c6a)
+
 scala> val fruits = new Orange :: apples
 fruits: List[Fruit] = List(Orange@3f51b349, Apple@e885c6a)
-Listing 22.2 - Prepending a supertype element to a subtype list.
-The apples value is treated as a List of Apples, as expected. However, the definition of fruitsshows that
-it's still possible to add an element of a different type to that list. The element type of the resulting list
-is Fruit, which is the most precise common supertype of the original list element type (i.e., Apple) and
-the type of the element to be added (i.e., Orange). This flexibility is obtained by defining the :: method
-(cons) as shown in Listing 22.3:
+----
+Лістинг 22.2 - Підставлення елементу супертипа до списку субтипа.
+
+Значення `apples` трактується як `List` з `Apples`, як і очікувалось. Але визначення `fruits` показує, що все ще можливо додати елемент іншого типу до цього списку. Тип елементу отриманого списку буде `Fruit`, що є більш точним загальним супертипом елементів оригінального списку (`Apple`), і типу доданого елементу (`Orange`). Ця гнучкість отримана через визначення метода `::` (`cons`), як показано в Лістингу 22.3:
+[source,scala]
+----
 def ::[U >: T](x: U): List[U] = new scala.::(x, this)
-Listing 22.3 - The definition of method :: (cons) in class List.
-Note that the method is itself polymorphic—it takes a type parameter named U. Furthermore,U is
-constrained in [U >: T] to be a supertype of the list element type T. The element to be added is required
-to be of type U and the result is a List[U].
-With the formulation of :: shown in Listing 22.3, you can check how the definition of fruitsshown
-in Listing 22.2 works out type-wise: In that definition, the type parameter U of :: is instantiated to Fruit.
-The lower-bound constraint of U is satisfied because the list apples has type List[Apple] and Fruit is a
-supertype of Apple. The argument to the :: is new Orange, which conforms to type Fruit. Therefore, the
-method application is type-correct with result typeList[Fruit]. Figure 22.2 illustrates the structure of the
-lists that result from executing the code shown in Listing 22.2.
-Figure 22.2 - The structure of the Scala lists shown in Listing 22.2.
-In fact, the polymorphic definition of :: with the lower bound T is not only convenient, it is also
-necessary to render the definition of class List type-correct. This is because Lists are defined to be
-covariant.
-Assume for a moment that we had defined :: like this:// A thought experiment (which wouldn't work)
+----
+Лістинг 22.3 - Визначення метода `::` (`cons`) в класі `List`.
+
+Зауважте, що метод сам по собі поліморфний — він приймає параметр типу на ім'я U. Більше того, `U` обмежений в `[U >: T]`, щоб він був супертипом типу елемента списку `T`. Елемент, що додається, має бути типу `U`, і результатом буде `List[U]`.
+
+С формулюванням `::`, показаним на Лістингу 22.3, ви можете перевірити, як визначення `fruits`, показана в Лістингу 22.2 робить с точки зору типів: в цьому визначенні параметр типу `U` в `::` виступає як примірник `Fruit`. Обмеження нижньої межі для `U` задовільняється, оскільки список `apples` має тип `List[Apple]`, і `Fruit` є супертипом для `Apple`. Аргументом `::` є `new Orange`, що відповідає типу `Fruit`. Таким чином, застосування метода є типо-коректним, з типом результату `List[Fruit]`. Малюнок 22.2 ілюструє структуру списків, що отримуються від виконання коду, показаного в Лістингу 22.2.
+
+Малюнок 22.2 - Структура списків Scala, показаного в Лістингу 22.2.
+
+Фактично, поліморфне визначення `::` з нижньою межею `T` не тільки зручне, але також потрібне щоб зробить визначення класу `List` типо-коректним. Це так, тому що `List` визначений як коваріантний.
+
+Уявімо на мить, що ми визначили `::` таким чином:
+[source,scala]
+----
+// Розумовий експеримент (що не буде робити)
 def ::(x: T): List[T] = new scala.::(x, this)
-You saw in Chapter 19 that method parameters count as contravariant positions, so the list element
-type T is in contravariant position in the definition above. But then List cannot be declared covariant
-in T. The lower bound [U >: T] thus kills two birds with one stone: It removes a typing problem and
-leads to a :: method that's more flexible to use. The list concatenation method ::: is defined in a similar
-way to ::, as shown in Listing 22.4.
+----
+Ви бачили в Главі 19, що параметри метода рахуються як контрваріантні позиції, так що тип елементів списку `T` є контрваріантної позицією в визначенні вище. Але тоді `List` не може бути декларований як коваріантний по `T`. Таким чином, нижня межа, `[U >: T]`, убиває двох зайців з одного пострілу: вона прибирає проблему типізації, та призводить до того, що метод `::` стає більш гнучким в використанні. Метод конкатенації `:::` визначений в подібний до `::` спосіб, як показано в Лістингу 22.4.
+[source,scala]
+----
 def :::[U >: T](prefix: List[U]): List[U] =
-if (prefix.isEmpty) this
-else prefix.head :: prefix.tail ::: this
-Listing 22.4 - The definition of method ::: in class List.
-Like cons, concatenation is polymorphic. The result type is "widened" as necessary to include the types
-of all list elements. Note again that the order of the arguments is swapped between an infix operation
-and an explicit method call. Because both ::: and :: end in a colon, they both bind to the right and are
-both right associative. For instance, the else part of the definition of ::: shown in Listing 22.4 contains
-infix operations of both :: and :::.
-These infix operations can be expanded to equivalent method calls as follows:
+  if (prefix.isEmpty) this
+  else prefix.head :: prefix.tail ::: this
+----
+Лістинг 22.4 - Визначення метода `:::` в класі `List`.
+
+Як і `cons`, конкатенація є поліморфною. Тип результату "поширений" як треба, щоб включати типи всіх елементів списку. Знову зауважте, що порядок аргументів переставлений в інфіксній операції та явному виклику метода. Оскільки обоє, `:::` та `::`, завершуються на дві крапки, вони обоє прив'язуються до правої сторони, та обоє право асоціативні. Наприклад, частина `else` визначення `:::`, показаний в Лістингу 22.4, містить інфіксні операції обох, `::` та `:::`.
+
+Ці інфіксні операції можуть бути розширені до еквівалентних методів, що викликаються таким чином:
+[source,scala]
+----
 prefix.head :: prefix.tail ::: this
-equals (because :: and ::: are right-associative)
+  дорівнює (оскільки :: та ::: право асоциативні)
+
 prefix.head :: (prefix.tail ::: this)
-equals (because :: binds to the right)
+  дорівнює (оскільки :: прикріплюється зправа)
+
 (prefix.tail ::: this).::(prefix.head)
-equals (because ::: binds to the right)
+  дорівнює (оскількі ::: прикріплюється зправа)
+
 this.:::(prefix.tail).::(prefix.head)
-22.2 THE LISTBUFFER CLASS
-The typical access pattern for a list is recursive. For instance, to increment every element of a list
-without using map you could write:
+----
+22.2 Клас ListBuffer
+--------------------
+Типовий шаблон доступа до списків є рекурсивний. Наприклад, для інкрементації кожного елемента без використовування мапи, ви можете записати:
+[source,scala]
+----
 def incAll(xs: List[Int]): List[Int] = xs match {
-case List() => List()
-case x :: xs1 => x + 1 :: incAll(xs1)
+  case List() => List()
+  case x :: xs1 => x + 1 :: incAll(xs1)
 }
-One shortcoming of this program pattern is that it is not tail recursive. Note that the recursive call
-to incAll above occurs inside a :: operation. Therefore each recursive call requires a new stack frame.
-On today's virtual machines this means that you cannot apply incAll to lists of much more than about
-30,000 to 50,000 elements. This is a pity. How do you write a version of incAllthat can work on lists of
-arbitrary size (as much as heap-capacity allows)?
-One approach is to use a loop:for (x <- xs) // ??
-But what should go in the loop body? Note that where incAll constructs the list by prepending elements
-to the result of the recursive call, the loop needs to append new elements at the end of the result list. A
-very inefficient possibility is to use :::, the list append operator:
-var result = List[Int]()
-// a very inefficient approach
+----
+Один з недоліків цього програмного шаблону є те, що вона не має хвостової рекурсії. Зауважте, що рекурсивний виклик до `incAll` вище, відбувається в операції `::`. Таким чином, кожний рекурсивний виклик потребує новий фрейм стеку.
+
+На сьогоднішніх віртуальних машинах це означає, що ви не можете застосувати `incAll` до списків з більше ніж `30000` або `50000` елементів. Це шкода. Як ви пишете версію `incAll`, що може робити зі списками довільного розміру (доки дозволяє місткість купи)?
+
+Один з підходів є використання циклу:
+[source,scala]
+----
+for (x <- xs) // ??
+----
+Але що має піти в тілі циклу? Зауважте, що тут `incAll` конструює список через перед-ставлення елементів до результату рекрсивного виклику, цикл потребує додавати нові елементи до кінця результуючого списку. Дуже неефективна можливість є використання `:::`, оператора додавання списку:
+[source,scala]
+----
+var result = List[Int]() // дуже неефективний підхід
 for (x <- xs) result = result ::: List(x + 1)
 result
-This is terribly inefficient. Because ::: takes time proportional to the length of its first operand, the
-whole operation takes time proportional to the square of the length of the list. This is clearly
-unacceptable.
-A better alternative is to use a list buffer. List buffers let you accumulate the elements of a list. To do
-this, you use an operation such as "buf += elem", which appends the element elem at the end of the list
-buffer buf. Once you are done appending elements, you can turn the buffer into a list using
-the toList operation.
-ListBuffer is a class in package scala.collection.mutable. To use the simple name only, you can
-import ListBuffer from its package:
+----
+Це жахливо неефективне. Оскільки `:::` займає час, пропорційний до довжини його першого операнда, повна операція займає час, пропорційний до квадрату довжини списку. Зрозуміло, що це неприйнятне.
+
+Кращою альтернативою є використання спискового буфера. Списковий буфер дозволяє вам акумулювати елементи в списку. Щоб зробити це, ви використовуєте операцію, таку як `buf += elem`, що додає елемент `elem` в кінець спискового буфера `buf`. Коли ви скінчите додавати елементи, ви можете перетворити буфер на список, використовуючи операцію `toList`.
+
+`ListBuffer` є класом в пакунку `scala.collection.mutable`. Щоб використовувати тільки просте ім'я, ви можете імпортувати `ListBuffer` з його пакунку:
+[source,scala]
+----
 import scala.collection.mutable.ListBuffer
-Using a list buffer, the body of incAll can now be written as follows:
+----
+Використовуючи списковий буфер, тіло `incAll` тепер може бути записане таким чином:
+[source,scala]
+----
 val buf = new ListBuffer[Int]
 for (x <- xs) buf += x + 1
 buf.toList
-This is a very efficient way to build lists. In fact, the list buffer implementation is organized so that
-both the append operation (+=) and the toList operation take (very short) constant time.
-22.3 THE LIST CLASS IN PRACTICE
-The implementations of list methods given in Section 22.1 are concise and clear, but suffer from the
-same stack overflow problem as the non-tail recursive implementation of incAll. Therefore, most
-methods in the real implementation of class List avoid recursion and use loops with list buffers instead.
-For example, Listing 22.5 shows the real implementation of mapin class List:
+----
+Це дуже ефективний спосіб будувати списки. Фактично, реалізація спискового буфера організована таким чином, що обоє операції, додавання (`+=`) та `toList` займають (дуже короткий) сталий час.
+
+22.3 Клас List на практиці
+--------------------------
+Реалізація спискових методів, надане в Розділі 22.1, є стислі та зрозумілі, але потерпають від деяких проблем переповнення, як не-хвосто-рекурсивна реалізація `incAll`. Таким чином, більшість методів в реальних реалізаціях класу `List` уникають рекурсії, та замість цього використовують цикли з списковими буферами. Наприклад, Лістинг 22.5 показує справжню реалізацію `map` в класі `List`:
+[source,scala]
+----
 final override def map[U](f: T => U): List[U] = {
-val b = new ListBuffer[U]
-var these = this
-while (!these.isEmpty) {
-b += f(these.head)
-these = these.tail
+  val b = new ListBuffer[U]
+  var these = this
+  while (!these.isEmpty) {
+    b += f(these.head)
+    these = these.tail
+  }
+  b.toList
 }
-b.toList
-}Listing 22.5 - The definition of method map in class List.
-This revised implementation traverses the list with a simple loop, which is highly efficient. A tail
-recursive implementation would be similarly efficient, but a general recursive implementation would be
-slower and less scalable. But what about the operation b.toList at the end? What is its complexity? In
-fact, the call to the toList method takes only a small number of cycles, which is independent of the
-length of the list.
-To understand why, take a second look at class ::, which constructs non-empty lists. In practice, this
-class does not quite correspond to its idealized definition given previously inSection 22.1. The real
-definition is shown in Listing 22.6. As you can see, there's one peculiarity: the tl argument is a var!
-This means that it is possible to modify the tail of a list after the list is constructed. However, because
-the variable tl has the modifier private[scala], it can be accessed only from within package scala. Client
-code outside this package can neither read nor write tl.
+----
+Лістинг 22.5 - Визначення метода `map` в класі `List`.
+
+Ця переглянута реалізація проходить по списку за допомогою простого циклу, що є дуже ефективним. Реалізація з хвостовою рекурсією може мати подібну ефективність, але загальна рекурсивна реалізація буде повільніша та менш маштабована. Але що до операції `b.toList` в кінці? Яка її складність? Фактично, виклик метода `toList` забирає тільки невелику кількість циклів, що не залежить від довжини списку.
+
+Щоб зрозуміти чому, накиньте другий погляд на клас `::`, що конструює непорожні списки. На практиці цей клас не повністю відповідає до його ідеалізованого визначення, попередньо наданому в Розділі 22.1. Справжнє визначення показане на Лістингу 22.6. Як ви можете бачити, є одна особливість: аргумент `tl` є `var`! Це означає, що можливо модифікувати хвіст списку після того, як цей список побудований. Однак, оскільки змінна `tl` має модифікатор `private[scala]`, він може бути доступний тільки в пакунку `scala`. Клієнтський код за межами цього пакунка ніколи не може ані читати, ні писати `tl`.
+[source,scala]
+----
 final case class ::[U](hd: U,
-private[scala] var tl: List[U]) extends List[U] {
-def head = hd
-def tail = tl
-override def isEmpty: Boolean = false
+    private[scala] var tl: List[U]) extends List[U] {
+  def head = hd
+  def tail = tl
+  override def isEmpty: Boolean = false
 }
-Listing 22.6 - The definition of the :: subclass of List.
-Since the ListBuffer class is contained in a subpackage of
-package scala,scala.collection.mutable, ListBuffer can access the tl field of a cons cell. In fact the
-elements of a list buffer are represented as a list and appending new elements involves a modification
-of the tl field of the last :: cell in that list. Here's the start of class ListBuffer:
+----
+Лістинг 22.6 - Визначення субкласа `::` в `List`.
+
+Оскільки клас `ListBuffer` міститься в субпакунку пакунка `scala`, `scala.collection.mutable`, `ListBuffer` може отримувати доступ до поля `tl` клітинки `cons`. Фактично, елементи спискового буфера представлени як список, та додавання нових елементів включає модифікацію поля `tl` останньої клітинки `::` цього списку. Ось початок класу `ListBuffer`:
+[source,scala]
+----
 package scala.collection.immutable
 final class ListBuffer[T] extends Buffer[T] {
-private var start: List[T] = Nil
-private var last0: ::[T] = _
-private var exported: Boolean = false
+  private var start: List[T] = Nil
+  private var last0: ::[T] = _
+  private var exported: Boolean = false
 ...
-You see three private fields that characterize a ListBuffer:
-start
-points to the list of all elements stored in the buffer
-last0
-points to the last :: cell in that list
-exported indicates whether the buffer has been turned into
-a list using a toList operation
-The toList operation is very simple:
+----
+Ви бачите три приватні поля, що характерізують `ListBuffer`:
+
+`start`     вказує на список з усіх елементів, що зберігаються в буфері
+`last0`     вказує на останню клітину `::` в цьому списку 
+`exported`  вказує, чи буфер був перетворений на список за допомогою `toList`
+
+Операція `toList` дуже проста:
+[source,scala]
+----
 override def toList: List[T] = {
-exported = !start.isEmpty
-start
-}It returns the list of elements referred to by start and also sets exported to true if that list is nonempty.
-So toList is very efficient because it does not copy the list which is stored in aListBuffer. But what
-happens if the list is further extended after the toList operation? Of course, once a list is returned
-from toList, it must be immutable. However, appending to thelast0 element will modify the list which
-is referred to by start.
-To maintain the correctness of the list buffer operations, you need to work on a fresh list instead. This is
-achieved by the first line in the implementation of the += operation:
+  exported = !start.isEmpty
+  start
+}
+----
+Він повертає список елементів, на який посилається `start`, а також встановлює `true`, якщо цей список непорожній. Так що `toList` дуже ефективний, оскільки він не копіює список, що зберігається в `ListBuffer`. Але що відбувається, якщо список продовжує далі розширятись після операції `toList`? Звичайно, коли список повертається з `toList`, він має бути незмінним. Однак, додавання елемента `last0` буде модифікувати список, на який посилається `start`.
+
+Щоб підтримувати коректність операцій спискового буфера, вам треба робити замість цього на новому списку. Це досягається першим рядком в реалізації операції `+=`:
+[source,scala]
+----
 override def += (x: T) = {
-if (exported) copy()
-if (start.isEmpty) {
-last0 = new scala.::(x, Nil)
-start = last0
-} else {
-val last1 = last0
-last0 = new scala.::(x, Nil)
-last1.tl = last0
+  if (exported) copy()
+  if (start.isEmpty) {
+    last0 = new scala.::(x, Nil)
+    start = last0
+  } else {
+    val last1 = last0
+    last0 = new scala.::(x, Nil)
+    last1.tl = last0
+  }
 }
-}
-You see that += copies the list pointed to by start if exported is true. So, in the end, there is no free
-lunch. If you want to go from lists which can be extended at the end to immutable lists, there needs to
-be some copying. However, the implementation of ListBuffer is such that copying is necessary only for
-list buffers that are further extended after they have been turned into lists. This case is quite rare in
-practice. Most use cases of list buffers add elements incrementally and then do one toList operation at
-the end. In such cases, no copying is necessary.
-22.4 FUNCTIONAL ON THE OUTSIDE
-In the previous section, we showed key elements of the implementation of
-Scala's List andListBuffer classes. You saw that lists are purely functional on the "outside" but have an
-imperative implementation using list buffers on the "inside." This is a typical strategy in Scala
-programming—trying to combine purity with efficiency by carefully delimiting the effects of impure
-operations.
-But you might ask, Why insist on purity? Why not just open up the definition of lists, making
-the tail field, and maybe also the head field, mutable? The disadvantage of such an approach is that it
-would make programs much more fragile. Note that constructing lists with :: re-uses the tail of the
-constructed list.
-So when you write:
+----
+Ви бачите, що `+=` копіює список, на який вказує `start`, якщо `exported` є `true`. Так що, кінець кінцем, нічого не дається надурно. Якщо ви бажаєте перейти від списків, що можуть розширятись з кінця, до незмінних списків, тоді це потребуватиме деякого копіювання. Однак реалізація `ListBuffer` є такою, що копіювання необхідне тільки для спискових буферів, що продовжують розширюватись після того, як вони були перетворені на списки. Цей випадок досить рідкий на практиці. Більшість випадків використання для спискових буферів додають елементи послідовно, і потім роблять одну операцію `toList` в кінці. В таких випадках копіювання непотрібне.
+
+22.4 Функціональність назовні
+-----------------------------
+В попередньому розділі ми показали ключові елементи реалізації Scala класів `List` та `ListBuffer`. Ви побачили, що списки повністю функціональні "назовні", але мають імперативну реалізацію з використанням спискових буферів "всередині". Це типова стратегія в Scala програмуванні — спроба комбінувати чистоту з ефективністю, через уважне розмежування впливу нечистих операцій.
+
+Але ви можете спитати, чому треба наполягати на чистоті? Чому просто не відкрити визначення списків, зробивши поле `tail`, а можливо і поле `head`, змінними? Недолік такого підходу в тому, що таким чином ви зробите програми значно більш крихкими. Зауважте, що конструювання списків за допомогою `::` повторно використовує `tail` конструйованого списку.
+
+Так що коли ви пишете:
+[source,scala]
+----
 val ys = 1 :: xs
 val zs = 2 :: xs
-the tails of lists ys and zs are shared; they point to the same data structure. This is essential for
-efficiency; if the list xs was copied every time you added a new element onto it, this would be much
-slower. Because sharing is pervasive, changing list elements, if it were possible, would be quitedangerous. For instance, taking the code above, if you wanted to truncate listys to its first two elements
-by writing:
-ys.drop(2).tail = Nil
-// can't do this in Scala!
-you would also truncate lists zs and xs as a side effect.
-Clearly, it would be quite difficult to keep track of what gets changed. That's why Scala opts for
-pervasive sharing and no mutation for lists. The ListBuffer class still allows you to build up lists
-imperatively and incrementally, if you wish. But since list buffers are not lists, the types keep mutable
-buffers and immutable lists separate.
-The design of Scala's List and ListBuffer is quite similar to what's done in Java's pair of
-classesString and StringBuffer. This is no coincidence. In both situations the designers wanted to
-maintain a pure immutable data structure but also provide an efficient way to construct this structure
-incrementally. For Java and Scala strings, StringBuffers (or, in Java 5, StringBuilders) provide a way to
-construct a string incrementally. For Scala's lists, you have a choice: You can either construct lists
-incrementally by adding elements to the beginning of a list using ::, or you use a list buffer for adding
-elements to the end. Which one is preferable depends on the situation. Usually, :: lends itself well to
-recursive algorithms in the divide-and-conquer style. List buffers are often used in a more traditional
-loop-based style.
-22.5 CONCLUSION
-In this chapter, you saw how lists are implemented in Scala. List is one of the most heavily used data
-structures in Scala, and it has a refined implementation. List's two subclasses, Niland ::, are both case
-classes. Instead of recursing through this structure, however, many core list methods are implemented
-using a ListBuffer. ListBuffer, in turn, is carefully implemented so that it can efficiently build lists
-without allocating extraneous memory. It is functional on the outside, but uses mutation internally to
-speed up the common case where a buffer is discarded after toList has been called. After studying all of
-this, you now know the list classes inside and out, and you might have learned an implementation trick
-or two.
+----
+хвости списків `ys` та `zs` поділяються; вони вказують на ту саму структуру даних. Це основа для ефективності; якщо список `xs` копіювався б кожного разу, коли ви додаєте новий елемент до нього, це було б значно повільніше. Оскільки спільне використання є поширеним, зміна елементів списку, якщо б це було можливо, було б досить небезпечним. Наприклад, беручи код вище, якщо ви бажали б вкоротити список `ys` до двох перших елементів, і записали б це так:
+[source,scala]
+----
+ys.drop(2).tail = Nil // цього не можна робити в Scala!
+----
+ви б також вкоротили списки `zs` та `xs` в якості побічного ефекту.
+
+Зрозуміло, що було б досить складно відстежити, що було змінено. Ось чому Scala обирає поширене поділення даних, та заборону на зміну списків. Клас `ListBuffer` все ще дозволяє вам будувати списки імперативно та інкрементально, якщо побажаєте. Але оскільки спискові буфери не є списками, типи, що містять змінні буфери та незмінні списки, тримаються окремо.
+
+Дизайн Scala `List` та `ListBuffer` досить подібні до того, що зроблене в Java з парою класів, `String` та `StringBuffer`. Це не випадковість. В обох ситуаціях розробники бажали підтримувати чисті незмінні структури даних, але також провадити ефективний спосіб сконструювати ці структури інкрементально. Для Java і Scala рядків, `StringBuffer` (або в Java 5 `StringBuilder`) провадять шлях конструювання рядка інкрементально. Для списків Scala ви маєте вибір: ви можете або конструювати списки інкрементально, через додавання елементів до початку списку з використанням `::`, або ви використовуєте списковий буфер для додавання елементів в кінець. Який має перевагу залежить від ситуації. Звичайно, `::` гарно проявляє себе в рекурсивних алгоритмах, в стилі поділяй-та-володій. Спискові буфери часто використовуються в більш традиційному стилі на основі циклів.
+
+22.5 Висновок
+-------------
+В цій главі ви бачили, як в Scala реалізовані списки. `List` є однією з найбільш тяжко використовуваних структур в Scala, і він має доопрацьовану реалізацію. Два субкласи `List`, `Nil` та `::`, обоє є кейс класами. Однак замість рекурсії по цій структурі, багато основних методів реалізовані з використанням `ListBuffer`. `ListBuffer`, в свою чергу, ретельно реалізований, так, щоб він міг ефективно будувати списки без розміщення додаткової пам'яті. Він зовні функціональний, але внутрішньо використовує змінність для прискорення загального випадку, коли буфер відкидаєть після виклику `toList`. Після вивчення всього цього, тепер ви знаєте класи списків ззовні та зсередини, і також ви вивчили один або два трюки реалізації.
  

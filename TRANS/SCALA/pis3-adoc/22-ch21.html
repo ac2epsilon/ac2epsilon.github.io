@@ -804,699 +804,604 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="____">Неявні перетворення та параметри</h1>
-<div class="paragraph"><p>There&#8217;s a fundamental difference between your own code and other people&#8217;s libraries: You can change
-or extend your own code as you wish, but if you want to use someone else&#8217;s libraries, you usually have
-to take them as they are. A number of constructs have sprung up in programming languages to alleviate
-this problem. Ruby has modules, and Smalltalk lets packages add to each other&#8217;s classes. These are
-very powerful but also dangerous, in that you can modify the behavior of a class for an entire
-application, some parts of which you might not know. C# 3.0 has static extension methods, which are
-more local but also more restrictive, in that you can only add methods, not fields, to a class, and you
-can&#8217;t make a class implement new interfaces.
-Scala&#8217;s answer is implicit conversions and parameters. These can make existing libraries much more
-pleasant to deal with by letting you leave out tedious, obvious details that obscure the interesting parts
-of your code. Used tastefully, this results in code that is focused on the interesting, non-trivial parts of
-your program. This chapter shows you how implicits work, and it presents some of the most common
-ways they are used.
-21.1 IMPLICIT CONVERSIONS
-Before delving into the details of implicit conversions, take a look at a typical example of their use.
-Implicit conversions are often helpful for working with two bodies of software that were developed
-without each other in mind. Each library has its own way to encode a concept that is essentially the
-same thing. Implicit conversions help by reducing the number of explicit conversions that are needed
-from one type to another.
-Java includes a library named Swing for implementing cross-platform user interfaces. One of the things
-Swing does is process events from the operating system, convert them to platform-independent event
-objects, and pass those events to parts of an application called event listeners.
-If Swing had been written with Scala in mind, event listeners would probably have been represented by
-a function type. Callers could then use the function literal syntax as a lightweight way to specify what
-should happen for a certain class of events. Since Java doesn&#8217;t have function literals, Swing uses the
-next best thing, an inner class that implements a one-method interface. In the case of action listeners,
-the interface is ActionListener.
-Without the use of implicit conversions, a Scala program that uses Swing must use inner classes just
-like in Java. Here&#8217;s an example that creates a button and hooks up an action listener to it. The action
-listener is invoked whenever the button is pressed, at which point it prints the string "pressed!":
-val button = new JButton
-button.addActionListener(
-new ActionListener {
-def actionPerformed(event: ActionEvent) = {}
-)
-println("pressed!")
-}
-This code has a lot of information-free boilerplate. The fact that this listener is anActionListener, the
-fact that the callback method is named actionPerformed, and the fact that the argument is
-an ActionEvent are all implied for any argument to addActionListener. The only new information here
-is the code to be performed, namely the call to println. This new information is drowned out by the
-boilerplate. Someone reading this code will need to have an eagle&#8217;s eye to pick through the noise and
-find the informative part.
-A more Scala-friendly version would take a function as an argument, greatly reducing the amount of
-boilerplate:
-button.addActionListener( // Type mismatch!
-(<em>: ActionEvent) &#8658; println("pressed!")
-)
-As written so far, this code doesn&#8217;t work.<span class="footnote"><br />[As will be explained in Section 31.5, it does work in Scala 2.12.]<br /></span> The addActionListener method wants an action listener but
-is getting a function. With implicit conversions, however, this code can be made to work.
-The first step is to write an implicit conversion between the two types. Here is an implicit conversion
-from functions to action listeners:
-implicit def function2ActionListener(f: ActionEvent &#8658; Unit) =
-new ActionListener {
-def actionPerformed(event: ActionEvent) = f(event)
-}
-This is a one-argument method that takes a function and returns an action listener. Like any other one-
-argument method, it can be called directly and have its result passed on to another expression:
-button.addActionListener(
-function2ActionListener(
-(</em>: ActionEvent) &#8658; println("pressed!")
-)
-)
-This is already an improvement on the version with the inner class. Note how arbitrary amounts of
-boilerplate end up replaced by a function literal and a call to a method. It gets better, though, with
-implicit conversions. Because function2ActionListener is marked as implicit, it can be left out and the
-compiler will insert it automatically. Here is the result:
+<div class="paragraph"><p>Існує фундаментальна відмінність між вашим кодом, та бібліотеками інших людей: ви можете змінити або розширити ваш власний код, як побажаєте, але якщо ви бажаєте використати чиюсь іншу бібліотеку, ви звичайно маєте сприймати її як є. В мовах з'явилось декілька конструкцій для полегчення цієї проблеми. Ruby має модулі, та Smalltalk дозволяє пакункам додавати до класів один одного. Вони дуже потужні, але також небезпечні, тому що ви можете модифікувати поведінку класу для всього застосування, деяки частини якого ви можете не знати. C# 3.0 має статичні методи розширення, які є більш локальними, але також більш обмежуючі, в тому, що ви можете лише добавляти до класа методи, не поля, та ви не можете змусити клас реалізувати нові інтерфейси.</p></div>
+<div class="paragraph"><p>Відповіддю Scala є неявні перетворення та параметри. Вони можуть зробити існуючі бібліотеки значно більше приємними у взаємодії, дозволяючі вам облишити за бортом нудні, очевидні деталі, що приховують цікаві частини вашого коду. Коли використовується зі смаком, це призводить до коду, що сфокусований на цікавих, нетривіальних частинах вашої програми. Ця глава показує вам, як неявні роблять, та вона презентує деякі з найбільш загальних шляхів їх використання.</p></div>
+<div class="sect1">
+<h2 id="_21_1__">21.1 Неявні перетворення</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Перед зануренням в деталі неявних перетворень, поглянемо на типовий приклад їх використання. Неявні перетворення часто корисні для роботи з двома тілами програмного забезпечення, що розроблялись без думки один про одне. Кожна бібліотека має свій власний шлях для кодування концепції, що насправді є однією річчю. Неявні перетворення допомагають через зменьшення числа явних перетворень, що потрібні від одного типу до іншого.</p></div>
+<div class="paragraph"><p>Java включає бібліотеку на ім'я Swing для реалізації крос-платформених користувацьких інтерфейсів. Одна з речей, що робить Swing, це обробка подій від операційної системи, конвертація їх до платформ-незалежних об'єктів подій, та передача ціх подій до частин застосування, що називаються слухачами подій.</p></div>
+<div class="paragraph"><p>Якщо б Swing був написаний зі Scala на думці, слухачі подій мали б, можливо, бути представлені як функціональний тип. Викликачі можуть потім використовувати синтаксис фінкціональних літералів, як легковажний шлях вказати, що має відбуватись для певного класу подій. Оскільки Java не має функціональних літералів, Swing використовує наступну кращу річ, внутрішній клас, що реалізує одно-методний інтерфейс. В випадку слухачів подій, інтерфейсом є <code>ActionListener</code>.</p></div>
+<div class="paragraph"><p>Без використання неявних перетворень, програма Scala, що використовує Swing, має використовувати внутрішній клас, так само як в Java. Ось приклад що створює кнопку, та підвішує на неї слухача подій. Слухач подій викликається кожного разу, коли кнопка натискається, і в цій точці він друкує рядок <code>"pressed!"</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">button</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">JButton</span>
+<span class="n">button</span><span class="o">.</span><span class="n">addActionListener</span><span class="o">(</span>
+  <span class="k">new</span> <span class="nc">ActionListener</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">actionPerformed</span><span class="o">(</span><span class="n">event</span><span class="k">:</span> <span class="kt">ActionEvent</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+     <span class="n">println</span><span class="o">(</span><span class="s">&quot;pressed!&quot;</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей код має багато неінформативного шаблону. Факт, що цей слухач є <code>ActionListener</code>, факт, що це метод зворотнього виклику на ім'я <code>actionPerformed</code>, та факт, що аргументом є <code>ActionEvent</code> - все це мається на увазі для кожного аргументу <code>addActionListener</code>. Єдина нова інформація тут є код, що буде виконаний, а саме виклик <code>println</code>. Ця нова інформація тоне в шаблонному коді. Той, хто читає цей код, повинен мати гострий зір, щоб пробитись крізь шум та знайти інформативну частину.</p></div>
+<div class="paragraph"><p>Більш Scala-дружня версія приймає функцію як аргумент, значно зменьшуючи кількість шаблоного коду:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">button</span><span class="o">.</span><span class="n">addActionListener</span><span class="o">(</span> <span class="c1">// Неспівпадіння типів!</span>
+  <span class="o">(</span><span class="k">_:</span> <span class="kt">ActionEvent</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;pressed!&quot;</span><span class="o">)</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але так, як він написаний, цей код не робить.<span class="footnote"><br />[Як буде пояснено в Розділі 31.5, це робить в Scala 2.12.]<br /></span> Метод <code>addActionListener</code> бажає слухача подій, але отримує функцію. З неявними перетвореннями цей код, однак, може бути зроблений робочим.</p></div>
+<div class="paragraph"><p>Перший крок є написання неявного перетворення між двома типами. Ось неявне перетворення від функцій до слухачів подій:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">implicit</span> <span class="k">def</span> <span class="n">function2ActionListener</span><span class="o">(</span><span class="n">f</span><span class="k">:</span> <span class="kt">ActionEvent</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span> <span class="k">=</span>
+  <span class="k">new</span> <span class="nc">ActionListener</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">actionPerformed</span><span class="o">(</span><span class="n">event</span><span class="k">:</span> <span class="kt">ActionEvent</span><span class="o">)</span> <span class="k">=</span> <span class="n">f</span><span class="o">(</span><span class="n">event</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це одно-аргументний метод, що приймає функцію, та повертає слухача подій. Як любий інший одно-аргументний метод, він може бути викликаний напряму, та має свій результат переданий далі в інший вираз:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">button</span><span class="o">.</span><span class="n">addActionListener</span><span class="o">(</span>
+  <span class="n">function2ActionListener</span><span class="o">(</span>
+    <span class="o">(</span><span class="k">_:</span> <span class="kt">ActionEvent</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;pressed!&quot;</span><span class="o">)</span>
+  <span class="o">)</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це вже покращення, в порівняні з версією з внутрішнім класом. Зауважте, як довільні маси шаблонного коду були замінені функціональним літералом та викликом метода. Однак з неявними перетвореннями це стає ще краще. Оскільки <code>function2ActionListener</code> помічена як <code>implicit</code>, вона може бути прибрана, і компілятор буде вставляти її автоматично. Ось результат:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Тепер це робить</span>
+<span class="n">button</span><span class="o">.</span><span class="n">addActionListener</span><span class="o">(</span>
+  <span class="o">(</span><span class="k">_:</span> <span class="kt">ActionEvent</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;pressed!&quot;</span><span class="o">)</span>
+<span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Шлях, яким цей код робить, полягає в тому, що компілятор спочатку компілює його як є, але він бачить помилку типу. Перед тим як здатись, він шукає неявне перетворення, що може владнати проблему. В цьому випадку він знаходить <code>function2ActionListener</code>. Він випробовує метод перетворення, бачить що він робить, та рухається далі. Компілятор виконує тяжку роботу, так що розробник може ігнорувати ще одну дрібну деталь. Слухач подій? Функція обробки подій? Обоє будуть робити — використовуйте те, що більш зручно.</p></div>
+<div class="paragraph"><p>В цьому розділі ми ілюструємо деякі з потужностей неявних перетворень, та як вони дозволяють вам причипурити існуючі бібліотеки. В наступних розділах ви вивчите правила, що визначають, коли неявні перетворення будуть спробувані, та як вони будуть шукатись.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_2____">21.2 Правила для неявних визначень</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Визначення <code>implicit</code> є такими, що дозволяються компілятору для вставки в програму, щоб поладнати любі з його помилок типів. Наприклад, якщо <code>x + y</code> не проходить перевірку типів,компілятор може змінити його на <code>convert(x) + y</code>, де <code>convert</code> є деяке доступне <code>implicit</code> перетворення. Якщо <code>convert</code> змінює <code>x</code> на дещо, що має метод <code>+</code>, тоді ця зміна може поладнати програму, так що вона пройде перевірку типів та виконається коректно. Якщо <code>convert</code> насправді тільки проста функція перетворення, тоді прибирання її з джерельного коду може бути очищенням.</p></div>
+<div class="paragraph"><p>Неявні перетворення регулюються наступними загальними правилами:</p></div>
+<div class="paragraph"><p><strong>Правило маркування: доступні тільки визначення, відмічені як <code>implicit</code>.</strong> Ключове слово <code>implicit</code> використовується як маркер, які декларації може використовувати компілятор для неявних перетворень. Ви можете використовувати його для маркування визначення змінної, функції або об'єкта. Ось приклад визначення неявної функції:<span class="footnote"><br />[Змінні та об'єкти синглтони, відмічені як <code>implicit</code>, можуть бути використані як неявні параметри. Цей спосіб використання буде описаний пізніше в цій главі.]<br /></span></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">implicit</span> <span class="k">def</span> <span class="n">intToString</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span><span class="o">.</span><span class="n">toString</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Компілятор буде змінювати <code>x + y</code> до <code>convert(x) + y</code>, тільки якщо <code>convert</code> відмічений як <code>implicit</code>. Таким чином, ви уникаєте плутанини, коли компілятор обиратиме випадкові функції, що трапляються в полі зору, та вставляє їх як "перетворення". Компілятор буде обирати тільки між визначеннями, що ви явно відмітили як <code>implicit</code>.</p></div>
+<div class="paragraph"><p><strong>Правило поля зору: вставлене неявне перетворення має бути в полі зору як єдиний ідентифікатор, або бути асоційоване з типом джерела або цілі перетворення.</strong> Компілятор Scala буде розглядати тільки неявні перетворення, що знаходяться в полі зору. Таким чином, щоб зробити неявне перетворення доступним, ви повинні деяким чином занести його в поле зору. Більше того, з один виключенням, неявне перетворення має бути в полі зору як <em>єдиний ідентифікатор</em>. Компілятор не буде вставляти перетворення в формі <code>someVariable.convert</code>. Наприклад, він не буде розширювати <code>x + y</code> до <code>someVariable.convert(x) + y</code>. Якщо ви бажаєте зробити <code>someVariable.convert</code> доступним як <code>implicit</code>, вам треба імпортувати його, що робитиме його доступним як єдиний ідентифікатор. Як тільки той імпортований, компілятор буде вільний застосувати його як <code>convert(x) + y</code>. Фактично, є загальним для бібліотек включати об'єкт <code>Preamble</code>, що включає декілька корисних неявних перетворень. Код, що використовує бібліотеку, потім може зробити один <code>import Preamble._</code> для доступу до неявних перетворень бібліотеки.</p></div>
+<div class="paragraph"><p>Існує одне виключення до правила "єдиного ідентифікатора". Компілятор також буде дивитись неявні перетворення в об'єкті компанйоні джерела або очікуваного типів перетворення. Наприклад, якщо ви намагаєтесь передати об'єкт <code>Dollar</code> до метода, що приймає <code>Euro</code>, типом джерела є <code>Dollar</code>, та тип цілі є <code>Euro</code>. Таким чином, ви можете запакувати неявне перетворення від <code>Dollar</code> до <code>Euro</code> в об'єкт компанйон любого класу, <code>Dollar</code> або <code>Euro</code>.</p></div>
+<div class="paragraph"><p>Ось приклад, в якому визначення <code>implicit</code> покладене в об'єкт компанйон <code>Dollar</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Dollar</span> <span class="o">{</span>
+  <span class="k">implicit</span> <span class="k">def</span> <span class="n">dollarToEuro</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Dollar</span><span class="o">)</span><span class="k">:</span> <span class="kt">Euro</span> <span class="o">=</span> <span class="o">...</span>
+<span class="o">}</span>
+<span class="k">class</span> <span class="nc">Dollar</span> <span class="o">{</span> <span class="o">...</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому випадку кажуть, що перетворення <code>dollarToEuro</code> <em>асоційоване</em> з типом <code>Dollar</code>. Компілятор буде шукати такі асоційовані перетворення кожний раз, коли йому треба перетворити з примірника типу <code>Dollar</code>. Немає потреби окремо імпортувати перетворення в вашу програму.</p></div>
+<div class="paragraph"><p>Правило поля зору допомогає з модульним сприяттям. Коли ви читаєте код в файлі, єдині речі, що вам треба брати до уваги з інших файлів, це тільки те, що або імпортоване, або явно посилається через повністю кваліфіковане ім'я. Ця перевага щонайменьше така ж важлива для неявних, як і для явно написаного коду. Якщо неявні визначення отримали б ефект в маштабах системи, тоді для розуміння файла вам би знадобилось знати щодо кожного неявного перетворення, визначеного будь-де в програмі!</p></div>
+<div class="paragraph"><p><strong>Правило один-за-раз: буде вставлене тільки одне неявне перетворення.</strong> Компілятор ніколи не буде переписувати <code>x + y</code> до <code>convert1(convert2(x)) + y</code>. Якщо робити це, час компіляції драматично збільшиться для помилкового коду, та це збільшить різницю між тим, що пише програміст, та що програма насправді робить. Заради збереження здорового глузду, компілятор не вставляє подальші неявні перетворення, коли він вже на середині спроби іншого неявного перетворення. Однак можливо обійти це обмеження, маючи неявні перетворювачі, що приймають неявні параметри, які будуть описані пізніше в цій главі.</p></div>
+<div class="paragraph"><p><strong>Правило явні-перші: якщо код проходить перевірку типів як він є, жодні неявні не будуть спробувані.</strong> Компілятор не буде змінювати код, що вже робить. Наслідок з цього правила є такий, що ви завжди можете замінити неявні ідентифікатори на явні, таким чином роблячи код довшим, але з менш вірогідною двозначністю. Ви можете балансувати між ціма виборами на основі випадку-до-випадка. Кожного разу, коли ви бачите код, що виглядає повторюваним та балакучим, неявні перетворення можуть допомогти зменшити нудьгу. Кожного разу, коли ви бачите, що код виглядає скороченим до точки незрозумілості, ви можете вставити явні перетворення. Кількість неявних перетворень, що ви залишите для вставки компілятором, кінець кінцем є предметом стилю.</p></div>
+<div class="sect2">
+<h3 id="___">Іменування неявного перетворення</h3>
+<div class="paragraph"><p>Неявні перетворення можуть мати довільні імена. Ім'я неявного перетворення має значення тільки в двох ситуаціях: якщо ви бажаєте написати його явно в застосуванні метода, та для визначення, які перетворення доступні в любій точці програми. Щоб проілюструвати другу точку, скажімо, ви маєте об'єкт з двома неявними перетвореннями:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">MyConversions</span> <span class="o">{</span>
+  <span class="k">implicit</span> <span class="k">def</span> <span class="n">stringWrapper</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span>
+    <span class="kt">IndexedSeq</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="k">implicit</span> <span class="k">def</span> <span class="n">intToString</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В вашому застосуванні ви бажаєте використати перетворення <code>stringWrapper</code>, але ви не бажаєте, щоб цілі автоматично перетворювались на рядки за допомогою <code>intToString</code>. Ви можете досягти цього через імпорт тільки одного перетворення, але не іншого:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">MyConversions.stringWrapper</span>
+<span class="o">...</span> <span class="c1">// код, що використовує stringWrapper</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому прикладі було важливо, щоб неявні перетворення мали імена, оскільки тільки таким чином ви вибірково імпортуєте одні, та не імпортуєте інші.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_____">Де будуть спробувані неявні декларації</h3>
+<div class="paragraph"><p>Існує три місця, де в мові використовуються неявні декларації: перетворення до очікуваного типу, перетворення отримувача вибору, та неявні параметри. Неявні перетворення до очікуваного типу дозволяють вам використовувати один тип в контексті, де очікуєтья інший тип. Наприклад, ви можете мати <code>String</code>, та бажати передати його в метод, що потребує <code>IndexedSeq[Char]</code>. Перетворення отримувача дозволяє вам адаптувати отримувач виклику метода (тобто об'єкт, на якому викликається метод), якщо метод не застосований на оригінальному типі. Прикладом є <code>"abc".exists</code>, що конвертований до <code>stringWrapper("abc").exists</code>, оскільки метод <code>exists</code> не доступний на <code>String</code>, але доступний на <code>IndexedSeq</code>. Неявні параметри, з іншого боку, звичайно використовуються для провадження додаткової інформації до викликаної функції, щодо того, що хоче викликач. Неявні параметри особливо корисні з дженерік функціями, коли визивана функція може інакше взагалі нічого не знати щодо типів одного або більше аргументів. Ми будемо досліджувати кожний з ціх трьох різновидів неявних в наступніх розділах.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_3_____">21.3 Неявні перетворення до очікуваного типу</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Неявне перетворення до очікуваного типу є перше місце, де компілятор буде використовувати неявні. Це правило просте. Кожного разу, коли компілятор бачить <code>X</code>, але потребує <code>Y</code>, він буде шукати <code>implicit</code> функцію, що конвертує <code>X</code> до <code>Y</code>. Наприклад, звичайно число подвійної точності не може бути використане як ціле, бо воно втратить точність:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mf">3.5</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">7</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+  <span class="n">found</span>   <span class="k">:</span> <span class="kt">Double</span><span class="o">(</span><span class="err">3</span><span class="kt">.</span><span class="err">5</span><span class="o">)</span>
+  <span class="kt">required:</span> <span class="kt">Int</span>
+        <span class="k">val</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mf">3.5</span>
+                     <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак ви можете визначити неявне перетворення, щоб згладити це питання:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">implicit</span> <span class="k">def</span> <span class="n">doubleToInt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span><span class="o">.</span><span class="n">toInt</span>
+<span class="n">doubleToInt</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Double</span><span class="o">)</span><span class="kt">Int</span>
 
-button.addActionListener(
-(<em>: ActionEvent) &#8658; println("pressed!")
-)
-The way this code works is that the compiler first tries to compile it as is, but it sees a type error.
-Before giving up, it looks for an implicit conversion that can repair the problem. In this case, itfinds function2ActionListener. It tries that conversion method, sees that it works, and moves on. The
-compiler works hard here so that the developer can ignore one more fiddly detail. Action listener?
-Action event function? Either one will work—use the one that&#8217;s more convenient.
-In this section, we illustrated some some of the power of implicit conversions and how they let you
-dress up existing libraries. In the next sections, you&#8217;ll learn the rules that determine when implicit
-conversions are tried and how they are found.
-21.2 RULES FOR IMPLICITS
-Implicit definitions are those that the compiler is allowed to insert into a program in order to fix any of
-its type errors. For example, if x + y does not type check, then the compiler might change it
-to convert(x) + y, where convert is some available implicit conversion. If convertchanges x into
-something that has a + method, then this change might fix a program so that it type checks and runs
-correctly. If convert really is just a simple conversion function, then leaving it out of the source code
-can be a clarification.
-Implicit conversions are governed by the following general rules:
-Marking rule: Only definitions marked implicit are available. The implicit keyword is used to mark
-which declarations the compiler may use as implicits. You can use it to mark any variable, function, or
-object definition. Here&#8217;s an example of an implicit function definition:<span class="footnote"><br />[Variables and singleton objects marked implicit can be used as implicit parameters. This use case will be described later in this chapter.]<br /></span>
-implicit def intToString(x: Int) = x.toString
-The compiler will only change x + y to convert(x) + y if convert is marked as implicit. This way, you
-avoid the confusion that would result if the compiler picked random functions that happen to be in
-scope and inserted them as "conversions." The compiler will only select among the definitions you
-have explicitly marked as implicit.
-Scope rule: An inserted implicit conversion must be in scope as a single identifier, or be
-associated with the source or target type of the conversion. The Scala compiler will only consider
-implicit conversions that are in scope. To make an implicit conversion available, therefore, you must in
-some way bring it into scope. Moreover, with one exception, the implicit conversion must be in
-scope as a single identifier. The compiler will not insert a conversion of the
-form someVariable.convert. For example, it will not expand x + y tosomeVariable.convert(x) + y. If you
-want to make someVariable.convert available as an implicit, you would need to import it, which would
-make it available as a single identifier. Once imported, the compiler would be free to apply it
-as convert(x) + y. In fact, it is common for libraries to include a Preamble object including a number of
-useful implicit conversions. Code that uses the library can then do a single "import Preamble.</em>" to
-access the library&#8217;s implicit conversions.
-There&#8217;s one exception to the "single identifier" rule. The compiler will also look for implicit definitions
-in the companion object of the source or expected target types of the conversion. For example, if you&#8217;re
-attempting to pass a Dollar object to a method that takes a Euro, the source type is Dollar and the targettype is Euro. You could, therefore, package an implicit conversion from Dollar to Euro in the
-companion object of either class, Dollar or Euro.
-Here&#8217;s an example in which the implicit definition is placed in Dollar&#8217;s companion object:
-object Dollar {
-implicit def dollarToEuro(x: Dollar): Euro = &#8230;
-}
-class Dollar { &#8230; }
-In this case, the conversion dollarToEuro is said to be associated to the type Dollar. The compiler will
-find such an associated conversion every time it needs to convert from an instance of type Dollar.
-There&#8217;s no need to import the conversion separately into your program.
-The Scope Rule helps with modular reasoning. When you read code in a file, the only things you need
-to consider from other files are those that are either imported or are explicitly referenced through a
-fully qualified name. This benefit is at least as important for implicits as for explicitly written code. If
-implicits took effect system-wide, then to understand a file you would have to know about every
-implicit introduced anywhere in the program!
-One-at-a-time rule: Only one implicit is inserted. The compiler will never
-rewrite x + yto convert1(convert2(x)) + y. Doing so would cause compile times to increase dramatically
-on erroneous code, and it would increase the difference between what the programmer writes and what
-the program actually does. For sanity&#8217;s sake, the compiler does not insert further implicit conversions
-when it is already in the middle of trying another implicit. However, it&#8217;s possible to circumvent this
-restriction by having implicits take implicit parameters, which will be described later in this chapter.
-Explicits-first rule: Whenever code type checks as it is written, no implicits are attempted. The
-compiler will not change code that already works. A corollary of this rule is that you can always replace
-implicit identifiers by explicit ones, thus making the code longer but with less apparent ambiguity. You
-can trade between these choices on a case-by-case basis. Whenever you see code that seems repetitive
-and verbose, implicit conversions can help you decrease the tedium. Whenever code seems terse to the
-point of obscurity, you can insert conversions explicitly. The amount of implicits you leave the
-compiler to insert is ultimately a matter of style.
-Naming an implicit conversion
-Implicit conversions can have arbitrary names. The name of an implicit conversion matters only in two
-situations: If you want to write it explicitly in a method application and for determining which implicit
-conversions are available at any place in the program. To illustrate the second point, say you have an
-object with two implicit conversions:
-object MyConversions {
-implicit def stringWrapper(s: String):
-IndexedSeq[Char] = &#8230;
-implicit def intToString(x: Int): String = &#8230;
-}In your application, you want to make use of the stringWrapper conversion, but you don&#8217;t want integers
-to be converted automatically to strings by means of the intToString conversion. You can achieve this
-by importing only one conversion, but not the other:
-import MyConversions.stringWrapper
-&#8230; // code making use of stringWrapper
-In this example, it was important that the implicit conversions had names, because only that way could
-you selectively import one and not the other.
-Where implicits are tried
-There are three places implicits are used in the language: conversions to an expected type, conversions
-of the receiver of a selection, and implicit parameters. Implicit conversions to an expected type let you
-use one type in a context where a different type is expected. For example, you might have a String and
-want to pass it to a method that requires anIndexedSeq[Char]. Conversions of the receiver let you adapt
-the receiver of a method call (i.e., the object on which a method is invoked), if the method is not
-applicable on the original type. An example is "abc".exists, which is converted
-to stringWrapper("abc").exists because the existsmethod is not available on Strings but is available
-on IndexedSeqs. Implicit parameters, on the other hand, are usually used to provide more information
-to the called function about what the caller wants. Implicit parameters are especially useful with
-generic functions, where the called function might otherwise know nothing at all about the type of one
-or more arguments. We will examine each of these three kinds of implicits in the next sections.
-21.3 IMPLICIT CONVERSION TO AN EXPECTED TYPE
-Implicit conversion to an expected type is the first place the compiler will use implicits. The rule is
-simple. Whenever the compiler sees an X, but needs a Y, it will look for an implicit function that
-converts X to Y. For example, normally a double cannot be used as an integer because it loses
-precision:
-scala&gt; val i: Int = 3.5
-&lt;console&gt;:7: error: type mismatch;
-found
-: Double(3.5)
-required: Int
-val i: Int = 3.5
-<sup>
-However, you can define an implicit conversion to smooth this over:
-scala&gt; implicit def doubleToInt(x: Double) = x.toInt
-doubleToInt: (x: Double)Int
-scala&gt; val i: Int = 3.5
-i: Int = 3
-What happens here is that the compiler sees a Double, specifically 3.5, in a context where it requires
-an Int. So far, the compiler is looking at an ordinary type error. Before giving up, though, it searches for
-an implicit conversion from Double to Int. In this case, it finds one:doubleToInt,because doubleToInt is in scope as a single identifier. (Outside the interpreter, you might
-bring doubleToInt into scope via an import or possibly through inheritance.) The compiler then inserts
-a call to doubleToInt automatically. Behind the scenes, the code becomes:
-val i: Int = doubleToInt(3.5)
-This is literally an implicit conversion. You did not explicitly ask for conversion. Instead, you
-marked doubleToInt as an available implicit conversion by bringing it into scope as a single identifier,
-and then the compiler automatically used it when it needed to convert from aDouble to an Int.
-Converting Doubles to Ints might raise some eyebrows because, it&#8217;s a dubious idea to have something
-that causes a loss in precision happen invisibly. So this is not really a conversion we recommend. It
-makes much more sense to go the other way, from some more constrained type to a more general one.
-For instance, an Int can be converted without loss of precision to a Double, so an implicit conversion
-from Int to Double makes sense. In fact, that&#8217;s exactly what happens. The scala.Predef object, which is
-implicitly imported into every Scala program, defines implicit conversions that convert "smaller"
-numeric types to "larger" ones. For instance, you will find in Predef the following conversion:
-implicit def int2double(x: Int): Double = x.toDouble
-That&#8217;s why in Scala Int values can be stored in variables of type Double. There&#8217;s no special rule in the
-type system for this; it&#8217;s just an implicit conversion that gets applied.<span class="footnote"><br />[The Scala compiler backend will treat the conversion specially, however, translating it to a special "i2d" bytecode. So the compiled image is the same as in Java.]<br /></span>
-21.4 CONVERTING THE RECEIVER
-Implicit conversions also apply to the receiver of a method call, the object on which the method is
-invoked. This kind of implicit conversion has two main uses. First, receiver conversions allow
-smoother integration of a new class into an existing class hierarchy. And second, they support writing
-domain-specific languages (DSLs) within the language.
-To see how it works, suppose you write down obj.doIt, and obj does not have a member named doIt.
-The compiler will try to insert conversions before giving up. In this case, the conversion needs to apply
-to the receiver, obj. The compiler will act as if the expected "type" of obj was "has a member
-named doIt." This "has a doIt" type is not a normal Scala type, but it is there conceptually and is why
-the compiler will insert an implicit conversion in this case.
-Interoperating with new types
-As mentioned previously, one major use of receiver conversions is allowing smoother integration of
-new types with existing types. In particular, they allow you to enable client programmers to use
-instances of existing types as if they were instances of your new type. Take, for example,
-class Rational shown in Listing 6.5 here. Here&#8217;s a snippet of that class again:
-class Rational(n: Int, d: Int) {
-&#8230;
-def + (that: Rational): Rational = &#8230;
-def + (that: Int): Rational = &#8230;
-}Class Rational has two overloaded variants of the + method, which take Rationals and Ints,
-respectively, as arguments. So you can either add two rational numbers or a rational number and an
-integer:
-scala&gt; val oneHalf = new Rational(1, 2)
-oneHalf: Rational = 1/2
-scala&gt; oneHalf + oneHalf
-res0: Rational = 1/1
-scala&gt; oneHalf + 1
-res1: Rational = 3/2
-What about an expression like 1 + oneHalf? This expression is tricky because the receiver, 1, does not
-have a suitable + method. So the following gives an error:
-scala&gt; 1 + oneHalf
-&lt;console&gt;:6: error: overloaded method value + with
-alternatives (Double)Double &lt;and&gt; &#8230; cannot be applied
-to (Rational)
-1 + oneHalf
-</sup>
-To allow this kind of mixed arithmetic, you need to define an implicit conversion from Int toRational:
-scala&gt; implicit def intToRational(x: Int) =
-new Rational(x, 1)
-intToRational: (x: Int)Rational
-With the conversion in place, converting the receiver does the trick:
-scala&gt; 1 + oneHalf
-res2: Rational = 3/2
-What happens behind the scenes here is that the Scala compiler first tries to type check the
-expression 1 + oneHalf as it is. This fails because Int has several + methods, but none that takes
-a Rational argument. Next, the compiler searches for an implicit conversion from Int to another type
-that has a + method which can be applied to a Rational. It finds your conversion and applies it, which
-yields:
-intToRational(1) + oneHalf
-In this case, the compiler found the implicit conversion function because you entered its definition into
-the interpreter, which brought it into scope for the remainder of the interpreter session.
-Simulating new syntax
-The other major use of implicit conversions is to simulate adding new syntax. Recall that you can make
-a Map using syntax like this:
-Map(1 &#8594; "one", 2 &#8594; "two", 3 &#8594; "three")Have you wondered how the &#8594; is supported? It&#8217;s not syntax! Instead, &#8594; is a method of the
-class ArrowAssoc, a class defined inside the standard Scala preamble (scala.Predef). The preamble also
-defines an implicit conversion from Any to ArrowAssoc. When you write 1 &#8594; "one", the compiler
-inserts a conversion from 1 to ArrowAssoc so that the &#8594; method can be found. Here are the relevant
-definitions:
-package scala
-object Predef {
-class ArrowAssoc[A](x: A) {
-def &#8594; [B](y: B): Tuple2[A, B] = Tuple2(x, y)
-}
-implicit def any2ArrowAssoc[A](x: A): ArrowAssoc[A] =
-new ArrowAssoc(x)
-&#8230;
-}
-This "rich wrappers" pattern is common in libraries that provide syntax-like extensions to the language,
-so you should be ready to recognize the pattern when you see it. Whenever you see someone calling
-methods that appear not to exist in the receiver class, they are probably using implicits. Similarly, if
-you see a class named RichSomething (e.g., RichInt or RichBoolean), that class is likely adding syntax-
-like methods to type Something.
-You have already seen this rich wrappers pattern for the basic types described in Chapter 5. As you can
-now see, these rich wrappers apply more widely, often letting you get by with an internal DSL defined
-as a library where programmers in other languages might feel the need to develop an external DSL.
-Implicit classes
-Implicit classes were added in Scala 2.10 to make it easier to write rich wrapper classes. An implicit
-class is a class that is preceded by the implicit keyword. For any such class, the compiler generates an
-implicit conversion from the class&#8217;s constructor parameter to the class itself. Such a conversion is just
-what you need if you plan to use the class for the rich wrappers pattern.
-For example, suppose you have a class named Rectangle for representing the width and height of a
-rectangle on the screen:
-case class Rectangle(width: Int, height: Int)
-If you use this class very frequently, you might want to use the rich wrappers pattern so you can more
-easily construct it. Here&#8217;s one way to do so.
-implicit class RectangleMaker(width: Int) {
-def x(height: Int) = Rectangle(width, height)
-}
-The above definition defines a RectangleMaker class in the usual manner. In addition, it causes the
-following conversion to be automatically generated:
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mf">3.5</span>
+<span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">3</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що тут відбувається, це коли компілятор бачить <code>Double</code>, зокрема <code>3.5</code>, в контексті де має бути <code>Int</code>. Доки компілятор бачить тільки звичайну помилку типу. Однак перед тим як здатись, він шукає неявне перетворення від <code>Double</code> до <code>Int</code>. В цьому випадку він знаходить таке: <code>doubleToInt</code>, оскільки <code>doubleToInt</code> є в полі зору як єдиний ідентифікатор. (За межами інтерпретатора ви можете занести <code>doubleToInt</code> в поле зору через імпорт, або, можливо, через наслідування). Потім компілятор автоматично вставляє виклик до <code>doubleToInt</code>. За лаштунками код стає такий:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">doubleToInt</span><span class="o">(</span><span class="mf">3.5</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це буквально <em>неявне</em> перетворення. Ви явно не просили про перетворення. Замість цього ви відмітили <code>doubleToInt</code> як доступне неявне перетворення, через занесення його в поле зору як єдиний ідентифікатор, та потім компілятор автоматично використовує його коли треба для конвертації від <code>Double</code> до <code>Int</code>.</p></div>
+<div class="paragraph"><p>Конвертація <code>Double</code> до <code>Int</code> може декого здивувати, оскільки є сумнівною ідеєю мати дещо, що спричиняє втрату точності, що відбувається невидимо. Так що це насправді не те перетворення, яке ми рекомендуємо. Це має значно більше сенсу, якщо пійти в зворотньому напрямку, від якогось більш обмеженого типу до більш загального. Наприклад, <code>Int</code> може бути конвертований без страти точності на <code>Double</code>, так що неявне перетворення від <code>Int</code> до <code>Double</code> має сенс. Фактично, це саме те, що відбувається. Об'єкт <code>scala.Predef</code>, що неявно імпортований в кожну Scala програму, визначає неявне перетворення, що конвертує "меньші" числові типи на "більші". Наприклад, ви знайдете в <code>Predef</code> наступне перетворення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">implicit</span> <span class="k">def</span> <span class="n">int2double</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">toDouble</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось чому в Scala значення <code>Int</code> може бути збережене в змінних типу <code>Double</code>. Для цього немає особливого правила в системі типів; це просто неявне перетворення, що застосовується при нагоді.<span class="footnote"><br />[Однак бекенд Scala компілятора буде трактувати перетворення особливим чином, транслюючи його в особливий байткод <code>i2d</code>. Так що скомпільований образ буде такий самий, як в Java.]<br /></span></p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_4__">21.4 Перетворення отримувача</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Неявні перетворення також застосовуються до отримувача виклику метода, об'єкт, на якому викликається метод. Цей різновид неявного перетворення має два головні застосування. Перше, перетворення отримувача дозволяє гладшу інтеграцію нових класів в існуючу ієрархію класів. Та друге, вони підтримують написання домен-специфічних мов (DSL) всередині мови.</p></div>
+<div class="paragraph"><p>Щоб побачити, як це робить, уявімо, що ви пишете <code>obj.doIt</code>, та <code>obj</code> не має члена на ім'я <code>doIt</code>. Компілятор буде намагатись вставити перетворення, перед тим як здатись. В цьому випадку перетворення треба застосувати до отримувача <code>obj</code>. Компілятор буде діяти так, якби очікуваний "тип" <code>obj</code> мав член на ім'я <code>doIt</code>. Цей "має <code>doIt</code>" тип не є звичайним типом Scala, але концептуально він тут, і ось чому компілятор буде вставляти неявне перетворення в цьому випадку.</p></div>
+<div class="sect2">
+<h3 id="_____2">Взаємодія з новими типами</h3>
+<div class="paragraph"><p>Як вже зазначалось перед цім, одне головне застосування конвертації отримувача є дозволити гладшу інтеграцію нових типів з існуючими типами. Зокрема, вони дозволяють вам дозволити програмістам клієнтів використовувати примірники існуючих типів, так, якби вони були би примірниками нових типів. Візьмемо, наприклад, клас <code>Rational</code>, показаний в Лістингу 6.5. Ось фрагмент цього класу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+<span class="o">...</span>
+  <span class="k">def</span> <span class="o">+</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="o">...</span>
+  <span class="k">def</span> <span class="o">+</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="o">...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Клас <code>Rational</code> має два перевантажені варіанта метода <code>+</code>, що приймає <code>Rational</code> та <code>Int</code>,відповідно, в якості аргументів. Так що ви можете або додавати раціональні числа, або раціональне та ціле:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">oneHalf</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">oneHalf</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">2</span>
 
-implicit def RectangleMaker(width: Int) =new RectangleMaker(width)
-As a result, you can create points by putting an x in between two integers:
-scala&gt; val myRectangle = 3 x 4
-myRectangle: Rectangle = Rectangle(3,4)
-This is how it works: Since type Int has no method named x, the compiler will look for an implicit
-conversion from Int to something that does. It will find the generated RectangleMakerconversion,
-and RectangleMaker does have a method named x. The compiler inserts a call to this conversion, after
-which the call to x type checks and does what is desired.
-As a warning to the adventurous, it might be tempting to think that any class can haveimplicit put in
-front of it. It&#8217;s not so. An implicit class cannot be a case class, and its constructor must have exactly one
-parameter. Also, an implicit class must be located within some other object, class, or trait. In practice,
-so long as you use implicit classes as rich wrappers to add a few methods onto an existing class, these
-restrictions should not matter.
-21.5 IMPLICIT PARAMETERS
-The remaining place the compiler inserts implicits is within argument lists. The compiler will
-sometimes replace someCall(a) with someCall(a)(b), or new SomeClass(a) with new SomeClass(a)(b),
-thereby adding a missing parameter list to complete a function call. It is the entire last curried
-parameter list that&#8217;s supplied, not just the last parameter. For example, if someCall&#8217;s missing last
-parameter list takes three parameters, the compiler might replace someCall(a)with someCall(a)(b, c, d).
-For this usage, not only must the inserted identifiers, such as b, c, andd in (b, c, d), be
-marked implicit where they are defined, but also the last parameter list insomeCall&#8217;s or someClass&#8217;s
-definition must be marked implicit.
-Here&#8217;s a simple example. Suppose you have a class PreferredPrompt, which encapsulates a shell
-prompt string (such as, say "$ " or "&gt; ") that is preferred by a user:
-class PreferredPrompt(val preference: String)
-Also, suppose you have a Greeter object with a greet method, which takes two parameter lists. The first
-parameter list takes a string user name, and the second parameter list takes aPreferredPrompt:
-object Greeter {
-def greet(name: String)(implicit prompt: PreferredPrompt) = {
-println("Welcome, " + name + ". The system is ready.")
-println(prompt.preference)
-}
-}
-The last parameter list is marked implicit, which means it can be supplied implicitly. But you can still
-provide the prompt explicitly, like this:
-scala&gt; val bobsPrompt = new PreferredPrompt("relax&gt; ")
-bobsPrompt: PreferredPrompt = <a href="mailto:PreferredPrompt@714d36d6scala">PreferredPrompt@714d36d6scala</a>&gt; Greeter.greet("Bob")(bobsPrompt)
-Welcome, Bob. The system is ready.
-relax&gt;
-To let the compiler supply the parameter implicitly, you must first define a variable of the expected
-type, which in this case is PreferredPrompt. You could do this, for example, in a preferences object:
-object JoesPrefs {
-implicit val prompt = new PreferredPrompt("Yes, master&gt; ")
-}
-Note that the val itself is marked implicit. If it wasn&#8217;t, the compiler would not use it to supply the
-missing parameter list. It will also not use it if it isn&#8217;t in scope as a single identifier, as shown in this
-example:
-scala&gt; Greeter.greet("Joe")
-&lt;console&gt;:13: error: could not find implicit value for
-parameter prompt: PreferredPrompt
-Greeter.greet("Joe")
-<sup>
-Once you bring it into scope via an import, however, it will be used to supply the missing parameter
-list:
-scala&gt; import JoesPrefs._
-import JoesPrefs._
-scala&gt; Greeter.greet("Joe")
-Welcome, Joe. The system is ready.
-Yes, master&gt;
-Note that the implicit keyword applies to an entire parameter list, not to individual parameters. Listing
-21.1 shows an example in which the last parameter list of Greeter&#8217;s greetmethod, which is again
-marked implicit, has two parameters: prompt (of type PreferredPrompt) and drink (of
-type PreferredDrink).
-Singleton object JoesPrefs declares two implicit vals, prompt of type PreferredPrompt and drink of
-type PreferredDrink. As before, however, so long as these are not in scope as single identifiers, they
-won&#8217;t be used to fill in a missing parameter list to greet:
-scala&gt; Greeter.greet("Joe")
-&lt;console&gt;:19: error: could not find implicit value for
-parameter prompt: PreferredPrompt
-Greeter.greet("Joe")
-</sup>
-You can bring both implicit vals into scope with an import:
-scala&gt; import JoesPrefs._
-import JoesPrefs.<em>Because both prompt and drink are now in scope as single identifiers, you can use them to supply the
-last parameter list explicitly, like this:
-scala&gt; Greeter.greet("Joe")(prompt, drink)
-Welcome, Joe. The system is ready.
-But while you work, why not enjoy a cup of tea?
-Yes, master&gt;
-And because all the rules for implicit parameters are now met, you can alternatively let the Scala
-compiler supply prompt and drink for you by leaving off the last parameter list:
-scala&gt; Greeter.greet("Joe")
-Welcome, Joe. The system is ready.
-But while you work, why not enjoy a cup of tea?
-Yes, master&gt;
-class PreferredPrompt(val preference: String)
-class PreferredDrink(val preference: String)
-object Greeter {
-def greet(name: String)(implicit prompt: PreferredPrompt,
-drink: PreferredDrink) = {
-}
-println("Welcome, " + name + ". The system is ready.")
-print("But while you work, ")
-println("why not enjoy a cup of " + drink.preference + "?")
-println(prompt.preference)
-}
-object JoesPrefs {
-implicit val prompt = new PreferredPrompt("Yes, master&gt; ")
-implicit val drink = new PreferredDrink("tea")
-}
-Listing 21.1 - An implicit parameter list with multiple parameters.
-One thing to note about the previous examples is that we didn&#8217;t use String as the type
-of promptor drink, even though ultimately it was a String that each of them provided through
-theirpreference fields. Because the compiler selects implicit parameters by matching types of
-parameters against types of values in scope, implicit parameters usually have "rare" or "special" enough
-types that accidental matches are unlikely. For example, the
-typesPreferredPrompt and PreferredDrink in Listing 21.1 were defined solely to serve as implicit
-parameter types. As a result, it is unlikely that implicit variables of these types will be in scope if they
-aren&#8217;t intended to be used as implicit parameters to Greeter.greet.
-Another thing to know about implicit parameters is that they are perhaps most often used to provide
-information about a type mentioned explicitly in an earlier parameter list, similar to the type classes of
-Haskell.
-As an example, consider the maxListOrdering function shown in Listing 21.2, which returns the
-maximum element of the passed list.def maxListOrdering[T](elements: List[T])
-(ordering: Ordering[T]): T =
-elements match {
-case List() &#8658;
-throw new IllegalArgumentException("empty list!")
-case List(x) &#8658; x
-case x :: rest &#8658;
-val maxRest = maxListOrdering(rest)(ordering)
-if (ordering.gt(x, maxRest)) x
-else maxRest
-}
-Listing 21.2 - A function with an upper bound.
-The signature of maxListOrdering is similar to that of orderedMergeSort, shown in Listing 19.12here:
-It takes a List[T] as its argument, and now it takes an additional argument of typeOrdering[T]. This
-additional argument specifies which ordering to use when comparing elements of type T. As such, this
-version can be used for types that don&#8217;t have a built-in ordering. Additionally, this version can be used
-for types that do have a built-in ordering, but for which you occasionally want to use some other
-ordering.
-This version is more general, but it&#8217;s also more cumbersome to use. Now a caller must specify an
-explicit ordering even if T is something like String or Int that has an obvious default ordering. To make
-the new method more convenient, it helps to make the second argument implicit. This approach is
-shown in Listing 21.3.
-The ordering parameter in this example is used to describe the ordering of Ts. In the body
-ofmaxListImpParm, this ordering is used in two places: a recursive call to maxListImpParm, and
-an ifexpression that checks whether the head of the list is larger than the maximum element of the rest
-of the list.
-def maxListImpParm[T](elements: List[T])
-(implicit ordering: Ordering[T]): T =
-elements match {
-case List() &#8658;
-throw new IllegalArgumentException("empty list!")
-case List(x) &#8658; x
-case x :: rest &#8658;
-val maxRest = maxListImpParm(rest)(ordering)
-if (ordering.gt(x, maxRest)) x
-else maxRest
-}
-Listing 21.3 - A function with an implicit parameter.
-The maxListImpParm function is an example of an implicit parameter used to provide more
-information about a type mentioned explicitly in an earlier parameter list. To be specific, the implicit
-parameter ordering, of type Ordering[T], provides more information about type T—in this case, how to
-order Ts. Type T is mentioned in List[T], the type of parameter elements, which appears in the earlier
-parameter list. Because elements must always be provided explicitly in any invocationof maxListImpParm, the compiler will know T at compile time and can therefore determine whether an
-implicit definition of type Ordering[T] is available. If so, it can pass in the second parameter
-list, ordering, implicitly.
-This pattern is so common that the standard Scala library provides implicit "ordering" methods for
-many common types. You could therefore use this maxListImpParm method with a variety of types:
-scala&gt; maxListImpParm(List(1,5,10,3))
-res9: Int = 10
-scala&gt; maxListImpParm(List(1.5, 5.2, 10.7, 3.14159))
-res10: Double = 10.7
-scala&gt; maxListImpParm(List("one", "two", "three"))
-res11: String = two
-In the first case, the compiler inserted an ordering for Ints; in the second case, for Doubles; in the third
-case, for Strings.
-A style rule for implicit parameters
-As a style rule, it is best to use a custom named type in the types of implicit parameters. For example,
-the types of prompt and drink in the previous example was not String,
-butPreferredPrompt and PreferredDrink, respectively. As a counterexample, consider that
-themaxListImpParm function could just as well have been written with the following type signature:
-def maxListPoorStyle[T](elements: List[T])
-(implicit orderer: (T, T) &#8658; Boolean): T
-To use this version of the function, though, the caller would have to supply an ordererparameter of
-type (T, T) &#8658; Boolean. This is a fairly generic type that includes any function from two Ts to
-a Boolean. It does not indicate anything at all about what the type is for; it could be an equality test, a
-less-than test, a greater-than test, or something else entirely.
-The actual code for maxListImpParm, given in Listing 21.3, shows better style. It uses
-an orderingparameter of type Ordering[T]. The word Ordering in this type indicates exactly what the
-implicit parameter is used for: it is for ordering elements of T. Because this ordering type is more
-explicit, it&#8217;s no trouble to add implicit providers for this type in the standard library. To contrast,
-imagine the chaos that would ensue if you added an implicit of type (T, T) &#8658; Booleanin the standard
-library, and the compiler started sprinkling it around in people&#8217;s code. You would end up with code that
-compiles and runs, but that does fairly arbitrary tests against pairs of items! Thus the style rule: Use at
-least one role-determining name within the type of an implicit parameter.
-21.6 CONTEXT BOUNDS
-The previous example showed an opportunity to use an implicit but did not. Note that when you
-use implicit on a parameter, not only will the compiler try to supply that parameter with an implicitvalue, but the compiler will also use that parameter as an available implicit in the body of the method!
-Thus, the first use of ordering within the body of the method can be left out.
-def maxList[T](elements: List[T])
-(implicit ordering: Ordering[T]): T =
-elements match {
-case List() &#8658;
-throw new IllegalArgumentException("empty list!")
-case List(x) &#8658; x
-case x :: rest &#8658;
-val maxRest = maxList(rest)
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">oneHalf</span> <span class="o">+</span> <span class="n">oneHalf</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">1</span><span class="o">/</span><span class="mi">1</span>
 
-if (ordering.gt(x, maxRest)) x // this ordering is
-else maxRest
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">oneHalf</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">3</span><span class="o">/</span><span class="mi">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як щодо виразів, як <code>1 + oneHalf</code>? Цей вираз хитрий, оскільки отримувач, <code>1</code>, не має підходящого метода <code>+</code>. Так що наступне дасть помилку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">oneHalf</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">6</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">overloaded</span> <span class="kt">method</span> <span class="kt">value</span> <span class="kt">+</span> <span class="kt">with</span>
+<span class="n">alternatives</span> <span class="o">(</span><span class="nc">Double</span><span class="o">)</span><span class="nc">Double</span> <span class="o">&lt;</span><span class="n">and</span><span class="o">&gt;</span> <span class="o">...</span> <span class="n">cannot</span> <span class="n">be</span> <span class="n">applied</span>
+<span class="n">to</span> <span class="o">(</span><span class="nc">Rational</span><span class="o">)</span>
+      <span class="mi">1</span> <span class="o">+</span> <span class="n">oneHalf</span>
+        <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб дозволити цей різновид змішаної арифметики, вам треба визначити неявне перетворення від <code>Int</code> до <code>Rational</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">implicit</span> <span class="k">def</span> <span class="n">intToRational</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span>
+<span class="k">new</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">intToRational</span><span class="k">:</span> <span class="o">(</span><span class="kt">x:</span> <span class="kt">Int</span><span class="o">)</span><span class="kt">Rational</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Коли це перетворення на місці, конвертація отримувача робить цей трюк:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">oneHalf</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=</span> <span class="mi">3</span><span class="o">/</span><span class="mi">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що тут відбувається за лаштунками сцени, це те, що компілятор Scala спочатку намагається перевірити тип варазу  <code>1 + oneHalf</code> як він є. Це схибить, оскільки <code>Int</code> має декілька методів <code>+</code>, але жодного, що приймає аргумент <code>Rational</code>. Далі, компілятор шукає неявне перетворення від <code>Int</code> до іншого типу, що має метод <code>+</code>, який може бути застосований до <code>Rational</code>. Він находить ваше перетворення, та застосовує його, що дає таке:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">intToRational</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span> <span class="o">+</span> <span class="n">oneHalf</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому випадку компілятор знайшов функцію неявного перетворення, оскільки ви ввели його визначення в інтерпретатор, що занесло його поле зору до кінця сессії інтерпретатора.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____2">Симуляція нового синтаксису</h3>
+<div class="paragraph"><p>Інше головне застосування неявних перетворень це симуляція додавання нового синтаксису. Згадайте, що ви можете створити <code>Map</code>, використовуючи такий синтаксис:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Map</span><span class="o">(</span><span class="mi">1</span> <span class="o">-&gt;</span> <span class="s">&quot;one&quot;</span><span class="o">,</span> <span class="mi">2</span> <span class="o">-&gt;</span> <span class="s">&quot;two&quot;</span><span class="o">,</span> <span class="mi">3</span> <span class="o">-&gt;</span> <span class="s">&quot;three&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Чи ви не здивувались, як підтримується <code>-&gt;</code>? Це не синтаксис! Замість цього <code>-&gt;</code> є методом класу <code>ArrowAssoc</code>, класу, визначеного в стандартній преамбулі Scala (<code>scala.Predef</code>). Преамбула також визначає неявне перетворення з <code>Any</code> до <code>ArrowAssoc</code>. Коли ви пишете <code>1 -&gt; "one"</code>, компілятор вставляє перетворення від <code>1</code> до <code>ArrowAssoc</code> так що метод <code>-&gt;</code> може бути знайдений. Ось відповідні визначення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">scala</span>
 
-}
-Listing 21.4 - A function that uses an implicit parameter internally.
-When the compiler examines the code in Listing 21.4, it will see that the types do not match up. The
-expression maxList(rest) only supplies one parameter list, but maxList requires two. Since the second
-parameter list is implicit, the compiler does not give up type checking immediately. Instead, it looks for
-an implicit parameter of the appropriate type, in this caseOrdering[T]. In this case, it finds one and
-rewrites the call to maxList(rest)(ordering), after which the code type checks.
-There is also a way to eliminate the second use of ordering. It involves the following method defined in
-the standard library:
-def implicitly[T](implicit t: T) = t
-The effect of calling implicitly[Foo] is that the compiler will look for an implicit definition of type Foo.
-It will then call the implicitly method with that object, which in turn returns the object right back. Thus
-you can write implicitly[Foo] whenever you want to find an implicit object of type Foo in the current
-scope. For example, Listing 21.5 shows a use ofimplicitly[Ordering[T]] to retrieve
-the ordering parameter by its type.
-Look closely at this last version of maxList. There is not a single mention of the orderingparameter in
-the text of the method. The second parameter could just as well be named "comparator":
-def maxList[T](elements: List[T])
-(implicit comparator: Ordering[T]): T = // same body&#8230;
-def maxList[T](elements: List[T])
-(implicit ordering: Ordering[T]): T =
-elements match {
-case List() &#8658;
-throw new IllegalArgumentException("empty list!")
-case List(x) &#8658; x
-case x :: rest &#8658;
-val maxRest = maxList(rest)
-if (implicitly[Ordering[T]].gt(x, maxRest)) x
-else maxRest
-}Listing 21.5 - A function that uses implicitly.
-For that matter, this version works as well:
-def maxList[T](elements: List[T])
-(implicit iceCream: Ordering[T]): T = // same body&#8230;
-Because this pattern is common, Scala lets you leave out the name of this parameter and shorten the
-method header by using a context bound. Using a context bound, you would write the signature
-of maxList as shown in Listing 21.6. The syntax [T : Ordering] is a context bound, and it does two
-things. First, it introduces a type parameter T as normal. Second, it adds an implicit parameter of
-type Ordering[T]. In previous versions of maxList, that parameter was called ordering, but when using
-a context bound you don&#8217;t know what the parameter will be called. As shown earlier, you often don&#8217;t
-need to know what the parameter is called.
-Intuitively, you can think of a context bound as saying something about a type parameter. When you
-write [T &lt;: Ordered[T]] you are saying that a T is an Ordered[T]. To contrast, when you
-write [T : Ordering] you are not so much saying what T is; rather, you are saying that there is some
-form of ordering associated with T. Thus, a context bound is quite flexible. It allows you to use code
-that requires orderings—or any other property of a type—without having to change the definition of
-that type.
-def maxList[T : Ordering](elements: List[T]): T =
-elements match {
-case List() &#8658;
-throw new IllegalArgumentException("empty list!")
-case List(x) &#8658; x
-case x :: rest &#8658;
-val maxRest = maxList(rest)
-if (implicitly[Ordering[T]].gt(x, maxRest)) x
-else maxRest
-}
-Listing 21.6 - A function with a context bound.
-21.7 WHEN MULTIPLE CONVERSIONS APPLY
-It can happen that multiple implicit conversions are in scope and each would work. For the most part,
-Scala refuses to insert a conversion in such a case. Implicits work well when the conversion left out is
-completely obvious and pure boilerplate. If multiple conversions apply, then the choice isn&#8217;t so obvious
-after all.
-Here&#8217;s a simple example. There is a method that takes a sequence, a conversion that turns an integer
-into a range, and a conversion that turns an integer into a list of digits:
-scala&gt; def printLength(seq: Seq[Int]) = println(seq.length)
-printLength: (seq: Seq[Int])Unit
-scala&gt; implicit def intToRange(i: Int) = 1 to i
-intToRange: (i:
-Int)scala.collection.immutable.Range.Inclusivescala&gt; implicit def intToDigits(i: Int) =
-i.toString.toList.map(</em>.toInt)
-intToDigits: (i: Int)List[Int]
-scala&gt; printLength(12)
-&lt;console&gt;:26: error: type mismatch;
-found
-: Int(12)
-required: Seq[Int]
-Note that implicit conversions are not applicable because
-they are ambiguous:
-both method intToRange of type (i:
-Int)scala.collection.immutable.Range.Inclusive
-and method intToDigits of type (i: Int)List[Int]
-are possible conversion functions from Int(12) to Seq[Int]
-printLength(12)
-<sup>
-The ambiguity here is real. Converting an integer to a sequence of digits is completely different from
-converting it to a range. In this case, the programmer should specify which one is intended and be
-explicit. Up through Scala 2.7, that was the end of the story. Whenever multiple implicit conversions
-applied, the compiler refused to choose between them. The situation was just as with method
-overloading. If you try to call foo(null) and there are two different foo overloads that accept null, the
-compiler will refuse. It will say that the method call&#8217;s target is ambiguous.
-Scala 2.8 loosened this rule. If one of the available conversions is strictly more specific than the others,
-then the compiler will choose the more specific one. The idea is that whenever there is a reason to
-believe a programmer would always choose one of the conversions over the others, don&#8217;t require the
-programmer to write it explicitly. After all, method overloading has the same relaxation. Continuing the
-previous example, if one of the available foo methods takes a String while the other takes an Any, then
-choose the String version. It&#8217;s clearly more specific.
-To be more precise, one implicit conversion is more specific than another if one of the following
-applies:
-• The argument type of the former is a subtype of the latter&#8217;s.
-• Both conversions are methods, and the enclosing class of the former extends the enclosing class
-of the latter.
-The motivation to revisit this issue and revise the rule was to improve interoperation between Java
-collections, Scala collections, and strings.
-Here&#8217;s a simple example:
-val cba = "abc".reverse
-What is the type inferred for cba? Intuitively, the type should be String. Reversing a string should yield
-another string, right? However, in Scala 2.7, what happened was that "abc" was converted to a Scala
-collection. Reversing a Scala collection yields a Scala collection, so the type of cba would be a
-collection. There&#8217;s also an implicit conversion back to a string, but that didn&#8217;t patch up every problem.
-For example, in versions prior to Scala 2.8,"abc" == "abc".reverse.reverse was false!With Scala 2.8, the type of cba is String. The old implicit conversion to a Scala collection (now
-named WrappedString) is retained. However, there is a more specific conversion supplied fromString to
-a new type called StringOps. StringOps has many methods such as reverse, but instead of returning a
-collection, they return a String. The conversion to StringOps is defined directly inPredef, whereas the
-conversion to a Scala collection is defined in a new class,LowPriorityImplicits, which is extended
-by Predef. Whenever a choice exists between these two conversions, the compiler chooses the
-conversion to StringOps, because it&#8217;s defined in a subclass of the class where the other conversion is
-defined.
-21.8 DEBUGGING IMPLICITS
-Implicits are a powerful feature in Scala, but one that&#8217;s sometimes difficult to get right. This section
-contains a few tips for debugging implicits.
-Sometimes you might wonder why the compiler did not find an implicit conversion that you think
-should apply. In that case it helps to write the conversion out explicitly. If that also gives an error
-message, you then know why the compiler could not apply your implicit.
-For instance, assume that you mistakenly took wrapString to be a conversion from Strings toLists,
-instead of IndexedSeqs. You would wonder why the following code does not work:
-scala&gt; val chars: List[Char] = "xyz"
-&lt;console&gt;:24: error: type mismatch;
-found
-: String("xyz")
-required: List[Char]
-val chars: List[Char] = "xyz"
-</sup>
-Again, it helps to write the wrapString conversion explicitly to find out what went wrong:
-scala&gt; val chars: List[Char] = wrapString("xyz")
-&lt;console&gt;:24: error: type mismatch;
-found
-: scala.collection.immutable.WrappedString
-required: List[Char]
-val chars: List[Char] = wrapString("xyz")
-^
-With this, you have found the cause of the error: wrapString has the wrong return type. On the other
-hand, it&#8217;s also possible that inserting the conversion explicitly will make the error go away. In that case
-you know that one of the other rules (such as the Scope Rule) was preventing the implicit conversion
-from being applied.
-When you are debugging a program, it can sometimes help to see what implicit conversions the
-compiler is inserting. The -Xprint:typer option to the compiler is useful for this. If you runscalac with
-this option, the compiler will show you what your code looks like after all implicit conversions have
-been added by the type checker. An example is shown in Listing 21.7 andListing 21.8. If you look at
-the last statement in each of these listings, you&#8217;ll see that the second parameter list to enjoy, which wasleft off in the code in Listing 21.7, "enjoy("reader")," was inserted by the compiler, as shown in Listing
-21.8:
-Mocha.this.enjoy("reader")(Mocha.this.pref)
-If you are brave, try scala -Xprint:typer to get an interactive shell that prints out the post-typing source
-code it uses internally. If you do so, be prepared to see an enormous amount of boilerplate surrounding
-the meat of your code.
-object Mocha extends App {
-class PreferredDrink(val preference: String)
-implicit val pref = new PreferredDrink("mocha")
-def enjoy(name: String)(implicit drink: PreferredDrink) = {
-print("Welcome, " + name)
-print(". Enjoy a ")
-print(drink.preference)
-println("!")
-}
-}
-enjoy("reader")
-Listing 21.7 - Sample code that uses an implicit parameter.
-$ scalac -Xprint:typer mocha.scala</p></div>
-<div class="paragraph"><p>package &lt;empty&gt; {
-final object Mocha extends java.lang.Object with Application
-with ScalaObject {
+<span class="k">object</span> <span class="nc">Predef</span> <span class="o">{</span>
+  <span class="k">class</span> <span class="nc">ArrowAssoc</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">x</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="o">-&gt;</span> <span class="o">[</span><span class="kt">B</span><span class="o">](</span><span class="n">y</span><span class="k">:</span> <span class="kt">B</span><span class="o">)</span><span class="k">:</span> <span class="kt">Tuple2</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">B</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Tuple2</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span>
+  <span class="o">}</span>
+  <span class="k">implicit</span> <span class="k">def</span> <span class="n">any2ArrowAssoc</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">x</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">ArrowAssoc</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="k">=</span>
+    <span class="k">new</span> <span class="nc">ArrowAssoc</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей шаблон "багатих огорток" загальний в бібліотеках, що провадять до мови синтаксо-подібні розширення, так що ви повинні бути готові розпізнати шаблон, коли ви бачите його. Кожного разу, коли ви бачите ,як дехто викликає методи, що не існують в класі отримувачі, вони вірогідно використовують неявні перетворення. Подібно до цього, якщо ви бачите клас, названий <code>RichSomething</code> (тобто, <code>RichInt</code> або <code>RichBoolean</code>), виглядає що цей клас додає синтакс-подібні методи до типу <code>Something</code>.</p></div>
+<div class="paragraph"><p>Ви вже бачили цей шаблон багатих огорток для базових типів, описаних в Главі 5. Як ви можете бачити, ці багаті огортки застосовуються більш широко, часто дозволяючи вам отримати внутрішінй DSL, визначений як бібліотека, коли програмісти на інших мовах відчувають потребу в зовнішньому DSL.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="__">Неявні класи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Неявні класи були додані в Scala 2.10, щоб спростити написання багатих класів огорток. Неявний клас є клас, перед яким стоїть ключове слово <code>implicit</code>. Для любого такого класу компілятор генерує неявне перетворення від параметру конструктора класу до самого класу. Таке перетворення є саме тим, що вам треба, якщо ви плануєте використовувати клас для шаблону багатих огорток.</p></div>
+<div class="paragraph"><p>Наприклад, уявімо, що ви маєте клас на ім'я <code>Rectangle</code> для представлення ширини та висоти прямокутника на екрані:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="k">class</span> <span class="nc">Rectangle</span><span class="o">(</span><span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">height</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви використовуєте цей клас дуже часто, ви можете побажати використати шаблон багатої огортки, так щоб ви могли конструювати його більш просто. Ось один спосіб зробити це.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">implicit</span> <span class="k">class</span> <span class="nc">RectangleMaker</span><span class="o">(</span><span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">x</span><span class="o">(</span><span class="n">height</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Rectangle</span><span class="o">(</span><span class="n">width</span><span class="o">,</span> <span class="n">height</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Визначення вище визначає клас <code>RectangleMaker</code> в звичайній манері. На додаток, він спричиняє автоматичну генерацію наступного перетворення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Автоматично згенеровано</span>
+<span class="k">implicit</span> <span class="k">def</span> <span class="nc">RectangleMaker</span><span class="o">(</span><span class="n">width</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=new</span> <span class="nc">RectangleMaker</span><span class="o">(</span><span class="n">width</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як результат, ви можете створити точки через покладання <code>x</code> між двома цілими:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">myRectangle</span> <span class="k">=</span> <span class="mi">3</span> <span class="n">x</span> <span class="mi">4</span>
+<span class="n">myRectangle</span><span class="k">:</span> <span class="kt">Rectangle</span> <span class="o">=</span> <span class="nc">Rectangle</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span><span class="mi">4</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось як це робить: оскільки тип <code>Int</code> не має метода на ім'я <code>x</code>, компілятор буде шукати неявне перетворення від <code>Int</code> до чогось, що має. Він знайде згенероване перетворення <code>RectangleMaker</code>, та <code>RectangleMaker</code> має метод на ім'я <code>x</code>. Компілятор вставляє виклик для цього перетворення, після чого виклик <code>x</code> проходить перевірку типів, і робить те, що задумане.</p></div>
+<div class="paragraph"><p>Як засторога для відчайдушних, може бути спокусливо думати, що кожний клас може мати поставлений перед собою <code>implicit</code>. Це не так. Неявний клас не може бути кейс класом, та його конструктор повинен мати рівно один параметр. Також неявний клас мусить розміщуватись в деякому іншому об'єкті, класі або трейті. На практиці, доки ви використовуєте неявні класи як багаті огортки для додавання нових методів в існуючі класи, ці обмеження не повинні мати значення.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_5__">21.5 Неявні параметри</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Останнє місце, де компілятор вставляє неявні, є спискі аргументів. Компілятор буде іноді замінювати <code>someCall(a)</code> на <code>someCall(a)(b)</code>, або <code>new SomeClass(a)</code> на <code>new SomeClass(a)(b)</code>, таким чином додаючи відсутній список параметрів для завершення виклику функції. Те, що додається є цілим останнім карованим списком параметрів, не просто останній параметр. Наприклад, якщо <code>someCall</code> не вистачає останнього списку параметрів, що приймає три параметра, компілятор може замінити <code>someCall(a)</code> на <code>someCall(a)(b, c, d)</code>. Для цього використання не просто вставлені ідентифікатори, такі як <code>b</code>, <code>c</code>, та <code>d</code> в <code>(b, c, d)</code>, бути відмічені як неявні там, де вони визначені, але також останній список параметрів в  визначенні <code>someCall</code> або <code>someClass</code> має бути маркований як <code>implicit</code>.</p></div>
+<div class="paragraph"><p>Ось простий приклад. Уявімо, що ви маєте клас <code>PreferredPrompt</code>, що енкапсулює рядок підказки оболонки (такий як, скажімо <code>"$ "</code> або <code>"&gt; "</code>), який обирає користувач:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">PreferredPrompt</span><span class="o">(</span><span class="k">val</span> <span class="n">preference</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Також, уявімо, ви маєте об'єкт <code>Greeter</code> з методом <code>greet</code>, що приймає два списка параметрів. Перший список параметрів приймає ім'я користувача як рядок, та другий список параметрів приймає <code>PreferredPrompt</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Greeter</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">greet</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)(</span><span class="k">implicit</span> <span class="n">prompt</span><span class="k">:</span> <span class="kt">PreferredPrompt</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;Welcome, &quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&quot;. The system is ready.&quot;</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">prompt</span><span class="o">.</span><span class="n">preference</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Останній список параметрів відмічений як <code>implicit</code>, що означає, що він може бути наданий неявно. Але ви можете все ще провадити підказку явно, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">bobsPrompt</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PreferredPrompt</span><span class="o">(</span><span class="s">&quot;relax&gt; &quot;</span><span class="o">)</span>
+<span class="n">bobsPrompt</span><span class="k">:</span> <span class="kt">PreferredPrompt</span> <span class="o">=</span> <span class="nc">PreferredPrompt</span><span class="k">@</span><span class="mi">714</span><span class="n">d36d6scala</span><span class="o">&gt;</span>
+<span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Bob&quot;</span><span class="o">)(</span><span class="n">bobsPrompt</span><span class="o">)</span>
+<span class="nc">Welcome</span><span class="o">,</span> <span class="nc">Bob</span><span class="o">.</span> <span class="nc">The</span> <span class="n">system</span> <span class="n">is</span> <span class="n">ready</span><span class="o">.</span>
+<span class="n">relax</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб дозволити компілятору надавати параметр неявно, вам треба зпочатку визначити змінну очікуваного типу, що в цьому випадку є <code>PreferredPrompt</code>. Ви можете зробити це, наприклад, в об'єкті користувацькіх налаштувань:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">JoesPrefs</span> <span class="o">{</span>
+  <span class="k">implicit</span> <span class="k">val</span> <span class="n">prompt</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PreferredPrompt</span><span class="o">(</span><span class="s">&quot;Yes, master&gt; &quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що сама <code>val</code> відмічена як <code>implicit</code>. Якщо ні, компілятор не буде використовувати її для надання відсутнього списку параметрів. Він також не буде використовувати її, якщо вона не в полі зору як єдиний ідентифікатор, як показано в цьому прикладі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">13</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">could</span> <span class="kt">not</span> <span class="kt">find</span> <span class="kt">implicit</span> <span class="kt">value</span> <span class="kt">for</span>
+<span class="n">parameter</span> <span class="n">prompt</span><span class="k">:</span> <span class="kt">PreferredPrompt</span>
+              <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)</span>
+                           <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак коли ви занесете її в поле зору через імпорт, вона буде використана для надання відсутнього списку параметрів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">JoesPrefs._</span>
+<span class="k">import</span> <span class="nn">JoesPrefs._</span>
 
-private[this] val pref: Mocha.PreferredDrink =
-new Mocha.this.PreferredDrink("mocha");
-implicit &lt;stable&gt; &lt;accessor&gt;
-def pref: Mocha.PreferredDrink = Mocha.this.pref;
-def enjoy(name: String)
-(implicit drink: Mocha.PreferredDrink): Unit = {
-scala.this.Predef.print("Welcome, ".+(name));
-scala.this.Predef.print(". Enjoy a ");
-scala.this.Predef.print(drink.preference);
-scala.this.Predef.println("!")
-};
-Mocha.this.enjoy("reader")(Mocha.this.pref)
-}
-}Listing 21.8 - Sample code after type checking and insertion of implicits.
-21.9 CONCLUSION
-Implicits are a powerful, code-condensing feature of Scala. This chapter has shown you Scala&#8217;s rules
-about implicits and several common programming situations where you can profit from using implicits.
-As a word of warning, implicits can make code confusing if they are used too frequently. Thus, before
-adding a new implicit conversion, first ask whether you can achieve a similar effect through other
-means, such as inheritance, mixin composition, or method overloading. If all of these fail, however, and
-you feel like a lot of your code is still tedious and redundant, then implicits might just be able to help
-you out.</p></div>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)</span>
+<span class="nc">Welcome</span><span class="o">,</span> <span class="nc">Joe</span><span class="o">.</span> <span class="nc">The</span> <span class="n">system</span> <span class="n">is</span> <span class="n">ready</span><span class="o">.</span>
+<span class="nc">Yes</span><span class="o">,</span> <span class="n">master</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважне, що ключове слово <code>implicit</code> стосується до цілього списку параметрів, не до індивідуальних параметрів. Лістинг 21.1 показує приклад, в якому останній список параметрів метода <code>Greeter</code> <code>greet</code>, що знову визначений <code>implicit</code>, має два параметри: <code>prompt</code> (типу <code>PreferredPrompt</code>), та <code>drink</code> (типу <code>PreferredDrink</code>).</p></div>
+<div class="paragraph"><p>Об'єкт синглтон <code>JoesPrefs</code> декларує дві неявні <code>val</code>, <code>prompt</code> типу <code>PreferredPrompt</code>, та <code>drink</code> типу <code>PreferredDrink</code>. Однак як і раніше, доки воні не в полі зору як прості ідентифікатори, вони не будуть використані для заповнення відсутнього списку параметрів для <code>greet</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">19</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">could</span> <span class="kt">not</span> <span class="kt">find</span> <span class="kt">implicit</span> <span class="kt">value</span> <span class="kt">for</span>
+<span class="n">parameter</span> <span class="n">prompt</span><span class="k">:</span> <span class="kt">PreferredPrompt</span>
+              <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)</span>
+                           <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете занести обі неявні <code>val</code> в поле зору за допомогою <code>import</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">JoesPrefs._</span>
+<span class="k">import</span> <span class="nn">JoesPrefs._</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки обоє, <code>prompt</code> та <code>drink</code> тепер в полі зору як єдині ідентифікатори, ви можете використовувати їх для явного надання останнього списку параметрів, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)(</span><span class="n">prompt</span><span class="o">,</span> <span class="n">drink</span><span class="o">)</span>
+<span class="nc">Welcome</span><span class="o">,</span> <span class="nc">Joe</span><span class="o">.</span> <span class="nc">The</span> <span class="n">system</span> <span class="n">is</span> <span class="n">ready</span><span class="o">.</span>
+<span class="nc">But</span> <span class="k">while</span> <span class="n">you</span> <span class="n">work</span><span class="o">,</span> <span class="n">why</span> <span class="n">not</span> <span class="n">enjoy</span> <span class="n">a</span> <span class="n">cup</span> <span class="n">of</span> <span class="n">tea</span><span class="o">?</span>
+<span class="nc">Yes</span><span class="o">,</span> <span class="n">master</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але оскільки тепер задовільняються всі правила для неявних параметрів, альтернативно ви можете дозволити компілятору Scala надати <code>prompt</code> та <code>drink</code> для вас, відкинувши останній список параметрів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Greeter</span><span class="o">.</span><span class="n">greet</span><span class="o">(</span><span class="s">&quot;Joe&quot;</span><span class="o">)</span>
+<span class="nc">Welcome</span><span class="o">,</span> <span class="nc">Joe</span><span class="o">.</span> <span class="nc">The</span> <span class="n">system</span> <span class="n">is</span> <span class="n">ready</span><span class="o">.</span>
+<span class="nc">But</span> <span class="k">while</span> <span class="n">you</span> <span class="n">work</span><span class="o">,</span> <span class="n">why</span> <span class="n">not</span> <span class="n">enjoy</span> <span class="n">a</span> <span class="n">cup</span> <span class="n">of</span> <span class="n">tea</span><span class="o">?</span>
+<span class="nc">Yes</span><span class="o">,</span> <span class="n">master</span><span class="o">&gt;</span>
+
+<span class="k">class</span> <span class="nc">PreferredPrompt</span><span class="o">(</span><span class="k">val</span> <span class="n">preference</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+<span class="k">class</span> <span class="nc">PreferredDrink</span><span class="o">(</span><span class="k">val</span> <span class="n">preference</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+<span class="k">object</span> <span class="nc">Greeter</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">greet</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)(</span><span class="k">implicit</span> <span class="n">prompt</span><span class="k">:</span> <span class="kt">PreferredPrompt</span><span class="o">,</span>
+      <span class="n">drink</span><span class="k">:</span> <span class="kt">PreferredDrink</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;Welcome, &quot;</span> <span class="o">+</span> <span class="n">name</span> <span class="o">+</span> <span class="s">&quot;. The system is ready.&quot;</span><span class="o">)</span>
+    <span class="n">print</span><span class="o">(</span><span class="s">&quot;But while you work, &quot;</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;why not enjoy a cup of &quot;</span> <span class="o">+</span> <span class="n">drink</span><span class="o">.</span><span class="n">preference</span> <span class="o">+</span> <span class="s">&quot;?&quot;</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="n">prompt</span><span class="o">.</span><span class="n">preference</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">object</span> <span class="nc">JoesPrefs</span> <span class="o">{</span>
+  <span class="k">implicit</span> <span class="k">val</span> <span class="n">prompt</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PreferredPrompt</span><span class="o">(</span><span class="s">&quot;Yes, master&gt; &quot;</span><span class="o">)</span>
+  <span class="k">implicit</span> <span class="k">val</span> <span class="n">drink</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PreferredDrink</span><span class="o">(</span><span class="s">&quot;tea&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.1 - Неявний список параметрів з декількома параметрами.</p></div>
+<div class="paragraph"><p>Одна річ, яку треба відмітити щодо попередніх прикладів, є те, що ми не використовуємо <code>String</code> як тип для <code>prompt</code> або <code>drink</code>, навіть якщо кінець кінцем це буде <code>String</code>, що отримають обоє через поля <code>preference</code>. Оскільки компілятор обирає неявні параметри через порівняння типів параметрів з типами змінних в полі зору, неявні параметри звичайно мають досить "рідкі" або "специфічні" типи, щоб зробити випадкове співпадіння маловірогідним. Наприклад, типи <code>PreferredPrompt</code> та <code>PreferredDrink</code> в Лістингу 21.1 були визначені єдино служити як типи неявних параметрів. Як результат, маловірогідно, що неявні змінні ціх типів будуть в полі зору, якщо вони не призначені для використання як неявні параметри для <code>Greeter.greet</code>.</p></div>
+<div class="paragraph"><p>Інша річ, що треба знати щодо неявних параметрів, є те, що вони найбільш часто використовуються для провадження інформації щодо типу, вказаного <em>явно</em> в ранішньому списку пармаетрів, подібно до класів типу в Haskell.</p></div>
+<div class="paragraph"><p>Як приклад, розглянемо функцію <code>maxListOrdering</code>, показану в Лістингу 21.2, що повертає максимальний елемент переданого списку.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxListOrdering</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+      <span class="o">(</span><span class="n">ordering</span><span class="k">:</span> <span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span>
+  <span class="n">elements</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">()</span> <span class="k">=&gt;</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;empty list!&quot;</span><span class="o">)</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span>
+    <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">rest</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">maxRest</span> <span class="k">=</span> <span class="n">maxListOrdering</span><span class="o">(</span><span class="n">rest</span><span class="o">)(</span><span class="n">ordering</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">ordering</span><span class="o">.</span><span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">maxRest</span><span class="o">))</span> <span class="n">x</span>
+      <span class="k">else</span> <span class="n">maxRest</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.2 - Функція з верхньою межею.</p></div>
+<div class="paragraph"><p>Сигнатура <code>maxListOrdering</code> подібна до <code>orderedMergeSort</code>, показаного в Лістингу 19.12: він приймає <code>List[T]</code> в якості аргумента, але зараз він приймає додатковий аргумент типу <code>Ordering[T]</code>. Цей додатковий аргумент специфікує, який <code>ordering</code> використовувати при порівнянні елементів типу <code>T</code>. Як така, ця версія може бути використана для типів, що не мають вбудованого спорядкування. Додатково, ця версія може бути використана для типів, що мають вбудоване впорядкування, але для яких ви час від часу бажаєте викорстовувати деякий інший порядок.</p></div>
+<div class="paragraph"><p>Ця версія більш загальна, але вона також більш заплутана в використанні. Тепер викликач має вказувати явний порядок, навіть якщо <code>T</code> щось подібне до <code>String</code> або <code>Int</code>, що має явно визначений порядок. Щоб зробити цей новий метод більш зручним, допоможе зробити другий аргумент неявним. Цей підхід показаний в Лістингу 21.3.</p></div>
+<div class="paragraph"><p>Параметр <code>ordering</code> в цьому прикладі використаний для описання впорядкування <code>T</code>. В тілі <code>maxListImpParm</code> цей <code>ordering</code> використовується в двох місцях: в рекурсивному виклику до <code>maxListImpParm</code>, та виразі <code>if</code>, що перевіряє, що голова цього списку більша, ніж максимальний елемент в залишку списка.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxListImpParm</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+      <span class="o">(</span><span class="k">implicit</span> <span class="n">ordering</span><span class="k">:</span> <span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span>
+
+  <span class="n">elements</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">()</span> <span class="k">=&gt;</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;empty list!&quot;</span><span class="o">)</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span>
+    <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">rest</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">maxRest</span> <span class="k">=</span> <span class="n">maxListImpParm</span><span class="o">(</span><span class="n">rest</span><span class="o">)(</span><span class="n">ordering</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">ordering</span><span class="o">.</span><span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">maxRest</span><span class="o">))</span> <span class="n">x</span>
+      <span class="k">else</span> <span class="n">maxRest</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.3 - Функція з неявним параметром.</p></div>
+<div class="paragraph"><p>Функція <code>maxListImpParm</code> є прикладом неявного параметра, використаного для провадження додаткової інформації щодо типу, явно вказаного в попередньому списку параметрів. Більш точно, неявний параметр <code>ordering</code> типу <code>Ordering[T]</code> провадить більше інформації щодо типу T — в цьому випадку як впорядковувати <code>T</code>. Тип <code>T</code>, згаданий в <code>List[T]</code> як параметр типу елементів, з'являється в попередньому списку параметрів. Оскільки елементи мають завжди бути проваджені явно в любому виклику до <code>maxListImpParm</code>, компілятор буде знати <code>T</code> під час компіляції, і, таким чином, може визначити, чи доступне неявне визначення типу <code>Ordering[T]</code>. Якщо це так, він може передати другий список параметрів, <code>ordering</code>, неявно.</p></div>
+<div class="paragraph"><p>Цей шаблон такий загальний, що стандартна бібліотека Scala провадить неявні методи <code>ordering</code> для багатьох загальних типів. Таким чином ви можете використовувати цей метод <code>maxListImpParm</code> з різними типами:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">maxListImpParm</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span><span class="mi">5</span><span class="o">,</span><span class="mi">10</span><span class="o">,</span><span class="mi">3</span><span class="o">))</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">10</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">maxListImpParm</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mf">1.5</span><span class="o">,</span> <span class="mf">5.2</span><span class="o">,</span> <span class="mf">10.7</span><span class="o">,</span> <span class="mf">3.14159</span><span class="o">))</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="mf">10.7</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">maxListImpParm</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="s">&quot;one&quot;</span><span class="o">,</span> <span class="s">&quot;two&quot;</span><span class="o">,</span> <span class="s">&quot;three&quot;</span><span class="o">))</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">two</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В першому випадку компілятор вставляє <code>ordering</code> для <code>Int</code>; в другому випадку для <code>Double</code>; в третьому випадку для <code>String</code>.</p></div>
+<div class="sect2">
+<h3 id="______2">Правило стиля для неявних параметрів</h3>
+<div class="paragraph"><p>Як правило стилю, є кращим використовувати власні імена типів в типах неявних параметрів. Наприклад, типи <code>prompt</code> та <code>drink</code> в попередньому прикладі не були <code>String</code>, але  <code>PreferredPrompt</code> та <code>PreferredDrink</code>, відповідно. Як контрприклад розглянемо функцію <code>maxListImpParm</code>, що може так само бути написаний з наступною сигнатурою типу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxListPoorStyle</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+      <span class="o">(</span><span class="k">implicit</span> <span class="n">orderer</span><span class="k">:</span> <span class="o">(</span><span class="kt">T</span><span class="o">,</span> <span class="kt">T</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак щоб використати цю версію функції, викликач має надати параметр <code>orderer</code> типу <code>(T, T) =&gt; Boolean</code>. Це досить загальний тип, що включає любу функцію з двох <code>T</code> до <code>Boolean</code>. Він зовсім нічого не вказує щодо того, для чого призначений цей тип; він може бути перевіркою на рівність, перевіркою на менше-ніж, перевіркою на більше-ніж, або повністю чимось іншим.</p></div>
+<div class="paragraph"><p>Справжній код для <code>maxListImpParm</code>, наданий в Лістингу 21.3, показує кращий стиль. Він використовує параметр <code>ordering</code> типу <code>Ordering[T]</code>. Слово <code>Ordering</code> в цьому типі точно вказує, для чого призначений неявний параметр: він призначений для впорядкування елементів <code>T</code>. Оскільки цей тип <code>ordering</code> більш явний, немає проблем з додаванням неявних провайдерів для цього типу в стандартній бібліотеці. Для контрасту, уявіть хаос, що настав би, якщо б ви додали неявний тип <code>(T, T) =&gt; Boolean</code> в стантартну бібліотеку, і компілятор почав би зрошувати їм людський код. Ви б скінчили з кодом, що компілюється та виконується, але що робить досить довільні тести з парами елементів! Від цього випливає правило стилю: використовуйте щонайменьше одне роль-визначаюче ім'я в типі неявного параметру.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_6__">21.6 Межі контексту</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Попередній приклад мав показати можливості використання неявних, але ні. Зауважте, що коли ви застосовуєте неявне як параметр, не тільки компілятор спробує надати цей параметр через неявне значення, але компілятор також буде використовувати цей параметр як доступне неявне в тілі метода!</p></div>
+<div class="paragraph"><p>Таким чином, перше використання <code>ordering</code> в тілі метода може бути відкинуте.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxList</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+      <span class="o">(</span><span class="k">implicit</span> <span class="n">ordering</span><span class="k">:</span> <span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span>
+
+  <span class="n">elements</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">()</span> <span class="k">=&gt;</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;empty list!&quot;</span><span class="o">)</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span>
+    <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">rest</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">maxRest</span> <span class="k">=</span> <span class="n">maxList</span><span class="o">(</span><span class="n">rest</span><span class="o">)</span>    <span class="c1">// (ordering) неявне</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">ordering</span><span class="o">.</span><span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">maxRest</span><span class="o">))</span> <span class="n">x</span> <span class="c1">// але це ordering</span>
+      <span class="k">else</span> <span class="n">maxRest</span>                   <span class="c1">// все ще явне</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.4 - Функція, що використовує неявний параметр внутрішньо.</p></div>
+<div class="paragraph"><p>Коли компілятор перевіряє код в Лістингу 21.4, він буде бачити, що типи не співпадають. Вираз <code>maxList(rest)</code> надає тільки один список параметрів, але <code>maxList</code> потребує два. Оскільки другий список параметрів є неявний, компілятор не здається зразу після перевірки типів. Замість цього він шукає неявний параметр відповідного типу, в цьому випадку <code>Ordering[T]</code>. В цьому випадку він находить такий, та переписує виклик на <code>maxList(rest)(ordering)</code>, після чого код проходить перевірку типів.</p></div>
+<div class="paragraph"><p>Є також спосіб уникнути другого використання <code>ordering</code>. Він задіє наступний метод, визначений в стандартній бібліотеки:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">implicitly</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="k">implicit</span> <span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span> <span class="k">=</span> <span class="n">t</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ефект виклику <code>implicitly[Foo]</code> в тому, що компілятор буде шукати неявне визначення типу <code>Foo</code>. Потім він буде викликати неявний метод з цім об'єктом, що, в свою чергу, повертає назад об'єкт. Таким чином ви можете записати <code>implicitly[Foo]</code> кожного разу, коли ви бажаєте найти неявний об'єкт типу <code>Foo</code> в поточньому полі зору. Наприклад, Лістинг 21.5 показує використання <code>implicitly[Ordering[T]]</code> для отримання параметра <code>ordering</code> по його типу.</p></div>
+<div class="paragraph"><p>Подивіться уважніше на цю останню версію <code>maxList</code>. Тут немає жодного спомину параметру <code>ordering</code> в тексті метода. Другий параметр може так само бути названий <code>comparator</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxList</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+  <span class="o">(</span><span class="k">implicit</span> <span class="n">comparator</span><span class="k">:</span> <span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="c1">// те саме тіло...</span>
+
+  <span class="k">def</span> <span class="n">maxList</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+        <span class="o">(</span><span class="k">implicit</span> <span class="n">ordering</span><span class="k">:</span> <span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span>
+
+    <span class="n">elements</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">List</span><span class="o">()</span> <span class="k">=&gt;</span>
+        <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;empty list!&quot;</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span>
+      <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">rest</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">maxRest</span> <span class="k">=</span> <span class="n">maxList</span><span class="o">(</span><span class="n">rest</span><span class="o">)</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">implicitly</span><span class="o">[</span><span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">]].</span><span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">maxRest</span><span class="o">))</span> <span class="n">x</span>
+        <span class="k">else</span> <span class="n">maxRest</span>
+    <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.5 - Функція, що використовує <code>implicitly</code>.</p></div>
+<div class="paragraph"><p>З цієї причини ця версія бути робити так само:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxList</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+<span class="o">(</span><span class="k">implicit</span> <span class="n">iceCream</span><span class="k">:</span> <span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="c1">// тіло те саме...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки цей шаблон є загальним, Scala дозволяє вам пропустити ім'я цього параметру, та скоротити заголовок метода через використання межі контексту. Використання межі контексту дозволяє вам записати сигнатуру <code>maxList</code> як показано на Лістингу 21.6. Синтаксис <code>[T : Ordering]</code> є межою контексту, і він робить дві речі. Перше, він вводить параметр типу <code>T</code>, як звичайно. Друге, він додає неявний параметр типу <code>Ordering[T]</code>. В попередніх версіях <code>maxList</code>, цей параметр був названий <code>ordering</code>, але коли використовується межа контексту, ви не знаєте, що викликається параметром. Як показано раніше, часто вам не треба знати, що викликається параметром.</p></div>
+<div class="paragraph"><p>Інтуітивно ви можете думати про межу контаксту, як сказати дещо про параметр типу. Коли ви пишете <code>[T &lt;: Ordered[T]]</code> ви кажете, що <code>T</code> є <code>Ordered[T]</code>. Для контрасту, коли ви пишете <code>[T : Ordering]</code> ви не кажете багато про те, що є <code>T</code>; скоріше, ви кажете, що існує деяка форма впорядкування, асоційована з <code>T</code>. Таким чином межа контексту досить гнучка. Це дозволяє вам використовувати код, що потребує впорядкування — або любу іншу властивість типу — без потреби змінювати визначення цього типу.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">maxList</span><span class="o">[</span><span class="kt">T</span> <span class="kt">:</span> <span class="kt">Ordering</span><span class="o">](</span><span class="n">elements</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span>
+  <span class="n">elements</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">()</span> <span class="k">=&gt;</span>
+      <span class="k">throw</span> <span class="k">new</span> <span class="nc">IllegalArgumentException</span><span class="o">(</span><span class="s">&quot;empty list!&quot;</span><span class="o">)</span>
+    <span class="k">case</span> <span class="nc">List</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">x</span>
+    <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">rest</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">maxRest</span> <span class="k">=</span> <span class="n">maxList</span><span class="o">(</span><span class="n">rest</span><span class="o">)</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">implicitly</span><span class="o">[</span><span class="kt">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">]].</span><span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">maxRest</span><span class="o">))</span> <span class="n">x</span>
+      <span class="k">else</span> <span class="n">maxRest</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.6 - Функція з межею контекста.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_7____">21.7 Коли застосовуються декілька конверсій</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Може трапитись, що в полі зору знаходяться декілька неявних перетворень, і кожне може робити. В великій мірі Scala відмовляється вставляти перетворення в такому випадку. Неявні роблять гарно, коли перетворення, що відкидається, повністю очевидне та чистий шаблон. Якщо застосовуються декілька перетворень, вибір вже не такий і очевидний, кінець кінцем.</p></div>
+<div class="paragraph"><p>Ось простий приклад. Існує метод, що приймає послідовність, перетворення, що обертає ціле на диапазон, та перетворення, що обертає ціле на список цифр:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">printLength</span><span class="o">(</span><span class="n">seq</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span> <span class="k">=</span> <span class="n">println</span><span class="o">(</span><span class="n">seq</span><span class="o">.</span><span class="n">length</span><span class="o">)</span>
+<span class="n">printLength</span><span class="k">:</span> <span class="o">(</span><span class="kt">seq:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="nc">Unit</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">implicit</span> <span class="k">def</span> <span class="n">intToRange</span><span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="mi">1</span> <span class="n">to</span> <span class="n">i</span>
+<span class="n">intToRange</span><span class="k">:</span> <span class="o">(</span><span class="kt">i:</span>
+<span class="kt">Int</span><span class="o">)</span><span class="n">scala</span><span class="o">.</span><span class="n">collection</span><span class="o">.</span><span class="n">immutable</span><span class="o">.</span><span class="nc">Range</span><span class="o">.</span><span class="nc">Inclusive</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">implicit</span> <span class="k">def</span> <span class="n">intToDigits</span><span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span>
+<span class="n">i</span><span class="o">.</span><span class="n">toString</span><span class="o">.</span><span class="n">toList</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">toInt</span><span class="o">)</span>
+<span class="n">intToDigits</span><span class="k">:</span> <span class="o">(</span><span class="kt">i:</span> <span class="kt">Int</span><span class="o">)</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">printLength</span><span class="o">(</span><span class="mi">12</span><span class="o">)</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">26</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+<span class="n">found</span>   <span class="k">:</span> <span class="kt">Int</span><span class="o">(</span><span class="err">12</span><span class="o">)</span>
+<span class="kt">required:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+<span class="nc">Note</span> <span class="n">that</span> <span class="k">implicit</span> <span class="n">conversions</span> <span class="n">are</span> <span class="n">not</span> <span class="n">applicable</span> <span class="n">because</span>
+<span class="n">they</span> <span class="n">are</span> <span class="n">ambiguous</span><span class="k">:</span>
+  <span class="kt">both</span> <span class="kt">method</span> <span class="kt">intToRange</span> <span class="kt">of</span> <span class="k">type</span> <span class="o">(</span><span class="kt">i:</span>
+<span class="kt">Int</span><span class="o">)</span><span class="n">scala</span><span class="o">.</span><span class="n">collection</span><span class="o">.</span><span class="n">immutable</span><span class="o">.</span><span class="nc">Range</span><span class="o">.</span><span class="nc">Inclusive</span>
+  <span class="n">and</span> <span class="n">method</span> <span class="n">intToDigits</span> <span class="n">of</span> <span class="k">type</span> <span class="o">(</span><span class="kt">i:</span> <span class="kt">Int</span><span class="o">)</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+  <span class="n">are</span> <span class="n">possible</span> <span class="n">conversion</span> <span class="n">functions</span> <span class="n">from</span> <span class="nc">Int</span><span class="o">(</span><span class="mi">12</span><span class="o">)</span> <span class="n">to</span> <span class="nc">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+               <span class="n">printLength</span><span class="o">(</span><span class="mi">12</span><span class="o">)</span>
+                           <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Неоднозначність тут є реальною. Перетворення цілого на послідовність цифр повністю відрізняється від перетворення його на диапазон. В цьому випадку програміст має вказати, який варіант потрібен, та бути явним. До Scala 2.7 це було кінцем історії. Кожного разу, коли застосовуються декілька неявних перетворень, компілятор відмовляється обирати між ними. Ситуація була така сама, що і з перевантаженням методів. Якщо ви спробуєте викликати <code>foo(null)</code>, і є два різні перевантаження <code>foo</code>, що приймають <code>null</code>, компілятор відмовиться обирати. Він скаже, що ціль виклику метода неоднозначна.</p></div>
+<div class="paragraph"><p>Scala 2.8 послаблює це правило. Якщо одне з доступних перетворень явно більш специфічне, ніж інші, тоді компілятор буде обирати більш специфічний варіант. Ідея в тому, що коли є причина повірити програмісту, що маємо завжди обирати один перетворювач ніж інші, не вимагати від програміста записувати це явно. Кінець кінцем, перевантаження методів має те саме послаблення. Продовжуючи попередній приклад, якщо один з доступних методів <code>foo</code> приймає <code>String</code>, тоді як інший приймає <code>Any</code>, тоді буде обрана версія з <code>String</code>. Це вочевидь більш специфічне.</p></div>
+<div class="paragraph"><p>Щоб бути більш точним, неявне перетворення є більш специфічним, якщо відбувається одне з наступного:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Тип аргументу першого є субтипом другого.
+</p>
+</li>
+<li>
+<p>
+Обоє перетворення є методами, та оточуючий клас першого розширює оточуючий клас другого.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Мотивацією для перегляду цього питання та ревізії правила було покращення взаємодії між Java колекціями, Scala колекціями, та рядками.</p></div>
+<div class="paragraph"><p>Ось простий приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">cba</span> <span class="k">=</span> <span class="s">&quot;abc&quot;</span><span class="o">.</span><span class="n">reverse</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Який тип, що буде виведений для <code>cba</code>? Інтуітивно, типом має бути <code>String</code>. Реверс рядка має давати рядок, вірно? Однак в Scala 2.7 відбувається те, що <code>"abc"</code> було перетворене на Scala колекцію. Реверс Scala колекції дає Scala колекцію, так що тип <code>cba</code> має бути колекцією. Також є неявне перетворення назад до рядка, але це не латає жодних проблем. Наприклад, в версії до Scala 2.8 <code>"abc" == "abc".reverse.reverse</code> було <code>false</code>!</p></div>
+<div class="paragraph"><p>В Scala 2.8 тип <code>cba</code> є <code>String</code>. Старе неявне перетворення до Scala колекції (тепер названої <code>WrappedString</code>) залишилось. Однак тепер є більш специфічне перетворення, від  <code>String</code> до нового типу, названого <code>StringOps</code>. <code>StringOps</code> має багато методів, таких як <code>reverse</code>, але замість повернення колекцій вони повертають <code>String</code>. Перетворення до <code>StringOps</code> визначено напряму в <code>Predef</code>, тоді як перетворення до Scala колекцій визначено в новому класі, <code>LowPriorityImplicits</code>, що розширений <code>Predef</code>. Коли існує вибір між ціма двома перетвореннями, компілятор обере перетворення до <code>StringOps</code>, оскільки він визначений в субкласі класу, де визначене інше перетворення.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_8__">21.8 Зневадження неявних</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Неявні є потужною можливістю в Scala, але те, що іноді важко зрозуміти. Цей розділ містить декілька підказок зі зневадження неявних.</p></div>
+<div class="paragraph"><p>Іноді ви можете дивуватись, чому компілятор не знайшов неявне перетворення, яке, як ви сподівались, мало б бути застосоване. В такому випадку допоможе записати це перетворення явно. Якщо  це також видає повідомлення про помилку, тоді ви знатимете, чому компілятор не застосував ваше неявне.</p></div>
+<div class="paragraph"><p>Наприклад, уявімо, що ви помилково взяли <code>wrapString</code> в якості перетворення від <code>Strings</code>  до <code>List</code>, замість <code>IndexedSeqs</code>. Ви можете здивуватись, чому наступний код не робить:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">chars</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span> <span class="k">=</span> <span class="s">&quot;xyz&quot;</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">24</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+<span class="n">found</span>   <span class="k">:</span> <span class="kt">String</span><span class="o">(</span><span class="err">&quot;</span><span class="kt">xyz</span><span class="err">&quot;</span><span class="o">)</span>
+<span class="kt">required:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span>
+      <span class="k">val</span> <span class="n">chars</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span> <span class="k">=</span> <span class="s">&quot;xyz&quot;</span>
+                              <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Знову, допоможе написати перетворення <code>wrapString</code> явно, щоб знайти, що іде не так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">chars</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span> <span class="k">=</span> <span class="n">wrapString</span><span class="o">(</span><span class="s">&quot;xyz&quot;</span><span class="o">)</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">24</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+<span class="n">found</span>   <span class="k">:</span> <span class="kt">scala.collection.immutable.WrappedString</span>
+<span class="n">required</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span>
+      <span class="k">val</span> <span class="n">chars</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Char</span><span class="o">]</span> <span class="k">=</span> <span class="n">wrapString</span><span class="o">(</span><span class="s">&quot;xyz&quot;</span><span class="o">)</span>
+                                        <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи це, ви знаходите те що спричинило помилку: <code>wrapString</code> має помилковий тип повернення. З іншого боку, також можливо, що явне вставлення перетворення призведе до зникнення помилки. В цьому випадку ви знаєте, що одне з інших правил (таке як Правило поля зору) перешкоджає застосуванню неявного перетворення.</p></div>
+<div class="paragraph"><p>Коли ви зневаджуєте програму, іноді може допомогти побачити, яке неявне перетворення вставляє компілятор. Для цього корисна опція компілятора <code>-Xprint:typer</code>. Якщо ви виконуєте <code>scalac</code> з цією опецією, компілятор буде показувати вам, як буде виглядати код після всіх неявних перетворень, що були додані перевіркою типів. Приклад показаний в Лістингу 21.7 та Лістингу 21.8. Якщо ви подивитесь на останній вираз в кожному лістингу, ви побачите, що другий список параметрів <code>enjoy</code>, що випущений в коді Лістинга 21.7, <code>enjoy("reader")</code> був доданий компілятором, як показано в Лістингу 21.8:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Mocha</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="n">enjoy</span><span class="o">(</span><span class="s">&quot;reader&quot;</span><span class="o">)(</span><span class="nc">Mocha</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="n">pref</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви хоробрий, спробуйте <code>scala -Xprint:typer</code> щоб отримати інтерактивну оболонку, що роздруковує пост-типізований код, що використовується внутрішньо. Якщо ви зробите це, будьте готові побачити величезну кількість шаблонного обвісу, що оточує м'ясо вашого коду.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Mocha</span> <span class="k">extends</span> <span class="nc">App</span> <span class="o">{</span>
+
+  <span class="k">class</span> <span class="nc">PreferredDrink</span><span class="o">(</span><span class="k">val</span> <span class="n">preference</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+  <span class="k">implicit</span> <span class="k">val</span> <span class="n">pref</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">PreferredDrink</span><span class="o">(</span><span class="s">&quot;mocha&quot;</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">enjoy</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)(</span><span class="k">implicit</span> <span class="n">drink</span><span class="k">:</span> <span class="kt">PreferredDrink</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">print</span><span class="o">(</span><span class="s">&quot;Welcome, &quot;</span> <span class="o">+</span> <span class="n">name</span><span class="o">)</span>
+    <span class="n">print</span><span class="o">(</span><span class="s">&quot;. Enjoy a &quot;</span><span class="o">)</span>
+    <span class="n">print</span><span class="o">(</span><span class="n">drink</span><span class="o">.</span><span class="n">preference</span><span class="o">)</span>
+    <span class="n">println</span><span class="o">(</span><span class="s">&quot;!&quot;</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+<span class="n">enjoy</span><span class="o">(</span><span class="s">&quot;reader&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.7 - Код прикладу, що використовує неявний параметр.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">$</span> <span class="n">scalac</span> <span class="o">-</span><span class="nc">Xprint</span><span class="k">:type</span><span class="kt">r</span> <span class="kt">mocha.scala</span>
+<span class="o">[[</span><span class="kt">syntax</span> <span class="kt">trees</span> <span class="kt">at</span> <span class="kt">end</span> <span class="kt">of</span> <span class="k">type</span><span class="kt">r</span><span class="o">]]</span>
+<span class="c1">// Scala source: mocha.scala</span>
+<span class="k">package</span> <span class="err">&lt;</span><span class="nn">empty</span><span class="o">&gt;</span> <span class="o">{</span>
+  <span class="k">final</span> <span class="k">object</span> <span class="nc">Mocha</span> <span class="k">extends</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Object</span> <span class="k">with</span> <span class="nc">Application</span>
+    <span class="k">with</span> <span class="nc">ScalaObject</span> <span class="o">{</span>
+
+<span class="c1">// ...</span>
+
+    <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">pref</span><span class="k">:</span> <span class="kt">Mocha.PreferredDrink</span> <span class="o">=</span>
+     <span class="k">new</span> <span class="nc">Mocha</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="nc">PreferredDrink</span><span class="o">(</span><span class="s">&quot;mocha&quot;</span><span class="o">);</span>
+    <span class="k">implicit</span> <span class="o">&lt;</span><span class="n">stable</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">accessor</span><span class="o">&gt;</span>
+      <span class="k">def</span> <span class="n">pref</span><span class="k">:</span> <span class="kt">Mocha.PreferredDrink</span> <span class="o">=</span> <span class="nc">Mocha</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="n">pref</span><span class="o">;</span>
+    <span class="k">def</span> <span class="n">enjoy</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+       <span class="o">(</span><span class="k">implicit</span> <span class="n">drink</span><span class="k">:</span> <span class="kt">Mocha.PreferredDrink</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="o">{</span>
+      <span class="n">scala</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="nc">Predef</span><span class="o">.</span><span class="n">print</span><span class="o">(</span><span class="s">&quot;Welcome, &quot;</span><span class="o">.+(</span><span class="n">name</span><span class="o">));</span>
+      <span class="n">scala</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="nc">Predef</span><span class="o">.</span><span class="n">print</span><span class="o">(</span><span class="s">&quot;. Enjoy a &quot;</span><span class="o">);</span>
+      <span class="n">scala</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="nc">Predef</span><span class="o">.</span><span class="n">print</span><span class="o">(</span><span class="n">drink</span><span class="o">.</span><span class="n">preference</span><span class="o">);</span>
+      <span class="n">scala</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="nc">Predef</span><span class="o">.</span><span class="n">println</span><span class="o">(</span><span class="s">&quot;!&quot;</span><span class="o">)</span>
+    <span class="o">};</span>
+    <span class="nc">Mocha</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="n">enjoy</span><span class="o">(</span><span class="s">&quot;reader&quot;</span><span class="o">)(</span><span class="nc">Mocha</span><span class="o">.</span><span class="k">this</span><span class="o">.</span><span class="n">pref</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 21.8 - Код прикладу після перевірки типів та вставки <code>implicit</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_21_9_">21.9 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Неявні є потужною, кодо-стискаючою можливістю Scala. Ця глава показала вам правила Scala щодо неявних, та декілька загальних програмних ситуацій, коли ви можете отримати вигоди від використання неявних. Як слово застереження, неявні можуть зробити код збентежливим, якщо ви використовуєте їх дуже часто. Таким чином, перед додаванням неявного перетворення, спочатку запитайте, чи ви можете досягти подібного ефекту через інші засоби, такі як наслідування, композиція міксінів або перевантаження методів. Однак якщо все це схибить, і ви відчуваєте, що більшість вашого коду досі нудна та зайва, тоді неявні можуть допомогти вам знайти вихід.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-17 23:49:12 EET
+ 2019-03-13 03:40:05 EET
 </div>
 </div>
 </body>

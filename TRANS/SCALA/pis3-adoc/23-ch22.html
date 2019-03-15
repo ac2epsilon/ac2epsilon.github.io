@@ -804,316 +804,298 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="__">Реалізація списків</h1>
-<div class="paragraph"><p>Lists have been ubiquitous in this book. Class List is probably the most commonly used structured data
-type in Scala. Chapter 16 showed you how to use lists. This chapter "opens up the covers" and explains
-a bit about how lists are implemented in Scala.
-Knowing the internal workings of the List class is useful for several reasons. You gain a better idea of
-the relative efficiency of list operations, which will help you in writing fast and compact code using
-lists. You also gain a toolbox of techniques that you can apply in the design of your own libraries.
-Finally, the List class is a sophisticated application of Scala&#8217;s type system in general and its genericity
-concepts in particular. So studying class List will deepen your knowledge in these areas.
-22.1 THE LIST CLASS IN PRINCIPLE
-Lists are not "built-in" as a language construct in Scala; they are defined by an abstract classList in
-the scala package, which comes with two subclasses for :: and Nil. In this chapter we will present a
-quick tour through class List. This section presents a somewhat simplified account of the class,
-compared to its real implementation in the Scala standard library, which is covered in Section 22.3.
-package scala
-abstract class List[<code>T] {
-List is an abstract class, so you cannot define elements by calling the empty List constructor. For
-instance the expression "new List" would be illegal. The class has a type parameter T. The +in front of
-this type parameter specifies that lists are covariant, as discussed in Chapter 19.
-Figure 22.1 - Class hierarchy for Scala lists.
-Because of this property, you can assign a value of type List[Int] to a variable of typeList[Any]:
-scala&gt; val xs = List(1, 2, 3)
-xs: List[Int] = List(1, 2, 3)
-scala&gt; var ys: List[Any] = xs
-ys: List[Any] = List(1, 2, 3)All list operations can be defined in terms of three basic methods:
-def isEmpty: Boolean
-def head: T
-def tail: List[T]
-These three methods are all abstract in class List. They are defined in the subobject Nil and the
-subclass ::. The hierarchy for List is shown in Figure 22.1.
-The Nil object
-The Nil object defines an empty list. Its definition is shown in Listing 22.1. The Nil object inherits
-from type List[Nothing]. Because of covariance, this means that Nil is compatible with every instance
-of the List type.
-case object Nil extends List[Nothing] {
-override def isEmpty = true
-def head: Nothing =
-throw new NoSuchElementException("head of empty list")
-def tail: List[Nothing] =
-throw new NoSuchElementException("tail of empty list")
-}
-Listing 22.1 - The definition of the Nil singleton object.
-The three abstract methods of class List are implemented in the Nil object in a straightforward way:
-The isEmpty method returns true, and the head and tail methods both throw an exception. Note that
-throwing an exception is not only reasonable, but practically the only possible thing to do for head:
-Because Nil is a List of Nothing, the result type of headmust be Nothing. Since there is no value of this
-type, this means that head cannot return a normal value. It has to return abnormally by throwing an
-exception.<span class="footnote"><br />[To be precise, the types would also permit for head to always go into an infinite loop instead of throwing an exception, but this is clearly not what&#8217;s wanted.]<br /></span>
-The :: class
-Class ::, pronounced "cons" for "construct," represents non-empty lists. It&#8217;s named that way in order to
-support pattern matching with the infix ::. You have seen in Section 16.5 that every infix operation in a
-pattern is treated as a constructor application of the infix operator to its arguments. So the
-pattern x :: xs is treated as ::(x, xs) where :: is a case class.
-Here is the definition of the :: class:
-final case
-def head
-def tail
-override
-}
-class ::[T](hd: T, tl: List[T]) extends List[T] {
-= hd
-= tl
-def isEmpty: Boolean = false
-The implementation of the :: class is straightforward. It takes two parameters hd and tl, representing the
-head and the tail of the list to be constructed. The definitions of the head andtail method simply return
-the corresponding parameter. In fact, this pattern can be abbreviated by letting the parameters directlyimplement the head and tail methods of the superclass List, as in the following equivalent but shorter
-definition of the :: class:
-final case class ::[T](head: T, tail: List[T])
-extends List[T] {
-override def isEmpty: Boolean = false
-}
-This works because every case class parameter is implicitly also a field of the class (it&#8217;s like the
-parameter declaration was prefixed with val). Recall from Section 20.3 that Scala allows you to
-implement an abstract parameterless method such as head or tail with a field. So the code above
-directly uses the parameters head and tail as implementations of the abstract methods head and tail that
-were inherited from class List.
-Some more methods
-All other List methods can be written using the basic three. For instance:
-def length: Int =
-if (isEmpty) 0 else 1 + tail.length
-or:
-def drop(n: Int): List[T] =
-if (isEmpty) Nil
-else if (n &#8656; 0) this
-else tail.drop(n - 1)
-or:
-def map[U](f: T &#8658; U): List[U] =
-if (isEmpty) Nil
-else f(head) :: tail.map(f)
-List construction
-The list construction methods :: and ::: are special. Because they end in a colon, they are bound to their
-right operand. That is, an operation such as x :: xs is treated as the method callxs.::(x), not x.::(xs). In
-fact, x.::(xs) would not make sense, as x is of the list element type, which can be arbitrary, so we cannot
-assume that this type would have a :: method.
-For this reason, the :: method should take an element value and yield a new list. What is the required
-type of the element value? You might be tempted to say it should be the same as the list&#8217;s element type,
-but in fact this is more restrictive than necessary.
-To see why, consider this class hierarchy:
-abstract class Fruit
-class Apple extends Fruit
-class Orange extends FruitListing 22.2 shows what happens when you construct lists of fruit:
-scala&gt; val apples = new Apple :: Nil
-apples: List[Apple] = List(<a href="mailto:Apple@e885c6a">Apple@e885c6a</a>)
-scala&gt; val fruits = new Orange :: apples
-fruits: List[Fruit] = List(<a href="mailto:Orange@3f51b349">Orange@3f51b349</a>, <a href="mailto:Apple@e885c6a">Apple@e885c6a</a>)
-Listing 22.2 - Prepending a supertype element to a subtype list.
-The apples value is treated as a List of Apples, as expected. However, the definition of fruitsshows that
-it&#8217;s still possible to add an element of a different type to that list. The element type of the resulting list
-is Fruit, which is the most precise common supertype of the original list element type (i.e., Apple) and
-the type of the element to be added (i.e., Orange). This flexibility is obtained by defining the :: method
-(cons) as shown in Listing 22.3:
-def ::[U &gt;: T](x: U): List[U] = new scala.::(x, this)
-Listing 22.3 - The definition of method :: (cons) in class List.
-Note that the method is itself polymorphic—it takes a type parameter named U. Furthermore,U is
-constrained in [U &gt;: T] to be a supertype of the list element type T. The element to be added is required
-to be of type U and the result is a List[U].
-With the formulation of :: shown in Listing 22.3, you can check how the definition of fruitsshown
-in Listing 22.2 works out type-wise: In that definition, the type parameter U of :: is instantiated to Fruit.
-The lower-bound constraint of U is satisfied because the list apples has type List[Apple] and Fruit is a
-supertype of Apple. The argument to the :: is new Orange, which conforms to type Fruit. Therefore, the
-method application is type-correct with result typeList[Fruit]. Figure 22.2 illustrates the structure of the
-lists that result from executing the code shown in Listing 22.2.
-Figure 22.2 - The structure of the Scala lists shown in Listing 22.2.
-In fact, the polymorphic definition of :: with the lower bound T is not only convenient, it is also
-necessary to render the definition of class List type-correct. This is because Lists are defined to be
-covariant.
-Assume for a moment that we had defined :: like this:// A thought experiment (which wouldn&#8217;t work)
-def ::(x: T): List[T] = new scala.::(x, this)
-You saw in Chapter 19 that method parameters count as contravariant positions, so the list element
-type T is in contravariant position in the definition above. But then List cannot be declared covariant
-in T. The lower bound [U &gt;: T] thus kills two birds with one stone: It removes a typing problem and
-leads to a :: method that&#8217;s more flexible to use. The list concatenation method ::: is defined in a similar
-way to ::, as shown in Listing 22.4.
-def :::[U &gt;: T](prefix: List[U]): List[U] =
-if (prefix.isEmpty) this
-else prefix.head :: prefix.tail ::: this
-Listing 22.4 - The definition of method ::: in class List.
-Like cons, concatenation is polymorphic. The result type is "widened" as necessary to include the types
-of all list elements. Note again that the order of the arguments is swapped between an infix operation
-and an explicit method call. Because both ::: and :: end in a colon, they both bind to the right and are
-both right associative. For instance, the else part of the definition of ::: shown in Listing 22.4 contains
-infix operations of both :: and :::.
-These infix operations can be expanded to equivalent method calls as follows:
-prefix.head :: prefix.tail ::: this
-equals (because :: and ::: are right-associative)
-prefix.head :: (prefix.tail ::: this)
-equals (because :: binds to the right)
-(prefix.tail ::: this).::(prefix.head)
-equals (because ::: binds to the right)
-this.:::(prefix.tail).::(prefix.head)
-22.2 THE LISTBUFFER CLASS
-The typical access pattern for a list is recursive. For instance, to increment every element of a list
-without using map you could write:
-def incAll(xs: List[Int]): List[Int] = xs match {
-case List() &#8658; List()
-case x :: xs1 &#8658; x + 1 :: incAll(xs1)
-}
-One shortcoming of this program pattern is that it is not tail recursive. Note that the recursive call
-to incAll above occurs inside a :: operation. Therefore each recursive call requires a new stack frame.
-On today&#8217;s virtual machines this means that you cannot apply incAll to lists of much more than about
-30,000 to 50,000 elements. This is a pity. How do you write a version of incAllthat can work on lists of
-arbitrary size (as much as heap-capacity allows)?
-One approach is to use a loop:for (x &#8592; xs) // ??
-But what should go in the loop body? Note that where incAll constructs the list by prepending elements
-to the result of the recursive call, the loop needs to append new elements at the end of the result list. A
-very inefficient possibility is to use :::, the list append operator:
-var result = List[Int]()
+<div class="paragraph"><p>Списки стали повсюдними в цій книзі. Клас <code>List</code>, можливо, є найбільш загально уживаний тип структурованих даних в Scala. Глава 16 показала вам, як використовувати списки. Ця глава "зриває покривадла", та трохи пояснює щодо того, як списки реалізовані в Scala.</p></div>
+<div class="paragraph"><p>Знаючи внутрішню роботу класу <code>List</code> корисне з деяких причин. Ви набудете кращу ідею щодо відносної ефективності операцій списків, що допоможе вам писати швидкий та компактний код з використанням списків. Ви також набудете інструментарій з прийомів, що ви можете застосувати в розробці ваших власних бібліотек. Нарешті, клас <code>List</code> є витонченим застосуванням системи типів Scala загалом, та зокрема її узагальнених концепцій. Так що вивчання класу <code>List</code> поглибить ваше знання ціх областях.</p></div>
+<div class="sect1">
+<h2 id="_22_1__list_">22.1 Клас List, принципово</h2>
+<div class="sectionbody">
+<div class="paragraph"><p><code>List</code> не є "вбудований" як конструкція мови в Scala; списки визначені як абстрактний клас <code>List</code> в пакунку <code>scala</code>, що іде з двома субкласами, <code>::</code> та <code>Nil</code>. В цій главі ми презентуємо швидкий тур по класу <code>List</code>. Цей розділ представляє дещо спрощене пояснення цього класу, порівняно з його справжньою реалізацією в стандартній бібліотеці Scala, що розкривається в Розділі 22.3.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">scala</span>
+<span class="k">abstract</span> <span class="k">class</span> <span class="nc">List</span><span class="o">[</span><span class="kt">+T</span><span class="o">]</span> <span class="o">{</span>
+</pre></div></div></div>
+<div class="paragraph"><p>List є абстрактним класом, так що ви не можете визначити елементи через виклик порожнього конструктора <code>List</code>. Наприклад, вираз <code>new List</code> буде нелегальним. Клас має параметр типу <code>T</code>. Знак <code>+</code> перед цім параметром типу вказує, що списки є коваріантними, як обговорюється в Главі 19.</p></div>
+<div class="paragraph"><p>Малюнок 22.1 - Ієрархія класів для списків Scala.</p></div>
+<div class="paragraph"><p>Завдяки цій властивості ви можете присвоїти значення типу <code>List[Int]</code> до змінної типу <code>List[Any]</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">xs</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">xs</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
 
-for (x &#8592; xs) result = result ::: List(x + 1)
-result
-This is terribly inefficient. Because ::: takes time proportional to the length of its first operand, the
-whole operation takes time proportional to the square of the length of the list. This is clearly
-unacceptable.
-A better alternative is to use a list buffer. List buffers let you accumulate the elements of a list. To do
-this, you use an operation such as "buf += elem", which appends the element elem at the end of the list
-buffer buf. Once you are done appending elements, you can turn the buffer into a list using
-the toList operation.
-ListBuffer is a class in package scala.collection.mutable. To use the simple name only, you can
-import ListBuffer from its package:
-import scala.collection.mutable.ListBuffer
-Using a list buffer, the body of incAll can now be written as follows:
-val buf = new ListBuffer[Int]
-for (x &#8592; xs) buf += x + 1
-buf.toList
-This is a very efficient way to build lists. In fact, the list buffer implementation is organized so that
-both the append operation (</code>=) and the toList operation take (very short) constant time.
-22.3 THE LIST CLASS IN PRACTICE
-The implementations of list methods given in Section 22.1 are concise and clear, but suffer from the
-same stack overflow problem as the non-tail recursive implementation of incAll. Therefore, most
-methods in the real implementation of class List avoid recursion and use loops with list buffers instead.
-For example, Listing 22.5 shows the real implementation of mapin class List:
-final override def map[U](f: T &#8658; U): List[U] = {
-val b = new ListBuffer[U]
-var these = this
-while (!these.isEmpty) {
-b += f(these.head)
-these = these.tail
-}
-b.toList
-}Listing 22.5 - The definition of method map in class List.
-This revised implementation traverses the list with a simple loop, which is highly efficient. A tail
-recursive implementation would be similarly efficient, but a general recursive implementation would be
-slower and less scalable. But what about the operation b.toList at the end? What is its complexity? In
-fact, the call to the toList method takes only a small number of cycles, which is independent of the
-length of the list.
-To understand why, take a second look at class ::, which constructs non-empty lists. In practice, this
-class does not quite correspond to its idealized definition given previously inSection 22.1. The real
-definition is shown in Listing 22.6. As you can see, there&#8217;s one peculiarity: the tl argument is a var!
-This means that it is possible to modify the tail of a list after the list is constructed. However, because
-the variable tl has the modifier private[scala], it can be accessed only from within package scala. Client
-code outside this package can neither read nor write tl.
-final case class ::[U](hd: U,
-private[scala] var tl: List[U]) extends List[U] {
-def head = hd
-def tail = tl
-override def isEmpty: Boolean = false
-}
-Listing 22.6 - The definition of the :: subclass of List.
-Since the ListBuffer class is contained in a subpackage of
-package scala,scala.collection.mutable, ListBuffer can access the tl field of a cons cell. In fact the
-elements of a list buffer are represented as a list and appending new elements involves a modification
-of the tl field of the last :: cell in that list. Here&#8217;s the start of class ListBuffer:
-package scala.collection.immutable
-final class ListBuffer[T] extends Buffer[T] {
-private var start: List[T] = Nil
-private var last0: ::[T] = _
-private var exported: Boolean = false
-&#8230;
-You see three private fields that characterize a ListBuffer:
-start
-points to the list of all elements stored in the buffer
-last0
-points to the last :: cell in that list
-exported indicates whether the buffer has been turned into
-a list using a toList operation
-The toList operation is very simple:
-override def toList: List[T] = {
-exported = !start.isEmpty
-start
-}It returns the list of elements referred to by start and also sets exported to true if that list is nonempty.
-So toList is very efficient because it does not copy the list which is stored in aListBuffer. But what
-happens if the list is further extended after the toList operation? Of course, once a list is returned
-from toList, it must be immutable. However, appending to thelast0 element will modify the list which
-is referred to by start.
-To maintain the correctness of the list buffer operations, you need to work on a fresh list instead. This is
-achieved by the first line in the implementation of the += operation:
-override def += (x: T) = {
-if (exported) copy()
-if (start.isEmpty) {
-last0 = new scala.::(x, Nil)
-start = last0
-} else {
-val last1 = last0
-last0 = new scala.::(x, Nil)
-last1.tl = last0
-}
-}
-You see that += copies the list pointed to by start if exported is true. So, in the end, there is no free
-lunch. If you want to go from lists which can be extended at the end to immutable lists, there needs to
-be some copying. However, the implementation of ListBuffer is such that copying is necessary only for
-list buffers that are further extended after they have been turned into lists. This case is quite rare in
-practice. Most use cases of list buffers add elements incrementally and then do one toList operation at
-the end. In such cases, no copying is necessary.
-22.4 FUNCTIONAL ON THE OUTSIDE
-In the previous section, we showed key elements of the implementation of
-Scala&#8217;s List andListBuffer classes. You saw that lists are purely functional on the "outside" but have an
-imperative implementation using list buffers on the "inside." This is a typical strategy in Scala
-programming—trying to combine purity with efficiency by carefully delimiting the effects of impure
-operations.
-But you might ask, Why insist on purity? Why not just open up the definition of lists, making
-the tail field, and maybe also the head field, mutable? The disadvantage of such an approach is that it
-would make programs much more fragile. Note that constructing lists with :: re-uses the tail of the
-constructed list.
-So when you write:
-val ys = 1 :: xs
-val zs = 2 :: xs
-the tails of lists ys and zs are shared; they point to the same data structure. This is essential for
-efficiency; if the list xs was copied every time you added a new element onto it, this would be much
-slower. Because sharing is pervasive, changing list elements, if it were possible, would be quitedangerous. For instance, taking the code above, if you wanted to truncate listys to its first two elements
-by writing:
-ys.drop(2).tail = Nil
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">var</span> <span class="n">ys</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span> <span class="k">=</span> <span class="n">xs</span>
+<span class="n">ys</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Any</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Всі операції списків можуть бути виражені в термінах трьох базових методів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">isEmpty</span><span class="k">:</span> <span class="kt">Boolean</span>
+<span class="k">def</span> <span class="n">head</span><span class="k">:</span> <span class="kt">T</span>
+<span class="k">def</span> <span class="n">tail</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ці три методи всі абстрактні в класі <code>List</code>. Вони визначені в субоб'єкті <code>Nil</code> і субкласі <code>::</code>. Ієрархія для <code>List</code> показана на Малюнку 22.1.</p></div>
+<div class="sect2">
+<h3 id="___code_nil_code">Об'єкт <code>Nil</code></h3>
+<div class="paragraph"><p>Об'єкт <code>Nil</code> визначає порожній список. Його визначення показане в Лістингу 22.1. Об'єкт <code>Nil</code> наслідує від типу <code>List[Nothing]</code>. Завдяки коваріантності це означає, що <code>Nil</code> сумісний з кожним примірником типу <code>List</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="k">object</span> <span class="nc">Nil</span> <span class="k">extends</span> <span class="nc">List</span><span class="o">[</span><span class="kt">Nothing</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">isEmpty</span> <span class="k">=</span> <span class="kc">true</span>
+  <span class="k">def</span> <span class="n">head</span><span class="k">:</span> <span class="kt">Nothing</span> <span class="o">=</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">NoSuchElementException</span><span class="o">(</span><span class="s">&quot;head of empty list&quot;</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">tail</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Nothing</span><span class="o">]</span> <span class="k">=</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">NoSuchElementException</span><span class="o">(</span><span class="s">&quot;tail of empty list&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.1 - Визначення об'єкта синглтона <code>Nil</code>.</p></div>
+<div class="paragraph"><p>Три абстрактні метода класу <code>List</code> реалізовані в об'єкті <code>Nil</code> в прямолінійний спосіб: метод <code>isEmpty</code> повертає <code>true</code>, та методи <code>head</code> та <code>tail</code> обоє закидають виключення. Зауважте, що закидання виключення не тільки має сенс, але практично є єдиною можливою річчю, що можна робити для <code>head</code>: оскільки <code>Nil</code> є <code>List</code> з <code>Nothing</code>, тип результату <code>head</code> має бути <code>Nothing</code>. Оскільки немає значення цього типу, це означає, що <code>head</code> не може повернути звичайне значення. Він має повертатись ненормально, через закидання виключення.<span class="footnote"><br />[Щоб бути точним, типи також дозволяють <code>head</code> назавжди пійти в безкінечний цикл, замість закидання виключення, але це очевидно не те, що ми бажаємо.]<br /></span></p></div>
+</div>
+<div class="sect2">
+<h3 id="__code_code">Клас <code>::</code></h3>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+Клас <code>::</code>, вимовляється <code>"cons"</code> скорочено від <code>"construct"</code>, представляє непорожній список. Він названий в такий спосіб, щоб підтримувати співпадіння шаблонів з інфіксним <code>::</code>. Ви вже бачили в Розділі 16.5, що кожна інфіксна операція в шаблоні трактується як застосування конструктора інфіксного оператора до його аргументів. Так що шаблон `x 
+</dt>
+<dd>
+<p>
+xs` трактується як <code>::(x, xs)</code>, де <code>::</code> є кейс класом.
+</p>
+</dd>
+</dl></div>
+<div class="paragraph"><p>Ось визначення класу <code>::</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">::</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">hd</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">tl</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">head</span> <span class="k">=</span> <span class="n">hd</span>
+  <span class="k">def</span> <span class="n">tail</span> <span class="k">=</span> <span class="n">tl</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">isEmpty</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Реалізація класу <code>::</code> є прямолінійним. Він приймає два параметри, <code>hd</code> та <code>tl</code>, які представляють голову та хвіст списку, що має бути створений. Визначення методів <code>head</code> та <code>tail</code> просто повертають відповідний параметр. Фактично, цей шаблон може бути скорочений, дозволяючи параметрам напряму реалізувати методи <code>head</code> та <code>tail</code> суперкласу <code>List</code>, як в наступному еквівалентному, але коротшому визначенні класу <code>::</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">::</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">head</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">tail</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span>
+    <span class="k">extends</span> <span class="nc">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
 
-you would also truncate lists zs and xs as a side effect.
-Clearly, it would be quite difficult to keep track of what gets changed. That&#8217;s why Scala opts for
-pervasive sharing and no mutation for lists. The ListBuffer class still allows you to build up lists
-imperatively and incrementally, if you wish. But since list buffers are not lists, the types keep mutable
-buffers and immutable lists separate.
-The design of Scala&#8217;s List and ListBuffer is quite similar to what&#8217;s done in Java&#8217;s pair of
-classesString and StringBuffer. This is no coincidence. In both situations the designers wanted to
-maintain a pure immutable data structure but also provide an efficient way to construct this structure
-incrementally. For Java and Scala strings, StringBuffers (or, in Java 5, StringBuilders) provide a way to
-construct a string incrementally. For Scala&#8217;s lists, you have a choice: You can either construct lists
-incrementally by adding elements to the beginning of a list using ::, or you use a list buffer for adding
-elements to the end. Which one is preferable depends on the situation. Usually, :: lends itself well to
-recursive algorithms in the divide-and-conquer style. List buffers are often used in a more traditional
-loop-based style.
-22.5 CONCLUSION
-In this chapter, you saw how lists are implemented in Scala. List is one of the most heavily used data
-structures in Scala, and it has a refined implementation. List&#8217;s two subclasses, Niland ::, are both case
-classes. Instead of recursing through this structure, however, many core list methods are implemented
-using a ListBuffer. ListBuffer, in turn, is carefully implemented so that it can efficiently build lists
-without allocating extraneous memory. It is functional on the outside, but uses mutation internally to
-speed up the common case where a buffer is discarded after toList has been called. After studying all of
-this, you now know the list classes inside and out, and you might have learned an implementation trick
-or two.</p></div>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">isEmpty</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це робить, бо кожний параметр кейс класу неявно також є полем класу (це як декларація параметру, перед яким стоїть <code>val</code>). Згадайте з Розділу 20.3, що Scala дозволяє вам реалізовати абстрактний безпараметрний метод, як <code>head</code> або <code>tail</code>, за допомогою поля. Так що код вище напряму використовує параметри <code>head</code> та <code>tail</code> як реалізації абстрактних методів <code>head</code> та <code>tail</code>, що були наслідувані від класу <code>List</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___">Ще декілька методів</h3>
+<div class="paragraph"><p>Всі інші методи <code>List</code> можуть бути записані з використанням троьх базових методів. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">length</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">isEmpty</span><span class="o">)</span> <span class="mi">0</span> <span class="k">else</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">tail</span><span class="o">.</span><span class="n">length</span>
+</pre></div></div></div>
+<div class="paragraph"><p>або:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">drop</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">isEmpty</span><span class="o">)</span> <span class="nc">Nil</span>
+  <span class="k">else</span> <span class="k">if</span> <span class="o">(</span><span class="n">n</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="k">this</span>
+  <span class="k">else</span> <span class="n">tail</span><span class="o">.</span><span class="n">drop</span><span class="o">(</span><span class="n">n</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>або:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">map</span><span class="o">[</span><span class="kt">U</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=&gt;</span> <span class="n">U</span><span class="o">)</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">isEmpty</span><span class="o">)</span> <span class="nc">Nil</span>
+  <span class="k">else</span> <span class="n">f</span><span class="o">(</span><span class="n">head</span><span class="o">)</span> <span class="o">::</span> <span class="n">tail</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">f</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="__list">Конструювання List</h3>
+<div class="dlist"><dl>
+<dt class="hdlist1">
+Методи конструювання списків, <code>::</code> та <code>:::</code>, є особливими. Оскільки вони закінчуються на двокрапку, вони прикріплені до свого правого операнду. Тобто, операція, така як `x 
+</dt>
+<dd>
+<p>
+xs` розглядається як виклик метода <code>xs.::(x)</code>, не <code>x.::(xs)</code>. Фактично, <code>x.::(xs)</code> не мало б сенсу, оскільки <code>x</code> має тип елементу списку, що може бути довільним, так що ми не можемо очікувати, що цей тип має метод <code>::</code>.
+</p>
+</dd>
+</dl></div>
+<div class="paragraph"><p>З цієї причини метод <code>::</code> має приймати значення елементу та видавати новий список. Який тип має бути в значень елементів? Ви можете спокуситись і сказати, що він має бути такий самий, що і тип елементів списку, але фактично це більш обмежливе, ніж треба.</p></div>
+<div class="paragraph"><p>Щоб бачити чого, розглянемо таку ієрархію класів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Fruit</span>
+<span class="k">class</span> <span class="nc">Apple</span> <span class="k">extends</span> <span class="nc">Fruit</span>
+<span class="k">class</span> <span class="nc">Orange</span> <span class="k">extends</span> <span class="nc">Fruit</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.2 показує, що трапляється, коли ви конструююте списки фруктів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">apples</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Apple</span> <span class="o">::</span> <span class="nc">Nil</span>
+<span class="n">apples</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Apple</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">Apple</span><span class="nd">@e885c6a</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fruits</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Orange</span> <span class="o">::</span> <span class="n">apples</span>
+<span class="n">fruits</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Fruit</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">Orange</span><span class="k">@</span><span class="mi">3</span><span class="n">f51b349</span><span class="o">,</span> <span class="nc">Apple</span><span class="nd">@e885c6a</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.2 - Підставлення елементу супертипа до списку субтипа.</p></div>
+<div class="paragraph"><p>Значення <code>apples</code> трактується як <code>List</code> з <code>Apples</code>, як і очікувалось. Але визначення <code>fruits</code> показує, що все ще можливо додати елемент іншого типу до цього списку. Тип елементу отриманого списку буде <code>Fruit</code>, що є більш точним загальним супертипом елементів оригінального списку (<code>Apple</code>), і типу доданого елементу (<code>Orange</code>). Ця гнучкість отримана через визначення метода <code>::</code> (<code>cons</code>), як показано в Лістингу 22.3:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="o">::[</span><span class="kt">U</span> <span class="k">&gt;:</span> <span class="kt">T</span><span class="o">](</span><span class="n">x</span><span class="k">:</span> <span class="kt">U</span><span class="o">)</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="n">scala</span><span class="o">.::(</span><span class="n">x</span><span class="o">,</span> <span class="k">this</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.3 - Визначення метода <code>::</code> (<code>cons</code>) в класі <code>List</code>.</p></div>
+<div class="paragraph"><p>Зауважте, що метод сам по собі поліморфний — він приймає параметр типу на ім'я U. Більше того, <code>U</code> обмежений в <code>[U &gt;: T]</code>, щоб він був супертипом типу елемента списку <code>T</code>. Елемент, що додається, має бути типу <code>U</code>, і результатом буде <code>List[U]</code>.</p></div>
+<div class="paragraph"><p>С формулюванням <code>::</code>, показаним на Лістингу 22.3, ви можете перевірити, як визначення <code>fruits</code>, показана в Лістингу 22.2 робить с точки зору типів: в цьому визначенні параметр типу <code>U</code> в <code>::</code> виступає як примірник <code>Fruit</code>. Обмеження нижньої межі для <code>U</code> задовільняється, оскільки список <code>apples</code> має тип <code>List[Apple]</code>, і <code>Fruit</code> є супертипом для <code>Apple</code>. Аргументом <code>::</code> є <code>new Orange</code>, що відповідає типу <code>Fruit</code>. Таким чином, застосування метода є типо-коректним, з типом результату <code>List[Fruit]</code>. Малюнок 22.2 ілюструє структуру списків, що отримуються від виконання коду, показаного в Лістингу 22.2.</p></div>
+<div class="paragraph"><p>Малюнок 22.2 - Структура списків Scala, показаного в Лістингу 22.2.</p></div>
+<div class="paragraph"><p>Фактично, поліморфне визначення <code>::</code> з нижньою межею <code>T</code> не тільки зручне, але також потрібне щоб зробить визначення класу <code>List</code> типо-коректним. Це так, тому що <code>List</code> визначений як коваріантний.</p></div>
+<div class="paragraph"><p>Уявімо на мить, що ми визначили <code>::</code> таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Розумовий експеримент (що не буде робити)</span>
+<span class="k">def</span> <span class="o">::(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="n">scala</span><span class="o">.::(</span><span class="n">x</span><span class="o">,</span> <span class="k">this</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви бачили в Главі 19, що параметри метода рахуються як контрваріантні позиції, так що тип елементів списку <code>T</code> є контрваріантної позицією в визначенні вище. Але тоді <code>List</code> не може бути декларований як коваріантний по <code>T</code>. Таким чином, нижня межа, <code>[U &gt;: T]</code>, убиває двох зайців з одного пострілу: вона прибирає проблему типізації, та призводить до того, що метод <code>::</code> стає більш гнучким в використанні. Метод конкатенації <code>:::</code> визначений в подібний до <code>::</code> спосіб, як показано в Лістингу 22.4.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="o">:::[</span><span class="kt">U</span> <span class="k">&gt;:</span> <span class="kt">T</span><span class="o">](</span><span class="n">prefix</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">U</span><span class="o">])</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span> <span class="k">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">prefix</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="k">this</span>
+  <span class="k">else</span> <span class="n">prefix</span><span class="o">.</span><span class="n">head</span> <span class="o">::</span> <span class="n">prefix</span><span class="o">.</span><span class="n">tail</span> <span class="o">:::</span> <span class="k">this</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.4 - Визначення метода <code>:::</code> в класі <code>List</code>.</p></div>
+<div class="paragraph"><p>Як і <code>cons</code>, конкатенація є поліморфною. Тип результату "поширений" як треба, щоб включати типи всіх елементів списку. Знову зауважте, що порядок аргументів переставлений в інфіксній операції та явному виклику метода. Оскільки обоє, <code>:::</code> та <code>::</code>, завершуються на дві крапки, вони обоє прив'язуються до правої сторони, та обоє право асоціативні. Наприклад, частина <code>else</code> визначення <code>:::</code>, показаний в Лістингу 22.4, містить інфіксні операції обох, <code>::</code> та <code>:::</code>.</p></div>
+<div class="paragraph"><p>Ці інфіксні операції можуть бути розширені до еквівалентних методів, що викликаються таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">prefix</span><span class="o">.</span><span class="n">head</span> <span class="o">::</span> <span class="n">prefix</span><span class="o">.</span><span class="n">tail</span> <span class="o">:::</span> <span class="k">this</span>
+  <span class="n">дорівнює</span> <span class="o">(</span><span class="n">оскільки</span> <span class="o">::</span> <span class="n">та</span> <span class="o">:::</span> <span class="n">право</span> <span class="n">асоциативні</span><span class="o">)</span>
+
+<span class="n">prefix</span><span class="o">.</span><span class="n">head</span> <span class="o">::</span> <span class="o">(</span><span class="n">prefix</span><span class="o">.</span><span class="n">tail</span> <span class="o">:::</span> <span class="k">this</span><span class="o">)</span>
+  <span class="n">дорівнює</span> <span class="o">(</span><span class="n">оскільки</span> <span class="o">::</span> <span class="n">прикріплюється</span> <span class="n">зправа</span><span class="o">)</span>
+
+<span class="o">(</span><span class="n">prefix</span><span class="o">.</span><span class="n">tail</span> <span class="o">:::</span> <span class="k">this</span><span class="o">).::(</span><span class="n">prefix</span><span class="o">.</span><span class="n">head</span><span class="o">)</span>
+  <span class="n">дорівнює</span> <span class="o">(</span><span class="n">оскількі</span> <span class="o">:::</span> <span class="n">прикріплюється</span> <span class="n">зправа</span><span class="o">)</span>
+
+<span class="k">this</span><span class="o">.:::(</span><span class="n">prefix</span><span class="o">.</span><span class="n">tail</span><span class="o">).::(</span><span class="n">prefix</span><span class="o">.</span><span class="n">head</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_22_2__listbuffer">22.2 Клас ListBuffer</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Типовий шаблон доступа до списків є рекурсивний. Наприклад, для інкрементації кожного елемента без використовування мапи, ви можете записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">incAll</span><span class="o">(</span><span class="n">xs</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">xs</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">List</span><span class="o">()</span> <span class="k">=&gt;</span> <span class="nc">List</span><span class="o">()</span>
+  <span class="k">case</span> <span class="n">x</span> <span class="o">::</span> <span class="n">xs1</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">::</span> <span class="n">incAll</span><span class="o">(</span><span class="n">xs1</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Один з недоліків цього програмного шаблону є те, що вона не має хвостової рекурсії. Зауважте, що рекурсивний виклик до <code>incAll</code> вище, відбувається в операції <code>::</code>. Таким чином, кожний рекурсивний виклик потребує новий фрейм стеку.</p></div>
+<div class="paragraph"><p>На сьогоднішніх віртуальних машинах це означає, що ви не можете застосувати <code>incAll</code> до списків з більше ніж <code>30000</code> або <code>50000</code> елементів. Це шкода. Як ви пишете версію <code>incAll</code>, що може робити зі списками довільного розміру (доки дозволяє місткість купи)?</p></div>
+<div class="paragraph"><p>Один з підходів є використання циклу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="o">(</span><span class="n">x</span> <span class="k">&lt;-</span> <span class="n">xs</span><span class="o">)</span> <span class="c1">// ??</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але що має піти в тілі циклу? Зауважте, що тут <code>incAll</code> конструює список через перед-ставлення елементів до результату рекрсивного виклику, цикл потребує додавати нові елементи до кінця результуючого списку. Дуже неефективна можливість є використання <code>:::</code>, оператора додавання списку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">result</span> <span class="k">=</span> <span class="nc">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]()</span> <span class="c1">// дуже неефективний підхід</span>
+<span class="k">for</span> <span class="o">(</span><span class="n">x</span> <span class="k">&lt;-</span> <span class="n">xs</span><span class="o">)</span> <span class="n">result</span> <span class="k">=</span> <span class="n">result</span> <span class="o">:::</span> <span class="nc">List</span><span class="o">(</span><span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">result</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це жахливо неефективне. Оскільки <code>:::</code> займає час, пропорційний до довжини його першого операнда, повна операція займає час, пропорційний до квадрату довжини списку. Зрозуміло, що це неприйнятне.</p></div>
+<div class="paragraph"><p>Кращою альтернативою є використання спискового буфера. Списковий буфер дозволяє вам акумулювати елементи в списку. Щоб зробити це, ви використовуєте операцію, таку як <code>buf += elem</code>, що додає елемент <code>elem</code> в кінець спискового буфера <code>buf</code>. Коли ви скінчите додавати елементи, ви можете перетворити буфер на список, використовуючи операцію <code>toList</code>.</p></div>
+<div class="paragraph"><p><code>ListBuffer</code> є класом в пакунку <code>scala.collection.mutable</code>. Щоб використовувати тільки просте ім'я, ви можете імпортувати <code>ListBuffer</code> з його пакунку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">scala.collection.mutable.ListBuffer</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Використовуючи списковий буфер, тіло <code>incAll</code> тепер може бути записане таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">buf</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ListBuffer</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+<span class="k">for</span> <span class="o">(</span><span class="n">x</span> <span class="k">&lt;-</span> <span class="n">xs</span><span class="o">)</span> <span class="n">buf</span> <span class="o">+=</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="n">buf</span><span class="o">.</span><span class="n">toList</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це дуже ефективний спосіб будувати списки. Фактично, реалізація спискового буфера організована таким чином, що обоє операції, додавання (<code>+=</code>) та <code>toList</code> займають (дуже короткий) сталий час.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_22_3__list__">22.3 Клас List на практиці</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Реалізація спискових методів, надане в Розділі 22.1, є стислі та зрозумілі, але потерпають від деяких проблем переповнення, як не-хвосто-рекурсивна реалізація <code>incAll</code>. Таким чином, більшість методів в реальних реалізаціях класу <code>List</code> уникають рекурсії, та замість цього використовують цикли з списковими буферами. Наприклад, Лістинг 22.5 показує справжню реалізацію <code>map</code> в класі <code>List</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">override</span> <span class="k">def</span> <span class="n">map</span><span class="o">[</span><span class="kt">U</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=&gt;</span> <span class="n">U</span><span class="o">)</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">b</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ListBuffer</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span>
+  <span class="k">var</span> <span class="n">these</span> <span class="k">=</span> <span class="k">this</span>
+  <span class="k">while</span> <span class="o">(!</span><span class="n">these</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">b</span> <span class="o">+=</span> <span class="n">f</span><span class="o">(</span><span class="n">these</span><span class="o">.</span><span class="n">head</span><span class="o">)</span>
+    <span class="n">these</span> <span class="k">=</span> <span class="n">these</span><span class="o">.</span><span class="n">tail</span>
+  <span class="o">}</span>
+  <span class="n">b</span><span class="o">.</span><span class="n">toList</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.5 - Визначення метода <code>map</code> в класі <code>List</code>.</p></div>
+<div class="paragraph"><p>Ця переглянута реалізація проходить по списку за допомогою простого циклу, що є дуже ефективним. Реалізація з хвостовою рекурсією може мати подібну ефективність, але загальна рекурсивна реалізація буде повільніша та менш маштабована. Але що до операції <code>b.toList</code> в кінці? Яка її складність? Фактично, виклик метода <code>toList</code> забирає тільки невелику кількість циклів, що не залежить від довжини списку.</p></div>
+<div class="paragraph"><p>Щоб зрозуміти чому, накиньте другий погляд на клас <code>::</code>, що конструює непорожні списки. На практиці цей клас не повністю відповідає до його ідеалізованого визначення, попередньо наданому в Розділі 22.1. Справжнє визначення показане на Лістингу 22.6. Як ви можете бачити, є одна особливість: аргумент <code>tl</code> є <code>var</code>! Це означає, що можливо модифікувати хвіст списку після того, як цей список побудований. Однак, оскільки змінна <code>tl</code> має модифікатор <code>private[scala]</code>, він може бути доступний тільки в пакунку <code>scala</code>. Клієнтський код за межами цього пакунка ніколи не може ані читати, ні писати <code>tl</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">::</span><span class="o">[</span><span class="kt">U</span><span class="o">](</span><span class="n">hd</span><span class="k">:</span> <span class="kt">U</span><span class="o">,</span>
+    <span class="k">private</span><span class="o">[</span><span class="kt">scala</span><span class="o">]</span> <span class="k">var</span> <span class="n">tl</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">U</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">List</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">head</span> <span class="k">=</span> <span class="n">hd</span>
+  <span class="k">def</span> <span class="n">tail</span> <span class="k">=</span> <span class="n">tl</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">isEmpty</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 22.6 - Визначення субкласа <code>::</code> в <code>List</code>.</p></div>
+<div class="paragraph"><p>Оскільки клас <code>ListBuffer</code> міститься в субпакунку пакунка <code>scala</code>, <code>scala.collection.mutable</code>, <code>ListBuffer</code> може отримувати доступ до поля <code>tl</code> клітинки <code>cons</code>. Фактично, елементи спискового буфера представлени як список, та додавання нових елементів включає модифікацію поля <code>tl</code> останньої клітинки <code>::</code> цього списку. Ось початок класу <code>ListBuffer</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">scala.collection.immutable</span>
+<span class="k">final</span> <span class="k">class</span> <span class="nc">ListBuffer</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="nc">extends</span> <span class="nc">Buffer</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">start</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Nil</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">last0</span><span class="k">:</span> <span class="kt">::</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="k">_</span>
+  <span class="k">private</span> <span class="k">var</span> <span class="n">exported</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+<span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви бачите три приватні поля, що характерізують <code>ListBuffer</code>:</p></div>
+<div class="paragraph"><p><code>start</code>     вказує на список з усіх елементів, що зберігаються в буфері
+<code>last0</code>     вказує на останню клітину <code>::</code> в цьому списку
+<code>exported</code>  вказує, чи буфер був перетворений на список за допомогою <code>toList</code></p></div>
+<div class="paragraph"><p>Операція <code>toList</code> дуже проста:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="n">toList</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="n">exported</span> <span class="k">=</span> <span class="o">!</span><span class="n">start</span><span class="o">.</span><span class="n">isEmpty</span>
+  <span class="n">start</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Він повертає список елементів, на який посилається <code>start</code>, а також встановлює <code>true</code>, якщо цей список непорожній. Так що <code>toList</code> дуже ефективний, оскільки він не копіює список, що зберігається в <code>ListBuffer</code>. Але що відбувається, якщо список продовжує далі розширятись після операції <code>toList</code>? Звичайно, коли список повертається з <code>toList</code>, він має бути незмінним. Однак, додавання елемента <code>last0</code> буде модифікувати список, на який посилається <code>start</code>.</p></div>
+<div class="paragraph"><p>Щоб підтримувати коректність операцій спискового буфера, вам треба робити замість цього на новому списку. Це досягається першим рядком в реалізації операції <code>+=</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="o">+=</span> <span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">exported</span><span class="o">)</span> <span class="n">copy</span><span class="o">()</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">start</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">last0</span> <span class="k">=</span> <span class="k">new</span> <span class="n">scala</span><span class="o">.::(</span><span class="n">x</span><span class="o">,</span> <span class="nc">Nil</span><span class="o">)</span>
+    <span class="n">start</span> <span class="k">=</span> <span class="n">last0</span>
+  <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">last1</span> <span class="k">=</span> <span class="n">last0</span>
+    <span class="n">last0</span> <span class="k">=</span> <span class="k">new</span> <span class="n">scala</span><span class="o">.::(</span><span class="n">x</span><span class="o">,</span> <span class="nc">Nil</span><span class="o">)</span>
+    <span class="n">last1</span><span class="o">.</span><span class="n">tl</span> <span class="k">=</span> <span class="n">last0</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви бачите, що <code>+=</code> копіює список, на який вказує <code>start</code>, якщо <code>exported</code> є <code>true</code>. Так що, кінець кінцем, нічого не дається надурно. Якщо ви бажаєте перейти від списків, що можуть розширятись з кінця, до незмінних списків, тоді це потребуватиме деякого копіювання. Однак реалізація <code>ListBuffer</code> є такою, що копіювання необхідне тільки для спискових буферів, що продовжують розширюватись після того, як вони були перетворені на списки. Цей випадок досить рідкий на практиці. Більшість випадків використання для спискових буферів додають елементи послідовно, і потім роблять одну операцію <code>toList</code> в кінці. В таких випадках копіювання непотрібне.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_22_4__">22.4 Функціональність назовні</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В попередньому розділі ми показали ключові елементи реалізації Scala класів <code>List</code> та <code>ListBuffer</code>. Ви побачили, що списки повністю функціональні "назовні", але мають імперативну реалізацію з використанням спискових буферів "всередині". Це типова стратегія в Scala програмуванні — спроба комбінувати чистоту з ефективністю, через уважне розмежування впливу нечистих операцій.</p></div>
+<div class="paragraph"><p>Але ви можете спитати, чому треба наполягати на чистоті? Чому просто не відкрити визначення списків, зробивши поле <code>tail</code>, а можливо і поле <code>head</code>, змінними? Недолік такого підходу в тому, що таким чином ви зробите програми значно більш крихкими. Зауважте, що конструювання списків за допомогою <code>::</code> повторно використовує <code>tail</code> конструйованого списку.</p></div>
+<div class="paragraph"><p>Так що коли ви пишете:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">ys</span> <span class="k">=</span> <span class="mi">1</span> <span class="o">::</span> <span class="n">xs</span>
+<span class="k">val</span> <span class="n">zs</span> <span class="k">=</span> <span class="mi">2</span> <span class="o">::</span> <span class="n">xs</span>
+</pre></div></div></div>
+<div class="paragraph"><p>хвости списків <code>ys</code> та <code>zs</code> поділяються; вони вказують на ту саму структуру даних. Це основа для ефективності; якщо список <code>xs</code> копіювався б кожного разу, коли ви додаєте новий елемент до нього, це було б значно повільніше. Оскільки спільне використання є поширеним, зміна елементів списку, якщо б це було можливо, було б досить небезпечним. Наприклад, беручи код вище, якщо ви бажали б вкоротити список <code>ys</code> до двох перших елементів, і записали б це так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">ys</span><span class="o">.</span><span class="n">drop</span><span class="o">(</span><span class="mi">2</span><span class="o">).</span><span class="n">tail</span> <span class="k">=</span> <span class="nc">Nil</span> <span class="c1">// цього не можна робити в Scala!</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ви б також вкоротили списки <code>zs</code> та <code>xs</code> в якості побічного ефекту.</p></div>
+<div class="paragraph"><p>Зрозуміло, що було б досить складно відстежити, що було змінено. Ось чому Scala обирає поширене поділення даних, та заборону на зміну списків. Клас <code>ListBuffer</code> все ще дозволяє вам будувати списки імперативно та інкрементально, якщо побажаєте. Але оскільки спискові буфери не є списками, типи, що містять змінні буфери та незмінні списки, тримаються окремо.</p></div>
+<div class="paragraph"><p>Дизайн Scala <code>List</code> та <code>ListBuffer</code> досить подібні до того, що зроблене в Java з парою класів, <code>String</code> та <code>StringBuffer</code>. Це не випадковість. В обох ситуаціях розробники бажали підтримувати чисті незмінні структури даних, але також провадити ефективний спосіб сконструювати ці структури інкрементально. Для Java і Scala рядків, <code>StringBuffer</code> (або в Java 5 <code>StringBuilder</code>) провадять шлях конструювання рядка інкрементально. Для списків Scala ви маєте вибір: ви можете або конструювати списки інкрементально, через додавання елементів до початку списку з використанням <code>::</code>, або ви використовуєте списковий буфер для додавання елементів в кінець. Який має перевагу залежить від ситуації. Звичайно, <code>::</code> гарно проявляє себе в рекурсивних алгоритмах, в стилі поділяй-та-володій. Спискові буфери часто використовуються в більш традиційному стилі на основі циклів.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_22_5_">22.5 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В цій главі ви бачили, як в Scala реалізовані списки. <code>List</code> є однією з найбільш тяжко використовуваних структур в Scala, і він має доопрацьовану реалізацію. Два субкласи <code>List</code>, <code>Nil</code> та <code>::</code>, обоє є кейс класами. Однак замість рекурсії по цій структурі, багато основних методів реалізовані з використанням <code>ListBuffer</code>. <code>ListBuffer</code>, в свою чергу, ретельно реалізований, так, щоб він міг ефективно будувати списки без розміщення додаткової пам'яті. Він зовні функціональний, але внутрішньо використовує змінність для прискорення загального випадку, коли буфер відкидаєть після виклику <code>toList</code>. Після вивчення всього цього, тепер ви знаєте класи списків ззовні та зсередини, і також ви вивчили один або два трюки реалізації.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-17 23:52:21 EET
+ 2019-03-15 11:50:26 EET
 </div>
 </div>
 </body>
