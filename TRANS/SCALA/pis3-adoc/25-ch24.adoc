@@ -6,114 +6,77 @@ include::headers.adoc[]
 Колекції: докладно
 ==================
 
-Scala includes an elegant and powerful collection library. Even though the collections API is subtle at
-first glance, the changes it can provoke in your programming style can be profound. Quite often it's as
-if you work on a higher level with the basic building blocks of a program being whole collections
-instead of their elements. This new style of programming requires some adaptation. Fortunately, the
-adaptation is helped by several nice properties of Scala collections. They are easy to use, concise, safe,
-fast, and universal.
-• Easy to use: A small vocabulary of twenty to fifty methods is enough to solve most collection
-problems in a couple of operations. No need to wrap your head around complicated looping
-structures or recursions. Persistent collections and side-effect-free operations mean that you
-need not worry about accidentally corrupting existing collections with new data. Interference
-between iterators and collection updates is eliminated.
-• Concise: You can achieve with a single word what used to take one or several loops. You can
-express functional operations with lightweight syntax and combine operations effortlessly, so
-that the result feels like a custom algebra.
-• Safe: This one has to be experienced to sink in. The statically typed and functional nature of
-Scala's collections means that the overwhelming majority of errors you might make are caught
-at compile-time. The reason is that (1) the collection operations themselves are heavily used and
-therefore well tested. (2) the usages of the collection operation make inputs and output explicit
-as function parameters and results. (3) These explicit inputs and outputs are subject to static
-type checking. The bottom line is that the large majority of misuses will manifest themselves as
-type errors. It's not at all uncommon to have programs of several hundred lines run at first try.
-• Fast: Collection operations are tuned and optimized in the libraries. As a result, using
-collections is typically quite efficient. You might be able to do a little bit better with carefully
-hand-tuned data structures and operations, but you might also do a lot worse by making some
-suboptimal implementation decisions along the way. What's more, collections are have been
-adapted to parallel execution on multi-cores. Parallel collections support the same operations as
-sequential ones, so no new operations need to be learned and no code needs to be rewritten. You
-can turn a sequential collection into a parallel one simply by invoking the par method.
-• Universal: Collections provide the same operations on any type where it makes sense to do so.
-So you can achieve a lot with a fairly small vocabulary of operations. For instance, a string is
-conceptually a sequence of characters. Consequently, in Scala collections, strings support all
-sequence operations. The same holds for arrays.
-This chapter describes in depth the APIs of the Scala collection classes from a user perspective. You've
-already seen a quick tour of the collections library, in Chapter 17. This chapter takes you on a more
-detailed tour, showing all the collection classes and all the methods they define, so it includeseverything you need to know to use Scala collections. Looking ahead, Chapter 25 will concentrate on
-the architecture and extensibility aspects of the library, for people implementing new collection types.
-24.1 MUTABLE AND IMMUTABLE COLLECTIONS
-As is now familiar to you, Scala collections systematically distinguish between mutable and immutable
-collections. A mutable collection can be updated or extended in place. This means you can change, add,
-or remove elements of a collection as a side effect. Immutable collections, by contrast, never change.
-You still have operations that simulate additions, removals, or updates, but those operations will in each
-case return a new collection and leave the old collection unchanged.
-All collection classes are found in the package scala.collection or one of its
-subpackages:mutable, immutable, and generic. Most collection classes needed by client code exist in
-three variants, each of which has different characteristics with respect to mutability. The three variants
-are located in packages scala.collection, scala.collection.immutable, andscala.collection.mutable.
-A collection in package scala.collection.immutable is guaranteed to be immutable for everyone. Such a
-collection will never change after it is created. Therefore, you can rely on the fact that accessing the
-same collection value repeatedly at different points in time will always yield a collection with the same
-elements.
-A collection in package scala.collection.mutable is known to have some operations that change the
-collection in place. These operations let you write code to mutate the collection yourself. However, you
-must be careful to understand and defend against any updates performed by other parts of the code
-base.
-A collection in package scala.collection can be either mutable or immutable. For
-instance,scala.collection.IndexedSeq[T] is a supertrait of
-both scala.collection.immutable.IndexedSeq[T] and its mutable
-sibling scala.collection.mutable.IndexedSeq[T]. Generally, the root collections in
-package scala.collection define the same interface as the immutable collections. And typically, the
-mutable collections in package scala.collection.mutable add some side-effecting modification
-operations to this immutable interface.
-The difference between root collections and immutable collections is that clients of an immutable
-collection have a guarantee that nobody can mutate the collection, whereas clients of a root collection
-only know that they can't change the collection themselves. Even though the static type of such a
-collection provides no operations for modifying the collection, it might still be possible that the run-
-time type is a mutable collection that can be changed by other clients.
-By default, Scala always picks immutable collections. For instance, if you just write Setwithout any
-prefix or without having imported anything, you get an immutable set, and if you write Iterable you get
-an immutable iterable, because these are the default bindings imported from the scala package. To get
-the mutable default versions, you need to write explicitlycollection.mutable.Set,
-or collection.mutable.Iterable.The last package in the collection hierarchy is collection.generic. This package contains building blocks
-for implementing collections. Typically, collection classes defer the implementations of some of their
-operations to classes in generic. Everyday users of the collection framework on the other hand should
-need to refer to classes in generic only in exceptional circumstances.
+Scala включає елегантну та потужну бібліотеку колекцій. Навіть якщо вважати, що API колекцій тонкий на перший погляд, зміни, які він може спровокувати в вашому стилі програмування можуть бути грунтовними. Досить часто це так, якби ви робили на вищому рівні з базовими будівельними блоками програми, що є цілими колекціями, ніж їх елементами. Цей новий стиль програмування потребує деякої адаптації. Нащастя, адаптації допомагють декілька милих властивостей Scala колекцій. Вони прості в використанні, стислі, безпечні, швидкі та універсальні.
+
+* *Простота в використанні:* Невеликого словника з двадцяти до сорока методів, досить для вирішення більшості проблем колекцій в парі операцій. Намає потреби огортати вашу голову кругом складних циклічних структур або рекурсій. Стійкі колекції вільні від операцій з побічними ефектами, що означає, що вам не треба хвилюватись про випадкове руйнування існуючих колекцій новими даними. Взаємодію між ітераторами та оновленнями колекцій ліквідовано.
+
+* *Стислість:* Ви можете досягти за допомогою одного слова те, що раніше займало один або декілька циклів. Ви можете виразити функціональні операції за допомогою легковажного синтаксису, та без зусиль комбінувати операції, так що результат відчувається як власна алгебра.
+
+* *Безпечність:* Щоб зрозуміти це, треба мати досвід. Статична типізація та функціональна природа Scala колекцій означає, що переважна більшість помилок, які ви можете зробити, відловлюються під час компіляції. Причини цього в тому, що (1) операції колекцій самі часто використовуються, і, таким чином, гарно протестовані. (2) використання операцій з колекціями робить входи та виходи явними, як параметри функції та результати. (3) Ці явні входи та виходи є предметом перевірки статичних типів. Підсумок всього цього в тому, що велика більшість хибних використань будуть заявляти про себе як помилки типів. Взагалі не є рідкістю мати програми з декількох сотень рядків, що роблять з першої спроби.
+
+* *Швидкість:* Операції з колекціями настроєні і оптимізовані в бібліотеках. Як результат, використання колекцій типово досить ефективне. Ви можете бути в змозі зробити все трохи краще, через уважно налаштовані структури даних та операції, але ви також можете зробити все значно гірше, по ходу справи прийнявши якісь неоптимальні рішення з реалізації. Більше того, колекції були адаптовані до паралельної виконання на декількох ядрах. Паралельні колекції підтримують ті самі операції, що і послідовні, так що не треба вивчати нові операції та переписувати код. Ви можете перетворити послідовну колекцію в паралельну, просто викликавши метод `par`.
+
+* *Універсальність:* Колекції провадять ті самі операції на любому типі, коли це має сенс робити. Так що ви можете багато чого досягти з досить малим словником операцій. Наприклад, рядок концептуально є послідовністю символів. Відповідно, в Scala колекціях рядок підтримує всі операції послідовностей. Те саме дійсне і для масивів.
+
+Ця глава поглиблено описує API для класів колекцій Scala з перспективи користувача. Ви вже бачили швидкий тур по бібліотеці колекцій в Главі 17. Ця глава запрошує вас в більш детальний тур, показуючи всі класи колекцій, і всі методи, що вони визначають, так що вона включає все, що вам треба знати для використання Scala колекцій. Дивлячись наперед, Глава 25 буде сконцентрована на архитектурі та аспектах розширюваності бібліотеки, для людей, що реалізують нови типи колекцій.
+
+24.1 Змінні та незмінні колекції
+--------------------------------
+Як ви вже знаєте, Scala колекції систематично відрізняють змінні та незмінні колекції. Змінні колекції можуть бути оновлені або розширені на місці. Це означає, що ви можете змінювати, додавати, або видаляти елементи колекції як побічний ефект. Незмінні колекції, для контрасту, ніколи не змінюються. Ви все ще маєте операції, що симулюють додавання, видалення або оновлення, але ці операції будуть в любому випадку повертати нову колекцію, та залишати стару колекцію незмінною.
+
+Всі класи колекцій знаходяться в пакунку `scala.collection`, або одному з його субпакунків: `mutable`, `immutable`, та `generic`. Більшість класів колекцій, що потрібні клієнтському коду, існують в трьох варіантах, кожний з яких має різні характеристики з точки зору змінності. Три варіанти розміщені в пакунках `scala.collection`, `scala.collection.immutable`, та `scala.collection.mutable`.
+
+Колекція в пакунку `scala.collection.immutable` гарантовано буде незмінною для будь-кого. Така колекція ніколи не буде змінюватись після її створення. Таким чином, ви можете покладатись на факт, що отримуєте доступ до значення тієї самої колекції постійно, і в різних точках часу будете завжди мати колекцію з тими самими елементами.
+
+Колекція в пакунку `scala.collection.mutable` знана що має деякі операції, що змінюють колекцію на місці. Ці операції дозволяють вам писати код для зміни колекції самотужки. Однак ви маєте бути уважним, щоб розуміти та захищатись від любих оновлень, що виконують інші частини кодової бази.
+
+Колекція в пакунку `scala.collection` може бути або змінною, або незмінною. Наприклад,`scala.collection.IndexedSeq[T]` є супертрейтом обох, `scala.collection.immutable.IndexedSeq[T]`, та її родички, `scala.collection.mutable.IndexedSeq[T]`. Загалом, кореневі колекції в пакунку `scala.collection` визначають той самий інтерфейс, що і незмінні колекції. І типово, змінні колекції в пакунку `scala.collection.mutable` додають деякі модифікації з побічним ефектом до цього незмінного інтерфейсу.
+
+Різниця між кореневими колекціями та незмінними колекціями в тому, що клієнти назмінних колекцій мають гарантію, що ніхто не може змінити колекцію, коли як клієнти кореневих колекцій знають тільки, що вони самі не можуть змінити колекцію. Навіть зважаючи, що статичний тип такої колекції не провадить операцій для модифікації колекції, все ще може бути можливим, щоб тип часу виконання був змінною колекцією, що може бути змінена іншими клієнтами.
+
+По замовчанню Scala завжди обирає незмінні колекції. Наприклад, якщо ви просто пишете `Set` без жодного префіксу, або без імпорту будь-чого, ви отримаєте незмінну множину, і якщо ви напишете `Iterable`, ви отримаєте незмінне ітерабельне, оскільки ці прив'язки по замовчанню імпортуються з пакунка `scala`. Щоб отримати змінні версії по замовчанню, вам треба написати явно `collection.mutable.Set`, або `collection.mutable.Iterable`.
+
+Останній пакунок в ієрархії колекцій є `collection.generic`. Цей пакунок містить будівельні блоки для реалізації колекцій. Типово, класи колекцій відкладають реалізації деяких зі своїх операцій до класів в `generic`. З іншого боку, щоденні користувачі фреймворку колекцій мають потребу посилатись на класи в `generic` тільки за виключних обставин.
+
+Ієрархія колекцій.
+~~~~~~~~~~~~~~~~~~
+----
 Traversable
-Iterable
-Seq
-IndexedSeq
-Vector
-ResizableArray
-GenericArray
-LinearSeq
-MutableList
-List
-Stream
-Buffer
-ListBuffer
-ArrayBuffer
-Set
-Map
-SortedSet
-TreeSet
-HashSet (mutable)
-LinkedHashSet
-HashSet (immutable)
-BitSet
-EmptySet, Set1, Set2, Set3, Set4
-SortedMap
-TreeMap
-HashMap (mutable)
-LinkedHashMap (mutable)
-HashMap (immutable)
-EmptyMap, Map1, Map2, Map3, Map4
-Collection hierarchy.
-24.2 COLLECTIONS CONSISTENCY
-The most important collection classes are shown in Figure 24.1. There is quite a bit of commonality
-shared by all these classes. For instance, every kind of collection can be created by the same uniform
-syntax, writing the collection class name followed by its elements:
+    Iterable
+        Seq
+            IndexedSeq
+                Vector
+                ResizableArray
+                GenericArray
+            LinearSeq
+                MutableList
+                List
+                Stream
+            Buffer
+                ListBuffer
+                ArrayBuffer
+        Set
+            SortedSet
+                TreeSet
+            HashSet (mutable)
+            LinkedHashSet
+            HashSet (immutable)
+            BitSet
+            EmptySet, Set1, Set2, Set3, Set4
+        Map
+            SortedMap
+                TreeMap
+            HashMap (mutable)
+            LinkedHashMap (mutable)
+            HashMap (immutable)
+            EmptyMap, Map1, Map2, Map3, Map4
+----            
+
+24.2 Узгодженість колекцій
+--------------------------
+Найбільш важливі класи колекцій показані на Малюнку 24.1. Є досить загального, що поділяють ці класи. Наприклад, кожний різновид колекції може бути створений за однаковим уніформним синтаксисом, записуючи ім'я класу колекції, за яким ідуть його елементи:
+[source,scala]
+----
 Traversable(1, 2, 3)
 Iterable("x", "y", "z")
 Map("x" -> 24, "y" -> 25, "z" -> 26)
@@ -122,1489 +85,1220 @@ SortedSet("hello", "world")
 Buffer(x, y, z)
 IndexedSeq(1.0, 2.0)
 LinearSeq(a, b, c)
-The same principle also applies for specific collection implementations:
+----
+Той самий принцип також стосується специфічних реалізацій колекцій:
+[source,scala]
+----
 List(1, 2, 3)
-HashMap("x" -> 24, "y" -> 25, "z" -> 26)The toString methods for all collections produce output written as above, with a type name followed by
-the elements of the collection in parentheses. All collections support the API provided by Traversable,
-but their methods all return their own class rather than the root classTraversable. For instance,
-the map method on List has a return type of List, whereas the mapmethod on Set has a return type
-of Set. Thus the static return type of these methods is fairly precise:
+HashMap("x" -> 24, "y" -> 25, "z" -> 26)
+----
+Метод `toString` для всіх колекцій продукує вивід, записаний як вище, з іменем типу, за яким в дужках ідуть елементи колекції. Всі колекції підтримують API, що провадить `Traversable`, але їх методи всі повертають їх власний клас, скоріше ніж кореневий клас  `Traversable`. Наприклад, метод `map` на `List` має тип повернення `List`, тоді як метод `map` на `Set` має тип повернення `Set`. Таким чином, статичний тип повернення ціх методів досить точний:
+[source,scala]
+----
 scala> List(1, 2, 3) map (_ + 1)
 res0: List[Int] = List(2, 3, 4)
+
 scala> Set(1, 2, 3) map (_ * 2)
 res1: scala.collection.immutable.Set[Int] = Set(2, 4, 6)
-Equality is also organized uniformly for all collection classes; more on this in Section 24.13.
-Most of the classes in Figure 24.1 exist in three variants: root, mutable, and immutable. The only
-exception is the Buffer trait, which only exists as a mutable collection.
-In the remainder of this chapter, we will review these classes one by one.
-24.3 TRAIT TRAVERSABLE
-At the top of the collection hierarchy is trait Traversable. Its only abstract operation is foreach:
+----
+Еквівалентність також організована одноманітно для всіх класів колекцій; більше про це в Розділі 24.13.
+
+Більшість класів на Малюнку 24.1 існують в трьох варіантах: `root`, `mutable`, та `immutable`. Одне виключення є трейт `Buffer`, що існує тільки як змінна колекція.
+
+В залишку цієї глави ми будемо переглядати ці класи один за одним.
+
+24.3 Трейт `Traversable`
+------------------------
+На вершині ієрархії колекцій стоїть трейт `Traversable` (_прохідний_). Його єдина операція є `foreach`:
+[source,scala]
+----
 def foreach[U](f: Elem => U)
-Collection classes implementing Traversable just need to define this method; all other methods can be
-inherited from Traversable.
-The foreach method is meant to traverse all elements of the collection, and apply the given operation, f,
-to each element. The type of the operation is Elem => U, where Elem is the type of the collection's
-elements and U is an arbitrary result type. The invocation of f is done for its side effect only; in fact any
-function result of f is discarded by foreach.
-Traversable also defines many concrete methods, which are all listed in Table 24.1 here. These methods
-fall into the following categories:
-• Addition ++, which appends two traversables together, or appends all elements of an iterator to
-a traversable.
-• Map operations map, flatMap, and collect, which produce a new collection by applying some
-function to collection elements.
-• Conversions toIndexedSeq, toIterable, toStream, toArray, toList, toSeq, toSet, and toMap,
-which turn a Traversable collection into a more specific collection. All these conversions return
-the receiver object if it already matches the demanded collection type. For instance,
-applying toList to a list will yield the list itself.
-• Copying operations copyToBuffer and copyToArray. As their names imply, these copy
-collection elements to a buffer or array, respectively.• Size operations isEmpty, nonEmpty, size, and hasDefiniteSize. Collections that are traversable
-can be finite or infinite. An example of an infinite traversable collection is the stream of natural
-numbers Stream.from(0). The method hasDefiniteSize indicates whether a collection is possibly
-infinite. If hasDefiniteSize returns true, the collection is certainly finite. If it returns false, the
-collection might be infinite, in which case size will emit an error or not return.
-• Element retrieval operations head, last, headOption, lastOption, and find. These select the first
-or last element of a collection, or else the first element matching a condition. Note, however,
-that not all collections have a well-defined meaning of what "first" and "last" means. For
-instance, a hash set might store elements according to their hash keys, which might change from
-run to run. In that case, the "first" element of a hash set could also be different for different runs
-of a program. A collection is ordered if it always yields its elements in the same order. Most
-collections are ordered, but some (such as hash sets) are not—dropping the ordering provides a
-little bit of extra efficiency. Ordering is often essential to give reproducible tests and help in
-debugging. That's why Scala collections provide ordered alternatives for all collection types.
-For instance, the ordered alternative for HashSet is LinkedHashSet.
-• Subcollection
-retrieval operations takeWhile, tail, init, slice, take, drop, filter,dropWhile, filterNot,
-and withFilter. These all return some subcollection identified by an index range or a predicate.
-• Subdivision operations splitAt, span, partition, and groupBy, which split the elements of this
-collection into several subcollections.
-• Element tests exists, forall, and count, which test collection elements with a given predicate.
-• Folds foldLeft, foldRight, /:, :\, reduceLeft, reduceRight, which apply a binary operation to
-successive elements.
-• Specific folds sum, product, min, and max, which work on collections of specific types
-(numeric or comparable).
-• String operations mkString, addString, and stringPrefix, which provide alternative ways of
-converting a collection to a string.
-• View operations consisting of two overloaded variants of the view method. A view is a
-collection that's evaluated lazily. You'll learn more about views in Section 24.14.
-Operations in trait Traversable
-What it is
-Abstract method:
-xs foreach f
-Addition:
-xs ++ ys
-Maps:
-xs map f
-xs flatMap f
-What it does
-Executes function f for every element of xs.
-A collection consisting of the elements of both xs and ys. ysis
-a TraversableOnce collection, i.e., either a Traversable or anIterator.
-The collection obtained from applying the function f to every element in xs.
-The collection obtained from applying the collection-valued function f to every
-element in xs and concatenating the results.xs collect f
-Conversions:
-xs.toArray
-xs.toList
-xs.toIterable
-xs.toSeq
-xs.toIndexedSeq
-xs.toStream
-xs.toSet
-xs.toMap
-Copying:
-xs copyToBuffer buf
-xs copyToArray(arr, s,
-len)
-Size info:
-xs.isEmpty
-xs.nonEmpty
-xs.size
-xs.hasDefiniteSize
-Element retrieval:
-xs.head
-xs.headOption
-xs.last
-xs.lastOption
-xs find p
-Subcollections:
-xs.tail
-xs.init
-xs slice (from, to)
-xs take n
-xs drop n
-xs takeWhile p
-xs dropWhile p
-xs filter p
-xs withFilter p
-xs filterNot p
-The collection obtained from applying the partial functionf to every element
-in xs for which it is defined and collecting the results.
-Converts the collection to an array.
-Converts the collection to a list.
-Converts the collection to an iterable.
-Converts the collection to a sequence.
-Converts the collection to an indexed sequence.
-Converts the collection to a stream (a lazily computed sequence).
-Converts the collection to a set.
-Converts a collection of key/value pairs to a map.
-Copies all elements of the collection to buffer buf.
-Copies at most len elements of arr, starting at index s. The last two arguments
-are optional.
-Tests whether the collection is empty.
-Tests whether the collection contains elements.
-The number of elements in the collection.
-True if xs is known to have finite size.
-The first element of the collection (or, some element, if no order is defined).
-The first element of xs in an option value, or None if xs is empty.
-The last element of the collection (or, some element, if no order is defined).
-The last element of xs in an option value, or None if xs is empty.
-An option containing the first element in xs that satisfies p, or None if no
-element qualifies.
-The rest of the collection except xs.head.
-The rest of the collection except xs.last.
-A collection consisting of elements in some index range ofxs (from from, up to
-and excluding to).
-A collection consisting of the first n elements of xs (or, some
-arbitrary n elements, if no order is defined).
-The rest of the collection except xs take n.
-The longest prefix of elements in the collection that all satisfy p.
-The collection without the longest prefix of elements that all satisfy p.
-The collection consisting of those elements of xs that satisfy the predicate p.
-A non-strict filter of this collection. All operations on the resulting filter will
-only apply to those elements of xs for which the condition p is true.
-The collection consisting of those elements of xs that do not satisfy the
-predicate p.Subdivisions:
-xs splitAt n
-xs span p
-xs partition p
-xs groupBy f
-Element conditions:
-xs forall p
-xs exists p
-xs count p
-Folds:
-(z /: xs)(op)
-(xs :\ z)(op)
-xs.foldLeft(z)(op)
-xs.foldRight(z)(op)
-xs reduceLeft op
-xs reduceRight op
-Specific folds:
-xs.sum
-xs.product
-xs.min
-xs.max
-Strings:
-xs addString (b, start,
-sep, end)
-Splits xs at a position, giving the pair of collections(xs take n, xs drop n).
-Splits xs according to a predicate, giving the pair of
-collections (xs takeWhile p, xs.dropWhile p).
-Splits xs into a pair of collections; one with elements that satisfy the
-predicate p, the other with elements that do not, giving the pair of
-collections(xs filter p, xs.filterNot p).
-Partitions xs into a map of collections according to a discriminator function f.
-A boolean indicating whether the predicate p holds for all elements of xs.
-A boolean indicating whether the predicate p holds for some element in xs.
-The number of elements in xs that satisfy the predicate p.
-Applies binary operation op between successive elements of xs, going left to
-right, starting with z.
-Applies binary operation op between successive elements of xs, going right to
-left, starting with z.
-Same as (z /: xs)(op).
-Same as (xs :\ z)(op).
-Applies binary operation op between successive elements of non-empty
-collection xs, going left to right.
-Applies binary operation op between successive elements of non-empty
-collection xs, going right to left.
-The sum of the numeric element values of collection xs.
-The product of the numeric element values of collectionxs.
-The minimum of the ordered element values of collectionxs.
-The maximum of the ordered element values of collectionxs.
-Adds a string to StringBuilder b that shows all elements ofxs between
-separators sep enclosed in strings start and end.start, sep, and end are all
-optional.
-xs mkString (start,
-sep, end)
-xs.stringPrefix
-Views:
-xs.view
-xs view (from, to)
-Converts the collection to a string that shows all elements of xs between
-separators sep enclosed in strings start andend. start, sep, and end are all
-optional.
-The collection name at the beginning of the string returned from xs.toString.
-Produces a view over xs.
-Produces a view that represents the elements in some index range of xs.24.4 TRAIT ITERABLE
-The next trait from the top in Figure 24.1 is Iterable. All methods in this trait are defined in terms of an
-abstract method, iterator, which yields the collection's elements one by one. The
-abstract foreach method inherited from trait Traversable is implemented in Iterable in terms ofiterator.
-Here is the actual implementation:
+----
+Класам колекцій, що реалізують `Traversable`, просто потрібно визначити цей метод; всі інші методи можуть бути наслідувані від `Traversable`.
+
+Метод `foreach` призначений для обходу всіх елементів колекції, та застосування наданої операції `f` до кожного елементу. Тип операції `Elem => U`, де `Elem` є типом елементів колекції, та `U` є довільним типом результату. Виклик `f` робиться тільки заради побічного ефекту; фактично, любий результат функції `f` буде відкинутий `foreach`.
+
+`Traversable` також визначає багато суцільних методів, всі вони перелічені в Таблиці 24.1. Ці методи підпадають в такі категорії:
+
+* *Додавання* `++`, що додає два прохідних разом, або додає всі елементи ітератора до прохідного.
+
+* *Операції відображення* `map`, `flatMap`, та `collect`, що продукують нову колекцію через застосування деякої функції до елементів колекції.
+
+* *Перетворення* `toIndexedSeq`, `toIterable`, `toStream`, `toArray`, `toList`, `toSeq`, `toSet`, та `toMap`, що повертають колекцію `Traversable` в більш специфічну колекцію. Всі ці перетворення повертають об'єкт отримувача, якщо він вже відповідає бажаному типу колекції. Наприклад, застосування `toList` до списку буде повертати сам список.
+
+* *Операції копіювання* `copyToBuffer` та `copyToArray`. Як кажуть їх імена, вони копіюють елементи колекції до буфера або масива, відповідно.
+
+* *Операції розміру* `isEmpty`, `nonEmpty`, `size`, та `hasDefiniteSize`. Колекції, що є прохідними, можуть бути скінченими та нескінченими. Прикладом нескінченої прохідної колекції є потік натуральних чисел `Stream.from(0)`. Метод `hasDefiniteSize` вказує, що колекція, можливо, нескінчена. Якщо він повертає `false`, колекція може бути нескінченою, і в цьому випадку `size` буде видавати помилку або не повернеться.
+
+* *Операції отримання елемента* `head`, `last`, `headOption`, `lastOption`, та `find`. Вони обирають перший або останній елемент колекції, або інакше перший елемент, що задовільняє умові. Однак зазначте, що не всі колекції мають гарно визначення значення того, що значить "перший" та "останній". Наприклад, хеш множина може зберігати елементи відповідно до їх хеш ключів, що можуть змінюватись від запуску до запуску. В цьому випадку "перший" елемент хеш набору також може бути різним для разних запусків програм. Колекція є впорядкована, якщо вона завжди видає свої елементи в тому самому порядку. Більшість колекцій впорядковані, але деякі (такі як хеш множини) ні — відкидання впорядкованості дає трохи додаткової ефективності. Порядок часто є основою для отримання повторюваних тестів, та допомагає в зневадженні. Ось чому колекції Scala провадять впорядковані альтернативи для всіх типів колекцій. Наприклад, впорядкована альтернатива для `HashSet` є `LinkedHashSet`.
+
+* *Операції отримання субколекцій* `takeWhile`, `tail`, `init`, `slice`, `take`, `drop`, `filter`, `dropWhile`, `filterNot`, `withFilter`. Всі вони повертають деяку субколекцію, що ідентифікується диапазоном індексів або предикатом.
+
+* *Операції підрозділу* `splitAt`, `span`, `partition`, та `groupBy` підрозділяють елементи колекції на декілька субколекцій.
+
+* *Перевірка елементів* `exists`, `forall`, та `count` перевіряють елементи колекції за допомогою наданого предикату.
+
+* *Згортки* `foldLeft`, `foldRight`, `/:`, `:\`, `reduceLeft`, `reduceRight` застосовують двомісні операції до послідовних елементів.
+
+* *Особливі згортки* `sum`, `product`, `min`, `max` роблять з колекціями специфічних типів (числові або порівнювані).
+
+* *Рядкові операції* `mkString`, `addString`, `stringPrefix` провадять альтернативні шляхи перетворення колекції на рядок.
+
+* *Операції переглядів* складаються з двох перевантажених варіантів метода `view`. Перегляд є колекція, що обчислюється ліниво. Ви пізнаєте більше про перегляди в Розділі 24.14.
+
+[caption="Операції трейта Traversable"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|*Абстрактний метод:*
+|xs foreach f|Виконує функцію `f` для кожного елементу `xs`.
+2+|*Додавання:*
+|xs ++ ys|Колекція, що складається з елементів обох, `xs` та `ys`.  `ys` є колекцією `TraversableOnce`, тобто або `Traversable`, або `Iterator`.
+2+|*Мапи:*
+|xs map f|Колекція, отримана від застосування функції `f` до кожного елемента в `xs`.
+|xs flatMap f|Колекція, отримана від застосування функції `f` від значень-колекції до кожного елементу в `xs`, та конкатенації результатів.
+|xs collect f|Колекція, отримана від застосування часткової функції `f` до кожного елементу в `xs`, для яких вона визначена, та накопичення результатів.
+2+|*Перетворення:*
+|xs.toArray|Конвертує колекцію в масив.
+|xs.toList|Конвертує колекцію в список.
+|xs.toIterable|Конвертує колекцію в Iterable.
+|xs.toSeq|Конвертує колекцію в послідовність.
+|xs.toIndexedSeq|Конвертує колекцію в індексовану послідовність.
+|xs.toStream|Конвертує колекцію в потік (ліниво обчислювана послідовність).
+|xs.toSet|Конвертує колекцію в множину.
+|xs.toMap|Конвертує колекцію пар ключ/значення в мапу.
+2+|*Копіювання:*
+|xs copyToBuffer buf|Копіює всі елементи колекції в буфер `buf`.
+|xs copyToArray(arr, s, len)|Копіює щонайбільше `len` елементів `arr`, починаючи з індексу `s`. Два останні аргументи опціональні. 
+2+|*Інформація про розмір:*
+|xs.isEmpty|Перевіряє, чи колекція порожня.
+|xs.nonEmpty|Перевіряє, чи колекція містить елементи.
+|xs.size|Число елементів в колекції.
+|xs.hasDefiniteSize|True, якщо відомо, що xs має фіксований розмір.
+2+|*Отримання елементів:*
+|xs.head|Перший елемент колекції (або деякий елемент, якщо порядок не визначений).
+|xs.headOption|Перший елемент `xs` в опціональному значенні, або `None`, якщо `xs` порожнє.
+|xs.last|Останній елемент колекції (або деякий елемент, якщо порядок не визначений).
+|xs.lastOption|Останній елемент `xs` в опціональному значенні, або `None`, якщо `xs` порожнє.
+|xs find p|Опція, яка містить перший елемент в `xs`, що задовільняє `p`, або `None`, якщо жодний елемент не підійде.
+2+|*Субколекції:*
+|xs.tail|Залишок колекції, за винятком `xs.head`.
+|xs.init|Залишок колекції, за винятком `xs.last`.
+|xs slice (from, to)|Колекція, що складається з елементів `xs` в деякому диапазоні індексів (від `from` до `to`, виключно).
+|xs take n|Колекція, що складається з перших `n` елементів `xs` (або деякі довільні `n` елементів, якщо порядок не визначений).
+|xs drop n|Залишок колекції, за винятком `xs take n`.
+|xs takeWhile p|Найдовший префікс елементів в колекції, що задовільняють `p`.
+|xs dropWhile p|Колекція без найдовшого префіксу елементів, всі з яких задовільняють `p`.
+|xs filter p|Колекція, що складається з тих елементів `xs`, що задовільняють предикату `p`.
+|xs withFilter p|Не-строгий фільтр для цієї колекції. Всі операції на отриманому фільтрі будуть застосовані тільки для тих елементів `xs`, для яких мова `p` є `true`.
+|xs filterNot p|Колекція, що складається з тих елементів `xs`, що не задовільняють предикатові `p`.
+2+|*Суброзподіл:*
+|xs splitAt n|Розділяє `xs` в позициї `n`, даючи пару колекцій (`xs take n`, `xs drop n`).
+|xs span p|Розділяє `xs` відповідно до предикату, даючи пару колекцій (`xs takeWhile p`, `xs.dropWhile p`).
+|xs partition p|Розділяє `xs` на пару колекцій; одна з елементами, що задовільняють предикату `p`, інша з елементами, що ні, даючи пару колекцій(`xs filter p`, `xs.filterNot p`).
+|xs groupBy f|Розділяє `xs` на мапу колекцій, відповідно до функції дескреминатору `f`.
+2+|*Умови до елементів:*
+|xs forall p|Логічне, що визначає, чи предикат `p` дотримується до всіх елементів `xs`.
+|xs exists p|Логічне, що вказує, чи предикат `p` дотримується до деякого елемента в `xs`.
+|xs count p|Число елементів в `xs`, що задовільняють предикату `p`.
+2+|*Згортки:*
+|(z /: xs)(op)|Застосовує двомісну операцію `op` між послідовними елементами `xs`, ідучи зліва направо, починаючи з `z`.
+|(xs :\ z)(op)|Застосовує двомісну операцію `op` між послідовними елементами `xs`, ідучи зправа наліво, починаючи з `z`.
+|xs.foldLeft(z)(op)|Те саме, що і `(z /: xs)(op)`.
+|xs.foldRight(z)(op)|Те саме, що і `(xs :\ z)(op)`.
+|xs reduceLeft op|Застосовує двомісну операцію `op` між послідовними елементами непорожньої колекції `xs`, ідучи зліва направо.
+|xs reduceRight op|Застосовує двомісну операцію `op` між послідовними елементами непорожньої колекції `xs`, ідучи зправа наліво.
+2+|*Особливі згортки:*
+|xs.sum|Сума числових значень елементів колекції `xs`.
+|xs.product|Добуток числових значень елементів колекції `xs`.
+|xs.min|Мінімум впорядкованих значень елементів колекції `xs`.
+|xs.max|Максімум впорядкованих значень елементів колекції `xs`.
+2+|*Рядки:*
+|xs addString (b, start, sep, end)|Додає рядок до `StringBuilder` `b`, що показує всі елементи `xs`, розділені роздільниками `sep` та оточені рядками `start` та `end`. `start`, `sep` та `end` всі є опціональні.
+|xs mkString (start, sep, end)|Конвертує колекцію на рядок, що показує всі елементи `xs` між роздільниками `sep` та оточені рядками `start` та `end`. `start`, `sep` та `end` всі є опціональні.
+|xs.stringPrefix|The collection name at the beginning of the string returned from xs.toString.
+2+|*Перегляди:*
+|xs.view|Продукує перегляд xs.
+|xs view (from, to)|Продукує перегляд, що представляє елементи в деякому диапазоні індексів `xs`. 
+|===
+
+24.4 Трейт Iterable
+===================
+Наступний трейт зверху на Малюнку 24.1 є `Iterable`. Всі методи в цьому трейті визначені в термінах абстрактного метода `iterator`, що видає елементи колекції один за одним. Абстрактний метод `foreach`, наслідуваний від трейту `Traversable`, реалізований в `Iterable` в термінах `iterator`. Ось справжня реалізація:
+[source,scala]
+----
 def foreach[U](f: Elem => U): Unit = {
-val it = iterator
-while (it.hasNext) f(it.next())
+  val it = iterator
+  while (it.hasNext) f(it.next())
 }
-Quite a few subclasses of Iterable override this standard implementation of foreach in Iterable, because
-they can provide a more efficient implementation. Remember that foreach is the basis of the
-implementation of all operations in Traversable, so its performance matters.
-Two more methods exist in Iterable that return iterators: grouped and sliding. These iterators, however,
-do not return single elements but whole subsequences of elements of the original collection. The
-maximal size of these subsequences is given as an argument to these methods. The grouped method
-chunks its elements into increments, whereas sliding yields a sliding window over the elements. The
-difference between the two should become clear by looking at the following interpreter interaction:
+----
+Лише кілька субкласів `Iterable` перекривають цю стандартну реалізацію `foreach` в `Iterable`, оскільки вони можуть провадити більш ефективну реалізацію. Пам'ятайте, що `foreach` є основою для реалізації всіх операцій в `Traversable`, так що продуктивність важлива.
+
+Ще два метода існують в `Iterable`, що повертають ітератори: `grouped` та `sliding`. Однак ці ітератори не повертають поодинокі елементи, але цілі субпослідовності елементів оригінальної колекції. Максимальний розмір ціх послідовностей надається як аргумент до ціх методів. Метод `grouped` розбиває свої елементи на інкрементальні пакунки, тоді як `sliding` дає ковзаюче вікно по елементах. Різниця між двома стане яснішою при погляді на наступні взаємодії в інтерпретаторі:
+[source,scala]
+----
 scala> val xs = List(1, 2, 3, 4, 5)
 xs: List[Int] = List(1, 2, 3, 4, 5)
+
 scala> val git = xs grouped 3
 git: Iterator[List[Int]] = non-empty iterator
+
 scala> git.next()
 res2: List[Int] = List(1, 2, 3)
+
 scala> git.next()
 res3: List[Int] = List(4, 5)
+
 scala> val sit = xs sliding 3
 sit: Iterator[List[Int]] = non-empty iterator
+
 scala> sit.next()
 res4: List[Int] = List(1, 2, 3)
+
 scala> sit.next()
 res5: List[Int] = List(2, 3, 4)
+
 scala> sit.next()
 res6: List[Int] = List(3, 4, 5)
-Trait Iterable also adds some other methods to Traversable that can be implemented efficiently only if
-an iterator is available. They are summarized in Table 24.2:
-Operations in trait Iterable
-What it is
-Abstract method:
-What it doesxs.iterator An iterator that yields every element in xs, in the same order asforeach traverses
-elements
-Other iterators:
-xs grouped size
-xs sliding size
-Subcollections: An iterator that yields fixed-sized "chunks" of this collection
-An iterator that yields a sliding fixed-sized window of elements in this collection
-xs takeRight n
-xs dropRight n
-Zippers:
-xs zip ys
-xs zipAll (ys, x, y)
-A collection consisting of the last n elements of xs (or, some arbitrary n elements,
-if no order is defined)
-The rest of the collection except xs takeRight n
-An iterable of pairs of corresponding elements from xs and ys
-An iterable of pairs of corresponding elements from xs and ys, where the shorter
-sequence is extended to match the longer one by appending elements x or y
-An iterable of pairs of elements from xs with their indicies
-xs.zipWithIndex
-Comparison:
-xs sameElements ys Tests whether xs and ys contain the same elements in the same order
-Why have both Traversable and Iterable?
-You might wonder why the extra trait Traversable is above Iterable. Can we not do everything with
-an iterator? So what's the point of having a more abstract trait that defines its methods in terms
-of foreach instead of iterator? One reason for having Traversable is that sometimes it is easier or more
-efficient to provide an implementation of foreach than to provide an implementation of iterator. Here's
-a simple example. Let's say you want a class hierarchy for binary trees that have integer elements at the
-leaves. You might design this hierarchy like this:
+----
+Трейт `Iterable` також додає деякі інші методи до `Traversable`, що можуть бути ефективно реалізовані тільки за наявності ітератора. Вони підсумовані в Таблиці 24.2:
+
+[caption="Операції трейта Iterable"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|*Абстрактний метод:*
+|iterator|Ітератор, що видає кожний елемент в `xs`, в тому самому порядку, як `foreach` проходить по елементах
+2+|*Інші ітератори:* 
+|xs grouped size|Ітератор, що видає "частки" колекції фіксованого розміру
+|xs sliding size|Ітератор, що видає ковзне вікно фіксованого розміру з елементів колекції
+2+|*Субколекції:* 
+|xs takeRight n|Колекція, що складається з останніх `n` елементів `xs` (або довільні `n` елементів, якщо порядок не визначений)
+|xs dropRight n|Залишок колекції, за винятком `xs takeRight n`
+2+|*Поєднувачі:*
+|xs zip ys|Ітерабельне з пар відповідних елементів з `xs` та `ys`
+|xs zipAll (ys, x, y)|Ітерабельне з пар відповідних елементів з `xs` та `ys`, де коротша послідовність розширюється, щоб співпадати до довшої, через додавання елементів `x` або `y`
+|xs.zipWithIndex|Ітерабельне з пар елементів `xs` разом з їх індексами
+2+|*Порівняння:*
+|xs sameElements ys|Перевіряє, чи `xs` та `ys` містять ті самі елементи в тому ж порядку
+|===
+
+Чому мати обоє, `Traversable` та `Iterable`?
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ви можете здивуватись, для чого додатковий трейт `Traversable` над `Iterable`. Чи не могли б зробити все з ітератором? То яка ідея мати більш абстрактний трейт, що визначає свої методи в термінах `foreach` замість `iterator`? Одна причина мати `Traversable` в тому, що іноді простіше або більш ефективно провадити реалізацію для `foreach`, ніж провадити реалізацію ітератора. Ось простий приклад. Скажімо, ви бажаєте ієрархію класів для бінарних дерев, що мають цілі елементи на листках. Ви можете розробиби цю ієрархію таким чином:
+[source,scala]
+----
 sealed abstract class Tree
 case class Branch(left: Tree, right: Tree) extends Tree
 case class Node(elem: Int) extends Tree
-Now assume you want to make trees traversable. To do this, have Tree inherit fromTraversable[Int] and
-define a foreach method like this:
+----
+Тепер вважатимемо, ви бажаєте зробити дерева перехідними. Щоб зробити це, треба щоб `Tree` наслідував від `Traversable[Int]`, та визначав метод `foreach`, ось так:
+[source,scala]
+----
 sealed abstract class Tree extends Traversable[Int] {
-def foreach[U](f: Int => U) = this match {
-case Node(elem) => f(elem)
-case Branch(l, r) => l foreach f; r foreach f
+  def foreach[U](f: Int => U) = this match {
+    case Node(elem) => f(elem)
+    case Branch(l, r) => l foreach f; r foreach f
+  }
 }
+----
+Це не дуже складно, і це також дуже ефективно — перехід по збалансованому дереву пропорційно до числа елементів в дереві. Щоб побачити це, уявімо, що збалансоване дерево з `N` листками буде мати `N - 1` внутрішніх листків класу `Branch`. Так що загальна кількість кроків для обходу дерева є `N + N - 1`.
+
+Тепер порівняйте це з робленням дерев ітерабельними. Щоб зробити це, робимо `Tree` походячим від `Iterable[Int]`, та визначаємо метод `iterator` ось так:
+[source,scala]
+----
+sealed abstract class Tree extends Iterable[Int] {
+  def iterator: Iterator[Int] = this match {
+    case Node(elem) => Iterator.single(elem)
+    case Branch(l, r) => l.iterator ++ r.iterator
+  }
 }
-That's not too hard, and it is also very efficient—traversing a balanced tree takes time proportional to
-the number of elements in the tree. To see this, consider that for a balanced tree with N leaves you will
-have N - 1 interior nodes of class Branch. So the total number of steps to traverse the tree is N + N - 1.
-Now, compare this with making trees iterable. To do this, have Tree inherit from Iterable[Int]and define
-an iterator method like this:
-sealed abstract class Tree extends Iterable[Int] {def iterator: Iterator[Int] = this match {
-case Node(elem) => Iterator.single(elem)
-case Branch(l, r) => l.iterator ++ r.iterator
-}
-}
-At first glance, this looks no harder than the foreach solution. However, there's an efficiency problem
-that has to do with the implementation of the iterator concatenation method, ++. Every time an element
-is produced by a concatenated iterator such as l.iterator ++ r.iterator, the computation needs to follow
-one indirection to get at the right iterator (either l.iterator, or r.iterator). Overall, that makes \log(N)
-indirections to get at a leaf of a balanced tree with Nleaves. So the cost of visiting all elements of a tree
-went up from about 2N for the foreachtraversal method to N \log(N) for the traversal with iterator. If
-the tree has a million elements that means about two million steps for foreach and about twenty million
-steps for iterator. So the foreach solution has a clear advantage.
-Subcategories of Iterable
-In the inheritance hierarchy below Iterable you find three traits: Seq, Set, and Map. A common aspect
-of these three traits is that they all implement the PartialFunction trait,footnote:[Partial functions were described in Section 15.7.] with
-its applyand isDefinedAt methods. However, the way each trait implements PartialFunction differs.
-For sequences, apply is positional indexing, where elements are always numbered from 0. That
-is, Seq(1, 2, 3)(1) == 2. For sets, apply is a membership test. For instance, Set('a', 'b', 'c')
-('b') == true whereas Set()('a') == false. Finally for maps, apply is a selection. For instance,Map('a' -
-> 1, 'b' -> 10, 'c' -> 100)('b') == 10.
-In the following three sections, we will explain each of the three kinds of collections in more detail.
-24.5 THE SEQUENCE TRAITS SEQ, INDEXEDSEQ, AND LINEARSEQ
-The Seq trait represents sequences. A sequence is a kind of iterable that has a length and whose
-elements have fixed index positions, starting from 0.
-The operations on sequences, summarized in Figure 24.3, fall into the following categories:
-• Indexing and length operations apply, isDefinedAt, length, indices, and lengthCompare. For
-a Seq, the apply operation means indexing; hence a sequence of type Seq[T] is a partial function
-that takes an Int argument (an index) and yields a sequence element of type T. In other
-words Seq[T] extends PartialFunction[Int, T]. The elements of a sequence are indexed from
-zero up to the length of the sequence minus one. The length method on sequences is an alias of
-the size method of general collections. The lengthCompare method allows you to compare the
-lengths of two sequences even if one of the sequences has infinite length.
-• Index
-search operations indexOf, lastIndexOf, indexOfSlice, lastIn- dexOfSlice, indexWhere,lastInde
-xWhere, segmentLength, and prefixLength, which return the index of an element equal to a
-given value or matching some predicate.• Addition operations +:, :+, and padTo, which return new sequences obtained by adding
-elements at the front or the end of a sequence.
-• Update operations updated and patch, which return a new sequence obtained by replacing
-some elements of the original sequence.
-• Sorting operations sorted, sortWith, and sortBy, which sort sequence elements according to
-various criteria.
-• Reversal operations reverse, reverseIterator, and reverseMap, which yield or process sequence
-elements in reverse order, from last to first.
-• Comparison operations startsWith, endsWith, contains, corresponds, and containsSlice, which
-relate two sequences or search an element in a sequence.
-• Multiset operations intersect, diff, union, and distinct, which perform set-like operations on the
-elements of two sequences or remove duplicates.
-If a sequence is mutable, it offers in addition a side-effecting update method, which lets sequence
-elements be updated. Recall from Chapter 3 that syntax like seq(idx) = elem is just a shorthand
-for seq.update(idx, elem). Note the difference between update and updated. The updatemethod changes
-a sequence element in place, and is only available for mutable sequences. The updated method is
-available for all sequences and always returns a new sequence instead of modifying the original.
-Operations in trait Seq
-What it is
-Indexing and length:
-xs(i)
-xs isDefinedAt i
-xs.length
-xs.lengthCompare ys
-xs.indices
-Index search:
-xs indexOf x
-xs lastIndexOf x
-What it does
-(or, written out, xs apply i) The element of xs at index i.
-Tests whether i is contained in xs.indices.
-The length of the sequence (same as size).
-Returns -1 if xs is shorter than ys, +1 if it is longer, and 0 is they have the
-same length. Works even if one of the sequences is infinite.
-The index range of xs, extending from 0 to xs.length - 1.
-The index of the first element in xs equal to x (several variants exist).
-The index of the last element in xs equal to x (several variants exist).
-The first index of xs such that successive elements starting from that index
-xs indexOfSlice ys
-form the sequence ys.
-The last index of xs such that successive elements starting from that index
-xs lastIndexOfSlice ys
-form the sequence ys.
-xs indexWhere p
-The index of the first element in xs that satisfies p (several variants exist).
-xs segmentLength (p, i The length of the longest uninterrupted segment of elements in xs, starting
-)
-with xs(i), that all satisfy the predicate p.
-The length of the longest prefix of elements in xs that all satisfy the
-xs prefixLength p
-predicate p.
-Additions:
-x +: xs
-A new sequence consisting of x prepended to xs.xs :+ x
-xs padTo (len, x)
-A new sequence that consists of x append to xs.
-The sequence resulting from appending the value x to xs until length len is
-reached.
-Updates:
-xs patch (i, ys, r)
-xs updated (i, x)
-xs(i) = x
-The sequence resulting from replacing r elements of xsstarting with i by the
-patch ys.
-A copy of xs with the element at index i replaced by x.
-(or, written out, xs.update(i, x), only available for mutable.Seqs) Changes the
-element of xs at index i to y.
-Sorting:
-xs.sorted
-xs sortWith lessThan
-xs sortBy f
-Reversals:
-xs.reverse
-xs.reverseIterator
-xs reverseMap f
-Comparisons:
-xs startsWith ys
-xs endsWith ys
-xs contains x
-xs containsSlice ys
-A new sequence obtained by sorting the elements of xs using the standard
-ordering of the element type of xs.
-A new sequence obtained by sorting the elements of xs, usinglessThan as
-comparison operation.
-A new sequence obtained by sorting the elements of xs. Comparison between
-two elements proceeds by mapping the function f over both and comparing the
-results.
-A sequence with the elements of xs in reverse order.
-An iterator yielding all the elements of xs in reverse order.
-A sequence obtained by mapping f over the elements of xs in reverse order.
-Tests whether xs starts with sequence ys (several variants exist).
-Tests whether xs ends with sequence ys (several variants exist).
-Tests whether xs has an element equal to x.
-Tests whether xs has a contiguous subsequence equal to ys.
-Tests whether corresponding elements of xs and ys satisfy the binary
-(xs corresponds ys)(p)
-predicate p.
-Multiset operations:
-The multi-set intersection of sequences xs and ys that preserves the order of
-xs intersect ys
-elements in xs.
-The multi-set difference of sequences xs and ys that preserves the order of
-xs diff ys
-elements in xs.
-xs union ys
-Multiset union; same as xs ++ ys.
-xs.distinct
-A subsequence of xs that contains no duplicated element.
-Each Seq trait has two subtraits, LinearSeq and IndexedSeq. These do not add any new operations, but
-each offers different performance characteristics. A linear sequence has
-efficient head and tail operations, whereas an indexed sequence has efficient apply, length, and (if
-mutable) update operations. List is a frequently used linear sequence, as is Stream. Two frequently used
-indexed sequences are Array and ArrayBuffer. The Vector class provides an interesting compromise
-between indexed and linear access. It has both effectively constant time indexing overhead and constanttime linear access overhead. Because of this, vectors are a good foundation for mixed access patterns
-where both indexed and linear accesses are used. More on vectors in Section 24.8.
-Buffers
-An important sub-category of mutable sequences is buffers. Buffers allow not only updates of existing
-elements but also element insertions, element removals, and efficient additions of new elements at the
-end of the buffer. The principal new methods supported by a buffer are+= and ++=, for element
-addition at the end, +=: and ++=: for addition at the front, insert andinsertAll for element insertions, as
-well as remove and -= for element removal. These operations are summarized in Table 24.4.
-Two Buffer implementations that are commonly used are ListBuffer and ArrayBuffer. As the name
-implies, a ListBuffer is backed by a List and supports efficient conversion of its elements to a List,
-whereas an ArrayBuffer is backed by an array, and can be quickly converted into one. You saw a
-glimpse of the implementation of ListBuffer in Section 22.2.
-Operations in trait Buffer
-What it is
-Additions:
-buf += x
-buf += (x, y, z)
-buf ++= xs
-x +=: buf
-xs ++=: buf
-buf insert (i, x)
-buf insertAll (i, xs)
-Removals:
-buf -= x
-buf remove i
-buf remove (i, n)
-buf trimStart n
-buf trimEnd n
-buf.clear()
-Cloning:
-buf.clone
-What it does
-Appends element x to buffer buf, and returns buf itself as result
-Appends given elements to buffer
-Appends all elements in xs to buffer
-Prepends element x to buffer
-Prepends all elements in xs to buffer
-Inserts element x at index i in buffer
-Inserts all elements in xs at index i in buffer
-Removes element x from buffer
-Removes element at index i from buffer
-Removes n elements starting at index i from buffer
-Removes first n elements from buffer
-Removes last n elements from buffer
-Removes all elements from buffer
-A new buffer with the same elements as buf
-24.6 SETS
-Sets are Iterables that contain no duplicate elements. The operations on sets are summarized in Table
-24.5 for general sets and Table 24.6 for mutable sets. They fall into the following categories:
-• Tests contains, apply, and subsetOf. The contains method indicates whether a set contains a
-given element. The apply method for a set is the same as contains, so set(elem) is the sameas set contains elem. That means sets can also be used as test functions that return true for the
-elements they contain. For example:
+----
+На перший погляд це виглядає не складніше, ніж рішення `foreach`. Однак є проблема ефективності, що стосується реалізації метода конкатенації ітератора, `++`. Кожного разу,коли продукується елемент конкатенованим ітератором, як в `l.iterator ++ r.iterator`, обчислення потребує слідувати одному непрямому переходу, щоб отримати вірний ітератор (`l.iterator` або `r.iterator`). Загалом це робить `log(N)` перенаправлень, щоб отримати листок збалансованого дерева з `N` leaves. Так що ціна відвідування всіх елементів дерева становить від близько `2N` для метода обходу `foreach`, до `Nlog(N)` для проходу за допомогою ітератору. Якщо дерево має мільйон елементів, це означає близько двох мільйонів кроків для `foreach`, і біля двадцяти (?) мільйонів кроків для `iterator`. Так що рішення `foreach` має явну перевагу.
+
+Субкатегорії Iterable
+~~~~~~~~~~~~~~~~~~~~~
+В ієрархії наслідування нижче `Iterable` ви знайдете три трейти: `Seq`, `Set`, та `Map`. Загальний аспект ціх трьох трейтів в тому, що всі вони реалізують трейт `PartialFunction`,footnote:[Часткові функції були описані в Розділі 15.7.] з його методами `apply` та `isDefinedAt`. Однак спосіб, в який кожний трейт реалізує `PartialFunction`, відрізняється.
+
+Для послідовностей `apply` є позиційне індексування, де елементи завжди пронумеровані від `0`. Тобто, `Seq(1, 2, 3)(1) == 2`. Для множин `apply` є перевіркою належності. Наприклад, `Set('a', 'b', 'c') ('b') == true`, тоді як `Set()('a') == false`. Нарешті, для мап `apply` є вибір. Наприклад, `Map('a' - > 1, 'b' -> 10, 'c' -> 100)('b') == 10`.
+
+В наступних трьох розділах ми пояснимо кожний з трьох типів колекцій більш детально.
+
+24.5 Трейти послідовностей `Seq`, `IndexedSeq`, `LinearSeq`
+-----------------------------------------------------------
+Трейт `Seq` представляє послідовності. Послідовність різновид ітерабельного, що має довжину, та чиї елементи мають фіксовані індексовані позиції, починаючи від 0. Операції над послідовностями, підсумовані на Малюнку 24.3, підпадають в наступні категорії:
+
+* *Операції індексування та довжини* `apply`, `isDefinedAt`, `length`, `indices`, та `lengthCompare`. Для `Seq` операція `apply` означає індексування; таким чином послідовність типу `Seq[T]` є частковою функцією, що приймає аргумент `Int` (індекс), та видає елемент послідовності типу `T`. Іншими словами, `Seq[T]` розширює `PartialFunction[Int, T]`. Елементи послідовності індексовані від нуля до довжини послідовності мінус один. Метод `length` на послідовностях є псевдонимом метода `size` на загальних колекціях. Метод `lengthCompare` дозволяє вам порівнювати довжину двох послідовностей, навіть якщо одна з послідовностей має безкінечну довжину.
+
+* *Операції пошуку індексу* `indexOf`, `lastIndexOf`, `indexOfSlice`, `lastIndexOfSlice`,`indexWhere`, `lastIndexWhere`, `segmentLength`, та `prefixLength` повертають індекс елементу, рівному до заданого значення або співпадаючий з деяким предикатом.
+
+* *Операції додавання* `+:`, `:+`, та `padTo`, повертають нову послідовність, отриману від додавання елементів зпереду або з кінця послідовності.
+
+* *Операції оновлення* `updated` та `patch`, що повертають нову послідовність, отриману від заміни деяких елементів оригінальної послідовності.
+
+* *Операції сортування* `sorted`, `sortWith`, та `sortBy` сортують елементи послідовності відповідно до різних критеріїв.
+
+* *Операції обертання* `reverse`, `reverseIterator`, та `reverseMap` видають або обробляють елементи послідовності в зворотньому порядку, від останнього до першого.
+
+* *Операції порівняння* `startsWith`, `endsWith`, `contains`, `corresponds`, та `containsSlice` співвідносить дві послідовності або шукає елемент в послідовності.
+
+* *Множинні операції* `intersect`, `diff`, `union`, та `distinct` виконують множино-подібні операції на елементах двох послідовностей, або видаляють дублікати.
+
+Якщо послідовність змінна, вона пропонує додатковий метод з побічним ефектом `update`, що дозволяє оновлювати елементи. Згадайте з Глави 3, що синтаксис як `seq(idx) = elem` є просто скороченням для `seq.update(idx, elem)`. Зауважте різницю між `update` та `updated`. Метод `update` змінює елемент послідовності на місці, та доступний тільки для змінних послідовностей. Метод `updated` доступний для всіх послідовностей, та завжди повертає нову послідовність, замість модифікації оригіналу.
+
+[caption="Операції трейта Seq"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|Індексування та довжина:
+|xs(i)|(або, розписано,`xs apply i`) Елемент `xs` за індексом `i`.
+|xs isDefinedAt i|Перевіряє, чи `i` міститься в `xs.indices`.
+|xs.length|Довжина послідовності (те саме, що і `size`).
+|xs.lengthCompare ys|Повертає `-1`, якщо `xs` коротше за `ys`, `+1` якщо довше, та `0` якщо вони мають рівну довжину. Робить, навіть якщо послідовності безкінечні.
+|xs.indices|Диапазон індексів `xs`, що простягається від `0` до `xs.length - 1`. 
+2+|Індексний пошук:
+|xs indexOf x|Індекс першого елементу в `xs` рівному `x` (існують декілька варіантів).
+|xs lastIndexOf x|Індекс останнього елементу в `xs` рівному `x` (існують декілька варіантів).
+|xs indexOfSlice ys|Перший індекс `xs`, такий, що наступні елементи починаючи з цього індексу формують послідовність `ys`.
+|xs lastIndexOfSlice ys|Останній індекс `xs`, такий, що наступні елементи починаючи з цього індексу формують послідовність `ys`.
+|xs indexWhere p|Індекс першого елементу `xs`, задовільняє `p` (існують декілька варіантів).
+|xs segmentLength (p, i)| Довжина найдовшого неперериваного сегменту елементів `xs`, починаючи з `xs(i)`, всі з яких задовільняють предикату `p`.
+|xs prefixLength p|Довжина найдовшого префіксу з елементів `xs`, всі з яких задовільняють предикату `p`.
+2+|Додавання:
+|x +: xs|Нова послідовність, що складається з `x` перед `xs`.
+|xs :+ x|Нова послідовність, що складається з `x` після `xs`.
+|xs padTo (len, x)|Послідовність, що утворюється як результат від додавання значення `x` до `xs`, доки не буде досяжена довжина `len`.
+2+|Оновлення:
+|xs patch (i, ys, r)|Послідовність як результат від заміни `r` елементів `xs`, починаючи з `i` на латку `ys`.
+|xs updated (i, x)|Копія `xs`, з елементом з індексом `i`, заміненим на `x`.
+|xs(i) = x|(або, розписане, `xs.update(i, x)`, доступне тільки для` mutable.Seq`). Зміна елементу `xs` по індексу `i` на `y`.
+2+|Сортування:
+|xs.sorted|Нова послідовність, отримана від сортування елементів  `xs` з використанням стандартного впорядкування типу елементів `xs`.
+|xs sortWith lessThan|Нова послідовність, отримана від сортування елементів `xs`, використовуючи `lessThan` як операції порівняння.
+|xs sortBy f|Нова послідовність, отримана від сортування елементів `xs`. Порівняння між двома елементами обробляється через відображення двох елементів функцією `f` над обома, та порівняння результатів.
+2+|Обернення:
+|xs.reverse|Послідовність з елементами `xs` в зворотньому порядку.
+|xs.reverseIterator|Ітератор, що видає всі елементи `xs` в зворотньому порядку.
+|xs reverseMap f|Послідовність, отримана від відображення `f` над елементами `xs` в зворотньому порядку.
+2+|Порівняння:
+|xs startsWith ys|Перевіряє, чи `xs` починається з послідовності `ys` (існують декілька варіантів).
+|xs endsWith ys|Перевіряє, чи `xs` закінчується на `ys` (існують декілька варіантів).
+|xs contains x|Перевіряє, чи `xs` має елемент, що дорівнює `x`.
+|xs containsSlice ys|Перевіряє, чи `xs` має послідовність, що дорівнює `ys`.
+|(xs corresponds ys)(p)|Перевіряє, чи відповідні елементи `xs` та `ys` задовільняють двомісному предикату `p`.
+2+|Множинні операції:
+|xs intersect ys|Множинний перетин послідовностей `xs` та `ys`, що зберігає порядок елементів в `xs`.
+|xs diff ys|Множинна різниця послідовностей `xs` та `ys`, що зберігає порядок елементів в `xs`.
+|xs union ys|Множинне об'єднання; те саме, що `xs ++ ys`.
+|xs.distinct|Субпослідовність `xs`, що не містить дублікатів.
+|===
+
+Кожний трейт `Seq` має два субтрейти, `LinearSeq` та `IndexedSeq`. Вони не додають жодних нових операцій, але кожний пропонує різні характеристики продуктивності. Лінійна послідовність має ефективні операції `head` та `tail`, тоді як індексована послідовність має ефективні операції `apply`, `length`, та (якщо `mutable`) `update`. `List` є часто використовувана лінійна послідовність, як і `Stream`. Дві часто використовувані індексовані послідовності є `Array` та `ArrayBuffer`. Клас `Vector` провадить цікавий компроміс між індексованим та лінійним доступом. Він має однаково ефективний сталий час індексного навантаження, та сталий час лінійного доступу. Завдяки цьому вектори є гарною основою для шаблонів змішаного доступу, коли одночасно використовується індексний та лінійний доступи. Більше про вектори в Розділі 24.8.
+
+Буфери
+~~~~~~
+Важлива суб-категорія змінних послідовностей є буфери. Буфери дозволяють не тільки оновлення існуючих елементів, але також вставки елементів, видалення елементів, та ефективне додавання нових елементів в кінець буфера. Принципово нові методи, що підтримуються буферами, є `+=` та `++=` для додавання елементів в кінець, та `+=:` і `++=:` для додавання зпереду, `insert` та `insertAll` для вставок елементів, так само як `remove` та `-=` для видалення елементів. Ці These operations are summarized in Table 24.4.
+
+Дві реалізації `Buffer` в загальному ужитку є `ListBuffer` та `ArrayBuffer`. Як підказує ім'я, `ListBuffer` підтримується `List`, та підтримує ефективне перетворення його елементів `List`, тоді як  `ArrayBuffer` покладається на масив, та може бути швидко перетворений на такий. Ви бачили проблиск реалізації `ListBuffer` в Розділі 22.2.
+
+[caption="Операції трейта Buffer"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|Додавання:
+|buf += x|Додає елемент `x` до буфера `buf`, та повертає самий `buf` як результат
+|buf += (x, y, z)|Додає надані елементи до буфера
+|buf ++= xs|Додає всі елементи в `xs` до буфера
+|x +=: buf|Ставить елемент `x` в початок буфера
+|xs ++=: buf|Ставить всі елементи `xs` в початок буфера
+|buf insert (i, x)|Вставляє елемент `x` по індексу `i` в буфер
+|buf insertAll (i, xs)|Вставляє всі елементи в `xs` по індексу `i` в буфер
+2+|Видалення:
+|buf -= x|Видаляє елемент `x` з буфера
+|buf remove i|Видаляє елементпо індексу `i` з буфера
+|buf remove (i, n)|Видаляє `n` елементів, починаючи з індексу `i`, з буфера
+|buf trimStart n|Видаляє перші `n` елементів з буфера
+|buf trimEnd n|Видаляє останні `n` елементів з буфера
+|buf.clear()|Видаляє всі елементи з буфера
+2+|Клонування:
+|buf.clone|Новий буфер з тими самим елементами, що і `buf`
+|===
+
+24.6 Множини
+------------
+`Set` є `Iterable`, що не містить дублікатів елементів. Операції з множинами підсумовані в Таблиці 24.5 для `general` множин, і Таблиці 24.6 `mutable` множин. Вони підпадають під наступні категорії:
+
+* *Перевірки* `contains`, `apply`, та `subsetOf`. Метод `contains` вказує, чи множина містить наданий елемент. Метод `apply` для множини те саме, що і `contains`, так що `set(elem)` відповідає до  `set contains elem`. Це означає, що множини можуть також використовуватись як функції перевірки, що повертають `true` для елементів, які вони містять. Наприклад:
+[source,scala]
+----
 scala> val fruit = Set("apple", "orange", "peach", "banana")
 fruit: scala.collection.immutable.Set[String] =
-Set(apple, orange, peach, banana)
+  Set(apple, orange, peach, banana)
+
 scala> fruit("peach")
 res7: Boolean = true
+
 scala> fruit("potato")
 res8: Boolean = false
-• Additions + and ++, which add one or more elements to a set, yielding a new set as a result.
-• Removals - and --, which remove one or more elements from a set, yielding a new set.
-• Set operations for union, intersection, and set difference. These set operations exist in two
-forms: alphabetic and symbolic. The alphabetic versions are intersect, union, and diff, whereas
-the symbolic versions are &, |, and &~. The ++ that Set inherits from Traversable can be seen as
-yet another alias of union or |, except that ++ takes a Traversable argument
-whereas union and | take sets.
-Operations in trait Set
-What it is
-What it does
-Tests:
-xs contains x
-Tests whether x is an element of xs
-xs(x)
-Same as xs contains x
-xs subsetOf ys
-Tests whether xs is a subset of ys
-Additions:
-xs + x
-The set containing all elements of xs as well as x
-xs + (x, y, z)
-The set containing all elements of xs as well as the given additional elements
-xs ++ ys
-The set containing all elements of xs as well as all elements of ys
-Removals:
-xs - x
-The set containing all elements of xs except x
-xs - (x, y, z)
-The set containing all elements of xs except the given elements
-xs -- ys
-The set containing all elements of xs except the elements of ys
-xs.empty
-An empty set of the same class as xs
-Binary operations:
-xs & ys
-The set intersection of xs and ys
-xs intersect ys
-Same as xs & ys
-xs | ys
-The set union of xs and ys
-xs union ys
-Same as xs | ys
-xs &~ ys
-The set difference of xs and ys
-xs diff ys
-Same as xs &~ ys
-Mutable sets have methods that add, remove, or update elements, which are summarized inTable 24.6:Operations in trait mutable.Set
-What it is
-What it does
-Additions:
-xs += x
-Adds element x to set xs as a side effect and returns xs itself
-xs += (x, y, z) Adds the given elements to set xs as a side effect and returns xs itself
-xs ++= ys
-Adds all elements in ys to set xs as a side effect and returns xs itself
-Adds element x to xs and returns true if x was not previously contained in the
-xs add x
-set, false if it was previously contained
-Removals:
-xs -= x
-Removes element x from set xs as a side effect and returns xs itself
-xs -= (x, y, z) Removes the given elements from set xs as a side effect and returns xsitself
-xs --= ys
-Removes all elements in ys from set xs as a side effect and returns xsitself
-Removes element x from xs and returns true if x was previously contained in the
-xs remove x
-set, false if it was not previously contained
-xs retain p
-Keeps only those elements in xs that satisfy predicate p
-xs.clear()
-Removes all elements from xs
-Update:
-(or, written out, xs.update(x, b)) If boolean argument b is true, adds x toxs, otherwise
-xs(x) = b
-removes x from xs
-Cloning:
-xs.clone
-A new mutable set with the same elements as xs
-Just like an immutable set, a mutable set offers the + and ++ operations for element additions and
-the - and -- operations for element removals. But these are less often used for mutable sets since they
-involve copying the set. As a more efficient alternative, mutable sets offer the update methods += and -
-=. The operation s += elem adds elem to the set s as a side effect, and returns the mutated set as a result.
-Likewise, s -= elem removes elem from the set, and returns the mutated set as a result. Besides += and -
-= there are also the bulk operations ++= and --=, which add or remove all elements of a traversable or
-an iterator.
-The choice of the method names += and -= means that very similar code can work with either mutable
-or immutable sets. Consider first the following interpreter dialogue that uses an immutable set s:
+----
+* *Додавання* `+` and `++` додають до множини один або більше елементів, даючи нову множини в якості результату.
+
+* *Видалення* `-` та `--` видаляють один або більше з множини, даючи нову множину.
+
+* *Операції множин* для об'єднання, перетину та різниці. Ці операції існують в двох фломах: алгебраїчній та символічній. Алгебраїчні версії є `intersect`, `union`, та `diff`, тоді як символічні версії `&`, `|`, та `&~`. Метод `++`, який `Set` наслідує від `Traversable`, може розглядатись як ще один псевдоним для `union` або `|`, за винятком того, що `++` приймає аргумент `Traversable`, коли `union` та `|` приймають множини.
+
+[caption="Операції трейта Set"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|Перевірки:
+|xs contains x|Перевіряє, чи `x` є елементом `xs`
+|xs(x)|Те саме, що `xs contains x`
+|xs subsetOf ys|Перевіряє, чи `xs` є підмножиною `ys`
+2+|Додавання:
+|xs + x|Множина, що містить всі елементи `xs`, так само як `x`
+|xs + (x, y, z)|Множина, що містить всі елементи `xs`, так само як надані додаткові елементи
+|xs ++ ys|Множина, що містить всі елементи `xs`, так само, як всі елементи `ys`
+2+|Видалення:
+|xs - x|Множина, що містить всі елементи `xs`, за винятком `x`
+|xs - (x, y, z)|Множина, що містить всі елементи `xs`, за винятком наданих елементів
+|xs -- ys|Множина, що містить всі елементи `xs`, крім елементів в `ys`
+|xs.empty|Порожня множина такого ж класу, що і `xs`
+2+|Бінарні операції:
+|xs & ys|Перетин множин `xs` та `ys`
+|xs intersect ys|Те саме, що і `xs & ys`
+|xs \| ys|Поєднання множин `xs` та `ys`
+|xs union ys|Те саме, що і `xs | ys`
+|xs &~ ys|Різниця множин `xs and ys`
+|xs diff ys|Те саме, що і `xs &~ ys`
+|===
+
+Змінні множини мають методи, що додають, видаляють або оновлюють елементи, що підсумовані в Таблиці 24.6:
+
+[caption="Операції трейта mutable.Set"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+"Додавання:
+|xs += x|Додає елемент `x` до множини `xs` як побічний ефект, та повератє сам `xs`
+|xs += (x, y, z)|Додає надані елементи до множини як побічний ефект, та повертає сам `xs`
+|xs ++= ys|Додає всі елементи з `ys` до множини `xs` як побічний ефект, та повертає сам `xs`
+|xs add x|Додає елемент `x` до `xs` та повертає `true`, якщо `x` досі не був членом множини, `false` якщо він був там
+2+|Видалення:
+|xs -= x|Видаляє елемент `x` з множини `xs` як побічний ефект, та повертає сам `xs`
+|xs -= (x, y, z)|Видаляє надані елементи з множини `xs` як побічний ефект, та повертає сам `xs`
+|xs --= ys|Видаляє всі елементи в `ys` з множини `xs` як побічний ефект, та повертає сам `xs`
+|xs remove x|Видаляє `x` з `xs`, та повертає `true`, якщо `x` до цього містився в множині, `false` якщо ні
+|xs retain p|Залишає лише ті елементи в `xs`, що задовільняють предикату `p`
+|xs.clear()|Видаляє всі елементи з `xs`
+2+|Оновлення:
+|xs(x) = b|(або, розписано, `xs.update(x, b)`) Якщо логічний аргумент `b` є `true`, додає `x` до `xs`, інакше видаляє `x` з `xs`
+2+|Клонування:
+|xs.clone|Нова змінна множина з тими ж елементами, що і `xs`
+|===
+
+Так само, як незмінні множини, змінні множини пропонують операції  `+` та `++` для додавання елементів, та `-` та `--` для видалення елементів. Але вони рідше використовуються для змінних множин, оскікльки це включає копіювання множини. Ак більш ефективна альтернатива, змінні множини пропонують методи оновлення `+=` та `- =`. Операція `s += elem` додає `elem` до множини `s` в якості побічного ефекту, та повертає змінену множину як результат. Подібно до цього, `s -= elem` видаляє `elem` з множини, та повертає змінену множину як результат. Окрім `+=` та `-=` також існують масові операції `++=` та `--=`, що додають або видаляють всі елементи перехідного або ітератора.
+
+Вибір імен методів, `+=` та `-=` означає, що дуже подібний код буде робити однаково, зі змінними та незмінними множинами. Зпочатку розглянемо наступний диалог в інтерпретаторі, що використовує незмінну множину `s`:
+[source,scala]
+----
 scala> var s = Set(1, 2, 3)
 s: scala.collection.immutable.Set[Int] = Set(1, 2, 3)
+
 scala> s += 4; s -= 2
+
 scala> s
 res10: scala.collection.immutable.Set[Int] = Set(1, 3, 4)
-In this example, we used += and -= on a var of type immutable.Set. As was explained in Step
-10 inChapter 3, a statement such as s += 4 is an abbreviation for s = s + 4. So this invokes the addition
-method + on the set s and then assigns the result back to the s variable. Consider now an analogous
-interaction with a mutable set:scala> val s = collection.mutable.Set(1, 2, 3)
+----
+В цьому прикладі ми використали `+=` та `-=` на `var` типу `immutable.Set`. Як було пояснено на Кроці 10 в Главі 3, а твердження як `s += 4` є скороченням для `s = s + 4`. Так що це викликає метод додавання `+` на множині `s`, та потім присвоює результат назад до змінної `s`. Розглянемо тепер аналогічну взаємодію зі змінним набором:
+[source,scala]
+----
+scala> val s = collection.mutable.Set(1, 2, 3)
 s: scala.collection.mutable.Set[Int] = Set(1, 2, 3)
+
 scala> s += 4
 res11: s.type = Set(1, 2, 3, 4)
+
 scala> s -= 2
 res12: s.type = Set(1, 3, 4)
-The end effect is very similar to the previous interaction; we start with a Set(1, 2, 3) and end up with
-a Set(1, 3, 4). However, even though the statements look the same as before, they do something
-different. The s += 4 statement now invokes the += method on the mutable set values, changing the set
-in place. Likewise, the s -= 2 statement now invokes the -= method on the same set.
-Comparing the two interactions shows an important principle. You often can replace a mutable
-collection stored in a val by an immutable collection stored in a var, and vice versa. This works at least
-as long as there are no alias references to the collection through which you can observe whether it was
-updated in place or a new collection was created.
-Mutable sets also provide add and remove as variants of += and -=. The difference is
-that add andremove return a boolean result indicating whether the operation had an effect on the set.
-The current default implementation of a mutable set uses a hash table to store the set's elements. The
-default implementation of an immutable set uses a representation that adapts to the number of elements
-of the set. An empty set is represented by just a singleton object. Sets of sizes up to four are represented
-by a single object that stores all elements as fields. Beyond that size, immutable sets are implemented
-as hash tries.footnote:[Hash tries are described in Section 24.8.]
-A consequence of these representation choices is that for sets of small sizes, up to about four,
-immutable sets are more compact and more efficient than mutable sets. So if you expect the size of a
-set to be small, try to make it immutable.
-24.7 MAPS
-Maps are Iterables of pairs of keys and values (also named mappings or associations). As explained
-in Section 21.4, Scala's Predef class offers an implicit conversion that lets you writekey -> value as an
-alternate syntax for the pair (key, value). Therefore, Map("x" -> 24, "y" -> 25, "z" -> 26) means exactly
-the same as Map(("x", 24), ("y", 25), ("z", 26)), but reads better.
-The fundamental operations on maps, summarized in Table 24.7, are similar to those on sets. Mutable
-maps additionally support the operations shown in Table 24.8. Map operations fall into the following
-categories:
-• Lookups apply, get, getOrElse, contains, and isDefinedAt. These operations turn maps into
-partial functions from keys to values. The fundamental lookup method for a map is:
-def get(key): Option[Value]The operation "m get key" tests whether the map contains an association for the given key. If so,
-it returns the associated value in a Some. If no key is defined in the map, get returns None.
-Maps also define an apply method that returns the value associated with a given key directly,
-without wrapping it in an Option. If the key is not defined in the map, an exception is raised.
-• Additions and updates +, ++, and updated, which let you add new bindings to a map or change
-existing bindings.
-• Removals - and --, which remove bindings from a map.
-• Subcollection producers keys, keySet, keysIterator, valuesIterator, and values, which return a
-map's keys and values separately in various forms.
-• Transformations filterKeys and mapValues, which produce a new map by filtering and
-transforming bindings of an existing map.
-Operations in trait Map
-What it is
-Lookups:
-ms get k
-ms(k)
-ms getOrElse (k, d)
-ms contains k
-ms isDefinedAt k
-Additions and
-updates:
-ms + (k -> v)
-ms + (k -> v, l -> w)
-ms ++ kvs
-ms updated (k, v)
-Removals:
-ms - k
-ms - (k, l, m)
-ms -- ks
-Subcollections:
-ms.keys
-ms.keySet
-ms.keysIterator
-ms.values
-ms.valuesIterator
-Transformation:
-What it does
-The value associated with key k in map ms as an option, or Noneif not found
-(or, written out, ms apply k) The value associated with key k in map ms, or a
-thrown exception if not found
-The value associated with key k in map ms, or the default value dif not found
-Tests whether ms contains a mapping for key k
-Same as contains
-The map containing all mappings of ms as well as the mappingk -> v from
-key k to value v
-The map containing all mappings of ms as well as the given key/value pairs
-The map containing all mappings of ms as well as all key/value pairs of kvs
-Same as ms + (k -> v)
-The map containing all mappings of ms except for any mapping of key k
-The map containing all mappings of ms except for any mapping with the given
-keys
-The map containing all mappings of ms except for any mapping with a key
-in ks
-An iterable containing each key in ms
-A set containing each key in ms
-An iterator yielding each key in ms
-An iterable containing each value associated with a key in ms
-An iterator yielding each value associated with a key in msms filterKeys p
-ms mapValues f
-A map view containing only those mappings in ms where the key satisfies
-predicate p
-A map view resulting from applying function f to each value associated with a
-key in ms
-Operations in trait mutable.Map
-What it is
-Additions and updates:
-What it does
-(or, written out, ms.update(k, v)) Adds mapping from key k to value v to
-map ms as a side effect, overwriting any previous mapping of k
-Adds mapping from key k to value v to map ms as a side effect and
-ms += (k -> v)
-returns ms itself
-ms += (k -> v, l -> w)
-Adds the given mappings to ms as a side effect and returns msitself
-ms ++= kvs
-Adds all mappings in kvs to ms as a side effect and returns msitself
-Adds mapping from key k to value v to ms and returns any value
-ms put (k, v)
-previously associated with k as an option
-If key k is defined in map ms, returns its associated value. Otherwise,
-ms getOrElseUpdate (k, d)
-updates ms with the mapping k -> d and returns d
-Removals:
-Removes mapping with key k from ms as a side effect and
-ms -= k
-returns ms itself
-Removes mappings with the given keys from ms as a side effect and
-ms -= (k, l, m)
-returns ms itself
-ms --= ks
-Removes all keys in ks from ms as a side effect and returns msitself
-Removes any mapping with key k from ms and returns any value
-ms remove k
-previously associated with k as an option
-ms retain p
-Keeps only those mappings in ms that have a key satisfying predicate p.
-ms.clear()
-Removes all mappings from ms
-Transformation and
-cloning:
-ms transform f
-Transforms all associated values in map ms with function f
-ms(k) = v
-ms.clone
-Returns a new mutable map with the same mappings as ms
-The addition and removal operations for maps mirror those for sets. As for sets, mutable maps also
-support the non-destructive addition operations +, -, and updated, but they are used less frequently
-because they involve a copying of the mutable map. Instead, a mutable map mis usually updated "in
-place," using the two variants m(key) = value or m += (key -> value). There is also the
-variant m put (key, value), which returns an Option value that contains the value previously associated
-with key, or None if the key did not exist in the map before.
-The getOrElseUpdate is useful for accessing maps that act as caches. Say you have an expensive
-computation triggered by invoking a function f:
+----
+The end effect is very similar to the previous interaction; we start with a Set(1, 2, 3) and end up with a Set(1, 3, 4). However, even though the statements look the same as before, they do something different. The s += 4 statement now invokes the += method on the mutable set values, changing the set in place. Likewise, the s -= 2 statement now invokes the -= method on the same set.
+
+Comparing the two interactions shows an important principle. You often can replace a mutable collection stored in a val by an immutable collection stored in a var, and vice versa. This works at least as long as there are no alias references to the collection through which you can observe whether it was updated in place or a new collection was created.
+
+Mutable sets also provide add and remove as variants of += and -=. The difference is that add andremove return a boolean result indicating whether the operation had an effect on the set.
+
+The current default implementation of a mutable set uses a hash table to store the set's elements. The default implementation of an immutable set uses a representation that adapts to the number of elements of the set. An empty set is represented by just a singleton object. Sets of sizes up to four are represented by a single object that stores all elements as fields. Beyond that size, immutable sets are implemented as hash tries.footnote:[Hash tries are described in Section 24.8.]
+
+A consequence of these representation choices is that for sets of small sizes, up to about four, immutable sets are more compact and more efficient than mutable sets. So if you expect the size of a set to be small, try to make it immutable.
+
+24.7 Мапи
+---------
+Maps are Iterables of pairs of keys and values (also named mappings or associations). As explained in Section 21.4, Scala's Predef class offers an implicit conversion that lets you writekey -> value as an alternate syntax for the pair (key, value). Therefore, Map("x" -> 24, "y" -> 25, "z" -> 26) means exactly the same as Map(("x", 24), ("y", 25), ("z", 26)), but reads better.
+
+The fundamental operations on maps, summarized in Table 24.7, are similar to those on sets. Mutable maps additionally support the operations shown in Table 24.8. Map operations fall into the following categories:
+
+* *Lookups* apply, get, getOrElse, contains, and isDefinedAt. These operations turn maps into partial functions from keys to values. The fundamental lookup method for a map is: 
+[source,scala]
+----
+def get(key): Option[Value]
+----
+The operation "m get key" tests whether the map contains an association for the given key. If so, it returns the associated value in a Some. If no key is defined in the map, get returns None. Maps also define an apply method that returns the value associated with a given key directly, without wrapping it in an Option. If the key is not defined in the map, an exception is raised.
+
+* Additions and updates +, ++, and updated, which let you add new bindings to a map or change existing bindings.
+
+* Removals - and --, which remove bindings from a map.
+
+* Subcollection producers keys, keySet, keysIterator, valuesIterator, and values, which return a map's keys and values separately in various forms.
+
+* Transformations filterKeys and mapValues, which produce a new map by filtering and transforming bindings of an existing map.
+
+[caption="Операції трейта Map"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|Пошук:
+|ms get k|Значення, асоційоване з ключем `k` в мапі `ms`, як опція, або `None`, якщо не знайдене
+|ms(k)|(або, розписане, `ms apply k`) Значення, асоційоване з ключем `k` в мапі `ms`, або закидає виключення, якщо не знайдене
+|ms getOrElse (k, d)|Значення, асоційоване з ключем `k` в мапі `ms`,або значення по замовчанню `d`, якщо не знайдене
+|ms contains k|Перевіряє, чи `ms` містить відображення для ключа `k`
+|ms isDefinedAt k|Те саме, що і `contains`
+2+|Додавання та оновлення:
+|ms + (k -> v)|Мапа, що містить всі відображення `ms`, так само, як і `gk -> v` ключа `k` на значення `v`
+|ms + (k -> v, l -> w)|Мапа, що містить всі відображення `ms`, разом з наданими парами ключ/значення
+|ms ++ kvs|Мапа, що містить всі відображення `ms`, так само, як і пари ключ/значення з `kvs`
+|ms updated (k, v)|Таке саме, що і `ms + (k -> v)`
+2+|Видалення:
+|ms - k|Мапа, що містить всі відображення з `ms`, за винятком любих відображень для ключа `k`
+|ms - (k, l, m)|Мапа, що містить всі відображення `ms`, за винятком всіх відображень з наданими ключамі
+|ms -- ks|Мапа, що містить всі відображення з `ms`, за винятком любих відображень з ключами в `ks`
+2+|Субколекції:
+|ms.keys|Ітерабельне, що містить любий ключ в `ms`
+|ms.keySet|Множина, що містить кожний ключ в `ms`
+|ms.keysIterator|Ітератор, що видає кожний ключ в `ms`
+|ms.values|Ітерабельне, що містить кожне значення, асоційоване з ключем в `ms`
+|ms.valuesIterator|Ітератор, що видає кожне значення, асоційоване з ключем в `ms`
+2+|Перетворення:
+|ms filterKeys p|Перегляд мапи, що містить тільки ті відображення, в яких ключ відповідає предикату `p`
+|ms mapValues f|Перегляд мапи, отриманий від застосування функції `f` до кожного значення, асоційованого з ключем в `ms`
+|===
+
+[caption="Операції трейта mutable.Map"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+2+|Додавання та оновлення:
+|ms(k) = v|(або, розписано, `ms.update(k, v)`) Додає відображення ключа `k` на значення `v` до мапи `ms` як побічний ефект, переписуючи любі попередні відображення `k`
+|ms += (k -> v)|Додає відображення ключа `k` на значення `v` до мапи `ms` як побічний ефект, та повертає сам `ms`
+|ms += (k -> v, l -> w)|Додає надані відображення до `ms` як побічний ефект, та повертає сам `ms`
+|ms ++= kvs|Додає всі відображення в `kvs` до `ms` як побічний ефект, та повертає сам `ms`
+|ms put (k, v)|Додає відображення ключа `k` на значення `v` до `ms`, та повертає любе значення, асоційоване до цього з `k`, як опцію
+|ms getOrElseUpdate (k, d)|Якщо ключ `k` визначений в мапі `ms`, повертає його асоційоване значення. Інакше оновлює `ms` відображенням `k -> d` та повертає `d`
+2+|Видалення:
+|ms -= k|Видаляє відображення ключа `k` з `ms` як побічний ефект, та повертає сам `ms`
+|ms -= (k, l, m)|Видаляє відображення наданних ключів з `ms` як побічний ефект, та повертає сам `ms`
+|ms --= ks|Видаляє всі ключі в `ks` з `ms` як побічний ефект, та повертає сам `ms`
+|ms remove k|Видаляє любі відображення ключа `k` з `ms`, та повертає любе значення, до цього асоційоване з `k`, як опцію
+|ms retain p|Зберігає тільки ті відображення в `ms`, ключ яких задовільняє предикату `p`.
+|ms.clear()|Видаляє всі відображення з `ms`
+2+|Перетворення та клонування:
+|ms transform f|Перетворює всі асоційовані значення в мапі `ms` функцією `f`
+|ms.clone|Повертає нову змінну мапу з тими самими відображеннями, що і `ms`
+|===
+
+The addition and removal operations for maps mirror those for sets. As for sets, mutable maps also support the non-destructive addition operations +, -, and updated, but they are used less frequently because they involve a copying of the mutable map. Instead, a mutable map mis usually updated "in place," using the two variants m(key) = value or m += (key -> value). There is also the variant m put (key, value), which returns an Option value that contains the value previously associated with key, or None if the key did not exist in the map before.
+
+The getOrElseUpdate is useful for accessing maps that act as caches. Say you have an expensive computation triggered by invoking a function f:
+[source,scala]
+----
 scala> def f(x: String) = {
 println("taking my time."); Thread.sleep(100)
 x.reverse }f: (x: String)String
-Assume further that f has no side-effects, so invoking it again with the same argument will always yield
-the same result. In that case you could save time by storing previously computed bindings of argument
-and results of f in a map, and only computing the result of f if a result of an argument was not found
-there. You could say the map is a cache for the computations of the function f.
+----
+Assume further that f has no side-effects, so invoking it again with the same argument will always yield the same result. In that case you could save time by storing previously computed bindings of argument and results of f in a map, and only computing the result of f if a result of an argument was not found there. You could say the map is a cache for the computations of the function f.
+[source,scala]
+----
 scala> val cache = collection.mutable.Map[String, String]()
 cache: scala.collection.mutable.Map[String,String] = Map()
+----
 You can now create a more efficient caching version of the f function:
+[source,scala]
+----
 scala> def cachedF(s: String) = cache.getOrElseUpdate(s, f(s))
 cachedF: (s: String)String
+
 scala> cachedF("abc")
 taking my time.
 res16: String = cba
+
 scala> cachedF("abc")
 res17: String = cba
-Note that the second argument to getOrElseUpdate is "by-name," so the computation of f("abc")above
-is only performed if getOrElseUpdate requires the value of its second argument, which is precisely if
-its first argument is not found in the cache map. You could also have implementedcachedF directly,
-using just basic map operations, but it would have have taken more code to do so:
+----
+Note that the second argument to getOrElseUpdate is "by-name," so the computation of f("abc")above is only performed if getOrElseUpdate requires the value of its second argument, which is precisely if its first argument is not found in the cache map. You could also have implementedcachedF directly, using just basic map operations, but it would have have taken more code to do so:
+[source,scala]
+----
 def cachedF(arg: String) = cache get arg match {
-case Some(result) => result
-case None =>
-val result = f(arg)
-cache(arg) = result
-result
+  case Some(result) => result
+  case None =>
+    val result = f(arg)
+    cache(arg) = result
+    result
 }
-24.8 CONCRETE IMMUTABLE COLLECTION CLASSES
-Scala provides many concrete immutable collection classes for you to choose from. They differ in the
-traits they implement (maps, sets, sequences), whether they can be infinite, and the speed of various
-operations. We'll start by reviewing the most common immutable collection types.
-Lists
-Lists are finite immutable sequences. They provide constant-time access to their first element as well as
-the rest of the list, and they have a constant-time cons operation for adding a new element to the front
-of the list. Many other operations take linear time. See Chapters 16 and22 for extensive discussions
-about lists.Streams
-A stream is like a list except that its elements are computed lazily. Because of this, a stream can be
-infinitely long. Only those elements requested will be computed. Otherwise, streams have the same
-performance characteristics as lists.
-Whereas lists are constructed with the :: operator, streams are constructed with the similar-looking #::.
-Here is a simple example of a stream containing the integers 1, 2, and 3:
+----
+24.8 Суцільні класи незмінних колекцій
+--------------------------------------
+Scala provides many concrete immutable collection classes for you to choose from. They differ in the traits they implement (maps, sets, sequences), whether they can be infinite, and the speed of various operations. We'll start by reviewing the most common immutable collection types.
+
+Списки
+~~~~~~
+Lists are finite immutable sequences. They provide constant-time access to their first element as well as the rest of the list, and they have a constant-time cons operation for adding a new element to the front of the list. Many other operations take linear time. See Chapters 16 and 22 for extensive discussions about lists.
+
+Потоки
+~~~~~~
+A stream is like a list except that its elements are computed lazily. Because of this, a stream can be infinitely long. Only those elements requested will be computed. Otherwise, streams have the same performance characteristics as lists.
+
+Whereas lists are constructed with the :: operator, streams are constructed with the similar-looking #::. Here is a simple example of a stream containing the integers 1, 2, and 3:
+[source,scala]
+----
 scala> val str = 1 #:: 2 #:: 3 #:: Stream.empty
 str: scala.collection.immutable.Stream[Int] = Stream(1, ?)
-The head of this stream is 1, and the tail of it has 2 and 3. The tail is not printed here, though, because it
-hasn't been computed yet! Streams are required to compute lazily, and the toStringmethod of a stream
-is careful not to force any extra evaluation.
-Below is a more complex example. It computes a stream that contains a Fibonacci sequence starting
-with the given two numbers. A Fibonacci sequence is one where each element is the sum of the
-previous two elements in the series:
+----
+The head of this stream is 1, and the tail of it has 2 and 3. The tail is not printed here, though, because it hasn't been computed yet! Streams are required to compute lazily, and the toStringmethod of a stream is careful not to force any extra evaluation.
+
+Below is a more complex example. It computes a stream that contains a Fibonacci sequence starting with the given two numbers. A Fibonacci sequence is one where each element is the sum of the previous two elements in the series:
+[source,scala]
+----
 scala> def fibFrom(a: Int, b: Int): Stream[Int] =
-a #:: fibFrom(b, a + b)
+          a #:: fibFrom(b, a + b)
 fibFrom: (a: Int, b: Int)Stream[Int]
-This function is deceptively simple. The first element of the sequence is clearly a, and the rest of the
-sequence is the Fibonacci sequence starting with b followed by a + b. The tricky part is computing this
-sequence without causing an infinite recursion. If the function used :: instead of #::, then every call to
-the function would result in another call, thus causing an infinite recursion. Since it uses #::, though,
-the right-hand side is not evaluated until it is requested.
+----
+This function is deceptively simple. The first element of the sequence is clearly a, and the rest of the sequence is the Fibonacci sequence starting with b followed by a + b. The tricky part is computing this sequence without causing an infinite recursion. If the function used :: instead of #::, then every call to the function would result in another call, thus causing an infinite recursion. Since it uses #::, though, the right-hand side is not evaluated until it is requested.
+
 Here are the first few elements of the Fibonacci sequence starting with two ones:
+[source,scala]
+----
 scala> val fibs = fibFrom(1, 1).take(7)
 fibs: scala.collection.immutable.Stream[Int] = Stream(1, ?)
+
 scala> fibs.toList
 res23: List[Int] = List(1, 1, 2, 3, 5, 8, 13)
-Vectors
-Lists are very efficient when the algorithm processing them is careful to only process their heads.
-Accessing, adding, and removing the head of a list takes only constant time, whereas accessing or
-modifying elements later in the list takes time linear in the depth into the list.
-Vectors are a collection type that give efficient access to elements beyond the head. Access to any
-elements of a vector take only "effectively constant time," as defined below. It's a larger constant than
-for access to the head of a list or for reading an element of an array, but it's a constant nonetheless. As a
-result, algorithms using vectors do not have to be careful about accessing just the head of the sequence.
-They can access and modify elements at arbitrary locations, and thus they can be much more
-convenient to write.Vectors are built and modified just like any other sequence:
+----
+
+Вектори
+~~~~~~~
+Lists are very efficient when the algorithm processing them is careful to only process their heads. Accessing, adding, and removing the head of a list takes only constant time, whereas accessing or modifying elements later in the list takes time linear in the depth into the list.
+
+Vectors are a collection type that give efficient access to elements beyond the head. Access to any elements of a vector take only "effectively constant time," as defined below. It's a larger constant than for access to the head of a list or for reading an element of an array, but it's a constant nonetheless. As a result, algorithms using vectors do not have to be careful about accessing just the head of the sequence. They can access and modify elements at arbitrary locations, and thus they can be much more convenient to write.
+Vectors are built and modified just like any other sequence:
+[source,scala]
+----
 scala> val vec = scala.collection.immutable.Vector.empty
 vec: scala.collection.immutable.Vector[Nothing] = Vector()
+
 scala> val vec2 = vec :+ 1 :+ 2
 vec2: scala.collection.immutable.Vector[Int] = Vector(1, 2)
+
 scala> val vec3 = 100 +: vec2
 vec3: scala.collection.immutable.Vector[Int]
-= Vector(100, 1, 2)
+  = Vector(100, 1, 2)
+
 scala> vec3(0)
 res24: Int = 100
-Vectors are represented as broad, shallow trees. Every tree node contains up to 32 elements of the
-vector or contains up to 32 other tree nodes. Vectors with up to 32 elements can be represented in a
-single node. Vectors with up to 32 * 32 = 1024 elements can be represented with a single indirection.
-Two hops from the root of the tree to the final element node are sufficient for vectors with up to
-215 elements, three hops for vectors with 220, four hops for vectors with 225 elements and five hops
-for vectors with up to 230 elements. So for all vectors of reasonable size, an element selection involves
-up to five primitive array selections. This is what we meant when we wrote that element access is
-"effectively constant time."
-Vectors are immutable, so you cannot change an element of a vector in place. However, with
-the updated method you can create a new vector that differs from a given vector only in a single
-element:
+----
+Vectors are represented as broad, shallow trees. Every tree node contains up to 32 elements of the vector or contains up to 32 other tree nodes. Vectors with up to 32 elements can be represented in a single node. Vectors with up to 32 * 32 = 1024 elements can be represented with a single indirection. Two hops from the root of the tree to the final element node are sufficient for vectors with up to 215 elements, three hops for vectors with 220, four hops for vectors with 225 elements and five hops for vectors with up to 230 elements. So for all vectors of reasonable size, an element selection involves up to five primitive array selections. This is what we meant when we wrote that element access is "effectively constant time."
+
+Vectors are immutable, so you cannot change an element of a vector in place. However, with the updated method you can create a new vector that differs from a given vector only in a single element:
+[source,scala]
+----
 scala> val vec = Vector(1, 2, 3)
 vec: scala.collection.immutable.Vector[Int] = Vector(1, 2, 3)
+
 scala> vec updated (2, 4)
 res25: scala.collection.immutable.Vector[Int] = Vector(1, 2, 4)
+
 scala> vec
 res26: scala.collection.immutable.Vector[Int] = Vector(1, 2, 3)
-As the last line above shows, a call to updated has no effect on the original vector vec. Like selection,
-functional vector updates are also "effectively constant time." Updating an element in the middle of a
-vector can be done by copying the node that contains the element, and every node that points to it,
-starting from the root of the tree. This means that a functional update creates between one and five
-nodes that each contain up to 32 elements or subtrees. This is certainly more expensive than an in-place
-update in a mutable array, but still a lot cheaper than copying the whole vector.
-Because vectors strike a good balance between fast random selections and fast random functional
-updates, they are currently the default implementation of immutable indexed sequences:
+----
+As the last line above shows, a call to updated has no effect on the original vector vec. Like selection, functional vector updates are also "effectively constant time." Updating an element in the middle of a vector can be done by copying the node that contains the element, and every node that points to it, starting from the root of the tree. This means that a functional update creates between one and five nodes that each contain up to 32 elements or subtrees. This is certainly more expensive than an in-place update in a mutable array, but still a lot cheaper than copying the whole vector.
+
+Because vectors strike a good balance between fast random selections and fast random functional updates, they are currently the default implementation of immutable indexed sequences:
+[source,scala]
+----
 scala> collection.immutable.IndexedSeq(1, 2, 3)
 res27: scala.collection.immutable.IndexedSeq[Int]
-= Vector(1, 2, 3)Immutable stacks
-If you need a last-in-first-out sequence, you can use a Stack. You push an element onto a stack
-with push, pop an element with pop, and peek at the top of the stack without removing it withtop. All of
-these operations are constant time.
+  = Vector(1, 2, 3)Immutable stacks
+----
+If you need a last-in-first-out sequence, you can use a Stack. You push an element onto a stack with push, pop an element with pop, and peek at the top of the stack without removing it withtop. All of these operations are constant time.
+
 Here are some simple operations performed on a stack:
+[source,scala]
+----
 scala> val stack = scala.collection.immutable.Stack.empty
 stack: scala.collection.immutable.Stack[Nothing] = Stack()
+
 scala> val hasOne = stack.push(1)
 hasOne: scala.collection.immutable.Stack[Int] = Stack(1)
+
 scala> stack
 res28: scala.collection.immutable.Stack[Nothing] = Stack()
+
 scala> hasOne.top
 res29: Int = 1
+
 scala> hasOne.pop
 res30: scala.collection.immutable.Stack[Int] = Stack()
-Immutable stacks are used rarely in Scala programs because their functionality is subsumed by lists:
-A push on an immutable stack is the same as a :: on a list, and a pop on a stack is the same a tail on a
-list.
-Immutable queues
-A queue is just like a stack except that it is first-in-first-out rather than last-in-first-out. A simplified
-implementation of immutable queues was discussed in Chapter 19. Here's how you can create an empty
-immutable queue:
+----
+Immutable stacks are used rarely in Scala programs because their functionality is subsumed by lists: A push on an immutable stack is the same as a :: on a list, and a pop on a stack is the same a tail on a list.
+
+Незмінні черги
+~~~~~~~~~~~~~~
+A queue is just like a stack except that it is first-in-first-out rather than last-in-first-out. A simplified implementation of immutable queues was discussed in Chapter 19. Here's how you can create an empty immutable queue:
+[source,scala]
+----
 scala> val empty = scala.collection.immutable.Queue[Int]()
 empty: scala.collection.immutable.Queue[Int] = Queue()
+----
 You can append an element to an immutable queue with enqueue:
+[source,scala]
+----
 scala> val has1 = empty.enqueue(1)
 has1: scala.collection.immutable.Queue[Int] = Queue(1)
+----
 To append multiple elements to a queue, call enqueue with a collection as its argument:
+[source,scala]
+----
 scala> val has123 = has1.enqueue(List(2, 3))
 has123: scala.collection.immutable.Queue[Int] = Queue(1, 2,
 3)
+----
 To remove an element from the head of the queue, use dequeue:
+[source,scala]
+----
 scala> val (element, has23) = has123.dequeue
 element: Int = 1
 has23: scala.collection.immutable.Queue[Int] = Queue(2, 3)
-Note that dequeue returns a pair consisting of the element removed and the rest of the queue.Ranges
-A range is an ordered sequence of integers that are equally spaced apart. For example, "1, 2, 3" is a
-range, as is "5, 8, 11, 14." To create a range in Scala, use the predefined methods to andby. Here are
-some examples:
+----
+Note that dequeue returns a pair consisting of the element removed and the rest of the queue.
+
+Диапазони
+~~~~~~~~~
+A range is an ordered sequence of integers that are equally spaced apart. For example, "1, 2, 3" is a range, as is "5, 8, 11, 14." To create a range in Scala, use the predefined methods to andby. Here are some examples:
+[source,scala]
+----
 scala> 1 to 3
 res31: scala.collection.immutable.Range.Inclusive
-= Range(1, 2, 3)
+  = Range(1, 2, 3)
+
 scala> 5 to 14 by 3
 res32: scala.collection.immutable.Range = Range(5, 8, 11, 14)
-If you want to create a range that is exclusive of its upper limit, use the convenience
-methoduntil instead of to:
+----
+If you want to create a range that is exclusive of its upper limit, use the convenience methoduntil instead of to:
+[source,scala]
+----
 scala> 1 until 3
 res33: scala.collection.immutable.Range = Range(1, 2)
-Ranges are represented in constant space, because they can be defined by just three numbers: their start,
-their end, and the stepping value. Because of this representation, most operations on ranges are
-extremely fast.
-Hash tries
-Hash tries,footnote:["Trie" comes from the word "retrieval" and is pronounced tree or try.] are a standard way to implement immutable sets and maps efficiently. Their
-representation is similar to vectors in that they are also trees where every node has 32 elements or 32
-subtrees, but selection is done based on a hash code. For instance, to find a given key in a map, you use
-the lowest five bits of the hash code of the key to select the first subtree, the next five bits the next
-subtree, and so on. Selection stops once all elements stored in a node have hash codes that differ from
-each other in the bits that are selected so far. Thus, not all the bits of the hash code are necessarily used.
-Hash tries strike a nice balance between reasonably fast lookups and reasonably efficient functional
-insertions (+) and deletions (-). That's why they underlie Scala's default implementations of immutable
-maps and sets. In fact, Scala has a further optimization for immutable sets and maps that contain less
-than five elements. Sets and maps with one to four elements are stored as single objects that just
-contain the elements (or key/value pairs in the case of a map) as fields. The empty immutable set and
-empty immutable map is in each case a singleton object—there's no need to duplicate storage for those
-because an empty immutable set or map will always stay empty.
-Red-black trees
-Red-black trees are a form of balanced binary trees where some nodes are designated "red" and others
-"black." Like any balanced binary tree, operations on them reliably complete in time logarithmic to the
-size of the tree.
-Scala provides implementations of sets and maps that use a red-black tree internally. You access them
-under the names TreeSet and TreeMap:scala> val set = collection.immutable.TreeSet.empty[Int]
+----
+Ranges are represented in constant space, because they can be defined by just three numbers: their start, their end, and the stepping value. Because of this representation, most operations on ranges are extremely fast.
+
+Хеш дерева
+~~~~~~~~~~
+Hash tries,footnote:["Trie" comes from the word "retrieval" and is pronounced tree or try.] are a standard way to implement immutable sets and maps efficiently. Their representation is similar to vectors in that they are also trees where every node has 32 elements or 32 subtrees, but selection is done based on a hash code. For instance, to find a given key in a map, you use the lowest five bits of the hash code of the key to select the first subtree, the next five bits the next subtree, and so on. Selection stops once all elements stored in a node have hash codes that differ from each other in the bits that are selected so far. Thus, not all the bits of the hash code are necessarily used.
+
+Hash tries strike a nice balance between reasonably fast lookups and reasonably efficient functional insertions (+) and deletions (-). That's why they underlie Scala's default implementations of immutable maps and sets. In fact, Scala has a further optimization for immutable sets and maps that contain less than five elements. Sets and maps with one to four elements are stored as single objects that just contain the elements (or key/value pairs in the case of a map) as fields. The empty immutable set and empty immutable map is in each case a singleton object—there's no need to duplicate storage for those because an empty immutable set or map will always stay empty.
+
+Червоне-чорне дерева
+~~~~~~~~~~~~~~~~~~~~
+Red-black trees are a form of balanced binary trees where some nodes are designated "red" and others "black." Like any balanced binary tree, operations on them reliably complete in time logarithmic to the size of the tree.
+
+Scala provides implementations of sets and maps that use a red-black tree internally. You access them under the names TreeSet and TreeMap:
+[source,scala]
+----
+scala> val set = collection.immutable.TreeSet.empty[Int]
 set: scala.collection.immutable.TreeSet[Int] = TreeSet()
+
 scala> set + 1 + 3 + 3
 res34: scala.collection.immutable.TreeSet[Int] = TreeSet(1, 3)
-Red-black trees are also the standard implementation of SortedSet in Scala, because they provide an
-efficient iterator that returns all elements of the set in sorted order.
-Immutable bit sets
-A bit set represents a collection of small integers as the bits of a larger integer. For example, the bit set
-containing 3, 2, and 0 would be represented as the integer 1101 in binary, which is 13 in decimal.
-Internally, bit sets use an array of 64-bit Longs. The first Long in the array is for integers 0 through 63,
-the second is for 64 through 127, and so on. Thus, bit sets are very compact so long as the largest
-integer in the set is less than a few hundred or so.
-Operations on bit sets are very fast. Testing for inclusion takes constant time. Adding an item to the set
-takes time proportional to the number of Longs in the bit set's array, which is typically a small number.
-Here are some simple examples of the use of a bit set:
+----
+Red-black trees are also the standard implementation of SortedSet in Scala, because they provide an efficient iterator that returns all elements of the set in sorted order.
+
+Незмінні бітові множини
+~~~~~~~~~~~~~~~~~~~~~~~
+A bit set represents a collection of small integers as the bits of a larger integer. For example, the bit set containing 3, 2, and 0 would be represented as the integer 1101 in binary, which is 13 in decimal.
+
+Internally, bit sets use an array of 64-bit Longs. The first Long in the array is for integers 0 through 63, the second is for 64 through 127, and so on. Thus, bit sets are very compact so long as the largest integer in the set is less than a few hundred or so.
+
+Operations on bit sets are very fast. Testing for inclusion takes constant time. Adding an item to the set takes time proportional to the number of Longs in the bit set's array, which is typically a small number. Here are some simple examples of the use of a bit set:
+[source,scala]
+----
 scala> val bits = scala.collection.immutable.BitSet.empty
 bits: scala.collection.immutable.BitSet = BitSet()
+
 scala> val moreBits = bits + 3 + 4 + 4
 moreBits: scala.collection.immutable.BitSet = BitSet(3, 4)
+
 scala> moreBits(3)
 res35: Boolean = true
+
 scala> moreBits(0)
 res36: Boolean = false
-List maps
-A list map represents a map as a linked list of key-value pairs. In general, operations on a list map
-might have to iterate through the entire list. Thus, operations on a list map take time linear in the size of
-the map. In fact there is little usage for list maps in Scala because standard immutable maps are almost
-always faster. The only possible difference is if the map is for some reason constructed in such a way
-that the first elements in the list are selected much more often than the other elements.
+----
+
+Спискові мапи
+~~~~~~~~~~~~~
+A list map represents a map as a linked list of key-value pairs. In general, operations on a list map might have to iterate through the entire list. Thus, operations on a list map take time linear in the size of the map. In fact there is little usage for list maps in Scala because standard immutable maps are almost always faster. The only possible difference is if the map is for some reason constructed in such a way that the first elements in the list are selected much more often than the other elements.
+[source,scala]
+----
 scala> val map = collection.immutable.ListMap(
 1 -> "one", 2 -> "two")
 map: scala.collection.immutable.ListMap[Int,String] = Map(1
 -> one, 2 -> two)
+
 scala> map(2)
-res37: String = "two"24.9 CONCRETE MUTABLE COLLECTION CLASSES
-Now that you've seen the most commonly used immutable collection classes that Scala provides in its
-standard library, take a look at the mutable collection classes.
-Array buffers
-You've already seen array buffers in Section 17.1. An array buffer holds an array and a size. Most
-operations on an array buffer have the same speed as an array, because the operations simply access
-and modify the underlying array. Additionally, array buffers can have data efficiently added to the end.
-Appending an item to an array buffer takes amortized constant time. Thus, array buffers are useful for
-efficiently building up a large collection whenever the new items are always added to the end. Here are
-some examples:
+res37: String = "two"
+----
+
+24.9 Суцільні класи змінних колекцій
+------------------------------------
+Now that you've seen the most commonly used immutable collection classes that Scala provides in its standard library, take a look at the mutable collection classes.
+
+Буфери масивів
+~~~~~~~~~~~~~~
+You've already seen array buffers in Section 17.1. An array buffer holds an array and a size. Most operations on an array buffer have the same speed as an array, because the operations simply access and modify the underlying array. Additionally, array buffers can have data efficiently added to the end. Appending an item to an array buffer takes amortized constant time. Thus, array buffers are useful for efficiently building up a large collection whenever the new items are always added to the end. Here are some examples:
+[source,scala]
+----
 scala> val buf = collection.mutable.ArrayBuffer.empty[Int]
 buf: scala.collection.mutable.ArrayBuffer[Int]
-= ArrayBuffer()
+  = ArrayBuffer()
+
 scala> buf += 1
 res38: buf.type = ArrayBuffer(1)
+
 scala> buf += 10
 res39: buf.type = ArrayBuffer(1, 10)
+
 scala> buf.toArray
 res40: Array[Int] = Array(1, 10)
-List buffers
-You've also already seen list buffers in Section 17.1. A list buffer is like an array buffer except that it
-uses a linked list internally instead of an array. If you plan to convert the buffer to a list once it is built
-up, use a list buffer instead of an array buffer. Here's an example:footnote:[The "buf.type" that appears in the interpreter responses in this and several other examples in this section is a singleton type. As will be explained in Section 29.6, buf.type means the variable holds exactly the object referred to by buf.]
+----
+
+Буфери списків
+~~~~~~~~~~~~~~
+You've also already seen list buffers in Section 17.1. A list buffer is like an array buffer except that it uses a linked list internally instead of an array. If you plan to convert the buffer to a list once it is built up, use a list buffer instead of an array buffer. Here's an example:footnote:[The "buf.type" that appears in the interpreter responses in this and several other examples in this section is a singleton type. As will be explained in Section 29.6, buf.type means the variable holds exactly the object referred to by buf.]
+[source,scala]
+----
 scala> val buf = collection.mutable.ListBuffer.empty[Int]
 buf: scala.collection.mutable.ListBuffer[Int]
-= ListBuffer()
+  = ListBuffer()
+
 scala> buf += 1
 res41: buf.type = ListBuffer(1)
+
 scala> buf += 10
 res42: buf.type = ListBuffer(1, 10)
+
 scala> buf.toList
 res43: List[Int] = List(1, 10)
-String builders
-Just like an array buffer is useful for building arrays, and a list buffer is useful for building lists, a string
-builder is useful for building strings. String builders are so commonly used that they are already
-imported into the default namespace. Create them with a simplenew StringBuilder, like this:
-scala> val buf = new StringBuilderbuf: StringBuilder =
+----
+
+Будівельники рядків
+~~~~~~~~~~~~~~~~~~~
+Just like an array buffer is useful for building arrays, and a list buffer is useful for building lists, a string builder is useful for building strings. String builders are so commonly used that they are already imported into the default namespace. Create them with a simplenew StringBuilder, like this:
+[source,scala]
+----
+scala> val buf = new StringBuilder
+buf: StringBuilder =
+
 scala> buf += 'a'
 res44: buf.type = a
+
 scala> buf ++= "bcdef"
 res45: buf.type = abcdef
+
 scala> buf.toString
 res46: String = abcdef
-Linked lists
-Linked lists are mutable sequences that consist of nodes that are linked with next pointers. In most
-languages null would be picked as the empty linked list. That does not work for Scala collections,
-because even empty sequences must support all sequence methods.LinkedList.empty.isEmpty, in
-particular, should return true and not throw a NullPointerException. Empty linked lists are encoded
-instead in a special way: Their next field points back to the node itself.
-Like their immutable cousins, linked lists are best operated on sequentially. In addition, linked lists
-make it easy to insert an element or linked list into another linked list.
-Double linked lists
-DoubleLinkedLists are like the single linked lists described in the previous subsection, except
-besides next, they have another mutable field, prev, that points to the element preceding the current
-node. The main benefit of that additional link is that it makes element removal very fast.
-Mutable lists
-A MutableList consists of a single linked list together with a pointer that refers to the terminal empty
-node of that list. This makes list append a constant time operation because it avoids having to traverse
-the list in search for its terminal node. MutableList is currently the standard implementation
-of mutable.LinearSeq in Scala.
-Queues
-Scala provides mutable queues in addition to immutable ones. You use a mutable queue similarly to the
-way you use an immutable one, but instead of enqueue, you use the += and ++=operators to append.
-Also, on a mutable queue, the dequeue method will just remove the head element from the queue and
-return it. Here's an example:
+----
+
+Зв'язані списки
+~~~~~~~~~~~~~~~
+Linked lists are mutable sequences that consist of nodes that are linked with next pointers. In most languages null would be picked as the empty linked list. That does not work for Scala collections, because even empty sequences must support all sequence methods.LinkedList.empty.isEmpty, in particular, should return true and not throw a NullPointerException. Empty linked lists are encoded instead in a special way: Their next field points back to the node itself.
+
+Like their immutable cousins, linked lists are best operated on sequentially. In addition, linked lists make it easy to insert an element or linked list into another linked list.
+
+Подвійно зв'язаний список
+~~~~~~~~~~~~~~~~~~~~~~~~~
+DoubleLinkedLists are like the single linked lists described in the previous subsection, except besides next, they have another mutable field, prev, that points to the element preceding the current node. The main benefit of that additional link is that it makes element removal very fast.
+
+Змінні списки
+~~~~~~~~~~~~~
+A MutableList consists of a single linked list together with a pointer that refers to the terminal empty node of that list. This makes list append a constant time operation because it avoids having to traverse the list in search for its terminal node. MutableList is currently the standard implementation of mutable.LinearSeq in Scala.
+
+Черги
+~~~~~
+Scala provides mutable queues in addition to immutable ones. You use a mutable queue similarly to the way you use an immutable one, but instead of enqueue, you use the += and ++=operators to append. Also, on a mutable queue, the dequeue method will just remove the head element from the queue and return it. Here's an example:
+[source,scala]
+----
 scala> val queue = new scala.collection.mutable.Queue[String]
 queue: scala.collection.mutable.Queue[String] = Queue()
+
 scala> queue += "a"
 res47: queue.type = Queue(a)
+
 scala> queue ++= List("b", "c")
 res48: queue.type = Queue(a, b, c)
+
 scala> queueres49: scala.collection.mutable.Queue[String] = Queue(a, b, c)
+
 scala> queue.dequeue
 res50: String = a
+
 scala> queue
 res51: scala.collection.mutable.Queue[String] = Queue(b, c)
-Array sequences
-Array sequences are mutable sequences of fixed size that store their elements internally in
-anArray[AnyRef]. They are implemented in Scala by class ArraySeq.
-You would typically use an ArraySeq if you want an array for its performance characteristics, but you
-also want to create generic instances of the sequence where you do not know the type of the elements
-and do not have a ClassTag to provide it at run-time. You will find out about these issues with arrays
-shortly, in Section 24.10.
-Stacks
-You saw immutable stacks earlier. There is also a mutable version. It works exactly the same as the
-immutable version except that modifications happen in place. Here's an example:
+----
+
+Масивні послідовності
+~~~~~~~~~~~~~~~~~~~~~
+Array sequences are mutable sequences of fixed size that store their elements internally in anArray[AnyRef]. They are implemented in Scala by class ArraySeq. You would typically use an ArraySeq if you want an array for its performance characteristics, but you also want to create generic instances of the sequence where you do not know the type of the elements and do not have a ClassTag to provide it at run-time. You will find out about these issues with arrays shortly, in Section 24.10.
+
+Стеки
+~~~~~
+You saw immutable stacks earlier. There is also a mutable version. It works exactly the same as the immutable version except that modifications happen in place. Here's an example:
+[source,scala]
+----
 scala> val stack = new scala.collection.mutable.Stack[Int]
 stack: scala.collection.mutable.Stack[Int] = Stack()
+
 scala> stack.push(1)
 res52: stack.type = Stack(1)
+
 scala> stack
 res53: scala.collection.mutable.Stack[Int] = Stack(1)
+
 scala> stack.push(2)
 res54: stack.type = Stack(2, 1)
+
 scala> stack
 res55: scala.collection.mutable.Stack[Int] = Stack(2, 1)
+
 scala> stack.top
 res56: Int = 2
+
 scala> stack
 res57: scala.collection.mutable.Stack[Int] = Stack(2, 1)
+
 scala> stack.pop
 res58: Int = 2
+
 scala> stack
-res59: scala.collection.mutable.Stack[Int] = Stack(1)Array stacks
-ArrayStack is an alternative implementation of a mutable stack, which is backed by an Arraythat gets
-resized as needed. It provides fast indexing and is generally slightly more efficient for most operations
-than a normal mutable stack.
-Hash tables
-A hash table stores its elements in an underlying array, placing each item at a position in the array
-determined by the hash code of that item. Adding an element to a hash table takes only constant time,
-so long as there isn't already another element in the array that has the same hash code. Hash tables are
-thus very fast so long as the objects placed in them have a good distribution of hash codes. As a result,
-the default mutable map and set types in Scala are based on hash tables.
+res59: scala.collection.mutable.Stack[Int] = Stack(1)
+----
+
+Масивні стеки
+~~~~~~~~~~~~~
+ArrayStack is an alternative implementation of a mutable stack, which is backed by an Arraythat gets resized as needed. It provides fast indexing and is generally slightly more efficient for most operations than a normal mutable stack.
+
+Хеш таблиці
+~~~~~~~~~~~
+A hash table stores its elements in an underlying array, placing each item at a position in the array determined by the hash code of that item. Adding an element to a hash table takes only constant time, so long as there isn't already another element in the array that has the same hash code. Hash tables are thus very fast so long as the objects placed in them have a good distribution of hash codes. As a result, the default mutable map and set types in Scala are based on hash tables.
+
 Hash sets and maps are used just like any other set or map. Here are some simple examples:
+[source,scala]
+----
 scala> val map = collection.mutable.HashMap.empty[Int,String]
 map: scala.collection.mutable.HashMap[Int,String] = Map()
+
 scala> map += (1 -> "make a web site")
 res60: map.type = Map(1 -> make a web site)
+
 scala> map += (3 -> "profit!")
 res61: map.type = Map(1 -> make a web site, 3 -> profit!)
+
 scala> map(1)
 res62: String = make a web site
+
 scala> map contains 2
 res63: Boolean = false
-Iteration over a hash table is not guaranteed to occur in any particular order. Iteration simply proceeds
-through the underlying array in whichever order it happens to be. To get a guaranteed iteration order,
-use a linked hash map or set instead of a regular one. A linked hash map or set is just like a regular hash
-map or set except that it also includes a linked list of the elements in the order they were added.
-Iteration over such a collection is always in the same order that the elements were initially added.
-Weak hash maps
-A weak hash map is a special kind of hash map in which the garbage collector does not follow links
-from the map to the keys stored in it. This means that a key and its associated value will disappear from
-the map if there is no other reference to that key. Weak hash maps are useful for tasks such as caching,
-where you want to re-use an expensive function's result if the function is called again on the same key.
-If keys and function results are stored in a regular hash map, the map could grow without bounds, and
-no key would ever become garbage. Using a weak hash map avoids this problem. As soon as a key
-object becomes unreachable, it's entry is removed from the weak hash map. Weak hash maps in Scala
-are implemented as a wrapper of an underlying Java implementation, java.util.WeakHashMap.Concurrent Maps
-A concurrent map can be accessed by several threads at once. In addition to the usual Mapoperations, it
-provides the following atomic operations:
-Operations in trait ConcurrentMap
-What it is
-What it does
-m putIfAbsent(k, v)
-Adds key/value binding k -> m unless k is already defined in m
-m remove (k, v)
-Removes entry for k if it is currently mapped to v
-m replace (k, old, new) Replaces value associated with key k to new, if it was previously bound to old
-Replaces value associated with key k to v, if it was previously bound to some
-m replace (k, v)
-value
-ConcurrentMap is a trait in the Scala collections library. Currently, its only implementation is
-Java's java.util.concurrent.ConcurrentMap, which can be converted automatically into a Scala map
-using the standard Java/Scala collection conversions, which will be described in Section 24.17.
-Mutable bit sets
-A mutable bit set is just like an immutable one, except that it can be modified in place. Mutable bit sets
-are slightly more efficient at updating than immutable ones, because they don't have to copy
-around Longs that haven't changed. Here is an example:
+----
+Iteration over a hash table is not guaranteed to occur in any particular order. Iteration simply proceeds through the underlying array in whichever order it happens to be. To get a guaranteed iteration order, use a linked hash map or set instead of a regular one. A linked hash map or set is just like a regular hash map or set except that it also includes a linked list of the elements in the order they were added. Iteration over such a collection is always in the same order that the elements were initially added.
+
+Слабкі хеш мапи
+~~~~~~~~~~~~~~~
+A weak hash map is a special kind of hash map in which the garbage collector does not follow links from the map to the keys stored in it. This means that a key and its associated value will disappear from the map if there is no other reference to that key. Weak hash maps are useful for tasks such as caching, where you want to re-use an expensive function's result if the function is called again on the same key. If keys and function results are stored in a regular hash map, the map could grow without bounds, and no key would ever become garbage. Using a weak hash map avoids this problem. As soon as a key object becomes unreachable, it's entry is removed from the weak hash map. Weak hash maps in Scala are implemented as a wrapper of an underlying Java implementation, java.util.WeakHashMap.
+
+Конкурентні мапи
+~~~~~~~~~~~~~~~~
+A concurrent map can be accessed by several threads at once. In addition to the usual Mapoperations, it provides the following atomic operations:
+
+[caption="Операції трейта ConcurrentMap"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+|m putIfAbsent(k, v)|Adds key/value binding k -> m unless k is already defined in m
+|m remove (k, v)|Removes entry for k if it is currently mapped to v
+|m replace (k, old, new)| Replaces value associated with key k to new, if it was previously bound to old
+|m replace (k, v)|Replaces value associated with key k to v, if it was previously bound to some value
+|===
+
+ConcurrentMap is a trait in the Scala collections library. Currently, its only implementation is Java's java.util.concurrent.ConcurrentMap, which can be converted automatically into a Scala map using the standard Java/Scala collection conversions, which will be described in Section 24.17.
+
+Змінні бітові множини
+~~~~~~~~~~~~~~~~~~~~~
+A mutable bit set is just like an immutable one, except that it can be modified in place. Mutable bit sets are slightly more efficient at updating than immutable ones, because they don't have to copy around Longs that haven't changed. Here is an example:
+[source,scala]
+----
 scala> val bits = scala.collection.mutable.BitSet.empty
 bits: scala.collection.mutable.BitSet = BitSet()
+
 scala> bits += 1
 res64: bits.type = BitSet(1)
+
 scala> bits += 3
 res65: bits.type = BitSet(1, 3)
+
 scala> bits
 res66: scala.collection.mutable.BitSet = BitSet(1, 3)
-24.10 ARRAYS
-Arrays are a special kind of collection in Scala. One the one hand, Scala arrays correspond one-to-one
-to Java arrays. That is, a Scala array Array[Int] is represented as a Java int[], anArray[Double] is
-represented as a Java double[] and an Array[String] is represented as a JavaString[]. But at the same
-time, Scala arrays offer much more their Java analogues. First, Scala arrays can be generic. That is, you
-can have an Array[T], where T is a type parameter or abstract type. Second, Scala arrays are
-compatible with Scala sequences—you can pass anArray[T] where a Seq[T] is required. Finally, Scala
-arrays also support all sequence operations. Here's an example of this in action:
+----
+
+24.10 Масиви
+------------
+Arrays are a special kind of collection in Scala. One the one hand, Scala arrays correspond one-to-one to Java arrays. That is, a Scala array Array[Int] is represented as a Java int[], anArray[Double] is represented as a Java double[] and an Array[String] is represented as a JavaString[]. But at the same time, Scala arrays offer much more their Java analogues. First, Scala arrays can be generic. That is, you can have an Array[T], where T is a type parameter or abstract type. Second, Scala arrays are compatible with Scala sequences—you can pass anArray[T] where a Seq[T] is required. Finally, Scala arrays also support all sequence operations. Here's an example of this in action: 
+[source,scala]
+----
 scala> val a1 = Array(1, 2, 3)
 a1: Array[Int] = Array(1, 2, 3)
+
 scala> val a2 = a1 map (_ * 3)
 a2: Array[Int] = Array(3, 6, 9)scala> val a3 = a2 filter (_ % 2 != 0)
 a3: Array[Int] = Array(3, 9)
+
 scala> a3.reverse
 res1: Array[Int] = Array(9, 3)
-Given that Scala arrays are represented just like Java arrays, how can these additional features be
-supported in Scala?
-The answer lies in systematic use of implicit conversions. An array cannot pretend to be a sequence,
-because the data type representation of a native array is not a subtype of Seq. Instead, whenever an
-array would be used as a Seq, implicitly wrap it in a subclass of Seq. The name of that subclass
-is scala.collection.mutable.WrappedArray. Here you see it in action:
+----
+Given that Scala arrays are represented just like Java arrays, how can these additional features be supported in Scala?
+
+The answer lies in systematic use of implicit conversions. An array cannot pretend to be a sequence, because the data type representation of a native array is not a subtype of Seq. Instead, whenever an array would be used as a Seq, implicitly wrap it in a subclass of Seq. The name of that subclass is scala.collection.mutable.WrappedArray. Here you see it in action:
+[source,scala]
+----
 scala> val seq: Seq[Int] = a1
 seq: Seq[Int] = WrappedArray(1, 2, 3)
+
 scala> val a4: Array[Int] = seq.toArray
 a4: Array[Int] = Array(1, 2, 3)
+
 scala> a1 eq a4
 res2: Boolean = true
-This interaction demonstrates that arrays are compatible with sequences, because there's an implicit
-conversion from Array to WrappedArray. To go the other way, from a WrappedArray to anArray, you
-can use the toArray method defined in Traversable. The last interpreter line above shows that wrapping
-then unwrapping with toArray gives you back the same array you started with.
-There is yet another implicit conversion that gets applied to arrays. This conversion simply "adds" all
-sequence methods to arrays but does not turn the array itself into a sequence. "Adding" means that the
-array is wrapped in another object of type ArrayOps, which supports all sequence methods. Typically,
-this ArrayOps object is short-lived; it will usually be inaccessible after the call to the sequence method
-and its storage can be recycled. Modern VMs often avoid creating this object entirely.
+----
+This interaction demonstrates that arrays are compatible with sequences, because there's an implicit conversion from Array to WrappedArray. To go the other way, from a WrappedArray to anArray, you can use the toArray method defined in Traversable. The last interpreter line above shows that wrapping then unwrapping with toArray gives you back the same array you started with.
+
+There is yet another implicit conversion that gets applied to arrays. This conversion simply "adds" all sequence methods to arrays but does not turn the array itself into a sequence. "Adding" means that the array is wrapped in another object of type ArrayOps, which supports all sequence methods. Typically, this ArrayOps object is short-lived; it will usually be inaccessible after the call to the sequence method and its storage can be recycled. Modern VMs often avoid creating this object entirely.
+
 The difference between the two implicit conversions on arrays is demonstrated here:
+[source,scala]
+----
 scala> val seq: Seq[Int] = a1
 seq: Seq[Int] = WrappedArray(1, 2, 3)
+
 scala> seq.reverse
 res2: Seq[Int] = WrappedArray(3, 2, 1)
+
 scala> val ops: collection.mutable.ArrayOps[Int] = a1
 ops: scala.collection.mutable.ArrayOps[Int] = [I(1, 2, 3)
+
 scala> ops.reverse
 res3: Array[Int] = Array(3, 2, 1)
-You see that calling reverse on seq, which is a WrappedArray, will give again a WrappedArray. That's
-logical, because wrapped arrays are Seqs, and calling reverse on any Seq will give again a Seq. On the
-other hand, calling reverse on the ops value of class ArrayOps will result in an Array, not aSeq.The ArrayOps example above was quite artificial, intended only to show the difference
-toWrappedArray. Normally, you'd never define a value of class ArrayOps. You'd just call a Seq method
-on an array:
+----
+You see that calling reverse on seq, which is a WrappedArray, will give again a WrappedArray. That's logical, because wrapped arrays are Seqs, and calling reverse on any Seq will give again a Seq. On the other hand, calling reverse on the ops value of class ArrayOps will result in an Array, not aSeq.The ArrayOps example above was quite artificial, intended only to show the difference toWrappedArray. Normally, you'd never define a value of class ArrayOps. You'd just call a Seq method on an array:
+[source,scala]
+----
 scala> a1.reverse
 res4: Array[Int] = Array(3, 2, 1)
-The ArrayOps object gets inserted automatically by the implicit conversion. So the line above is
-equivalent to the following line, where intArrayOps was the conversion that was implicitly inserted
-previously:
+----
+The ArrayOps object gets inserted automatically by the implicit conversion. So the line above is equivalent to the following line, where intArrayOps was the conversion that was implicitly inserted previously:
+[source,scala]
+----
 scala> intArrayOps(a1).reverse
 res5: Array[Int] = Array(3, 2, 1)
-This raises the question how the compiler picked intArrayOps over the other implicit conversion
-to WrappedArray in the line above. After all, both conversions map an array to a type that supports
-a reverse method, which is what the input specified. The answer to that question is that the two implicit
-conversions are prioritized. The ArrayOps conversion has a higher priority than
-the WrappedArray conversion. The first is defined in the Predef object whereas the second is defined in
-a class scala.LowPriorityImplicits, which is a superclass of Predef. Implicits in subclasses and
-subobjects take precedence over implicits in base classes. So if both conversions are applicable, the one
-in Predef is chosen. A very similar scheme, which was described in Section 21.7, works for strings.
-So now you know how arrays can be compatible with sequences and how they can support all sequence
-operations. What about genericity? In Java you cannot write a T[] where T is a type parameter. How
-then is Scala's Array[T] represented? In fact a generic array like Array[T] could be at run time any of
-Java's eight primitive array types byte[], short[], char[], int[], long[],float[], double[], boolean[], or it
-could be an array of objects. The only common run-time type encompassing all of these types
-is AnyRef (or, equivalently java.lang.Object), so that's the type to which the Scala compiler
-maps Array[T]. At run-time, when an element of an array of typeArray[T] is accessed or updated there
-is a sequence of type tests that determine the actual array type, followed by the correct array operation
-on the Java array. These type tests slow down array operations somewhat. You can expect accesses to
-generic arrays to be three to four times slower than accesses to primitive or object arrays. This means
-that if you need maximal performance, you should prefer concrete over generic arrays.
-Representing the generic array type is not enough, however, there must also be a way tocreate generic
-arrays. This is an even harder problem, which requires a little bit of help from you. To illustrate the
-problem, consider the following attempt to write a generic method that creates an array:
+----
+This raises the question how the compiler picked intArrayOps over the other implicit conversion to WrappedArray in the line above. After all, both conversions map an array to a type that supports a reverse method, which is what the input specified. The answer to that question is that the two implicit conversions are prioritized. The ArrayOps conversion has a higher priority than the WrappedArray conversion. The first is defined in the Predef object whereas the second is defined in a class scala.LowPriorityImplicits, which is a superclass of Predef. Implicits in subclasses and subobjects take precedence over implicits in base classes. So if both conversions are applicable, the one in Predef is chosen. A very similar scheme, which was described in Section 21.7, works for strings.
+
+So now you know how arrays can be compatible with sequences and how they can support all sequence operations. What about genericity? In Java you cannot write a T[] where T is a type parameter. How then is Scala's Array[T] represented? In fact a generic array like Array[T] could be at run time any of Java's eight primitive array types byte[], short[], char[], int[], long[],float[], double[], boolean[], or it could be an array of objects. The only common run-time type encompassing all of these types is AnyRef (or, equivalently java.lang.Object), so that's the type to which the Scala compiler maps Array[T]. At run-time, when an element of an array of typeArray[T] is accessed or updated there is a sequence of type tests that determine the actual array type, followed by the correct array operation on the Java array. These type tests slow down array operations somewhat. You can expect accesses to generic arrays to be three to four times slower than accesses to primitive or object arrays. This means that if you need maximal performance, you should prefer concrete over generic arrays.
+
+Representing the generic array type is not enough, however, there must also be a way tocreate generic arrays. This is an even harder problem, which requires a little bit of help from you. To illustrate the problem, consider the following attempt to write a generic method that creates an array:
+[source,scala]
+----
 // This is wrong!
 def evenElems[T](xs: Vector[T]): Array[T] = {
-val arr = new Array[T]((xs.length + 1) / 2)
-for (i <- 0 until xs.length by 2)
-arr(i / 2) = xs(i)
-arr
-}The evenElems method returns a new array that consists of all elements of the argument vectorxs that
-are at even positions in the vector. The first line of the body of evenElems creates the result array,
-which has the same element type as the argument. So depending on the actual type parameter for T, this
-could be an Array[Int], or an Array[Boolean], or an array of some of the other primitive types in Java,
-or an array of some reference type. But these types all have different runtime representations, so how is
-the Scala runtime going to pick the correct one? In fact, it can't do that based on the information it is
-given, because the actual type that corresponds to the type parameter T is erased at runtime. That's why
-you will get the following error message if you attempt to compile the code above:
+  val arr = new Array[T]((xs.length + 1) / 2)
+  for (i <- 0 until xs.length by 2)
+    arr(i / 2) = xs(i)
+  arr
+}
+----
+The evenElems method returns a new array that consists of all elements of the argument vectorxs that are at even positions in the vector. The first line of the body of evenElems creates the result array, which has the same element type as the argument. So depending on the actual type parameter for T, this could be an Array[Int], or an Array[Boolean], or an array of some of the other primitive types in Java, or an array of some reference type. But these types all have different runtime representations, so how is the Scala runtime going to pick the correct one? In fact, it can't do that based on the information it is given, because the actual type that corresponds to the type parameter T is erased at runtime. That's why you will get the following error message if you attempt to compile the code above:
+[source,scala]
+----
 error: cannot find class tag for element type T
-val arr = new Array[T]((arr.length + 1) / 2)
-^
-What's required here is that you help the compiler by providing a runtime hint of what the actual type
-parameter of evenElems is. This runtime hint takes the form of a class tag of typescala.reflect.ClassTag.
-A class tag describes the erased type of a given type, which is all the information needed to construct
-an array of that type.
-In many cases the compiler can generate a class tag on its own. Such is the case for a concrete type
-like Int or String. It's also the case for certain generic types, like List[T], where enough information is
-known to predict the erased type; in this example the erased type would beList.
-For fully generic cases, the usual idiom is to pass the class tag using a context bound, as discussed
-in Section 21.6. Here is how the above definition could be fixed by using a context bound:
+  val arr = new Array[T]((arr.length + 1) / 2)
+            ^
+----
+What's required here is that you help the compiler by providing a runtime hint of what the actual type parameter of evenElems is. This runtime hint takes the form of a class tag of typescala.reflect.ClassTag. A class tag describes the erased type of a given type, which is all the information needed to construct an array of that type.
+
+In many cases the compiler can generate a class tag on its own. Such is the case for a concrete type like Int or String. It's also the case for certain generic types, like List[T], where enough information is known to predict the erased type; in this example the erased type would beList.
+
+For fully generic cases, the usual idiom is to pass the class tag using a context bound, as discussed in Section 21.6. Here is how the above definition could be fixed by using a context bound:
+[source,scala]
+----
 // This works
 import scala.reflect.ClassTag
 def evenElems[T: ClassTag](xs: Vector[T]): Array[T] = {
-val arr = new Array[T]((xs.length + 1) / 2)
-for (i <- 0 until xs.length by 2)
-arr(i / 2) = xs(i)
-arr
+  val arr = new Array[T]((xs.length + 1) / 2)
+  for (i <- 0 until xs.length by 2)
+    arr(i / 2) = xs(i)
+  arr
 }
-In this new definition, when the Array[T] is created, the compiler looks for a class tag for the type
-parameter T, that is, it will look for an implicit value of type ClassTag[T]. If such a value is found, the
-class tag is used to construct the right kind of array. Otherwise, you'll see an error message like the one
-shown previously.
+----
+In this new definition, when the Array[T] is created, the compiler looks for a class tag for the type parameter T, that is, it will look for an implicit value of type ClassTag[T]. If such a value is found, the class tag is used to construct the right kind of array. Otherwise, you'll see an error message like the one shown previously.
+
 Here is an interpreter interaction that uses the evenElems method:
+[source,scala]
+----
 scala> evenElems(Vector(1, 2, 3, 4, 5))
 res6: Array[Int] = Array(1, 3, 5)
+
 scala> evenElems(Vector("this", "is", "a", "test", "run"))
 res7: Array[java.lang.String] = Array(this, a, run)
-In both cases, the Scala compiler automatically constructed a class tag for the element type (first Int,
-then String) and passed it to the implicit parameter of the evenElems method. The compiler can do thatfor all concrete types, but not if the argument is itself another type parameter without its class tag. For
-instance, the following fails:
+----
+In both cases, the Scala compiler automatically constructed a class tag for the element type (first Int, then String) and passed it to the implicit parameter of the evenElems method. The compiler can do thatfor all concrete types, but not if the argument is itself another type parameter without its class tag. For instance, the following fails:
+[source,scala]
+----
 scala> def wrap[U](xs: Vector[U]) = evenElems(xs)
 <console>:9: error: No ClassTag available for U
-def wrap[U](xs: Vector[U]) = evenElems(xs)
-^
-What happened here is that the evenElems demands a class tag for the type parameter U, but none was
-found. The solution in this case is, of course, to demand another implicit class tag for U. So the
-following works:
+  def wrap[U](xs: Vector[U]) = evenElems(xs)
+                                        ^
+----
+What happened here is that the evenElems demands a class tag for the type parameter U, but none was found. The solution in this case is, of course, to demand another implicit class tag for U. So the following works:
+[source,scala]
+----
 scala> def wrap[U: ClassTag](xs: Vector[U]) = evenElems(xs)
 wrap: [U](xs: Vector[U])(implicit evidence$1:
 scala.reflect.ClassTag[U])Array[U]
-This example also shows that the context bound in the definition of U is just a shorthand for an implicit
-parameter named here evidence$1 of type ClassTag[U].
-24.11 STRINGS
-Like arrays, strings are not directly sequences, but they can be converted to them, and they also support
-all sequence operations. Here are some examples of operations you can invoke on strings:
+----
+This example also shows that the context bound in the definition of U is just a shorthand for an implicit parameter named here evidence$1 of type ClassTag[U].
+
+24.11 Рядки
+-----------
+Like arrays, strings are not directly sequences, but they can be converted to them, and they also support all sequence operations. Here are some examples of operations you can invoke on strings:
+[source,scala]
+----
 scala> val str = "hello"
 str: java.lang.String = hello
+
 scala> str.reverse
 res6: String = olleh
+
 scala> str.map(_.toUpper)
 res7: String = HELLO
+
 scala> str drop 3
 res8: String = lo
+
 scala> str slice (1, 4)
 res9: String = ell
+
 scala> val s: Seq[Char] = str
 s: Seq[Char] = WrappedString(h, e, l, l, o)
-These operations are supported by two implicit conversions, which were explained in Section 21.7. The
-first, low-priority conversion maps a String to a WrappedString, which is a subclass
-ofimmutable.IndexedSeq. This conversion was applied in the last line of the previous example in which
-a string was converted into a Seq. The other, high-priority conversion maps a string to
-aStringOps object, which adds all methods on immutable sequences to strings. This conversion was
-implicitly inserted in the method calls of reverse, map, drop, and slice in the previous example.24.12 PERFORMANCE CHARACTERISTICS
-As the previous explanations have shown, different collection types have different performance
-characteristics. That's often the primary reason for picking one collection type over another. You can
-see the performance characteristics of some common operations on collections summarized in two
-tables, Table 24.12 and Table 24.12.
-head tail apply update prepend append insert
-immutable
-List
-Stream
-Vector
-Stack
-Queue
-Range
-String
-mutable
-ArrayBuffer
-ListBuffer
-StringBuilder
-MutableList
-Queue
-ArraySeq
-Stack
-ArrayStack
-Array
-C
-C
-eC
-C
-aC
-C
-C C
-C
-eC
-C
-aC
-C
-L L
-L
-eC
-L
-L
-C
-C L
-L
-eC
-L
-L
--
-L C
-C
-eC
-C
-L
--
-L L
-L
-eC
-L
-C
--
-L -
--
--
--
--
--
--
-C
-C
-C
-C
-C
-C
-C
-C
-C L
-L
-L
-L
-L
-L
-L
-L
-L C
-L
-C
-L
-L
-C
-L
-C
-C C
-L
-C
-L
-L
-C
-L
-C
-C L
-C
-L
-C
-C
--
-C
-aC
-- aC
-C
-aC
-C
-C
--
-L
-L
-- L
-L
-L
-L
-L
--
-L
-L
--
+----
+These operations are supported by two implicit conversions, which were explained in Section 21.7. The first, low-priority conversion maps a String to a WrappedString, which is a subclass ofimmutable.IndexedSeq. This conversion was applied in the last line of the previous example in which a string was converted into a Seq. The other, high-priority conversion maps a string to aStringOps object, which adds all methods on immutable sequences to strings. This conversion was implicitly inserted in the method calls of reverse, map, drop, and slice in the previous example.
+
+24.12 Характеристики продуктивності
+-----------------------------------
+As the previous explanations have shown, different collection types have different performance characteristics. That's often the primary reason for picking one collection type over another. You can see the performance characteristics of some common operations on collections summarized in two tables, Table 24.12 and Table 24.12.
+
 Performance characteristics of sequence types
-lookup add remove min
-immutable
-HashSet/HashMap
-TreeSet/TreeMap
-BitSet
-ListMap
-mutable
-HashSet/HashMap
-WeakHashMap
-BitSet
-eC
-Log
-C
-L eC
-Log
-L
-L
-eC
-Log
-L
-L
-eC
-eC
-C eC eC
-eC eC
-aC C
-L
-Log
-eC footnote:[Assuming bits are densely packed.]
-L
-L
-L
-eC^a
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|===
+|              |head|tail|apply|update|prepend|append|insert
+8+|immutable
+|List          |C|C|L|L|C|L|-
+|Stream        |C|C|L|L|C|L|- 
+|Vector        |eC|eC|eC|eC|eC|eC|-
+|Stack         |C|C|L|L|C|L|-
+|Queue         |aC|aC|L|L|L|C|- 
+|Range         |C|C|C|-|-|-|-
+|String        |C|L|C|L|L|L|- 
+8+|mutable
+|ArrayBuffer   |C|L|C|C|L|aC|L
+|ListBuffer    |C|L|L|L|C|C|L
+|StringBuilder |C|L|C|C|L|aC|L
+|MutableList   |C|L|L|L|C|C|L
+|Queue         |C|L|L|L|C|C|L
+|ArraySeq      |C|L|C|C|-|-|-
+|Stack         |C|L|L|L|C|L|L 
+|ArrayStack    |C|L|C|C|aC|L|L 
+|Array         |C|L|C|C|-|-|-
+|===
+
 Performance characteristics of set and map types
-The entries in these two tables are explained as follows:
-C
-The operation takes (fast) constant time.The operation takes effectively constant time, but this might depend on some assumptions such as
-the maximum length of a vector or the distribution of hash keys.
-The operation takes amortized constant time. Some invocations of the operation might take
-aC longer, but if many operations are performed on average only constant time per operation is
-taken.
-Log The operation takes time proportional to the logarithm of the collection size.
-L
-The operation is linear, that is it takes time proportional to the collection size.
--
-The operation is not supported.
-Table 24.12 treats sequence types—both immutable and mutable—with the following operations:
-eC
-head
-tail
-apply
-Selecting the first element of the sequence.
-Producing a new sequence that consists of all elements except the first one.
-Indexing.
-Functional update (with updated) for immutable sequences, side-effecting update
-update
-(with update) for mutable sequences.
-Adding an element to the front of the sequence. For immutable sequences, this produces a
-prepend
-new sequence. For mutable sequences it modifies the existing sequence.
-Adding an element at the end of the sequence. For immutable sequences, this produces a new
-append
-sequence. For mutable sequences it modifies the existing sequence.
-Inserting an element at an arbitrary position in the sequence. This is only supported directly
-insert
-for mutable sequences.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+|===
+|                 |lookup|add|remove|min
+5+|immutable
+|HashSet/HashMap  |eC|eC|eC|L
+|TreeSet/TreeMap  |Log|Log|Log|Log
+|BitSet           |C|L|L|eC.footnote:[Assuming bits are densely packed.]
+|ListMap          |L|L|L|L
+5+|mutable
+|HashSet/HashMap  |eC|eC|eC|L
+|WeakHashMap      |eC|eC|eC|L
+|BitSet           |C|aC|C|eC^a
+|===
+ 
+Входження в ціх двох таблицях пояснюється наступним чином:
+
+*C* Операція займає сталий час (швидка).
+
+*eC* Операція ефективно займає сталий час, але це може залежати від деяких припущень, таких, як максимальна довжина вектора, або розподілення хеш ключей.
+
+*aC* Операція займає амортизований сталий час. Деякі виклики операції можуть зайняти довше, але якщо виконується багато операцій,в середньому операція триває сталий час.
+
+*Log* Операція триває час, пропорційний до логарифму розміру колекції.
+
+*L* Операція лінійна, триває час пропорційний до розміру колекції.
+
+*-* Операція не підтримується.
+
+Таблиця 24.12 treats sequence types—both immutable and mutable—with the following operations:
+
+*head* Вибір першого елемента в послідовності.
+
+*tail* Створення нової колекції, що складається з усіх елементів, крім першого.
+
+*apply* Індексування.
+
+*update* Functional update (with updated) for immutable sequences, side-effecting update (with update) for mutable sequences.
+
+*prepend* Adding an element to the front of the sequence. For immutable sequences, this produces a new sequence. For mutable sequences it modifies the existing sequence.
+
+*append* Adding an element at the end of the sequence. For immutable sequences, this produces a new sequence. For mutable sequences it modifies the existing sequence.
+
+*insert* Inserting an element at an arbitrary position in the sequence. This is only supported directly for mutable sequences.
+
 Table 24.12 treats mutable and immutable sets and maps with the following operations:
-lookup
-add
-remove
-min
-Testing whether an element is contained in set, or selecting a value associated with a key.
-Adding a new element to a set or a new key/value pair to a map.
-Removing an element from a set or a key from a map.
-The smallest element of the set, or the smallest key of a map.
-24.13 EQUALITY
+
+*lookup* Testing whether an element is contained in set, or selecting a value associated with a key.
+*add* Adding a new element to a set or a new key/value pair to a map.
+*remove* Removing an element from a set or a key from a map.
+*min* The smallest element of the set, or the smallest key of a map.
+
+24.13 Еквівалентність
+---------------------
 The collection libraries have a uniform approach to equality and hashing. The idea is, first, to divide
 collections into sets, maps, and sequences. Collections in different categories are always unequal. For
 instance, Set(1, 2, 3) is unequal to List(1, 2, 3) even though they contain the same elements. On the
@@ -2091,11 +1785,11 @@ summarized in Table 24.13. In short, there's:
 concat, which concatenates an arbitrary number of traversables together,
 fill and tabulate, which generate single or multi-dimensional sequences of given dimensions
 initialized by some expression or tabulating function,
-• range, which generates integer sequences with some constant step length, and
-• iterate, which generates the sequence resulting from repeated application of a function to a start
+* range, which generates integer sequences with some constant step length, and
+* iterate, which generates the sequence resulting from repeated application of a function to a start
 element.
-•
-•
+*
+*
 Factory methods for sequences
 What it is
 S.empty
@@ -2194,7 +1888,9 @@ jul: java.util.List[Int] = [1, 2, 3]
 scala> jul.add(7)
 java.lang.UnsupportedOperationException
 at java.util.AbstractList.add(AbstractList.java:131)
-24.18 CONCLUSION
+
+24.18 Висновок
+==============
 You've now seen how to use Scala's collection in great detail. Scala's collections take the approach of
 giving you powerful building blocks rather than a number of ad hoc utility methods. Putting together
 two or three such building blocks allows you to express an enormous number of useful computations.

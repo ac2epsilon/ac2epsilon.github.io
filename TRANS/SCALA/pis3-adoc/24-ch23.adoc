@@ -151,7 +151,8 @@ def queens(n: Int): List[List[(Int, Int)]] = {
 
 В іншому випадку, коли `k` не нуль, вся робота `placeQueens` виконується в `for` виразі. Перший генератор цього `for` виразу ітерує по всіх рішеннях, розміщуючи `k - 1` ферзів на дошці. Другий генератор ітерує по всіх можливих стовпчиках, на яких може бути розміщений  `k`-тий ферзь. Третя частина `for` виразу визначає новітньо розглянуту позицію ферзя, що буде парою з рядка `k` та кожного стовпчика. Четверта частина виразу `for` є фільтром, що перевіряє за допомогою `isSafe`, чи новий ферзь є вільний від шаху всіма існуючими ферзями (визначення `isSafe` буде розглянута трохи пізніше).
 
-Якщо новий ферзь не має шахів від жодного з інших ферзів, він може формувати частину часткового рішення, так що `placeQueens` генерує нове рішення за допомогою `queen :: queens`. Якщо новий ферзь не вільний від шаху, фільтр повертає `false`, так що рішення не генерується.
+Якщо новий ферзь не має шахів від жодного з інших ферзів,
+він може формувати частину часткового рішення, так що `placeQueens` генерує нове рішення за допомогою `queen :: queens`. Якщо новий ферзь не вільний від шаху, фільтр повертає `false`, так що рішення не генерується.
 
 Один фрагмент, що залишився, це метод `isSafe`, що використовується для перевірки, чи даний ферзь шахується любим іншим елементом в списку ферзів. Ось його визначення:
 [source,scala]
@@ -174,12 +175,12 @@ def inCheck(q1: (Int, Int), q2: (Int, Int)) =
 
 23.3 Запити за допомогою `for` виразів
 --------------------------------------
-The for notation is essentially equivalent to common operations of database query languages. For instance, say you are given a database named books, represented as a list of books, whereBook is defined as follows:
+Нотація `for` в основному еквівалентна до загальних операцій мови запитів бази даних. Наприклад, скажімо, ви отримали базу даних на ім'я `books`, що представлена як спикок нижок, де кожна книжка `Book` визначена наступним чином:
 [source,scala]
 ----
 case class Book(title: String, authors: String*)
 ----
-Here is a small example database represented as an in-memory list:
+Ось малий приклад бази даних, представленої як список в пам'яті:
 [source,scala]
 ----
 val books: List[Book] =
@@ -206,7 +207,7 @@ val books: List[Book] =
     )
   )
 ----  
-To find the titles of all books whose author's last name is "Gosling":
+Щоб знайти назви всіх книжок, в яких останнє ім'я автора починається з `"Gosling"`:
 [source,scala]
 ----
 scala> for (b <- books; a <- b.authors
@@ -214,7 +215,7 @@ scala> for (b <- books; a <- b.authors
        yield b.title
 res4: List[String] = List(The Java Language Specification)
 ----
-Or to find the titles of all books that have the string "Program" in their title:
+Або щоб знайти назви всіх книжок, що мають рядок `"Program"` в своїй назаві:
 [source,scala]
 ----
 scala> for (b <- books if (b.title indexOf "Program") >= 0)
@@ -223,7 +224,7 @@ res5: List[String] = List(Structure and Interpretation of
   Computer Programs, Programming in Modula-2, Elements of ML
     Programming)
 ----
-Or to find the names of all authors who have written at least two books in the database:
+Або щоб знайти в базі даних імена всіх авторів, що написали щонайменьше дві книжки:
 [source,scala]
 ----
 scala> for (b1 <- books; b2 <- books if b1 != b2;
@@ -231,7 +232,7 @@ scala> for (b1 <- books; b2 <- books if b1 != b2;
        yield a1
 res6: List[String] = List(Ullman, Jeffrey, Ullman, Jeffrey)
 ----
-The last solution is still not perfect because authors will appear several times in the list of results. You still need to remove duplicate authors from result lists. This can be achieved with the following function:
+Останнє рішення все ще недосконале, оскільки автори будуть з'являтись декілька разів в списку результатів. Вам все ще треба видалити дублікати авторів з отриманих списків. Це можливо досягти з наступною функцією:
 [source,scala]
 ----
 scala> def removeDuplicates[A](xs: List[A]): List[A] = {
@@ -246,7 +247,7 @@ removeDuplicates: [A](xs: List[A])List[A]
 scala> removeDuplicates(res6)
 res7: List[String] = List(Ullman, Jeffrey)
 ----
-It's worth noting that the last expression in method removeDuplicates can be equivalently expressed using a for expression:
+Варто відзначити, що останній вираз в методі `removeDuplicates` може бути виражений еквівалентно з використанням виразу:
 [source,scala]
 ----
 xs.head :: removeDuplicates(
@@ -255,71 +256,71 @@ xs.head :: removeDuplicates(
 ----
 23.4 Трансляція `for` виразів
 -----------------------------
-Every for expression can be expressed in terms of the three higher-order functions map,flatMap, and withFilter. This section describes the translation scheme, which is also used by the Scala compiler.
+Кожний `for` вираз може бути виражений в термінах трьох функцій вищого порядку: `map`, `flatMap`, та `withFilter`. Цей розділ описує схему трансляції, що також використовується компілятором Scala.
 
-Трансляція `for` виразів одним генератором
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-First, assume you have a simple for expression:
+Трансляція `for` виразів з одним генератором
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Перше, уявімо ви маєте простий вираз `for`:
 [source,scala]
 ----
 for (null <- expr_1) yield expr_2
 ----
-where x is a variable. Such an expression is translated to:
+де `x` є змінною. Такий вираз транслюється до:
 [source,scala]
 ----
 expr_1.map(null => expr_2)
 ----
-Трансляція `for` виразів починаючи з генератора та фільтра
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-Now, consider for expressions that combine a leading generator with some other elements.
+Трансляція `for` виразів, що починаються з генератора та фільтра
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Тепер розглянемо `for` вираз, що комбінує лідируючий генератор з деякими іншими елементами.
 
-Afor expression of the form:
+Вираз `for` наступної форми:
 [source,scala]
 ----
 for (null <- expr_1 if expr_2) yield expr_3
 ----
-is translated to:
+транслюється до:
 [source,scala]
 ----
 for (null <- expr_1 withFilter (null => expr_2)) yield expr_3
 ----
-This translation gives another for expression that is shorter by one element than the original, because an if element is transformed into an application of withFilter on the first generator expression. The translation then continues with this second expression, so in the end you obtain:
+Ця трансляція дає наступний вираз `for`, що на один елемент коротший, ніж оригінал, бо елемент `if` трансформується в застосування `withFilter` на першому виразі генератора. Трансформація потім продовжується з цім другим виразом, так що в кінці ми отримаємо:
 [source,scala]
 ----
 expr_1 withFilter (null => expr_2) map (null => expr_3)
 ----
-The same translation scheme also applies if there are further elements following the filter. Ifseq is an arbitrary sequence of generators, definitions, and filters, then:
+Така сама схема трансляції також застосовується, якщо після фільтра ідуть інші елементи. Якщо `seq` є довільною послідовністю генераторів, визначень та фільтрів, тоді:
 [source,scala]
 ----
 for (null <- expr_1 if expr_2; seq) yield expr_3
 ----
-is translated to:
+транслюється до:
 [source,scala]
 ----
 for (null <- expr_1 withFilter expr_2; seq) yield expr_3
 ----
-Then translation continues with the second expression, which is again shorter by one element than the original one.
+Потім трансляція продовжується з другим виразом, що знову коротший на один елемент, ніж оригінальний.
 
 Трансляція `for` виразів починаючи з двох генераторів
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The next case handles for expressions that start with two generators, as in:
+Наступний випадок обробляє `for` вирази, що починаються з двох генераторів, як тут:
 [source,scala]
 ----
 for (null <- expr_1; null <- expr_2; seq) yield expr_3
 ----
-Again, assume that seq is an arbitrary sequence of generators, definitions, and filters. In fact,seq might also be empty, and in that case there would not be a semicolon after expr_2. The translation scheme stays the same in each case. The for expression above is translated to an application of flatMap:
+Знову, будемо вважати, що `seq` є довільною послідовністю генераторів, визначень та фільтрів. Фактично, `seq` може також бути порожнім, і в такому випадку після `expr_2` крапка з комою непотрібні. Схема трансляції залишається такою самою в кожному випадку. Вираз `for` вище транслюється до застосування `flatMap`:
 [source,scala]
 ----
 expr_1.flatMap(null => for (null <- expr_2; seq) yield expr_3)
 ----
-This time, there is another for expression in the function value passed to flatMap. That forexpression (which is again simpler by one element than the original) is in turn translated with the same rules. The three translation schemes given so far are sufficient to translate all for expressions that contain just generators and filters, and where generators bind only simple variables. Take, for instance, the query, "find all authors who have published at least two books," from Section 23.3:
+На цей раз існує інший вираз `for` в функціональному значенні, переданого до `flatMap`. Цей вираз `for` (що знову на елемент простіший, ніж оригінал) в свою чергу транслюється за тими самими правилами. Три схеми трансляції, надані перед цім, достатні для транслювання всіх виразів, що містять тільки генератори та фільтри, та де генератори прив'язують тільки прості змінні. Візьмемо, наприклад, запит: "Знайти всіх авторів, що опубліковали щонайменьше дві книги", з Розділу 23.3:
 [source,scala]
 ----
 for (b1 <- books; b2 <- books if b1 != b2;
   a1 <- b1.authors; a2 <- b2.authors if a1 == a2)
 yield a1
 ----
-This query translates to the following map/flatMap/filter combination:
+Цей запит транслюється до наступної комбінації `map`/`flatMap`/`filter`:
 [source,scala]
 ----
 books flatMap (b1 =>
@@ -328,30 +329,30 @@ books flatMap (b1 =>
       b2.authors withFilter (a2 => a1 == a2) map (a2 =>
         a1))))
 ----
-The translation scheme presented so far does not yet handle generators that bind whole patterns instead of simple variables. It also does not yet cover definitions. These two aspects will be explained in the next two sub-sections.
+Представлена дотепер схама трансляції ще не обробляє генератори, які прикріплюють цілі шаблони, замість простих змінних. Вона також досі не покриває визначення. Ці два аспекта будуть пояснені в наступних двох підсекціях.
 
 Трансляція шаблонів в генераторах
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-The translation scheme becomes more complicated if the left hand side of generator is a pattern, pat, other than a simple variable. The case where the for expression binds a tuple of variables is still relatively easy to handle. In that case, almost the same scheme as for single variables applies.
+Схема трансляції стає більш складна, якщо ліва сторона генератора є шаблоном `pat`, іншим, ніж проста змінна. Випадок, коли вираз `for` зв'язує тапл змінних, є все ще простим для обробки. В цьому випадку діє майже та сама схема, що застосовується для окремих змінних.
 
-A for expression of the form:
+`for` вираз такої форми:
 [source,scala]
 ----
 for ((null, ..., null) <- expr_1) yield expr_2
 ----
-translates to:
+транслюється до:
 [source,scala]
 ----
 expr_1.map { case (null, ..., null) => expr_2 }
 ----
-Things become a bit more involved if the left hand side of the generator is an arbitrary pattern pat instead of a single variable or a tuple.
+Це стає трохи складнішим, якщо ліва сторона генератора є довільним шаблоном `pat`, замість окремої змінної або тапла.
 
-In this case:
+В цьому випадку:
 [source,scala]
 ----
 for (pat <- expr_1) yield expr_2
 ----
-translates to:
+транслюється до наступного:
 [source,scala]
 ----
 expr_1 withFilter {
@@ -361,30 +362,30 @@ expr_1 withFilter {
   case pat => expr_2
 }
 ----
-That is, the generated items are first filtered and only those that match pat are mapped. Therefore, it's guaranteed that a pattern-matching generator will never throw a MatchError.
+Тобто згенеровані елементи зпочатку фільтруються, і тільки ті, що співпадають з `pat`, відзеркалюються. Таким чином гарантовано, що генератор зі співпадінням шаблонів, ніколи не закидатиме `MatchError`.
 
-The scheme here only treated the case where the for expression contains a single pattern-matching generator. Analogous rules apply if the for expression contains other generators, filters or definitions. Because these additional rules don't add much new insight, they are omitted from discussion here. If you are interested, you can look them up in the Scala Language Specification [Ode11].
+Тут схема трактує тільки випадок, коли вираз `for` містить один генератор співпадіння шаблону. Аналогічні правила також застосовуються, якщо вираз `for` містить інші герератори, фільтри та визначення. Оскільки ці додаткові правила не додають багато нового розуміння, вони виключені тут з дискусії. Якщо ви зацікавлені, ви можете пошукати їх в _Scala Language Specification_ [Ode11].
 
 Трансляція визначень
 ~~~~~~~~~~~~~~~~~~~~
-The last missing situation is where a for expression contains embedded definitions. Here's a typical case:
+Остання відсутня ситуація, це коли `for` вираз містить вбудовані визначення. Ось типовий випадок:
 [source,scala]
 ----
 for (null <- expr_1; null = expr_2; seq) yield expr_3
 ----
-Assume again that seq is a (possibly empty) sequence of generators, definitions, and filters. This expression is translated to this one:
+Знову вважатимемо, що `seq` є (можливо порожньою) послідовністю генераторів, визначень та фільтрів. Цей вираз транслюється до такого:
 [source,scala]
 ----
 for ((null, null) <- for (null <- expr_1) yield (null, expr_2); seq)
 yield expr_3
 ----
-So you see that expr_2 is evaluated each time there is a new x value being generated. This re-evaluation is necessary because expr_2 might refer to x and so needs to be re-evaluated for changing values of x. For you as a programmer, the conclusion is that it's probably not a good idea to have definitions embedded in for expressions that do not refer to variables bound by some preceding generator, because re-evaluating such expressions would be wasteful. For instance, instead of:
+Як ви бачите, це `expr_2` обчислюється кожного разу, коли генерується нове значення `x`. Це пере-обчислення потрібне, оскільки `expr_2` може посилатись на `x`, так що має пере-обчислюватись для зміни значень `x`. Для вас, як для програміста, висносок в тому, що це, можливо, не є гарною ідеєю мати вбудовані визначення в `for` виразах, що не посилються на значення, прив'язані деяким попереднім генератором, оскільки пере-обчислення таких виразів буде марним. Наприклад, замість:
 [source,scala]
 ----
 for (x <- 1 to 1000; y = expensiveComputationNotInvolvingX)
 yield x * y
 ----
-it's usually better to write:
+звичайно краще записати:
 [source,scala]
 ----
 val y = expensiveComputationNotInvolvingX
@@ -392,31 +393,36 @@ for (x <- 1 to 1000) yield x * y
 ----
 Транслювання `for` циклів
 ~~~~~~~~~~~~~~~~~~~~~~~~~
-The previous subsections showed how for expressions that contain a yield are translated.What about for loops that simply perform a side effect without returning anything? Their translation is similar, but simpler than for expressions. In principle, wherever the previous translation scheme used a map or a flatMap in the translation, the translation scheme for forloops uses just a foreach.
+Попередні субсекції показали, як транслюються `for` вирази, що містять `yield`. Як щодо циклів, що просто виконують побічні ефекти без повернення будь-чого? Їх трансляція подібна, але простіша ніж для `for` виразів. В принципі, коли попередня схема трансляції вкористовували `map` або `flatMap` в трансляції, схема трансляції для `for` циклів використовує тільки `foreach`.
 
-For instance, the expression:for (null <- expr_1) body translates to:
+Наприклад, вираз:
+[source,scala]
+----
+for (null <- expr_1) body 
+----
+транслюється до:
 [source,scala]
 ----
 expr_1 foreach (null => body)
 ----
-A larger example is the expression:
+Більшим прикладом є вираз:
 [source,scala]
 ----
 for (null <- expr_1; if expr_2; null <- expr_3) body
 ----
-This expression translates to:
+Цей вираз транслюється до:
 [source,scala]
 ----
 expr_1 withFilter (null => expr_2) foreach (null =>
 expr_3 foreach (null => body))
 ----
-For example, the following expression sums up all elements of a matrix represented as a list of lists:
+Наприклад, наступний вираз підсумовує всі елементи матриці, що представлена як список списків:
 [source,scala]
 ----
 var sum = 0
 for (xs <- xss; x <- xs) sum += x
 ----
-This loop is translated into two nested foreach applications:
+Цей цикл танслюється в два вкладених застосувань `foreach`:
 [source,scala]
 ----
 var sum = 0
@@ -426,9 +432,9 @@ var sum = 0
 ----
 23.5 Заходячи з іншого боку
 ---------------------------
-The previous section showed that for expressions can be translated into applications of the higher-order functions map, flatMap, and withFilter. In fact, you could equally go the other way: Every application of a map, flatMap, or filter can be represented as a for expression.
+Попередній розділ показав, що вирази `for` можуть бути трансльовані в застосування функцій вищого порядку: `map`, `flatMap`, та `withFilter`. Фактично, однаково ви можете іти іншим шляхом: кожне застосування `map`, `flatMap`, або `filter` може бути представлене як `for` вираз.
 
-Here are implementations of the three methods in terms of for expressions. The methods are contained in an object Demo to distinguish them from the standard operations on Lists. To be concrete, the three functions all take a List as parameter, but the translation scheme would work just as well with other collection types:
+Ось реалізації трьох методів в термінах `for` виразів. Методи, що містяться в об'єкті `Demo` для відмінносі їх від стандартних операцій з `List`. Щоб бути конкретним, всі три функції приймають `List` як параметр, але схема трансляції робить так само гарно і з іншими типами колекцій:
 [source,scala]
 ----
 object Demo {
@@ -442,25 +448,25 @@ object Demo {
     for (x <- xs if p(x)) yield x
 }
 ----
-Not surprisingly, the translation of the for expression used in the body of Demo.map will produce a call to map in class List. Similarly, Demo.flatMap and Demo.filter translate to flatMap andwithFilter in class List. So this little demonstration shows that for expressions really are equivalent in their expressiveness to applications of the three functions map, flatMap, andwithFilter.
+Не дивно, що трансляція `for` виразу, використана в тілі `Demo.map`, буде продукувати виклик до `map` в класі `List`. Подібним чином, `Demo.flatMap` та `Demo.filter` транслюються до `flatMap` та `withFilter` в класі `List`. Так що ця мала демонстрація показує, що `for` вирази еквівалентні по своїй виразності до застосування трьох функцій: `map`, `flatMap`, `withFilter`.
 
 23.6 Узагальнюючи `for`
 -----------------------
-Because the translation of for expressions only relies on the presence of methods map, flatMap, and withFilter, it is possible to apply the for notation to a large class of data types.
+Оскільки трансляція `for` виразів покладається тільки на присутність методів `map`, `flatMap`, та `withFilter`, можливо застосувати `for` нотацію до широкого класу типів даних.
 
-You have already seen for expressions over lists and arrays. These are supported because lists, as well as arrays, define operations map, flatMap, and withFilter. Because they define aforeach method as well, for loops over these data types are also possible.
+Ви вже бачили `for` вирази на списках та масивах. Вони підтримуються, тому що списки, так само, як масиви, визначають операції `map`, `flatMap` та `withFilter`. Оскільки вони визначають також метод `foreach`, також можливі цикли `for` по ціх типах даних.
 
-Besides lists and arrays, there are many other types in the Scala standard library that support the same four methods and therefore allow for expressions. Examples are ranges, iterators, streams, and all implementations of sets. It's also perfectly possible for your own data types to support for expressions by defining the necessary methods. To support the full range of forexpressions and for loops, you need to define map, flatMap, withFilter, and foreach as methods of your data type. But it's also possible to define a subset of these methods, and thereby support a subset of all possible for expressions or loops.
+Окрім списків та масивів, існує багато інших типів в стандартній бібліотеці Scala, які підтримують ті самі чотири методи, і, таким чином, дозволяють `for` вирази. Прикладами є диапазони, ітератори, потокі, і всі реалізації множин. Також чудово можливо для ваших власних типів даних підтримувати `for` вирази, через визначення потрібних методів. Для підтримки повного диапазону `for` виразів та `for` циклів, вам треба визначити `map`, `flatMap`, `withFilter`, та `foreach` як методи вашого типу даних. Але також можливо визначити підмножину ціх методів, і таким чином підтримати підмножину всіх можливих `for` виразів або циклів.
 
-Here are the precise rules:
-* If your type defines just map, it allows for expressions consisting of a single generator.
-* If it defines flatMap as well as map, it allows for expressions consisting of several generators.
-* If it defines foreach, it allows for loops (both with single and multiple generators).
-* If it defines withFilter, it allows for filter expressions starting with an if in the for expression.
+Ось точні правила:
+* Якщо ваш тип визначає `map`, він дозволяє `for` виразам складатись з одного генератора.
+* Якщо він визначає `flatMap` разом з `map`, це дозволяє `for` виразам складатись з декількох генераторів.
+* Якщо він визначає `foreach`, він дозволяє цикли `for` (обоє, з одним та декількома генераторами).
+* Якщо він визначає `withFilter`, він дозволяє вирази фільтрів, що починаються з `if` в `for` виразах.
 
-The translation of for expressions happens before type checking. This allows for maximum flexibility because the only requirement is that the result of expanding a for expression type checks. Scala defines no typing rules for the for expressions themselves, and does not require that methods map, flatMap, withFilter, or foreach have any particular type signatures.
+Трансляція `for` виразів відбувається перед перевіркою типів. Це дозволяє максимальну гнучкість, оскільки єдиною вимогою є те, щоб результат розширення `for` виразу проходив перевірку типів. Scala не визначає правил типів для самих `for` виразів, та не потребує, щоб методи `map`, `flatMap`, `withFilter`, або `foreach` мали любу окрему сигнатуру типів.
 
-Nevertheless, there is a typical setup that captures the most common intention of the higher order methods to which for expressions translate. Say you have a parameterized class, C, which typically would stand for some sort of collection. Then it's quite natural to pick the following type signatures for map, flatMap, withFilter, and foreach:
+Тим не менше, існує типове налаштування, що захоплює найбільш загальні наміри методів вищого порядку, до яких тринслюється `for` вираз. Скажімо, ви маєте параметризований клас `C`, що типово буде стояти за деяким типом колекції. Тоді досить природно обрати наступні сигнатури типу для `map`, `flatMap`, `withFilter`, та `foreach`:
 [source,scala]
 ----
 abstract class C[A] {
@@ -470,15 +476,15 @@ abstract class C[A] {
   def foreach(b: A => Unit): Unit
 }
 ----
-That is, the map function takes a function from the collection's element type A to some other type B. It produces a new collection of the same kind C, but with B as the element type. TheflatMap method takes a function f from A to some C-collection of Bs and produces a C-collection of Bs. The withFilter method takes a predicate function from the collection's element type A toBoolean. It produces a collection of the same type as the one on which it is invoked. Finally, theforeach method takes a function from A to Unit and produces a Unit result:
+Тобто, функція `map` приймає функцію від типу елементу колекції `A` до якось іншого типу `B`. Він продукує нову колекцію того ж типу, що і `C`, але з `B` в якості типу елементів. Метод `flatMap` приймає функцію `f` від `A` до деякої `C`-колекції з `B`, та продукує `C`-колекцію з `B`. Метод `withFilter` приймає функцію предикат від типу елементів колекції `A` до `Boolean`. Він продукує колекцію того самого типу, на якому він викликаний. Нарешті, метод `foreach` приймає функцію від `A` до `Unit`, та продукує результат `Unit`:
 
-In class C above, the withFilter method produces a new collection of the same class. That means that every invocation of withFilter creates a new C object, just the same as filter would work. Now, in the translation of for expressions, any calls to withFilter are always followed by calls to one of the other three methods. Therefore, the object created by withFilter will be taken apart by one of the other methods immediately afterwards. If objects of class C are large (think long sequences), you might want to avoid the creation of such an intermediate object. A standard technique is to let withFilter return not a C object but just a wrapper object that "remembers" that elements need to be filtered before being processed further.
+В класі `C` вище, метод `withFilter` продукує нову колекцію того самого класу. Це означає, що кожний виклик `withFilter` створює новий об'єкт `C`, так само, як має робити фільтр. Тепер, в трансляції `for` виразів, любі виклики до `withFilter` завжди закінчаться викликом до одного з трьох інших методів. Таким чином, об'єкт, створений `withFilter` буде розібраний по частинах одним з інших методів безпосередньо після цього. Якщо об'єкти класу `C` великі (подумайте про великі послідовності), ви можете побажати уникнути створення такого проміжного об'єкту. Стандартним прийомом є дозволити `withFilter` повертати на об'єкт `C`, але тільки об'єкт огортку, що "пам'ятає", що елементи треба відсортувати перед подальшою обробкою.
 
-Concentrating on just the first three functions of class C, the following facts are noteworthy. In functional programming, there's a general concept called a monad, which can explain a large number of types with computations, ranging from collections, to computations with state and I/O, backtracking computations, and transactions, to name a few. You can formulate functions map, flatMap, and withFilter on a monad, and, if you do, they end up having exactly the types given here.
+Концентруючись на трьох перших функціях класу `C` слід зауважити наступні факти. В функціональному програмуванні існує загальна концепція з назвою _монада_, що може пояснювати велике число типів з обчисленнями, від колекцій до обчислень зі станом та I/O, обчислення зворотнього виводу та транзакції, як для прикладу. Ви можете формулювати функції `map`, `flatMap`, та `withFilter` на монаді, та, якщо ви зробите це, вони в підсумку матимуть точно вказані тут типи.
 
-Furthermore, you can characterize every monad by map, flatMap, and withFilter, plus a "unit" constructor that produces a monad from an element value. In an object-oriented language, this "unit" constructor is simply an instance constructor or a factory method. Therefore, map,flatMap, and withFilter can be seen as an object-oriented version of the functional concept of monad. Because for expressions are equivalent to applications of these three methods, they can be seen as syntax for monads.
+Більше того, ви можете характеризувати кожну монаду через `map`, `flatMap`, та `withFilter`, плюс "юніт" конструктор, що продукує монаду зі значення елемента. В об'єктно-орієнтовній мові цей "юніт" є простим конструктором примірника, або методом фабрики. Таким чином на `map`, `flatMap`, та `withFilter` можна дивитись як на об'єктно-орієнтовну версію функціональної концепції монади. Оскільки `for` вирази еквівалентні до застосувань ціх трьох методів, вони можуть розглядатись як синтаксис для монад.
 
-All this suggests that the concept of for expression is more general than just iteration over a collection, and indeed it is. For instance, for expressions also play an important role in asynchronous I/O, or as an alternative notation for optional values. Watch out in the Scala libraries for occurrences of map, flatMap, and withFilter—when they are present, for expressions suggest themselves as a concise way of manipulating elements of the type.
+Все це натякає, що концепція `for` виразів більш загальна, ніж проста ітерація по колекції, і це дійсно так. Наприклад, `for` вирази також відіграють важливу роль в асинхронному I/O, або як альтернативна нотація для опціональних значень. Шукайте в бібліотеках Scala де зустрічаються `map`, `flatMap`, та `withFilter` — коли вони присутні, `for` вирази запропонують себе самі, як стислий спосіб маніпуляції елементами цього типу.
 
 23.7 Висновок
 -------------
