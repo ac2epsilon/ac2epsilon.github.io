@@ -3080,12 +3080,14 @@ cellspacing="0" cellpadding="4">
 <h2 id="_24_13_">24.13 Еквівалентність</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>Бібліотеки колекцій мають уніформний підхід до рівності та хешування. Перше, ідея в тому, щоб поділити колекції на множини, мапи та послідовності. Колекції в різних категоріях завжди нерівні. Наприклад, <code>Set(1, 2, 3)</code> нерівне до <code>List(1, 2, 3)</code>, навіть якщо вони містять ті самі елементи. З іншого боку, в тій самій категорії, колекції рівні, тільки, та тільки, якщо вони мають ті самі елементи (для послідовностей: ті ж елементи в тому ж порядку). Наприклад, <code>List(1, 2, 3) == Vector(1, 2, 3)</code>, та <code>HashSet(1, 2) == TreeSet(2, 1)</code>.</p></div>
-<div class="paragraph"><p>It does not matter for the equality check whether a collection is mutable or immutable. For a mutable collection, equality simply depends on the current elements at the time the equality test is performed. This means that a mutable collection might be equal to different collections at different times, depending what elements are added or removed. This is a potential trap when using a mutable collection as a key in a hash map. For example:</p></div>
+<div class="paragraph"><p>Не має значення для перевірки рівності, чи колекція змінна, чи незмінна. Для змінної колекції рівність просто залежить від поточних елементів на час, коли виконується перевірка. Це означає, що змінні колекції можуть бути еквівалентні до різних колекцій в різний час, в залежності що було додано або видалене. Це потенційна пастка, коли змінна колекція використовується як ключ в хеш мапі. Наприклад:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">collection.mutable.</span><span class="o">{</span><span class="nc">HashMap</span><span class="o">,</span> <span class="nc">ArrayBuffer</span><span class="o">}</span>
-<span class="k">import</span> <span class="nn">collection.mutable.</span><span class="o">{</span><span class="nc">HashMap</span><span class="o">,</span> <span class="nc">ArrayBuffer</span><span class="o">}</span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">buf</span> <span class="k">=</span> <span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="k">import</span> <span class="nn">collection.mutable.</span><span class="o">{</span><span class="nc">HashMap</span><span class="o">,</span> <span class="nc">ArrayBuffer</span><span class="o">}</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">buf</span> <span class="k">=</span> <span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
 <span class="n">buf</span><span class="k">:</span> <span class="kt">scala.collection.mutable.ArrayBuffer</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
-<span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+  <span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
 
 <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">map</span> <span class="k">=</span> <span class="nc">HashMap</span><span class="o">(</span><span class="n">buf</span> <span class="o">-&gt;</span> <span class="mi">3</span><span class="o">)</span>
 <span class="n">map</span><span class="k">:</span> <span class="kt">scala.collection.mutable.HashMap</span><span class="o">[</span><span class="kt">scala.collection.</span>
@@ -3098,26 +3100,26 @@ cellspacing="0" cellpadding="4">
 
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">map</span><span class="o">(</span><span class="n">buf</span><span class="o">)</span>
 <span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">NoSuchElementException</span><span class="k">:</span> <span class="kt">key</span> <span class="kt">not</span> <span class="kt">found:</span>
-<span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+  <span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>In this example, the selection in the last line will most likely fail because the hash code of the array xs has changed in the second-to-last line. Therefore, the hash-code-based lookup will look at a different place than the one in which xs was stored.</p></div>
+<div class="paragraph"><p>В цьому прикладі вибірка в останньому рядку скоріше всього схибить, оскільки хеш код масива <code>xs</code> зміниться в передостанньому рядку. Таким чином, пошук на основі хеш кода буде шукати в іншому місці, ніж той, в якому був збережений <code>xs</code>.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_24_14_">24.14 Перегляди</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Collections have quite a few methods that construct new collections. Some examples are map,filter, and ++. We call such methods transformers because they take at least one collection as their receiver object and produce another collection in their result.</p></div>
-<div class="paragraph"><p>Transformers can be implemented in two principal ways: strict and non-strict (or lazy). A strict transformer constructs a new collection with all of its elements. A non-strict, or lazy, transformer constructs only a proxy for the result collection, and its elements are constructed on demand.</p></div>
-<div class="paragraph"><p>As an example of a non-strict transformer, consider the following implementation of a lazy map operation:</p></div>
+<div class="paragraph"><p>Колекції мають декілька методів, що конструюють нові колекції. Деякі приклади є <code>map</code>, <code>filter</code> та <code>++</code>. Ми називаємо такі методи трансформерами, оскільки вони приймають щонайменьше одну колекцію в якості свого об'єкта-отримувача, та продукують іншу колекцію в якості результата.</p></div>
+<div class="paragraph"><p>Трансформери можуть бути реалізовані в два принципові способи: строгий та нестрогий (або лінивий). Строгий трансформер конструює нову колекцію з усіма своїми елементами. Нестрогий, або лінивий, трансформер конструює тільки проксі для результуючої колекції, та його елементи конструюються на вимогу.</p></div>
+<div class="paragraph"><p>Як приклад нестрогого трансформера, розглянемо наступну реалізацію лінивої операції <code>map</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">lazyMap</span><span class="o">[</span><span class="kt">T</span>, <span class="kt">U</span><span class="o">](</span><span class="n">coll</span><span class="k">:</span> <span class="kt">Iterable</span><span class="o">[</span><span class="kt">T</span><span class="o">],</span> <span class="n">f</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=&gt;</span> <span class="n">U</span><span class="o">)</span> <span class="k">=</span>
   <span class="k">new</span> <span class="nc">Iterable</span><span class="o">[</span><span class="kt">U</span><span class="o">]</span> <span class="o">{</span>
     <span class="k">def</span> <span class="n">iterator</span> <span class="k">=</span> <span class="n">coll</span><span class="o">.</span><span class="n">iterator</span> <span class="n">map</span> <span class="n">f</span>
   <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Note that lazyMap constructs a new Iterable without stepping through all elements of the given collection coll. The given function f is instead applied to the elements of the new collection&#8217;siterator as they are demanded.</p></div>
-<div class="paragraph"><p>Scala collections are by default strict in all their transformers, except for Stream, which implements all its transformer methods lazily. However, there is a systematic way to turn every collection into a lazy one and vice versa, which is based on collection views. A view is a special kind of collection that represents some base collection, but implements all of its transformers lazily.</p></div>
-<div class="paragraph"><p>To go from a collection to its view, you can use the view method on the collection. If xs is some collection, then xs.view is the same collection, but with all transformers implemented lazily. To get back from a view to a strict collection, you can use the force method.As an example, say you have a vector of Ints over which you want to map two functions in succession:</p></div>
+<div class="paragraph"><p>Зауважте, що <code>lazyMap</code> конструює нове <code>Iterable</code> без крокування по всіх елементах наданої колекції <code>coll</code>. Надана функція <code>f</code> замість цього застосовується до елементів ітератора нової колекції, по мірі потреби.</p></div>
+<div class="paragraph"><p>Scala колекції по замовчанню строгі в усіх своїх трансформерах, за винятком <code>Stream</code>, що реалізує всі свої методи-трансформери ліниво. Однак існує систематичний спосіб для перетворення кожної колекції в ліниву та навпаки, що базується на переглядах колекції. Перегляд є особливим різновидом колекції, що представляє деяку базову колекцію, але реалізує всі її трансформери ліниво.</p></div>
+<div class="paragraph"><p>Щоб перейти від колекції до її перегляду, ви можете використовувати метод <code>view</code> на колекції. Якщо <code>xs</code> є деякою колекцією, тоді <code>xs.view</code> є та сама колекція, але всі трансформери якої реалізовані ліниво. Щоб перейти назад від перегляду до строгої колекції ви можете використати метод <code>force</code>. Як приклад, скажімо, ви маєте вектор з <code>Int</code>, на якому ви бажаєте виконати дві функції одна за другою:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">v</span> <span class="k">=</span> <span class="nc">Vector</span><span class="o">(</span><span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="k">:</span> <span class="k">_</span><span class="kt">*</span><span class="o">)</span>
 <span class="n">v</span><span class="k">:</span> <span class="kt">scala.collection.immutable.Vector</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
@@ -3127,115 +3129,109 @@ cellspacing="0" cellpadding="4">
 <span class="n">res5</span><span class="k">:</span> <span class="kt">scala.collection.immutable.Vector</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
 <span class="nc">Vector</span><span class="o">(</span><span class="mi">4</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">8</span><span class="o">,</span> <span class="mi">10</span><span class="o">,</span> <span class="mi">12</span><span class="o">,</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">16</span><span class="o">,</span> <span class="mi">18</span><span class="o">,</span> <span class="mi">20</span><span class="o">,</span> <span class="mi">22</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>In the last statement, the expression v map (_ + 1) constructs a new vector that is then transformed into a third vector by the second call to map (_ * 2). In many situations, constructing the intermediate result from the first call to map is a bit wasteful. In the pseudo example, it would be faster to do a single map with the composition of the two functions (_ + 1)and (_ * 2). If you have the two functions available in the same place you can do this by hand. But quite often, successive transformations of a data structure are done in different program modules. Fusing those transformations would then undermine modularity. A more general way to avoid the intermediate results is by turning the vector first into a view, applying all transformations to the view, and finally forcing the view to a vector:</p></div>
+<div class="paragraph"><p>В останньому твердженні вираз <code>v map (_ + 1)</code> конструює новий вектор, що потім трансформується і третій вектор, через другий виклик до <code>map (_ * 2)</code>. В багатьох ситуаціях конструювання проміжного результату після першого виклику до <code>map</code> є трохи марнотратним. В псевдо прикладі буде скорішим зробити єдиний <code>map</code> з композицією двох функцій, <code>(_ + 1)</code> та <code>(_ * 2)</code>. Якщо ви маєте дві функції доступними в тому самому місці, ви можете зробити це вручну. Але досить часто послідовні трансформації структур даних виконуються в разних програмних модулях. Зплавлення ціх перетворень потім буде підривати модульність. Більш загальним шляхом уникнути проміжних результатів є перетворення вектора зпочатку на перегляд, застосування до перегляду всіх трансформацій, на нарешті примушення перегляду знову до вектора:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">(</span><span class="n">v</span><span class="o">.</span><span class="n">view</span> <span class="n">map</span> <span class="o">(</span><span class="k">_</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span> <span class="n">map</span> <span class="o">(</span><span class="k">_</span> <span class="o">*</span> <span class="mi">2</span><span class="o">)).</span><span class="n">force</span>
 <span class="n">res12</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Vector</span><span class="o">(</span><span class="mi">4</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">8</span><span class="o">,</span> <span class="mi">10</span><span class="o">,</span> <span class="mi">12</span><span class="o">,</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">16</span><span class="o">,</span> <span class="mi">18</span><span class="o">,</span> <span class="mi">20</span><span class="o">,</span> <span class="mi">22</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>We&#8217;ll do this sequence of operations again, one by one:</p></div>
+<div class="paragraph"><p>Ми зробимо цю послідовність операцій знову одну з одною:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">vv</span> <span class="k">=</span> <span class="n">v</span><span class="o">.</span><span class="n">view</span>
 <span class="n">vv</span><span class="k">:</span> <span class="kt">scala.collection.SeqView</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Vector</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
   <span class="nc">SeqView</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">7</span><span class="o">,</span> <span class="mi">8</span><span class="o">,</span> <span class="mi">9</span><span class="o">,</span> <span class="mi">10</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The application v.view gives you a SeqView, i.e., a lazily evaluated Seq. The type SeqView has two type parameters. The first, Int, shows the type of the view&#8217;s elements. The second, Vector[Int], shows you the type constructor you get back when forcing the view.</p></div>
-<div class="paragraph"><p>Applying the first map to the view gives you:</p></div>
+<div class="paragraph"><p>Застосування <code>v.view</code> дає вам <code>SeqView</code>, тобто ліниво обчислену <code>Seq</code>. Тип <code>SeqView</code> має два параметри типу. Перший, <code>Int</code>, показує тип елементів перегляду. Другий, <code>Vector[Int]</code>, показує вам тип конструктора, що ви отримаєте назад, коли будете примушувати перегляд.</p></div>
+<div class="paragraph"><p>Застосування першого <code>map</code> до перегляду дасть таке:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">vv</span> <span class="n">map</span> <span class="o">(</span><span class="k">_</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
 <span class="n">res13</span><span class="k">:</span> <span class="kt">scala.collection.SeqView</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Seq</span><span class="o">[</span><span class="k">_</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">SeqViewM</span><span class="o">(...)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The result of the map is a value that prints SeqViewM(&#8230;). This is in essence a wrapper that records the fact that a map with function (_ + 1) needs to be applied on the vector v. It does not apply that map until the view is forced, however. The "M" after SeqView is an indication that the view encapsulates a map operation. Other letters indicate other delayed operations. For instance "S" indicates a delayed slice operation, and "R" indicates a reverse. We&#8217;ll now apply the second map to the last result.</p></div>
+<div class="paragraph"><p>Результатом <code>map</code> є значення, що друкує <code>SeqViewM(...)</code>. Це в основному огортка, що записує факт, що <code>map</code> з функцією <code>(_ + 1)</code> треба застосувати до вектора <code>v</code>. Він, однак, не застосовує цей <code>map</code>, доки перегляд не буде форсований. "M" після <code>SeqView</code> вказує на те, що перегляд екнкапсулює операцію <code>map</code>. Ініш літери вказують інші відкладені операції. Наприклад, "S" вказує на відкладену операцію <code>slice</code>, та "R" вказує на <code>reverse</code>. Тепер ми застосуємо другий <code>map</code> до останнього результату.</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">res13</span> <span class="n">map</span> <span class="o">(</span><span class="k">_</span> <span class="o">*</span> <span class="mi">2</span><span class="o">)</span>
 <span class="n">res14</span><span class="k">:</span> <span class="kt">scala.collection.SeqView</span><span class="o">[</span><span class="kt">Int</span>,<span class="kt">Seq</span><span class="o">[</span><span class="k">_</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">SeqViewMM</span><span class="o">(...)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>You now get a SeqView that contains two map operations, so it prints with a double "M":SeqViewMM(&#8230;). Finally, forcing the last result gives:</p></div>
+<div class="paragraph"><p>Тепер ви отримали <code>SeqView</code>, що містить дві операції <code>map</code>, так що друкуються дві "M": <code>SeqViewMM(...)</code>. Нарешті, форсування останнього результату дає:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">res14</span><span class="o">.</span><span class="n">force</span>
 <span class="n">res15</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Vector</span><span class="o">(</span><span class="mi">4</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">8</span><span class="o">,</span> <span class="mi">10</span><span class="o">,</span> <span class="mi">12</span><span class="o">,</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">16</span><span class="o">,</span> <span class="mi">18</span><span class="o">,</span> <span class="mi">20</span><span class="o">,</span> <span class="mi">22</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Both stored functions get applied as part of the execution of the force operation and a new vector is constructed. That way, no intermediate data structure is needed.</p></div>
-<div class="paragraph"><p>One detail to note is that the static type of the final result is a Seq, not a Vector. Tracing the types back we see that as soon as the first delayed map was applied, the result had static typeSeqViewM[Int, Seq[_]]. That is, the "knowledge" that the view was applied to the specific sequence type Vector got lost. The implementation of a view for any particular class requires quite a bit of code, so the Scala collection libraries provide views mostly only for general collection types, not for specific implementations.<span class="footnote"><br />[An exception to this is arrays: applying delayed operations on arrays will again give results with static type Array.]<br /></span></p></div>
-<div class="paragraph"><p>There are two reasons why you might want to consider using views. The first is performance. You have seen that by switching a collection to a view the construction of intermediate results can be avoided. These savings can be quite important. As another example, consider the problem of finding the first palindrome in a list of words. A palindrome is a word that reads backwards the same as forwards. Here are the necessary definitions:</p></div>
+<div class="paragraph"><p>Обоє збережені функції застосовуються як частина виконання операції <code>force</code>, та конструюється новий вектор. Таким чином, жодні проміжні структури непотрібні.</p></div>
+<div class="paragraph"><p>Одна деталь, яку треба зауважити, це те, що статичний тип фінального результату є <code>Seq</code>, а не <code>Vector</code>. Відстежуючи типи назад, ми бачимо, що як тільки був застосований перший відкладений <code>map</code>, результат має статичний метод <code>SeqViewM[Int, Seq[_]]</code>. Тобто, "знання" що перегляд був застосований до певного тип послідовності <code>Vector</code> було втрачене. Реалізація перегляду для любого окремого класу потребує трохи коду, так що бібліотеки колекцій Scala провадять перегляди в основному тільки для загальних типів колекцій,не для специфічних реалізацій.<span class="footnote"><br />[Виключенням для цього є масиви: застосування відкладених операцій на масивах буде знову давати результат зі статичним типом <code>Array</code>.]<br /></span></p></div>
+<div class="paragraph"><p>Існує дві причини, чому ви можете вирішити використовувати перегляди. Перша це продуктивність. Ви бачили, що перемикання з колекції на перегляд можливо уникає створення проміжних колекцій. Ці збереження можуть бути досить важливі. Як інший приклад розглянемо проблему пошуку першого паліндрому в списку слів. Паліндром - це слово, що однаково читається в обох напрямках. Ось необхідні визначення:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">isPalindrome</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">x</span> <span class="o">==</span> <span class="n">x</span><span class="o">.</span><span class="n">reverse</span>
 <span class="k">def</span> <span class="n">findPalindrome</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="n">s</span> <span class="n">find</span> <span class="n">isPalindrome</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Now, assume you have a very long sequence words and you want to find a palindrome in the first million words of that sequence. Can you re-use the definition of findPalindrome? Of course, you could write:</p></div>
+<div class="paragraph"><p>Тепер уявімо, щоб ви маєте дуже довгу послідовність слів, та ви бажаєте знайти паліндром в першому мільйоні слів цієї послідовностіі. Чи ви можете повторно використати визначення <code>findPalindrome</code>? Звичайно, ви можете написати:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">findPalindrome</span><span class="o">(</span><span class="n">words</span> <span class="n">take</span> <span class="mi">1000000</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>This nicely separates the two aspects of taking the first million words of a sequence and finding a palindrome in it. But the downside is that it always constructs an intermediary sequence consisting of one million words, even if the first word of that sequence is already a palindrome. So potentially, 999,999 words are copied into the intermediary result without being inspected at all afterwards. Many programmers would give up here and write their own specialized version of finding palindromes in some given prefix of an argument sequence. But with views, you don&#8217;t have to. Simply write:</p></div>
+<div class="paragraph"><p>Це мило розділяє два аспекти отримання першого мільйона слів з послідовності, та пошук в ньому паліндрому. Але недолік в тому, що це завжди будує проміжну послідовність, що складається з одного мільйона слів, навіть якщо перше слово в цій послідовності поліндром. Так що після цього потенційно 999999 слів копіюються в проміжний результат взагалі без перевірки. Багато програмістів тут здадуться і напишуть свої власні версії пошуку паліндромів в деякому наданому префіксі аргумента-послідовності. Але з переглядами ви не маєте робити це. Просто напишіть:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">findPalindrome</span><span class="o">(</span><span class="n">words</span><span class="o">.</span><span class="n">view</span> <span class="n">take</span> <span class="mi">1000000</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>This has the same nice separation of concerns, but instead of a sequence of a million elements it will only construct a single lightweight view object. This way, you do not need to choose between performance and modularity. The second use case applies to views over mutable sequences. Many transformer functions on such views provide a window into the original sequence that can then be used to update selectively some elements of that sequence. To see this in an example, suppose you have an array arr:</p></div>
+<div class="paragraph"><p>Це матиме той самий гарний поділ турбот, але замість послідовності з мільйона елементів це буде конструювати лише один легковажний об'єкт перегляда. Таким чином, вам не треба обирати між продуктивністю та модульністю. Другий випадок застосування стосується до переглядів змінних послідовностей. Багато функцій-трансформерів на таких переглядах провадять вікно до оригінальної послідовності, що потім може використовуватись для вибіркового оновлення деяких елементів в цій послідовності. Щоб побачити це на прикладі, уявімо ми маємо масив <code>arr</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">arr</span> <span class="k">=</span> <span class="o">(</span><span class="mi">0</span> <span class="n">to</span> <span class="mi">9</span><span class="o">).</span><span class="n">toArray</span>
 <span class="n">arr</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">,</span> <span class="mi">5</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">7</span><span class="o">,</span> <span class="mi">8</span><span class="o">,</span> <span class="mi">9</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>You can create a subwindow into that array by creating a slice of a view of the array:</p></div>
+<div class="paragraph"><p>Ви можете створити субвікно в цьому масиві, створивши скибку <code>slice</code> перегляду масиву:</p></div>
 <div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">subarr</span> <span class="k">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">view</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">6</span><span class="o">)</span><span class="n">subarr</span><span class="k">:</span> <span class="kt">scala.collection.mutable.IndexedSeqView</span><span class="o">[</span>
-<span class="kt">Int</span>,<span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">IndexedSeqViewS</span><span class="o">(...)</span>
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">subarr</span> <span class="k">=</span> <span class="n">arr</span><span class="o">.</span><span class="n">view</span><span class="o">.</span><span class="n">slice</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="mi">6</span><span class="o">)</span>
+<span class="n">subarr</span><span class="k">:</span> <span class="kt">scala.collection.mutable.IndexedSeqView</span><span class="o">[</span>
+  <span class="kt">Int</span>,<span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">IndexedSeqViewS</span><span class="o">(...)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>This gives a view, subarr, which refers to the elements at positions 3 through 5 of the array arr. The view does not copy these elements, it just provides a reference to them. Now, assume you have a method that modifies some elements of a sequence. For instance, the following negatemethod would negate all elements of the sequence of integers it&#8217;s given:</p></div>
+<div class="paragraph"><p>Це дає перегляд <code>subarr</code>, що посилається на елементи в позиціях від 3 до 5 в масиві <code>arr</code>. Перегляд не копіює ці елементи, він тільки провадить посилання на них. Тепер уявімо, що ви маєте метод, що модифікує деякі елементи в послідовності. Наприклад, наступний метод <code>negate</code> буде обертати знак всіх наданих елементів послідовності цілих:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">negate</span><span class="o">(</span><span class="n">xs</span><span class="k">:</span> <span class="kt">collection.mutable.Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span> <span class="k">=</span>
         <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">0</span> <span class="n">until</span> <span class="n">xs</span><span class="o">.</span><span class="n">length</span><span class="o">)</span> <span class="n">xs</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="k">=</span> <span class="o">-</span><span class="n">xs</span><span class="o">(</span><span class="n">i</span><span class="o">)</span>
 <span class="n">negate</span><span class="k">:</span> <span class="o">(</span><span class="kt">xs:</span> <span class="kt">scala.collection.mutable.Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">])</span><span class="nc">Unit</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Assume now you want to negate elements at positions three through five of the array arr. Can you use negate for this? Using a view, this is simple:</p></div>
+<div class="paragraph"><p>Тепер уявімо, що ви бажаєте змінити знак елементів в позиціях від трьох до п'яти масива <code>arr</code>. Чи можливо використати для цього <code>negate</code>? З використанням перегляду це просто:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">negate</span><span class="o">(</span><span class="n">subarr</span><span class="o">)</span>
 
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">arr</span>
 <span class="n">res4</span><span class="k">:</span> <span class="kt">Array</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Array</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="o">-</span><span class="mi">3</span><span class="o">,</span> <span class="o">-</span><span class="mi">4</span><span class="o">,</span> <span class="o">-</span><span class="mi">5</span><span class="o">,</span> <span class="mi">6</span><span class="o">,</span> <span class="mi">7</span><span class="o">,</span> <span class="mi">8</span><span class="o">,</span> <span class="mi">9</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>What happened here is that negate changed all elements of subarr, which were a slice of the elements of arr. Again, you see that views help in keeping things modular. The code above nicely separated the question of what index range to apply a method to from the question what method to apply.</p></div>
-<div class="paragraph"><p>After having seen all these nifty uses of views you might wonder why have strict collections at all? One reason is that performance comparisons do not always favor lazy over strict collections. For smaller collection sizes the added overhead of forming and applying closures in views is often greater than the gain from avoiding the intermediary data structures. A possibly more important reason is that evaluation in views can be very confusing if the delayed operations have side effects.</p></div>
-<div class="paragraph"><p>Here&#8217;s an example that bit a few users of versions of Scala before 2.8. In these versions theRange type
-was lazy, so it behaved in effect like a view. People were trying to create a number of actors,<span class="footnote"><br />[The Scala actors library has been deprecated, but this historical example is still relevant.]<br /></span> like
-this:</p></div>
+<div class="paragraph"><p>Що тут відбувається, це те, що <code>negate</code> змінює всі елементи в <code>subarr</code>, що є скибкою елементів <code>arr</code>. Знову, ви бачите, що перегляди допомагають підтримувати речі модулярними. Код вище гарно розділяє питання, до якого диапазону індексів застосувати метод, та те, який саме метод застосувати.</p></div>
+<div class="paragraph"><p>Після того, як ми побачили всі ці дотепні використання переглядів, ви можете здивуватись, для чого взагалі мати строгі послідовності? Одна причина в тому, що порівняння продуктивності не завжди на користь лінивих в колекцій в порівнянні зі строгими. Для меньших розмірів колекцій додаткове навантаження по формуванню замикань в переглядах часто більше, ніж вигода від уникнення проміжних структур даних. Можливо більш важлива причина в тому, що обчислення в переглядах можуть бути дуже збентежливі, якщо операції мають побічні ефекти.</p></div>
+<div class="paragraph"><p>Ось приклад, що зачепив декількох користувачів версій Scala до 2.8. В ціх версіях тип <code>theRange</code> був лінивий, так що він ефективно поводився як перегляд. Люди намагались створити декілька акторів,<span class="footnote"><br />[Бібліотека акторів Scala вже застаріла, але цей історичний приклад все ще актуальний.]<br /></span> ось так:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">actors</span> <span class="k">=</span> <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="o">)</span> <span class="k">yield</span> <span class="n">actor</span> <span class="o">{</span> <span class="o">...</span> <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>They were surprised that none of the actors were executing afterwards, even though the actormethod should create and start an actor from the code that&#8217;s enclosed in the braces following it. To explain why nothing happened, remember that the for expression above is equivalent to an application of the map method:</p></div>
+<div class="paragraph"><p>Вони були здивовані, що після цього жодний з акторів не виконувався, навіть якщо метод <code>actor</code> повинен створювати та запускати актора на основі кода, що оточений в фігурні дужки за ним. Щоб пояснити, чому нічого не відбувається, нагадаємо, що вираз <code>for</code> вище еквівалентний до застосування методу <code>map</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">actors</span> <span class="k">=</span> <span class="o">(</span><span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="o">)</span> <span class="n">map</span> <span class="o">(</span><span class="n">i</span> <span class="k">=&gt;</span> <span class="n">actor</span> <span class="o">{</span> <span class="o">...</span> <span class="o">})</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Since previously the range produced by (1 to 10) behaved like a view, the result of the map was again a view. That is, no element was computed, and, consequently, no actor was created! Actors would have been created by forcing the range of the whole expression, but it&#8217;s far from obvious that this is what was required to make the actors do their work.</p></div>
-<div class="paragraph"><p>To avoid surprises like this, the Scala collections gained more regular rules in version 2.8. All</p></div>
-<div class="paragraph"><p>collections except streams and views are strict. The only way to go from a strict to a lazy collection is
-via the view method. The only way to go back is via force. So the actors definition above would behave
-as expected in Scala 2.8 in that it would create and start ten actors. To get back the surprising previous
-behavior, you&#8217;d have to add an explicit view method call:</p></div>
+<div class="paragraph"><p>Оскільки попередній <code>range</code>, спродукований <code>(1 to 10)</code>, поводиться як перегляд, результатом <code>map</code> знову буде перегляд. Тобто, відповідно, жодного елементу не було обчислено, та жодного актора не було створено! Актори були створені через форсування <code>range</code> для всього виразу, але це менше ніж очевидне, що все це треба щоб змусити акторів до своєї роботи.</p></div>
+<div class="paragraph"><p>Щоб уникнути ціх сюрпризів, колекції Scala отримали більш регулярні правила в версії 2.8. Всі колекції, за винятком потоків та переглядів, є строгими. Єдиний шлях від строгих до лінивих колекцій - через метод <code>view</code>. Єдиний шлях іти зворотнім шляхом - через метод <code>force</code>. Так що визначення акторів вище будуть робити як очікується в Scala 2.8, в тому розмінні, що будуть створені та запущені десять акторів. Щоб перейти до цікавої попередньої поведінки, ви маєте додати явний виклик метода <code>view</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">actors</span> <span class="k">=</span> <span class="k">for</span> <span class="o">(</span><span class="n">i</span> <span class="k">&lt;-</span> <span class="o">(</span><span class="mi">1</span> <span class="n">to</span> <span class="mi">10</span><span class="o">).</span><span class="n">view</span><span class="o">)</span> <span class="k">yield</span> <span class="n">actor</span> <span class="o">{</span> <span class="o">...</span> <span class="o">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>In summary, views are a powerful tool to reconcile concerns of efficiency with concerns of modularity. But in order not to be entangled in aspects of delayed evaluation, you should restrict views to two scenarios. Either you apply views in purely functional code where collection transformations do not have side effects. Or you apply them over mutable collections where all modifications are done explicitly. What&#8217;s best avoided is a mixture of views and operations that create new collections while also having side effects.</p></div>
+<div class="paragraph"><p>В підсумку, перегляди є потужним інструментом для примирення проблем ефективності з проблемами модульності. Але щоб загрузнути в аспектах відкладеного виконання, вам слідує обмежити перегляди до двох сценаріїв. Або ви застосувуєте перегляди в чисто функціональному коді, де трансформації колекцій не мають побічних ефектів. Або ви застосовуєте їх для змінних колекцій, коли всі модифікації виконуються явно. Чого треба уникати, це змішування переглядів і операцій, що створюють нові колекції, при цьому також маючи побічні ефекти.</p></div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_24_15_">24.15 Ітератори</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>An iterator is not a collection, but rather a way to access the elements of a collection one by one. The two basic operations on an iterator it are next and hasNext. A call to it.next() will return the next element of the iterator and advance the state of the iterator. Calling next again on the same iterator will then yield the element one beyond the one returned previously. If there are no more elements to return, a call to next will throw a NoSuchElementException. You can find out whether there are more elements to return using Iterator&#8217;s hasNext method.</p></div>
-<div class="paragraph"><p>The most straightforward way to "step through" all the elements returned by an iterator is to use
-a while loop:</p></div>
+<div class="paragraph"><p>Ітератор не є колекцією, але скоріше шляхом отримати доступ до елементів колекції один за одним. Існує дві базові операції на ітераторі <code>it</code>, <code>next</code> та <code>hasNext</code>. Виклик до <code>it.next()</code> буде повертати наступний елемент ітератора, та просувати стан ітератора. Наступний виклик <code>next</code> на тому самому ітераторі буде видавати елемент на один далі від повернутого перед цім. Якщо немає більше елементів, що можна повернути, виклик до <code>next</code> буде закидати <code>NoSuchElementException</code>. Ви можете дізнатись, чи є ще елементи, що можна повернути, використовуючи метод <code>Iterator</code>'а <code>hasNext</code>.</p></div>
+<div class="paragraph"><p>Найбільш прямолінійний метод "прокрокувати" по всіх елементах, що повертає ітератор, це використання циклу <code>while</code>:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">while</span> <span class="o">(</span><span class="n">it</span><span class="o">.</span><span class="n">hasNext</span><span class="o">)</span>
   <span class="n">println</span><span class="o">(</span><span class="n">it</span><span class="o">.</span><span class="n">next</span><span class="o">())</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Iterators in Scala also provide analogues of most of the methods that you find in theTraversable, Iterable, and Seq traits. For instance, they provide a foreach method that executes a given procedure on each element returned by an iterator. Using foreach, the loop above could be abbreviated to:</p></div>
+<div class="paragraph"><p>Ітератори в Scala також провадять аналоги до більшості з методів, що ви можете знайти в трейтах <code>Traversable</code>, <code>Iterable</code> та <code>Seq</code>. Наприклад, вони провадять метод <code>foreach</code>, що виконує надану процедуру на кожному елементі, що повертаються ітератором. Використовуючи <code>foreach</code>, цикл вище може бути скорочений до:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">it</span> <span class="n">foreach</span> <span class="n">println</span>
 </pre></div></div></div>
-<div class="paragraph"><p>As always, for expressions can be used as an alternate syntax for expressions involvingforeach, map, filter, and flatMap, so yet another way to print all elements returned by an iterator would be:</p></div>
+<div class="paragraph"><p>Як завжди, вирази <code>for</code> можуть використовуватись як альтернативний синтаксис для виразів, що включають <code>foreach</code>, <code>map</code>, <code>filter</code> та <code>flatMap</code>, так що інший спосіб надрукувати всі елементи, що повертаються ітератором, буде таке:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="o">(</span><span class="n">elem</span> <span class="k">&lt;-</span> <span class="n">it</span><span class="o">)</span> <span class="n">println</span><span class="o">(</span><span class="n">elem</span><span class="o">)</span>
 </pre></div></div></div>
-<div class="paragraph"><p>There&#8217;s an important difference between the foreach method on iterators and the same method on traversable collections: When called on an iterator, foreach will leave the iterator at its end when it is done. So calling next again on the same iterator will fail with aNoSuchElementException. By contrast, when called on a collection, foreach leaves the number of elements in the collection unchanged (unlessthe passed function adds or removes elements, but this is discouraged, because it can easily lead to surprising results).</p></div>
-<div class="paragraph"><p>The other operations that Iterator has in common with Traversable have the same property of leaving the iterator at its end when done. For instance, iterators provide a map method, which returns a new iterator:</p></div>
+<div class="paragraph"><p>Існує важлива різниця між методом <code>foreach</code> на ітераторі, та тим самим методом на перехідних колекціях: коли він викликається на ітераторів, <code>foreach</code> після свого закінчення буде залишати ітератор в кінці. Так що наступний виклик до <code>next</code> знову на томуж ітератору буде хибним <code>NoSuchElementException</code>. На відміну до цього, коли викликається для колекції, <code>foreach</code> залишає число елементів в колекції без змін (якщо передана функція не додає або видаляє елементи, але це не заохочується, оскільки легко може призвести до несподіваних результатів).</p></div>
+<div class="paragraph"><p>Інші операції, які <code>Iterator</code> має назагал з <code>Traversable</code>, мають ту саму властивість полишати ітератор в кінці після завершення. Наприклад, ітератори провадять метод <code>map</code>, що повертає новий ітератор:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">it</span> <span class="k">=</span> <span class="nc">Iterator</span><span class="o">(</span><span class="s">&quot;a&quot;</span><span class="o">,</span> <span class="s">&quot;number&quot;</span><span class="o">,</span> <span class="s">&quot;of&quot;</span><span class="o">,</span> <span class="s">&quot;words&quot;</span><span class="o">)</span>
 <span class="n">it</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">java.lang.String</span><span class="o">]</span> <span class="k">=</span> <span class="n">non</span><span class="o">-</span><span class="n">empty</span> <span class="n">iterator</span>
@@ -3252,7 +3248,7 @@ a while loop:</p></div>
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">it</span><span class="o">.</span><span class="n">next</span><span class="o">()</span>
 <span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">NoSuchElementException</span><span class="k">:</span> <span class="kt">next</span> <span class="kt">on</span> <span class="kt">empty</span> <span class="kt">iterator</span>
 </pre></div></div></div>
-<div class="paragraph"><p>As you can see, after the call to map, the it iterator has advanced to its end. Another example is the dropWhile method, which can be used to find the first element of an iterator that has a certain property. For instance, to find the first word in the iterator shown previously that has at least two characters, you could write:</p></div>
+<div class="paragraph"><p>Як ви можете бачити, після виклику до <code>map</code>, ітератор просунувся в кінець. Інший приклад є метод <code>dropWhile</code>, що може використовуватись для пошуку першого елементу ітератора, що має певну властивість. Наприклад, щоб знайти перше слово в ітераторі, показаному до цього, що має щонайменьше два символи, ви можете записати:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">it</span> <span class="k">=</span> <span class="nc">Iterator</span><span class="o">(</span><span class="s">&quot;a&quot;</span><span class="o">,</span> <span class="s">&quot;number&quot;</span><span class="o">,</span> <span class="s">&quot;of&quot;</span><span class="o">,</span> <span class="s">&quot;words&quot;</span><span class="o">)</span>
 <span class="n">it</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">java.lang.String</span><span class="o">]</span> <span class="k">=</span> <span class="n">non</span><span class="o">-</span><span class="n">empty</span> <span class="n">iterator</span>
@@ -3263,14 +3259,14 @@ a while loop:</p></div>
 <span class="n">scala</span><span class="o">&gt;</span> <span class="n">it</span><span class="o">.</span><span class="n">next</span><span class="o">()</span>
 <span class="n">res5</span><span class="k">:</span> <span class="kt">java.lang.String</span> <span class="o">=</span> <span class="n">number</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Note again that it has changed by the call to dropWhile: it now points to the second word "number" in the list. In fact, it and the result res4 returned by dropWhile will return exactly the same sequence of elements.</p></div>
-<div class="paragraph"><p>There is only one standard operation, duplicate, which allows you to re-use the same iterator:</p></div>
+<div class="paragraph"><p>Знову зауважте, що <code>it</code> був змінений через виклик до <code>dropWhile</code>: тепер <code>it</code> вказує на друге слово "number" в списку. Фактично, <code>it</code> та результат <code>res4</code>, що повертається <code>dropWhile</code>, буде повертати точно такуж ж послідовність елементів.</p></div>
+<div class="paragraph"><p>Існує тільки одна стандартна операція, <code>duplicate</code>, що дозволяє вам повторно використовувати той самий ітератор:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="o">(</span><span class="n">it1</span><span class="o">,</span> <span class="n">it2</span><span class="o">)</span> <span class="k">=</span> <span class="n">it</span><span class="o">.</span><span class="n">duplicate</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The call to duplicate gives you two iterators, which each return exactly the same elements as the iterator it. The two iterators work independently; advancing one does not affect the other. By contrast the original iterator, it, is advanced to its end by duplicate and is thus rendered unusable.</p></div>
-<div class="paragraph"><p>In summary, iterators behave like collections if you never access an iterator again after invoking a method on it. The Scala collection libraries make this explicit with an abstraction called TraversableOnce, which is a common supertrait of Traversable and Iterator. As the nameimplies, TraversableOnce objects can be traversed using foreach, but the state of that object after the traversal is not specified. If the TraversableOnce object is in fact an Iterator, it will be at its end after the traversal, but if it is a Traversable, it will still exist as before. A common use case of TraversableOnce is as an argument type for methods that can take either an iterator or traversable as argument. An example is the appending method ++ in trait Traversable. It takes aTraversableOnce parameter, so you can append elements coming from either an iterator or a traversable collection.</p></div>
-<div class="paragraph"><p>All operations on iterators are summarized in Table 24.12.</p></div>
+<div class="paragraph"><p>Виклик до <code>duplicate</code> дає вам два ітератори, де кожний повертає точно такі ж елементи, що і ітератор <code>it</code>. Два ітератори роблять незалежно; просування одного не впливає на інший. На відміну від цього, оригінальний оператор, <code>it</code>, просувається до свого кінця під час дублювання, і, таким чином, стає некорисним.</p></div>
+<div class="paragraph"><p>В підсумку, ітератори поводяться як колекції, якщо ви ніколи не отримуєте доступ до ітератора знову, після виклику на ньому метода. Бібліотеки колекцій Scala робить це явним, з абстракцією на ім'я <code>TraversableOnce</code>, що є загальним трейтом для <code>Traversable</code> та <code>Iterator</code>. Як відказує ім'я, об'єкти <code>TraversableOnce</code> можуть проходити з використанням <code>foreach</code>, але стан цього об'єкту після проходження не визначений. Якщо об'єкт <code>TraversableOnce</code> фактично є <code>Iterator</code>, він після проходження буде в своєму кінці, але якщо це <code>Traversable</code>, він буде існувати як раніше. Загальний спосіб застосування <code>TraversableOnce</code> - як тип аргумента для методів, що можуть приймати або ітератор, або перехідне в якості аргумента. Прикладом є метод додавання <code>++</code> в трейті <code>Traversable</code>. Він приймає параметр <code>TraversableOnce</code>, так що ви можете додати елементи, що походять або від ітератора, або від перехідної колекції.</p></div>
+<div class="paragraph"><p>Всі операції на ітераторах підсумовані в Таблиці 24.12.</p></div>
 <div class="paragraph"><p>.</p></div>
 <div class="tableblock">
 <table rules="all"
@@ -3572,205 +3568,282 @@ cellspacing="0" cellpadding="4">
 </table>
 </div>
 <div class="sect2">
-<h3 id="_buffered_iterators">Buffered iterators</h3>
-<div class="paragraph"><p>Sometimes you want an iterator that can "look ahead" so that you can inspect the next element to be
-returned without advancing past that element. Consider, for instance, the task to skip leading empty
-strings from an iterator that returns a sequence of strings. You might be tempted to write something like
-the following method:// This won&#8217;t work
-def skipEmptyWordsNOT(it: Iterator[String]) = {
-while (it.next().isEmpty) {}
-}
-But looking at this code more closely, it&#8217;s clear that this is wrong: the code will indeed skip leading
-empty strings, but it will also advance it past the first non-empty string!
-The solution to this problem is to use a buffered iterator, an instance of
-trait BufferedIterator.BufferedIterator is a subtrait of Iterator, which provides one extra method, head.
-Calling head on a buffered iterator will return its first element, but will not advance the iterator. Using a
-buffered iterator, skipping empty words can be written like this:
-def skipEmptyWords(it: BufferedIterator[String]) =
-while (it.head.isEmpty) { it.next() }
-Every iterator can be converted to a buffered iterator by calling its buffered method. Here&#8217;s an example:
-scala&gt; val it = Iterator(1, 2, 3, 4)
-it: Iterator[Int] = non-empty iterator
-scala&gt; val bit = it.buffered
-bit: java.lang.Object with scala.collection.
-BufferedIterator[Int] = non-empty iterator
-scala&gt; bit.head
-res10: Int = 1
-scala&gt; bit.next()
-res11: Int = 1
-scala&gt; bit.next()
-res11: Int = 2
-Note that calling head on the buffered iterator, bit, did not advance it. Therefore, the subsequent
-call, bit.next(), returned again the same value as bit.head.
-24.16 CREATING COLLECTIONS FROM SCRATCH
-You have already seen syntax like List(1, 2, 3), which creates a list of three integers, andMap(<em>A</em> -
-&gt; 1, <em>C</em> &#8594; 2), which creates a map with two bindings. This is actually a universal feature of Scala
-collections. You can take any collection name and follow it by a list of elements in parentheses. The
-result will be a new collection with the given elements. Here are some more examples:
-Traversable()
-List()
-List(1.0, 2.0)
-Vector(1.0, 2.0)
-Iterator(1, 2, 3)
-Set(dog, cat, bird)
-HashSet(dog, cat, bird)
-Map(<em>a</em> &#8594; 7, <em>b</em> &#8594; 0)
+<h3 id="___14">Буферізовані ітератори</h3>
+<div class="paragraph"><p>Іноді ви бажаєте ітератори, що можуть "заглядати наперед", так що ви можете інспектувати наступний елемент, що буде повернутий, без просування за цей елемент. Розглянемо, наприклад, завдання пропуску початкових порожніх рядків з ітератора, що повертає послідовність рядків. Ви можете підпасти в спокусу написати дещо подібне до такого метода:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Це не працюватиме</span>
+<span class="k">def</span> <span class="n">skipEmptyWordsNOT</span><span class="o">(</span><span class="n">it</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span> <span class="o">{</span>
+  <span class="k">while</span> <span class="o">(</span><span class="n">it</span><span class="o">.</span><span class="n">next</span><span class="o">().</span><span class="n">isEmpty</span><span class="o">)</span> <span class="o">{}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але подивіться на цей код ближче, ясно що він невірний: код вочевидь пропустить початкові порожні рядки, але він також просуне <code>it</code> за перший непорожній рядок!</p></div>
+<div class="paragraph"><p>Рішення до цієї проблеми є використання буферизованого ітератора, примірника трейту <code>BufferedIterator</code>. <code>BufferedIterator</code> є субтрейтом <code>Iterator</code>, що провадить один додатковий метод, <code>head</code>. Виклик <code>head</code> на буферизованому ітераторі буде повертати його перший елемент, але не буде просувати ітератор. Використовуючи буферизований ітератор пропуск порожніх слів може бути записаний таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">skipEmptyWords</span><span class="o">(</span><span class="n">it</span><span class="k">:</span> <span class="kt">BufferedIterator</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="k">=</span>
+  <span class="k">while</span> <span class="o">(</span><span class="n">it</span><span class="o">.</span><span class="n">head</span><span class="o">.</span><span class="n">isEmpty</span><span class="o">)</span> <span class="o">{</span> <span class="n">it</span><span class="o">.</span><span class="n">next</span><span class="o">()</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Кожний ітератор може бути конвертований на буферизований ітератор, через виклик його методу <code>buffered</code>. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">it</span> <span class="k">=</span> <span class="nc">Iterator</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">,</span> <span class="mi">4</span><span class="o">)</span>
+<span class="n">it</span><span class="k">:</span> <span class="kt">Iterator</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">non</span><span class="o">-</span><span class="n">empty</span> <span class="n">iterator</span>
 
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">bit</span> <span class="k">=</span> <span class="n">it</span><span class="o">.</span><span class="n">buffered</span>
+<span class="n">bit</span><span class="k">:</span> <span class="kt">java.lang.Object</span> <span class="kt">with</span> <span class="kt">scala.collection.</span>
+<span class="kt">BufferedIterator</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">non</span><span class="o">-</span><span class="n">empty</span> <span class="n">iterator</span>
 
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">bit</span><span class="o">.</span><span class="n">head</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span>
 
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">bit</span><span class="o">.</span><span class="n">next</span><span class="o">()</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span>
 
-An empty traversable object
-The empty list
-A list with elements 1.0, 2.0
-A vector with elements 1.0, 2.0
-An iterator returning three integers.
-A set of three animals
-A hash set of the same animals
-A map from characters to integers"Under the covers" each of the above lines is a call to the apply method of some object. For instance,
-the third line above expands to:
-List.apply(1.0, 2.0)
-So this is a call to the apply method of the companion object of the List class. That method takes an
-arbitrary number of arguments and constructs a list from them. Every collection class in the Scala
-library has a companion object with such an apply method. It does not matter whether the collection
-class represents a concrete implementation, like List, Stream, orVector, or whether it is an trait such
-as Seq, Set, or Traversable. In the latter case, calling applywill produce some default implementation of
-the trait. Here are some examples:
-scala&gt; List(1, 2, 3)
-res17: List[Int] = List(1, 2, 3)
-scala&gt; Traversable(1, 2, 3)
-res18: Traversable[Int] = List(1, 2, 3)
-scala&gt; mutable.Traversable(1, 2, 3)
-res19: scala.collection.mutable.Traversable[Int] =
-ArrayBuffer(1, 2, 3)
-Besides apply, every collection companion object also defines a member empty, which returns an
-empty collection. So instead of List() you could write List.empty, instead of Map(), Map.empty, and so
-on.
-Descendants of Seq traits also provide other factory operations in their companion objects. These are
-summarized in Table 24.13. In short, there&#8217;s:
-concat, which concatenates an arbitrary number of traversables together,
-fill and tabulate, which generate single or multi-dimensional sequences of given dimensions
-initialized by some expression or tabulating function,
-* range, which generates integer sequences with some constant step length, and
-* iterate, which generates the sequence resulting from repeated application of a function to a start
-element.
-*
-*
-Factory methods for sequences
-What it is
-S.empty
-S(x, y, z)
-S.concat(xs, ys, zs)
-S.fill(n)(e)
-What it does
-The empty sequence
-A sequence consisting of elements x, y, and z
-The sequence obtained by concatenating the elements of xs,ys, and zs
-A sequence of length n where each element is computed by expression e
-A sequence of sequences of dimension m x n where each element is computed by
-S.fill(m, n)(e)
-expression e (exists also in higher dimensions)
-S.tabulate(n)(f)
-A sequence of length n where the element at each index i is computed by f(i)
-A sequence of sequences of dimension m x n where the element at each index (i, j)
-S.tabulate(m, n)(f)
-is computed by f(i, j) (exists also in higher dimensions)S.range(start, end)
-S.range(start, end,
-step)
-S.iterate(x, n)(f)
-The sequence of integers start &#8230; end - 1
-The sequence of integers starting with start and progressing by step increments up
-to, and excluding, the endvalue
-The sequence of length n with elements x, f(x), f(f(x)), &#8230;
-24.17 CONVERSIONS BETWEEN JAVA AND SCALA COLLECTIONS
-Like Scala, Java has a rich collections library. There are many similarities between the two. For
-instance, both libraries know iterators, iterables, sets, maps, and sequences. But there are also important
-differences. In particular, the Scala libraries put much more emphasis on immutable collections, and
-provide many more operations that transform a collection into a new one.
-Sometimes you might need to convert from one collection framework to the other. For instance, you
-might want to access to an existing Java collection, as if it were a Scala collection. Or you might want
-to pass one of Scala&#8217;s collections to a Java method that expects the Java counterpart. It is quite easy to
-do this, because Scala offers implicit conversions between all the major collection types in
-the JavaConversions object. In particular, you will find bidirectional conversions between the following
-types:
-Iterator
-Iterator
-Iterable
-Iterable
-mutable.Buffer
-mutable.Set
-mutable.Map
-\null
-\null
-\null
-\null
-\null
-\null
-\null
-java.util.Iterator
-java.util.Enumeration
-java.lang.Iterable
-java.util.Collection
-java.util.List
-java.util.Set
-java.util.Map
-To enable these conversions, simply import like this:
-scala&gt; import collection.JavaConversions._
-import collection.JavaConversions._
-You have now automatic conversions between Scala collections and their corresponding Java
-collections.
-scala&gt; import collection.mutable._
-import collection.mutable._
-scala&gt; val jul: java.util.List[Int] = ArrayBuffer(1, 2, 3)
-jul: java.util.List[Int] = [1, 2, 3]
-scala&gt; val buf: Seq[Int] = jul
-buf: scala.collection.mutable.Seq[Int] = ArrayBuffer(1, 2, 3)
-scala&gt; val m: java.util.Map[String, Int] =
-HashMap("abc" &#8594; 1, "hello" &#8594; 2)
-m: java.util.Map[String,Int] = 2, abc=1
-Internally, these conversion work by setting up a "wrapper" object that forwards all operations to the
-underlying collection object. So collections are never copied when converting between Java and Scala.
-An interesting property is that if you do a round-trip conversion from, say, a Java type to itscorresponding Scala type, and back to the same Java type, you end up with the identical collection
-object you started with.
-Some other common Scala collections exist that can also be converted to Java types, but for which no
-corresponding conversion exists in the other direction. These are:
-Seq
-mutable.Seq
-Set
-Map
-\null
-\null
-\null
-\null
-java.util.List
-java.util.List
-java.util.Set
-java.util.Map
-Because Java does not distinguish between mutable and immutable collections in their type, a
-conversion from, say, collection.immutable.List will yield a java.util.List, on which all attempted
-mutation operations will throw an UnsupportedOperationException. Here&#8217;s an example:
-scala&gt; val jul: java.util.List[Int] = List(1, 2, 3)
-jul: java.util.List[Int] = [1, 2, 3]
-scala&gt; jul.add(7)
-java.lang.UnsupportedOperationException
-at java.util.AbstractList.add(AbstractList.java:131)</p></div>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">bit</span><span class="o">.</span><span class="n">next</span><span class="o">()</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">2</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що виклик <code>head</code> на буферизованому ітераторі, <code>bit</code>, не просуває його. Таким чином, наступний виклик <code>bit.next()</code> повертає те саме значення, що і <code>bit.head</code>.</p></div>
 </div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_24_16____">24.16 Створення колекцій з нуля</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ви вже бачили синтаксис, як <code>List(1, 2, 3)</code>, що створює список з трьох цілих, та <code>Map('A' - &gt; 1, 'C' -&gt; 2)</code>, що створює мапу з двома парами прив'язок. Насправді це універсальна можливість Scala колекцій. Ви можете взяти любе ім'я колекції, та поставити після нього список елементів в дужках. Результат буде новою колекцією з наданими елементвами. Ось деякі інші приклади:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Traversable</span><span class="o">()</span> <span class="c1">// Порожній перехідний об&#39;єкт</span>
+<span class="nc">List</span><span class="o">()</span> <span class="c1">// Порожній список</span>
+<span class="nc">List</span><span class="o">(</span><span class="mf">1.0</span><span class="o">,</span> <span class="mf">2.0</span><span class="o">)</span> <span class="c1">// Список з елементами 1.0, 2.0</span>
+<span class="nc">Vector</span><span class="o">(</span><span class="mf">1.0</span><span class="o">,</span> <span class="mf">2.0</span><span class="o">)</span> <span class="c1">// Вектор з елементами 1.0, 2.0</span>
+<span class="nc">Iterator</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span> <span class="c1">// Ітератор, що повертає три цілі.</span>
+<span class="nc">Set</span><span class="o">(</span><span class="n">dog</span><span class="o">,</span> <span class="n">cat</span><span class="o">,</span> <span class="n">bird</span><span class="o">)</span> <span class="c1">// Множина з трьох тварин</span>
+<span class="nc">HashSet</span><span class="o">(</span><span class="n">dog</span><span class="o">,</span> <span class="n">cat</span><span class="o">,</span> <span class="n">bird</span><span class="o">)</span> <span class="c1">// Хеш множина з тими ж тваринами</span>
+<span class="nc">Map</span><span class="o">(</span><span class="sc">&#39;a&#39;</span> <span class="o">-&gt;</span> <span class="mi">7</span><span class="o">,</span> <span class="sc">&#39;b&#39;</span> <span class="o">-&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="c1">// Мапа з символів до цілих</span>
+</pre></div></div></div>
+<div class="paragraph"><p>"Під покровом" кожний з рядків вище викликає метод <code>apply</code> на деякому об'єкті. Наприклад, третій рядок розширюється до такого:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">List</span><span class="o">.</span><span class="n">apply</span><span class="o">(</span><span class="mf">1.0</span><span class="o">,</span> <span class="mf">2.0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Так що це виклик до метода <code>apply</code> об'єкта компанйона класу <code>List</code>. Метод приймає довільне число аргументів, та конструює з них список. Кожний клас колекції в бібліотеці Scala має метод <code>apply</code>. Не має значення, чи клас колекції представляє суцільну реалізацію, як <code>List</code>, <code>Stream</code> або <code>Vector</code>, або це трейт, такий як <code>Seq</code>, <code>Set</code> або <code>Traversable</code>. В останньому випадку виклик <code>apply</code> буде продукувати деяку реалізацію трейта по замовчанню. Ось деякі приклади:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">res17</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Traversable</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">res18</span><span class="k">:</span> <span class="kt">Traversable</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">Traversable</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">res19</span><span class="k">:</span> <span class="kt">scala.collection.mutable.Traversable</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
+<span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Крім <code>apply</code> кожний об'єкт компанйон колекції визначає метод <code>empty</code>, що повертає порожню колекцію. Так що замість <code>List()</code> ви можете написати <code>List.empty</code>, замість <code>Map()</code> - <code>Map.empty</code>, і так далі.</p></div>
+<div class="paragraph"><p>Нащадки трейтів <code>Seq</code> також провадять інші операції фабрик в своїх об'єктах компанйонах. Вони підсумовані в Таблиці 24.13. Скорочено це виглядає так:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<code>concat</code> конкатенує довільне число перехідних разом
+</p>
+</li>
+<li>
+<p>
+<code>fill</code> та <code>tabulate</code>, що генерують одно- або багато-вимісні послідовності, ініціалізовані деякими виразами або функцією табуляції
+</p>
+</li>
+<li>
+<p>
+<code>range</code>, яка генерує цілі послідовності з деяким заданим кроком
+</p>
+</li>
+<li>
+<p>
+<code>iterate</code>, що генерує послідовність, як результат від повторного застосування функції до початкового елемента.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>.</p></div>
+<div class="tableblock">
+<table rules="all"
+width="100%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="16%" />
+<col width="83%" />
+<thead>
+<tr>
+<th align="center" valign="top"> Що таке </th>
+<th align="center" valign="top"> Що робить</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table">S.empty</p></td>
+<td align="left" valign="top"><p class="table">Порожня послідовність</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S(x, y, z)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність з елементів <code>x</code>, <code>y</code> та <code>z</code></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.concat(xs, ys, zs)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність, отримана як конкатенація елементів <code>xs</code>, <code>ys</code> та <code>zs</code></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.fill(n)(e)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність довжини <code>n</code>, де кожний елемент обчисляється як вираз <code>e</code></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.fill(m, n)(e)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність послідовностей розміром <code>m x n</code>, де кожний елемент обчислюється як вираз <code>e</code> (існує також для більших розмірнестей)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.tabulate(n)(f)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність довжини <code>n</code>, де елемент для кожного індексу <code>i</code> обчислюється як <code>f(i)</code></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.tabulate(m, n)(f)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність послідовностей розміром <code>m x n</code>, де елемент з індексом <code>(i, j)</code> обчислюється як <code>f(i, j)</code> (існує також для більших розмірностей)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.range(start, end)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність цілих <code>start ... end - 1</code></p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.range(start, end, step)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність цілих, що починається зі <code>start</code>, та продовжується з кроком <code>step</code> до значення <code>end</code>, виключно</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">S.iterate(x, n)(f)</p></td>
+<td align="left" valign="top"><p class="table">Послідовність довжини <code>n</code> з елементами <code>x</code>, <code>f(x)</code>, <code>f(f(x))</code>, &#8230;</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_24_17____java__scala">24.17 Перетворення між колекціями Java і Scala</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як Scala, Java має багату бібліотеку колекцій. Існує багато подібного між ціма двома. Наприклад, обоє знають про ітерації, ітерабельні, множини, мапи та послідовності. Але також існують важливі відмінності. Зокрема, бібліотеки Scala роблять значно більший наголос на незмінні колекції, та провадять значно більше операцій, що трансформують колекції в нові.</p></div>
+<div class="paragraph"><p>Іноді вам треба конвертувати колекцію з ощного фреймфорка в інший. Наприклад, ви можете отримати доступ до існуючої Java колекції, так, якби це була Scala. Або ви можете забажати одну зі Scala колекцій до Java методу, що очікує Java варіант. Зробити це досить легко, оскільки Scala пропонує неявні перетворення між всіма головними типами колекцій в об'єкт <code>JavaConversions</code>. Зокрема, ви знайдете двосторонні перетворення між наступними типами:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="100%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table">Iterator</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Iterator</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">Iterator</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Enumeration</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">Iterable</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.lang.Iterable</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">Iterable</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Collection</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">mutable.Buffer</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.List</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">mutable.Set</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Set</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">mutable.Map</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Mapx</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>Щоб дозволити ці перетворення, просто імпортуйте їх, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">collection.JavaConversions._</span>
+<span class="k">import</span> <span class="nn">collection.JavaConversions._</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер ви маєте автоматичні перетворення між колекціями Scala, та відповідними колекціями Java.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">collection.mutable._</span>
+<span class="k">import</span> <span class="nn">collection.mutable._</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">jul</span><span class="k">:</span> <span class="kt">java.util.List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">jul</span><span class="k">:</span> <span class="kt">java.util.List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">[</span><span class="err">1</span>, <span class="err">2</span>, <span class="err">3</span><span class="o">]</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">buf</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">jul</span>
+<span class="n">buf</span><span class="k">:</span> <span class="kt">scala.collection.mutable.Seq</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">ArrayBuffer</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">m</span><span class="k">:</span> <span class="kt">java.util.Map</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
+<span class="nc">HashMap</span><span class="o">(</span><span class="s">&quot;abc&quot;</span> <span class="o">-&gt;</span> <span class="mi">1</span><span class="o">,</span> <span class="s">&quot;hello&quot;</span> <span class="o">-&gt;</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">m</span><span class="k">:</span> <span class="kt">java.util.Map</span><span class="o">[</span><span class="kt">String</span>,<span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span><span class="n">hello</span><span class="k">=</span><span class="mi">2</span><span class="o">,</span> <span class="n">abc</span><span class="k">=</span><span class="mi">1</span><span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Внутрішньо ці перетворення роблять через встановлення об'єкта "огортки", що пересилає всі операції до підлеглого об'єкта колекції. Так що колекції ніколи не копіюються, коли конвертуються між Java та Scala. Цікава властивість в тому, що якщо ви робите кругову конверсію, скажімо, Java типу до відповідного типу Scala, та назад до того самого типу Java, ви скінчите з об'єктом ідентичного типу, до того, з якого починали.</p></div>
+<div class="paragraph"><p>Деякі інші загальні Scala колекції також можуть бути конвертовані до Java типів, але для яких немає відповідного перетворення в іншому напрямку:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="100%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="33%" />
+<col width="33%" />
+<col width="33%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table">Seq</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.List</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">mutable.Seq</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.List</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">Set</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Set</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">Map</p></td>
+<td align="left" valign="top"><p class="table"></p></td>
+<td align="left" valign="top"><p class="table">java.util.Map</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>Оскільки Java не розрізняє між змінними та незмінними колекціями в своїх типах, перетворення зі, скажімо, <code>collection.immutable.List</code> буде давати <code>java.util.List</code>, на якому всі операції змін будуть закидати <code>UnsupportedOperationException</code>. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">jul</span><span class="k">:</span> <span class="kt">java.util.List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">jul</span><span class="k">:</span> <span class="kt">java.util.List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">[</span><span class="err">1</span>, <span class="err">2</span>, <span class="err">3</span><span class="o">]</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">jul</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="mi">7</span><span class="o">)</span>
+<span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">UnsupportedOperationException</span>
+<span class="n">at</span> <span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">AbstractList</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="nc">AbstractList</span><span class="o">.</span><span class="n">java</span><span class="k">:</span><span class="err">131</span><span class="o">)</span>
+</pre></div></div></div>
 </div>
 </div>
 <h1 id="_24_18_">24.18 Висновок</h1>
-<div class="paragraph"><p>You&#8217;ve now seen how to use Scala&#8217;s collection in great detail. Scala&#8217;s collections take the approach of
-giving you powerful building blocks rather than a number of ad hoc utility methods. Putting together
-two or three such building blocks allows you to express an enormous number of useful computations.
-This style of library is especially effective due to Scala having a light syntax for function literals, and
-due to it providing many collection types that are persistent and immutable.
-This chapter has shown collections from the point of view of a programmer using the collection library.
-The next chapter will show you how the collections are built and how you can add your own collection
-types.</p></div>
+<div class="paragraph"><p>Тепер ви побачили, як використовувати Scala колекції дуже детально. Колекції Scala приймають підхід надання вам потужних будівельних блоків, скоріше, ніж декількох споміжних методів на підхваті. Покладаючи поряд два або три такі будівельні блоки, дозволяє вам виразити величезну кількість коричних обчислень. Цей стиль бібліотек особливо ефективний через те, що Scala має легкий синтаксис для функціональних літералів, та через те, що вона провадить багато типів колекцій, що стійкі та незмінні.</p></div>
+<div class="paragraph"><p>Ця глава показала колекції з точки зору програміста, що використовує бібліотеку колекцій. Наступна глава покаже вам, як колекції побудовані, та як ви можете додати власні типи колекцій.</p></div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-04-02 03:58:15 EEST
+ 2019-04-08 03:42:05 EEST
 </div>
 </div>
 </body>

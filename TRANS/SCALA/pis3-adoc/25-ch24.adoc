@@ -1309,13 +1309,15 @@ s: Seq[Char] = WrappedString(h, e, l, l, o)
 ---------------------
 Бібліотеки колекцій мають уніформний підхід до рівності та хешування. Перше, ідея в тому, щоб поділити колекції на множини, мапи та послідовності. Колекції в різних категоріях завжди нерівні. Наприклад, `Set(1, 2, 3)` нерівне до `List(1, 2, 3)`, навіть якщо вони містять ті самі елементи. З іншого боку, в тій самій категорії, колекції рівні, тільки, та тільки, якщо вони мають ті самі елементи (для послідовностей: ті ж елементи в тому ж порядку). Наприклад, `List(1, 2, 3) == Vector(1, 2, 3)`, та `HashSet(1, 2) == TreeSet(2, 1)`.
  
-It does not matter for the equality check whether a collection is mutable or immutable. For a mutable collection, equality simply depends on the current elements at the time the equality test is performed. This means that a mutable collection might be equal to different collections at different times, depending what elements are added or removed. This is a potential trap when using a mutable collection as a key in a hash map. For example:
+Не має значення для перевірки рівності, чи колекція змінна, чи незмінна. Для змінної колекції рівність просто залежить від поточних елементів на час, коли виконується перевірка. Це означає, що змінні колекції можуть бути еквівалентні до різних колекцій в різний час, в залежності що було додано або видалене. Це потенційна пастка, коли змінна колекція використовується як ключ в хеш мапі. Наприклад:
 [source,scala]
 ----
 scala> import collection.mutable.{HashMap, ArrayBuffer}
-import collection.mutable.{HashMap, ArrayBuffer}scala> val buf = ArrayBuffer(1, 2, 3)
+import collection.mutable.{HashMap, ArrayBuffer}
+
+scala> val buf = ArrayBuffer(1, 2, 3)
 buf: scala.collection.mutable.ArrayBuffer[Int] =
-ArrayBuffer(1, 2, 3)
+  ArrayBuffer(1, 2, 3)
 
 scala> val map = HashMap(buf -> 3)
 map: scala.collection.mutable.HashMap[scala.collection.
@@ -1328,17 +1330,17 @@ scala> buf(0) += 1
 
 scala> map(buf)
 java.util.NoSuchElementException: key not found:
-ArrayBuffer(2, 2, 3)
+  ArrayBuffer(2, 2, 3)
 ----
-In this example, the selection in the last line will most likely fail because the hash code of the array xs has changed in the second-to-last line. Therefore, the hash-code-based lookup will look at a different place than the one in which xs was stored.
+В цьому прикладі вибірка в останньому рядку скоріше всього схибить, оскільки хеш код масива `xs` зміниться в передостанньому рядку. Таким чином, пошук на основі хеш кода буде шукати в іншому місці, ніж той, в якому був збережений `xs`.
 
 24.14 Перегляди
 ---------------
-Collections have quite a few methods that construct new collections. Some examples are map,filter, and ++. We call such methods transformers because they take at least one collection as their receiver object and produce another collection in their result.
+Колекції мають декілька методів, що конструюють нові колекції. Деякі приклади є `map`, `filter` та `++`. Ми називаємо такі методи трансформерами, оскільки вони приймають щонайменьше одну колекцію в якості свого об'єкта-отримувача, та продукують іншу колекцію в якості результата.
 
-Transformers can be implemented in two principal ways: strict and non-strict (or lazy). A strict transformer constructs a new collection with all of its elements. A non-strict, or lazy, transformer constructs only a proxy for the result collection, and its elements are constructed on demand.
+Трансформери можуть бути реалізовані в два принципові способи: строгий та нестрогий (або лінивий). Строгий трансформер конструює нову колекцію з усіма своїми елементами. Нестрогий, або лінивий, трансформер конструює тільки проксі для результуючої колекції, та його елементи конструюються на вимогу.
 
-As an example of a non-strict transformer, consider the following implementation of a lazy map operation:
+Як приклад нестрогого трансформера, розглянемо наступну реалізацію лінивої операції `map`:
 [source,scala]
 ----
 def lazyMap[T, U](coll: Iterable[T], f: T => U) =
@@ -1346,11 +1348,11 @@ def lazyMap[T, U](coll: Iterable[T], f: T => U) =
     def iterator = coll.iterator map f
   }
 ----
-Note that lazyMap constructs a new Iterable without stepping through all elements of the given collection coll. The given function f is instead applied to the elements of the new collection'siterator as they are demanded.
+Зауважте, що `lazyMap` конструює нове `Iterable` без крокування по всіх елементах наданої колекції `coll`. Надана функція `f` замість цього застосовується до елементів ітератора нової колекції, по мірі потреби.
 
-Scala collections are by default strict in all their transformers, except for Stream, which implements all its transformer methods lazily. However, there is a systematic way to turn every collection into a lazy one and vice versa, which is based on collection views. A view is a special kind of collection that represents some base collection, but implements all of its transformers lazily.
+Scala колекції по замовчанню строгі в усіх своїх трансформерах, за винятком `Stream`, що реалізує всі свої методи-трансформери ліниво. Однак існує систематичний спосіб для перетворення кожної колекції в ліниву та навпаки, що базується на переглядах колекції. Перегляд є особливим різновидом колекції, що представляє деяку базову колекцію, але реалізує всі її трансформери ліниво.
 
-To go from a collection to its view, you can use the view method on the collection. If xs is some collection, then xs.view is the same collection, but with all transformers implemented lazily. To get back from a view to a strict collection, you can use the force method.As an example, say you have a vector of Ints over which you want to map two functions in succession: 
+Щоб перейти від колекції до її перегляду, ви можете використовувати метод `view` на колекції. Якщо `xs` є деякою колекцією, тоді `xs.view` є та сама колекція, але всі трансформери якої реалізовані ліниво. Щоб перейти назад від перегляду до строгої колекції ви можете використати метод `force`. Як приклад, скажімо, ви маєте вектор з `Int`, на якому ви бажаєте виконати дві функції одна за другою: 
 [source,scala]
 ----
 scala> val v = Vector(1 to 10: _*)
@@ -1361,79 +1363,80 @@ scala> v map (_ + 1) map (_ * 2)
 res5: scala.collection.immutable.Vector[Int] =
 Vector(4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
 ----
-In the last statement, the expression v map (_ + 1) constructs a new vector that is then transformed into a third vector by the second call to map (_ * 2). In many situations, constructing the intermediate result from the first call to map is a bit wasteful. In the pseudo example, it would be faster to do a single map with the composition of the two functions (_ + 1)and (_ * 2). If you have the two functions available in the same place you can do this by hand. But quite often, successive transformations of a data structure are done in different program modules. Fusing those transformations would then undermine modularity. A more general way to avoid the intermediate results is by turning the vector first into a view, applying all transformations to the view, and finally forcing the view to a vector:
+В останньому твердженні вираз `v map (_ + 1)` конструює новий вектор, що потім трансформується і третій вектор, через другий виклик до `map (_ * 2)`. В багатьох ситуаціях конструювання проміжного результату після першого виклику до `map` є трохи марнотратним. В псевдо прикладі буде скорішим зробити єдиний `map` з композицією двох функцій, `(_ + 1)` та `(_ * 2)`. Якщо ви маєте дві функції доступними в тому самому місці, ви можете зробити це вручну. Але досить часто послідовні трансформації структур даних виконуються в разних програмних модулях. Зплавлення ціх перетворень потім буде підривати модульність. Більш загальним шляхом уникнути проміжних результатів є перетворення вектора зпочатку на перегляд, застосування до перегляду всіх трансформацій, на нарешті примушення перегляду знову до вектора:
 [source,scala]
 ----
 scala> (v.view map (_ + 1) map (_ * 2)).force
 res12: Seq[Int] = Vector(4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
 ----
-We'll do this sequence of operations again, one by one:
+Ми зробимо цю послідовність операцій знову одну з одною:
 [source,scala]
 ----
 scala> val vv = v.view
 vv: scala.collection.SeqView[Int,Vector[Int]] =
   SeqView(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
 ----
-The application v.view gives you a SeqView, i.e., a lazily evaluated Seq. The type SeqView has two type parameters. The first, Int, shows the type of the view's elements. The second, Vector[Int], shows you the type constructor you get back when forcing the view.
+Застосування `v.view` дає вам `SeqView`, тобто ліниво обчислену `Seq`. Тип `SeqView` має два параметри типу. Перший, `Int`, показує тип елементів перегляду. Другий, `Vector[Int]`, показує вам тип конструктора, що ви отримаєте назад, коли будете примушувати перегляд.
 
-Applying the first map to the view gives you:
+Застосування першого `map` до перегляду дасть таке:
 [source,scala]
 ----
 scala> vv map (_ + 1)
 res13: scala.collection.SeqView[Int,Seq[_]] = SeqViewM(...)
 ----
-The result of the map is a value that prints SeqViewM(...). This is in essence a wrapper that records the fact that a map with function (_ + 1) needs to be applied on the vector v. It does not apply that map until the view is forced, however. The "M" after SeqView is an indication that the view encapsulates a map operation. Other letters indicate other delayed operations. For instance "S" indicates a delayed slice operation, and "R" indicates a reverse. We'll now apply the second map to the last result.
+Результатом `map` є значення, що друкує `SeqViewM(...)`. Це в основному огортка, що записує факт, що `map` з функцією `(_ + 1)` треба застосувати до вектора `v`. Він, однак, не застосовує цей `map`, доки перегляд не буде форсований. "M" після `SeqView` вказує на те, що перегляд екнкапсулює операцію `map`. Ініш літери вказують інші відкладені операції. Наприклад, "S" вказує на відкладену операцію `slice`, та "R" вказує на `reverse`. Тепер ми застосуємо другий `map` до останнього результату.
 [source,scala]
 ----
 scala> res13 map (_ * 2)
 res14: scala.collection.SeqView[Int,Seq[_]] = SeqViewMM(...)
 ----
-You now get a SeqView that contains two map operations, so it prints with a double "M":SeqViewMM(...). Finally, forcing the last result gives:
+Тепер ви отримали `SeqView`, що містить дві операції `map`, так що друкуються дві "M": `SeqViewMM(...)`. Нарешті, форсування останнього результату дає:
 [source,scala]
 ----
 scala> res14.force
 res15: Seq[Int] = Vector(4, 6, 8, 10, 12, 14, 16, 18, 20, 22)
 ----
-Both stored functions get applied as part of the execution of the force operation and a new vector is constructed. That way, no intermediate data structure is needed.
+Обоє збережені функції застосовуються як частина виконання операції `force`, та конструюється новий вектор. Таким чином, жодні проміжні структури непотрібні.
 
-One detail to note is that the static type of the final result is a Seq, not a Vector. Tracing the types back we see that as soon as the first delayed map was applied, the result had static typeSeqViewM[Int, Seq[_]]. That is, the "knowledge" that the view was applied to the specific sequence type Vector got lost. The implementation of a view for any particular class requires quite a bit of code, so the Scala collection libraries provide views mostly only for general collection types, not for specific implementations.footnote:[An exception to this is arrays: applying delayed operations on arrays will again give results with static type Array.]
+Одна деталь, яку треба зауважити, це те, що статичний тип фінального результату є `Seq`, а не `Vector`. Відстежуючи типи назад, ми бачимо, що як тільки був застосований перший відкладений `map`, результат має статичний метод `SeqViewM[Int, Seq[_]]`. Тобто, "знання" що перегляд був застосований до певного тип послідовності `Vector` було втрачене. Реалізація перегляду для любого окремого класу потребує трохи коду, так що бібліотеки колекцій Scala провадять перегляди в основному тільки для загальних типів колекцій,не для специфічних реалізацій.footnote:[Виключенням для цього є масиви: застосування відкладених операцій на масивах буде знову давати результат зі статичним типом `Array`.]
 
-There are two reasons why you might want to consider using views. The first is performance. You have seen that by switching a collection to a view the construction of intermediate results can be avoided. These savings can be quite important. As another example, consider the problem of finding the first palindrome in a list of words. A palindrome is a word that reads backwards the same as forwards. Here are the necessary definitions:
+Існує дві причини, чому ви можете вирішити використовувати перегляди. Перша це продуктивність. Ви бачили, що перемикання з колекції на перегляд можливо уникає створення проміжних колекцій. Ці збереження можуть бути досить важливі. Як інший приклад розглянемо проблему пошуку першого паліндрому в списку слів. Паліндром - це слово, що однаково читається в обох напрямках. Ось необхідні визначення:
 [source,scala]
 ----
 def isPalindrome(x: String) = x == x.reverse
 def findPalindrome(s: Seq[String]) = s find isPalindrome
 ----
-Now, assume you have a very long sequence words and you want to find a palindrome in the first million words of that sequence. Can you re-use the definition of findPalindrome? Of course, you could write:
+Тепер уявімо, щоб ви маєте дуже довгу послідовність слів, та ви бажаєте знайти паліндром в першому мільйоні слів цієї послідовностіі. Чи ви можете повторно використати визначення `findPalindrome`? Звичайно, ви можете написати:
 [source,scala]
 ----
 findPalindrome(words take 1000000)
 ----
-This nicely separates the two aspects of taking the first million words of a sequence and finding a palindrome in it. But the downside is that it always constructs an intermediary sequence consisting of one million words, even if the first word of that sequence is already a palindrome. So potentially, 999,999 words are copied into the intermediary result without being inspected at all afterwards. Many programmers would give up here and write their own specialized version of finding palindromes in some given prefix of an argument sequence. But with views, you don't have to. Simply write:
+Це мило розділяє два аспекти отримання першого мільйона слів з послідовності, та пошук в ньому паліндрому. Але недолік в тому, що це завжди будує проміжну послідовність, що складається з одного мільйона слів, навіть якщо перше слово в цій послідовності поліндром. Так що після цього потенційно 999999 слів копіюються в проміжний результат взагалі без перевірки. Багато програмістів тут здадуться і напишуть свої власні версії пошуку паліндромів в деякому наданому префіксі аргумента-послідовності. Але з переглядами ви не маєте робити це. Просто напишіть:
 [source,scala]
 ----
 findPalindrome(words.view take 1000000)
 ----
-This has the same nice separation of concerns, but instead of a sequence of a million elements it will only construct a single lightweight view object. This way, you do not need to choose between performance and modularity. The second use case applies to views over mutable sequences. Many transformer functions on such views provide a window into the original sequence that can then be used to update selectively some elements of that sequence. To see this in an example, suppose you have an array arr:
+Це матиме той самий гарний поділ турбот, але замість послідовності з мільйона елементів це буде конструювати лише один легковажний об'єкт перегляда. Таким чином, вам не треба обирати між продуктивністю та модульністю. Другий випадок застосування стосується до переглядів змінних послідовностей. Багато функцій-трансформерів на таких переглядах провадять вікно до оригінальної послідовності, що потім може використовуватись для вибіркового оновлення деяких елементів в цій послідовності. Щоб побачити це на прикладі, уявімо ми маємо масив `arr`:
 [source,scala]
 ----
 scala> val arr = (0 to 9).toArray
 arr: Array[Int] = Array(0, 1, 2, 3, 4, 5, 6, 7, 8, 9)
 ----
-You can create a subwindow into that array by creating a slice of a view of the array:
+Ви можете створити субвікно в цьому масиві, створивши скибку `slice` перегляду масиву:
 [source,scala]
 ----
-scala> val subarr = arr.view.slice(3, 6)subarr: scala.collection.mutable.IndexedSeqView[
-Int,Array[Int]] = IndexedSeqViewS(...)
+scala> val subarr = arr.view.slice(3, 6)
+subarr: scala.collection.mutable.IndexedSeqView[
+  Int,Array[Int]] = IndexedSeqViewS(...)
 ----
-This gives a view, subarr, which refers to the elements at positions 3 through 5 of the array arr. The view does not copy these elements, it just provides a reference to them. Now, assume you have a method that modifies some elements of a sequence. For instance, the following negatemethod would negate all elements of the sequence of integers it's given:
+Це дає перегляд `subarr`, що посилається на елементи в позиціях від 3 до 5 в масиві `arr`. Перегляд не копіює ці елементи, він тільки провадить посилання на них. Тепер уявімо, що ви маєте метод, що модифікує деякі елементи в послідовності. Наприклад, наступний метод `negate` буде обертати знак всіх наданих елементів послідовності цілих:
 [source,scala]
 ----
 scala> def negate(xs: collection.mutable.Seq[Int]) =
         for (i <- 0 until xs.length) xs(i) = -xs(i)
 negate: (xs: scala.collection.mutable.Seq[Int])Unit
 ----
-Assume now you want to negate elements at positions three through five of the array arr. Can you use negate for this? Using a view, this is simple:
+Тепер уявімо, що ви бажаєте змінити знак елементів в позиціях від трьох до п'яти масива `arr`. Чи можливо використати для цього `negate`? З використанням перегляду це просто:
 [source,scala]
 ----
 scala> negate(subarr)
@@ -1441,60 +1444,52 @@ scala> negate(subarr)
 scala> arr
 res4: Array[Int] = Array(0, 1, 2, -3, -4, -5, 6, 7, 8, 9)
 ----
-What happened here is that negate changed all elements of subarr, which were a slice of the elements of arr. Again, you see that views help in keeping things modular. The code above nicely separated the question of what index range to apply a method to from the question what method to apply.
+Що тут відбувається, це те, що `negate` змінює всі елементи в `subarr`, що є скибкою елементів `arr`. Знову, ви бачите, що перегляди допомагають підтримувати речі модулярними. Код вище гарно розділяє питання, до якого диапазону індексів застосувати метод, та те, який саме метод застосувати.
 
-After having seen all these nifty uses of views you might wonder why have strict collections at all? One reason is that performance comparisons do not always favor lazy over strict collections. For smaller collection sizes the added overhead of forming and applying closures in views is often greater than the gain from avoiding the intermediary data structures. A possibly more important reason is that evaluation in views can be very confusing if the delayed operations have side effects.
+Після того, як ми побачили всі ці дотепні використання переглядів, ви можете здивуватись, для чого взагалі мати строгі послідовності? Одна причина в тому, що порівняння продуктивності не завжди на користь лінивих в колекцій в порівнянні зі строгими. Для меньших розмірів колекцій додаткове навантаження по формуванню замикань в переглядах часто більше, ніж вигода від уникнення проміжних структур даних. Можливо більш важлива причина в тому, що обчислення в переглядах можуть бути дуже збентежливі, якщо операції мають побічні ефекти.
 
-Here's an example that bit a few users of versions of Scala before 2.8. In these versions theRange type
-was lazy, so it behaved in effect like a view. People were trying to create a number of actors,footnote:[The Scala actors library has been deprecated, but this historical example is still relevant.] like
-this:
+Ось приклад, що зачепив декількох користувачів версій Scala до 2.8. В ціх версіях тип `theRange` був лінивий, так що він ефективно поводився як перегляд. Люди намагались створити декілька акторів,footnote:[Бібліотека акторів Scala вже застаріла, але цей історичний приклад все ще актуальний.] ось так:
 [source,scala]
 ----
 val actors = for (i <- 1 to 10) yield actor { ... }
 ----
-They were surprised that none of the actors were executing afterwards, even though the actormethod should create and start an actor from the code that's enclosed in the braces following it. To explain why nothing happened, remember that the for expression above is equivalent to an application of the map method:
+Вони були здивовані, що після цього жодний з акторів не виконувався, навіть якщо метод `actor` повинен створювати та запускати актора на основі кода, що оточений в фігурні дужки за ним. Щоб пояснити, чому нічого не відбувається, нагадаємо, що вираз `for` вище еквівалентний до застосування методу `map`:
 [source,scala]
 ----
 val actors = (1 to 10) map (i => actor { ... })
 ----
-Since previously the range produced by (1 to 10) behaved like a view, the result of the map was again a view. That is, no element was computed, and, consequently, no actor was created! Actors would have been created by forcing the range of the whole expression, but it's far from obvious that this is what was required to make the actors do their work.
+Оскільки попередній `range`, спродукований `(1 to 10)`, поводиться як перегляд, результатом `map` знову буде перегляд. Тобто, відповідно, жодного елементу не було обчислено, та жодного актора не було створено! Актори були створені через форсування `range` для всього виразу, але це менше ніж очевидне, що все це треба щоб змусити акторів до своєї роботи.
 
-To avoid surprises like this, the Scala collections gained more regular rules in version 2.8. All
-
-collections except streams and views are strict. The only way to go from a strict to a lazy collection is
-via the view method. The only way to go back is via force. So the actors definition above would behave
-as expected in Scala 2.8 in that it would create and start ten actors. To get back the surprising previous
-behavior, you'd have to add an explicit view method call:
+Щоб уникнути ціх сюрпризів, колекції Scala отримали більш регулярні правила в версії 2.8. Всі колекції, за винятком потоків та переглядів, є строгими. Єдиний шлях від строгих до лінивих колекцій - через метод `view`. Єдиний шлях іти зворотнім шляхом - через метод `force`. Так що визначення акторів вище будуть робити як очікується в Scala 2.8, в тому розмінні, що будуть створені та запущені десять акторів. Щоб перейти до цікавої попередньої поведінки, ви маєте додати явний виклик метода `view`:
 [source,scala]
 ----
 val actors = for (i <- (1 to 10).view) yield actor { ... }
 ----
-In summary, views are a powerful tool to reconcile concerns of efficiency with concerns of modularity. But in order not to be entangled in aspects of delayed evaluation, you should restrict views to two scenarios. Either you apply views in purely functional code where collection transformations do not have side effects. Or you apply them over mutable collections where all modifications are done explicitly. What's best avoided is a mixture of views and operations that create new collections while also having side effects.
+В підсумку, перегляди є потужним інструментом для примирення проблем ефективності з проблемами модульності. Але щоб загрузнути в аспектах відкладеного виконання, вам слідує обмежити перегляди до двох сценаріїв. Або ви застосувуєте перегляди в чисто функціональному коді, де трансформації колекцій не мають побічних ефектів. Або ви застосовуєте їх для змінних колекцій, коли всі модифікації виконуються явно. Чого треба уникати, це змішування переглядів і операцій, що створюють нові колекції, при цьому також маючи побічні ефекти.
 
 24.15 Ітератори
 ---------------
-An iterator is not a collection, but rather a way to access the elements of a collection one by one. The two basic operations on an iterator it are next and hasNext. A call to it.next() will return the next element of the iterator and advance the state of the iterator. Calling next again on the same iterator will then yield the element one beyond the one returned previously. If there are no more elements to return, a call to next will throw a NoSuchElementException. You can find out whether there are more elements to return using Iterator's hasNext method.
+Ітератор не є колекцією, але скоріше шляхом отримати доступ до елементів колекції один за одним. Існує дві базові операції на ітераторі `it`, `next` та `hasNext`. Виклик до `it.next()` буде повертати наступний елемент ітератора, та просувати стан ітератора. Наступний виклик `next` на тому самому ітераторі буде видавати елемент на один далі від повернутого перед цім. Якщо немає більше елементів, що можна повернути, виклик до `next` буде закидати `NoSuchElementException`. Ви можете дізнатись, чи є ще елементи, що можна повернути, використовуючи метод `Iterator`'а `hasNext`.
 
-The most straightforward way to "step through" all the elements returned by an iterator is to use
-a while loop:
+Найбільш прямолінійний метод "прокрокувати" по всіх елементах, що повертає ітератор, це використання циклу `while`:
 [source,scala]
 ----
 while (it.hasNext)
   println(it.next())
 ----
-Iterators in Scala also provide analogues of most of the methods that you find in theTraversable, Iterable, and Seq traits. For instance, they provide a foreach method that executes a given procedure on each element returned by an iterator. Using foreach, the loop above could be abbreviated to:
+Ітератори в Scala також провадять аналоги до більшості з методів, що ви можете знайти в трейтах `Traversable`, `Iterable` та `Seq`. Наприклад, вони провадять метод `foreach`, що виконує надану процедуру на кожному елементі, що повертаються ітератором. Використовуючи `foreach`, цикл вище може бути скорочений до:
 [source,scala]
 ----
 it foreach println
 ----
-As always, for expressions can be used as an alternate syntax for expressions involvingforeach, map, filter, and flatMap, so yet another way to print all elements returned by an iterator would be:
+Як завжди, вирази `for` можуть використовуватись як альтернативний синтаксис для виразів, що включають `foreach`, `map`, `filter` та `flatMap`, так що інший спосіб надрукувати всі елементи, що повертаються ітератором, буде таке:
 [source,scala]
 ----
 for (elem <- it) println(elem)
 ----
-There's an important difference between the foreach method on iterators and the same method on traversable collections: When called on an iterator, foreach will leave the iterator at its end when it is done. So calling next again on the same iterator will fail with aNoSuchElementException. By contrast, when called on a collection, foreach leaves the number of elements in the collection unchanged (unlessthe passed function adds or removes elements, but this is discouraged, because it can easily lead to surprising results).
+Існує важлива різниця між методом `foreach` на ітераторі, та тим самим методом на перехідних колекціях: коли він викликається на ітераторів, `foreach` після свого закінчення буде залишати ітератор в кінці. Так що наступний виклик до `next` знову на томуж ітератору буде хибним `NoSuchElementException`. На відміну до цього, коли викликається для колекції, `foreach` залишає число елементів в колекції без змін (якщо передана функція не додає або видаляє елементи, але це не заохочується, оскільки легко може призвести до несподіваних результатів).
 
-The other operations that Iterator has in common with Traversable have the same property of leaving the iterator at its end when done. For instance, iterators provide a map method, which returns a new iterator:
+Інші операції, які `Iterator` має назагал з `Traversable`, мають ту саму властивість полишати ітератор в кінці після завершення. Наприклад, ітератори провадять метод `map`, що повертає новий ітератор:
 [source,scala]
 ----
 scala> val it = Iterator("a", "number", "of", "words")
@@ -1512,7 +1507,7 @@ scala> res1 foreach println
 scala> it.next()
 java.util.NoSuchElementException: next on empty iterator
 ----
-As you can see, after the call to map, the it iterator has advanced to its end. Another example is the dropWhile method, which can be used to find the first element of an iterator that has a certain property. For instance, to find the first word in the iterator shown previously that has at least two characters, you could write:
+Як ви можете бачити, після виклику до `map`, ітератор просунувся в кінець. Інший приклад є метод `dropWhile`, що може використовуватись для пошуку першого елементу ітератора, що має певну властивість. Наприклад, щоб знайти перше слово в ітераторі, показаному до цього, що має щонайменьше два символи, ви можете записати:
 [source,scala]
 ----
 scala> val it = Iterator("a", "number", "of", "words")
@@ -1524,18 +1519,18 @@ res4: Iterator[java.lang.String] = non-empty iterator
 scala> it.next()
 res5: java.lang.String = number
 ----
-Note again that it has changed by the call to dropWhile: it now points to the second word "number" in the list. In fact, it and the result res4 returned by dropWhile will return exactly the same sequence of elements.
+Знову зауважте, що `it` був змінений через виклик до `dropWhile`: тепер `it` вказує на друге слово "number" в списку. Фактично, `it` та результат `res4`, що повертається `dropWhile`, буде повертати точно такуж ж послідовність елементів.
 
-There is only one standard operation, duplicate, which allows you to re-use the same iterator:
+Існує тільки одна стандартна операція, `duplicate`, що дозволяє вам повторно використовувати той самий ітератор:
 [source,scala]
 ----
 val (it1, it2) = it.duplicate
 ----
-The call to duplicate gives you two iterators, which each return exactly the same elements as the iterator it. The two iterators work independently; advancing one does not affect the other. By contrast the original iterator, it, is advanced to its end by duplicate and is thus rendered unusable.
+Виклик до `duplicate` дає вам два ітератори, де кожний повертає точно такі ж елементи, що і ітератор `it`. Два ітератори роблять незалежно; просування одного не впливає на інший. На відміну від цього, оригінальний оператор, `it`, просувається до свого кінця під час дублювання, і, таким чином, стає некорисним.
 
-In summary, iterators behave like collections if you never access an iterator again after invoking a method on it. The Scala collection libraries make this explicit with an abstraction called TraversableOnce, which is a common supertrait of Traversable and Iterator. As the nameimplies, TraversableOnce objects can be traversed using foreach, but the state of that object after the traversal is not specified. If the TraversableOnce object is in fact an Iterator, it will be at its end after the traversal, but if it is a Traversable, it will still exist as before. A common use case of TraversableOnce is as an argument type for methods that can take either an iterator or traversable as argument. An example is the appending method ++ in trait Traversable. It takes aTraversableOnce parameter, so you can append elements coming from either an iterator or a traversable collection.
+В підсумку, ітератори поводяться як колекції, якщо ви ніколи не отримуєте доступ до ітератора знову, після виклику на ньому метода. Бібліотеки колекцій Scala робить це явним, з абстракцією на ім'я `TraversableOnce`, що є загальним трейтом для `Traversable` та `Iterator`. Як відказує ім'я, об'єкти `TraversableOnce` можуть проходити з використанням `foreach`, але стан цього об'єкту після проходження не визначений. Якщо об'єкт `TraversableOnce` фактично є `Iterator`, він після проходження буде в своєму кінці, але якщо це `Traversable`, він буде існувати як раніше. Загальний спосіб застосування `TraversableOnce` - як тип аргумента для методів, що можуть приймати або ітератор, або перехідне в якості аргумента. Прикладом є метод додавання `++` в трейті `Traversable`. Він приймає параметр `TraversableOnce`, так що ви можете додати елементи, що походять або від ітератора, або від перехідної колекції.
 
-All operations on iterators are summarized in Table 24.12.
+Всі операції на ітераторах підсумовані в Таблиці 24.12.
 
 [caption="Операції трейта Traversable"]
 .
@@ -1620,200 +1615,168 @@ All operations on iterators are summarized in Table 24.12.
 |it mkString (start, sep, end)|Конвертує ітератор на рядоко, що показує всі елементи, що обмежені роздільникими `sep`, оточені рядками `start` та `end`. `start`, `sep` та `end` всі є опціональними.
 |===
 
-Buffered iterators
-~~~~~~~~~~~~~~~~~~
-Sometimes you want an iterator that can "look ahead" so that you can inspect the next element to be
-returned without advancing past that element. Consider, for instance, the task to skip leading empty
-strings from an iterator that returns a sequence of strings. You might be tempted to write something like
-the following method:// This won't work
+Буферізовані ітератори
+~~~~~~~~~~~~~~~~~~~~~~
+Іноді ви бажаєте ітератори, що можуть "заглядати наперед", так що ви можете інспектувати наступний елемент, що буде повернутий, без просування за цей елемент. Розглянемо, наприклад, завдання пропуску початкових порожніх рядків з ітератора, що повертає послідовність рядків. Ви можете підпасти в спокусу написати дещо подібне до такого метода:
+[source,scala]
+----
+// Це не працюватиме
 def skipEmptyWordsNOT(it: Iterator[String]) = {
-while (it.next().isEmpty) {}
+  while (it.next().isEmpty) {}
 }
-But looking at this code more closely, it's clear that this is wrong: the code will indeed skip leading
-empty strings, but it will also advance it past the first non-empty string!
-The solution to this problem is to use a buffered iterator, an instance of
-trait BufferedIterator.BufferedIterator is a subtrait of Iterator, which provides one extra method, head.
-Calling head on a buffered iterator will return its first element, but will not advance the iterator. Using a
-buffered iterator, skipping empty words can be written like this:
+----  
+Але подивіться на цей код ближче, ясно що він невірний: код вочевидь пропустить початкові порожні рядки, але він також просуне `it` за перший непорожній рядок!
+
+Рішення до цієї проблеми є використання буферизованого ітератора, примірника трейту `BufferedIterator`. `BufferedIterator` є субтрейтом `Iterator`, що провадить один додатковий метод, `head`. Виклик `head` на буферизованому ітераторі буде повертати його перший елемент, але не буде просувати ітератор. Використовуючи буферизований ітератор пропуск порожніх слів може бути записаний таким чином:
+[source,scala]
+----
 def skipEmptyWords(it: BufferedIterator[String]) =
-while (it.head.isEmpty) { it.next() }
-Every iterator can be converted to a buffered iterator by calling its buffered method. Here's an example:
+  while (it.head.isEmpty) { it.next() }
+----
+Кожний ітератор може бути конвертований на буферизований ітератор, через виклик його методу `buffered`. Ось приклад:
+[source,scala]
+----
 scala> val it = Iterator(1, 2, 3, 4)
 it: Iterator[Int] = non-empty iterator
+
 scala> val bit = it.buffered
 bit: java.lang.Object with scala.collection.
 BufferedIterator[Int] = non-empty iterator
+
 scala> bit.head
 res10: Int = 1
+
 scala> bit.next()
 res11: Int = 1
+
 scala> bit.next()
 res11: Int = 2
-Note that calling head on the buffered iterator, bit, did not advance it. Therefore, the subsequent
-call, bit.next(), returned again the same value as bit.head.
-24.16 CREATING COLLECTIONS FROM SCRATCH
-You have already seen syntax like List(1, 2, 3), which creates a list of three integers, andMap('A' -
-> 1, 'C' -> 2), which creates a map with two bindings. This is actually a universal feature of Scala
-collections. You can take any collection name and follow it by a list of elements in parentheses. The
-result will be a new collection with the given elements. Here are some more examples:
-Traversable()
-List()
-List(1.0, 2.0)
-Vector(1.0, 2.0)
-Iterator(1, 2, 3)
-Set(dog, cat, bird)
-HashSet(dog, cat, bird)
-Map('a' -> 7, 'b' -> 0)
-//
-//
-//
-//
-//
-//
-//
-//
-An empty traversable object
-The empty list
-A list with elements 1.0, 2.0
-A vector with elements 1.0, 2.0
-An iterator returning three integers.
-A set of three animals
-A hash set of the same animals
-A map from characters to integers"Under the covers" each of the above lines is a call to the apply method of some object. For instance,
-the third line above expands to:
+---- 
+Зауважте, що виклик `head` на буферизованому ітераторі, `bit`, не просуває його. Таким чином, наступний виклик `bit.next()` повертає те саме значення, що і `bit.head`.
+
+24.16 Створення колекцій з нуля
+-------------------------------
+Ви вже бачили синтаксис, як `List(1, 2, 3)`, що створює список з трьох цілих, та `Map('A' - > 1, 'C' -> 2)`, що створює мапу з двома парами прив'язок. Насправді це універсальна можливість Scala колекцій. Ви можете взяти любе ім'я колекції, та поставити після нього список елементів в дужках. Результат буде новою колекцією з наданими елементвами. Ось деякі інші приклади:
+[source,scala]
+----
+Traversable() // Порожній перехідний об'єкт
+List() // Порожній список
+List(1.0, 2.0) // Список з елементами 1.0, 2.0
+Vector(1.0, 2.0) // Вектор з елементами 1.0, 2.0 
+Iterator(1, 2, 3) // Ітератор, що повертає три цілі.
+Set(dog, cat, bird) // Множина з трьох тварин
+HashSet(dog, cat, bird) // Хеш множина з тими ж тваринами
+Map('a' -> 7, 'b' -> 0) // Мапа з символів до цілих
+----
+"Під покровом" кожний з рядків вище викликає метод `apply` на деякому об'єкті. Наприклад, третій рядок розширюється до такого:
+[source,scala]
+----
 List.apply(1.0, 2.0)
-So this is a call to the apply method of the companion object of the List class. That method takes an
-arbitrary number of arguments and constructs a list from them. Every collection class in the Scala
-library has a companion object with such an apply method. It does not matter whether the collection
-class represents a concrete implementation, like List, Stream, orVector, or whether it is an trait such
-as Seq, Set, or Traversable. In the latter case, calling applywill produce some default implementation of
-the trait. Here are some examples:
+----
+Так що це виклик до метода `apply` об'єкта компанйона класу `List`. Метод приймає довільне число аргументів, та конструює з них список. Кожний клас колекції в бібліотеці Scala має метод `apply`. Не має значення, чи клас колекції представляє суцільну реалізацію, як `List`, `Stream` або `Vector`, або це трейт, такий як `Seq`, `Set` або `Traversable`. В останньому випадку виклик `apply` буде продукувати деяку реалізацію трейта по замовчанню. Ось деякі приклади:
+[source,scala]
+----
 scala> List(1, 2, 3)
 res17: List[Int] = List(1, 2, 3)
+
 scala> Traversable(1, 2, 3)
 res18: Traversable[Int] = List(1, 2, 3)
+
 scala> mutable.Traversable(1, 2, 3)
 res19: scala.collection.mutable.Traversable[Int] =
 ArrayBuffer(1, 2, 3)
-Besides apply, every collection companion object also defines a member empty, which returns an
-empty collection. So instead of List() you could write List.empty, instead of Map(), Map.empty, and so
-on.
-Descendants of Seq traits also provide other factory operations in their companion objects. These are
-summarized in Table 24.13. In short, there's:
-concat, which concatenates an arbitrary number of traversables together,
-fill and tabulate, which generate single or multi-dimensional sequences of given dimensions
-initialized by some expression or tabulating function,
-* range, which generates integer sequences with some constant step length, and
-* iterate, which generates the sequence resulting from repeated application of a function to a start
-element.
-*
-*
-Factory methods for sequences
-What it is
-S.empty
-S(x, y, z)
-S.concat(xs, ys, zs)
-S.fill(n)(e)
-What it does
-The empty sequence
-A sequence consisting of elements x, y, and z
-The sequence obtained by concatenating the elements of xs,ys, and zs
-A sequence of length n where each element is computed by expression e
-A sequence of sequences of dimension m x n where each element is computed by
-S.fill(m, n)(e)
-expression e (exists also in higher dimensions)
-S.tabulate(n)(f)
-A sequence of length n where the element at each index i is computed by f(i)
-A sequence of sequences of dimension m x n where the element at each index (i, j)
-S.tabulate(m, n)(f)
-is computed by f(i, j) (exists also in higher dimensions)S.range(start, end)
-S.range(start, end,
-step)
-S.iterate(x, n)(f)
-The sequence of integers start ... end - 1
-The sequence of integers starting with start and progressing by step increments up
-to, and excluding, the endvalue
-The sequence of length n with elements x, f(x), f(f(x)), ...
-24.17 CONVERSIONS BETWEEN JAVA AND SCALA COLLECTIONS
-Like Scala, Java has a rich collections library. There are many similarities between the two. For
-instance, both libraries know iterators, iterables, sets, maps, and sequences. But there are also important
-differences. In particular, the Scala libraries put much more emphasis on immutable collections, and
-provide many more operations that transform a collection into a new one.
-Sometimes you might need to convert from one collection framework to the other. For instance, you
-might want to access to an existing Java collection, as if it were a Scala collection. Or you might want
-to pass one of Scala's collections to a Java method that expects the Java counterpart. It is quite easy to
-do this, because Scala offers implicit conversions between all the major collection types in
-the JavaConversions object. In particular, you will find bidirectional conversions between the following
-types:
-Iterator
-Iterator
-Iterable
-Iterable
-mutable.Buffer
-mutable.Set
-mutable.Map
-\null
-\null
-\null
-\null
-\null
-\null
-\null
-java.util.Iterator
-java.util.Enumeration
-java.lang.Iterable
-java.util.Collection
-java.util.List
-java.util.Set
-java.util.Map
-To enable these conversions, simply import like this:
+----
+Крім `apply` кожний об'єкт компанйон колекції визначає метод `empty`, що повертає порожню колекцію. Так що замість `List()` ви можете написати `List.empty`, замість `Map()` - `Map.empty`, і так далі.
+
+Нащадки трейтів `Seq` також провадять інші операції фабрик в своїх об'єктах компанйонах. Вони підсумовані в Таблиці 24.13. Скорочено це виглядає так:
+
+* `concat` конкатенує довільне число перехідних разом
+
+* `fill` та `tabulate`, що генерують одно- або багато-вимісні послідовності, ініціалізовані деякими виразами або функцією табуляції
+
+* `range`, яка генерує цілі послідовності з деяким заданим кроком
+
+* `iterate`, що генерує послідовність, як результат від повторного застосування функції до початкового елемента.
+
+[caption="Методи фабрик для послідовностей"]
+.
+[cols="1,5",options="header"]
+|===
+^| Що таке ^| Що робить
+|S.empty|Порожня послідовність
+|S(x, y, z)|Послідовність з елементів `x`, `y` та `z`
+|S.concat(xs, ys, zs)|Послідовність, отримана як конкатенація елементів `xs`, `ys` та `zs`
+|S.fill(n)(e)|Послідовність довжини `n`, де кожний елемент обчисляється як вираз `e`
+|S.fill(m, n)(e)|Послідовність послідовностей розміром `m x n`, де кожний елемент обчислюється як вираз `e` (існує також для більших розмірнестей)
+|S.tabulate(n)(f)|Послідовність довжини `n`, де елемент для кожного індексу `i` обчислюється як `f(i)`
+|S.tabulate(m, n)(f)| Послідовність послідовностей розміром `m x n`, де елемент з індексом `(i, j)` обчислюється як `f(i, j)` (існує також для більших розмірностей)
+|S.range(start, end)|Послідовність цілих `start ... end - 1`
+|S.range(start, end, step)|Послідовність цілих, що починається зі `start`, та продовжується з кроком `step` до значення `end`, виключно
+|S.iterate(x, n)(f)|Послідовність довжини `n` з елементами `x`, `f(x)`, `f(f(x))`, ...
+|===
+
+24.17 Перетворення між колекціями Java і Scala
+----------------------------------------------
+Як Scala, Java має багату бібліотеку колекцій. Існує багато подібного між ціма двома. Наприклад, обоє знають про ітерації, ітерабельні, множини, мапи та послідовності. Але також існують важливі відмінності. Зокрема, бібліотеки Scala роблять значно більший наголос на незмінні колекції, та провадять значно більше операцій, що трансформують колекції в нові.
+
+Іноді вам треба конвертувати колекцію з ощного фреймфорка в інший. Наприклад, ви можете отримати доступ до існуючої Java колекції, так, якби це була Scala. Або ви можете забажати одну зі Scala колекцій до Java методу, що очікує Java варіант. Зробити це досить легко, оскільки Scala пропонує неявні перетворення між всіма головними типами колекцій в об'єкт `JavaConversions`. Зокрема, ви знайдете двосторонні перетворення між наступними типами:
+
+|====
+|Iterator||java.util.Iterator
+|Iterator||java.util.Enumeration
+|Iterable||java.lang.Iterable
+|Iterable||java.util.Collection
+|mutable.Buffer||java.util.List
+|mutable.Set||java.util.Set
+|mutable.Map||java.util.Mapx
+|===
+
+Щоб дозволити ці перетворення, просто імпортуйте їх, ось так:
+[source,scala]
+----
 scala> import collection.JavaConversions._
 import collection.JavaConversions._
-You have now automatic conversions between Scala collections and their corresponding Java
-collections.
+----
+Тепер ви маєте автоматичні перетворення між колекціями Scala, та відповідними колекціями Java.
+[source,scala]
+----
 scala> import collection.mutable._
 import collection.mutable._
+
 scala> val jul: java.util.List[Int] = ArrayBuffer(1, 2, 3)
 jul: java.util.List[Int] = [1, 2, 3]
+
 scala> val buf: Seq[Int] = jul
 buf: scala.collection.mutable.Seq[Int] = ArrayBuffer(1, 2, 3)
+
 scala> val m: java.util.Map[String, Int] =
 HashMap("abc" -> 1, "hello" -> 2)
 m: java.util.Map[String,Int] = {hello=2, abc=1}
-Internally, these conversion work by setting up a "wrapper" object that forwards all operations to the
-underlying collection object. So collections are never copied when converting between Java and Scala.
-An interesting property is that if you do a round-trip conversion from, say, a Java type to itscorresponding Scala type, and back to the same Java type, you end up with the identical collection
-object you started with.
-Some other common Scala collections exist that can also be converted to Java types, but for which no
-corresponding conversion exists in the other direction. These are:
-Seq
-mutable.Seq
-Set
-Map
-\null
-\null
-\null
-\null
-java.util.List
-java.util.List
-java.util.Set
-java.util.Map
-Because Java does not distinguish between mutable and immutable collections in their type, a
-conversion from, say, collection.immutable.List will yield a java.util.List, on which all attempted
-mutation operations will throw an UnsupportedOperationException. Here's an example:
+----
+Внутрішньо ці перетворення роблять через встановлення об'єкта "огортки", що пересилає всі операції до підлеглого об'єкта колекції. Так що колекції ніколи не копіюються, коли конвертуються між Java та Scala. Цікава властивість в тому, що якщо ви робите кругову конверсію, скажімо, Java типу до відповідного типу Scala, та назад до того самого типу Java, ви скінчите з об'єктом ідентичного типу, до того, з якого починали.
+
+Деякі інші загальні Scala колекції також можуть бути конвертовані до Java типів, але для яких немає відповідного перетворення в іншому напрямку:
+
+|===
+|Seq||java.util.List
+|mutable.Seq||java.util.List
+|Set||java.util.Set
+|Map||java.util.Map
+|===
+
+Оскільки Java не розрізняє між змінними та незмінними колекціями в своїх типах, перетворення зі, скажімо, `collection.immutable.List` буде давати `java.util.List`, на якому всі операції змін будуть закидати `UnsupportedOperationException`. Ось приклад:
+[source,scala]
+----
 scala> val jul: java.util.List[Int] = List(1, 2, 3)
 jul: java.util.List[Int] = [1, 2, 3]
+
 scala> jul.add(7)
 java.lang.UnsupportedOperationException
 at java.util.AbstractList.add(AbstractList.java:131)
+----
 
 24.18 Висновок
 ==============
-You've now seen how to use Scala's collection in great detail. Scala's collections take the approach of
-giving you powerful building blocks rather than a number of ad hoc utility methods. Putting together
-two or three such building blocks allows you to express an enormous number of useful computations.
-This style of library is especially effective due to Scala having a light syntax for function literals, and
-due to it providing many collection types that are persistent and immutable.
-This chapter has shown collections from the point of view of a programmer using the collection library.
-The next chapter will show you how the collections are built and how you can add your own collection
-types.
+Тепер ви побачили, як використовувати Scala колекції дуже детально. Колекції Scala приймають підхід надання вам потужних будівельних блоків, скоріше, ніж декількох споміжних методів на підхваті. Покладаючи поряд два або три такі будівельні блоки, дозволяє вам виразити величезну кількість коричних обчислень. Цей стиль бібліотек особливо ефективний через те, що Scala має легкий синтаксис для функціональних літералів, та через те, що вона провадить багато типів колекцій, що стійкі та незмінні.
+
+Ця глава показала колекції з точки зору програміста, що використовує бібліотеку колекцій. Наступна глава покаже вам, як колекції побудовані, та як ви можете додати власні типи колекцій.
