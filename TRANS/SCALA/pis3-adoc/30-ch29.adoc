@@ -6,396 +6,406 @@ include::headers.adoc[]
 Модулярне програмування з використанням об'єктів
 ================================================
 
-In Chapter 1, we claimed that one way Scala is a scalable language is that you can use the same
-techniques to construct small as well as large programs. So far in this book we've focused primarily
-on programming in the small: designing and implementing the smaller program pieces out of which
-you can construct a larger program.footnote:[This terminology was introduced in DeRemer, et. al., "Programming-in-the-large versus programming-in-the-small." [DeR75\]] The other side of the story is programming in the large:
-organizing and assembling the smaller pieces into larger programs, applications, or systems. We
-touched on this subject when we discussed packages and access modifiers in Chapter 13. In short,
-packages and access modifiers enable you toorganize a large program using packages as modules,
-where a module is a "smaller program piece" with a well defined interface and a hidden
-implementation.
-While the division of programs into packages is already quite helpful, it is limited because it provides
-no way to abstract. You cannot reconfigure a package two different ways within the same program, and
-you cannot inherit between packages. A package always includes one precise list of contents, and that
-list is fixed until you change the code.
-In this chapter, we'll discuss how you can use Scala's object-oriented features to make a program more
-modular. We'll first show how a simple singleton object can be used as a module. Then we'll explain
-how you can use traits and classes as abstractions over modules. These abstractions can be reconfigured
-into multiple modules, even multiple times within the same program. Finally, we'll show a pragmatic
-technique for using traits to divide a module across multiple files.
-29.1 THE PROBLEM
-As a program grows in size, it becomes increasingly important to organize it in a modular way. First,
-being able to compile different modules that make up the system separately helps different teams work
-independently. In addition, being able to unplug one implementation of a module and plug in another is
-useful, because it allows different configurations of a system to be used in different contexts, such as
-unit testing on a developer's desktop, integration testing, staging, and deployment.
-For example, you may have an application that uses a database and a message service. As you write
-code, you may want to run unit tests on your desktop that use mock versions of both the database and
-message service, which simulate these services sufficiently for testing without needing to talk across
-the network to a shared resource. During integration testing, you may want to use a mock message
-service but a live developer database. During staging and certainly during deployment, your
-organization will likely want to use live versions of both the database and message service.
-Any technique that aims to facilitate this kind of modularity needs to provide a few essentials. First,
-there should be a module construct that provides a good separation of interface and implementation.
-Second, there should be a way to replace one module with another that has the same interface withoutchanging or recompiling the modules that depend on the replaced one. Lastly, there should be a way to
-wire modules together. This wiring task can by thought of as configuring the system.
-One approach to solving this problem is dependency injection, a technique supported on the Java
-platform by frameworks such as Spring and Guice, which are popular in the enterprise Java
-community.footnote:[Fowler, "Inversion of control containers and the dependency injection pattern." [Fow04\]] Spring, for example, essentially allows you to represent the interface of a module as a
-Java interface and implementations of the module as Java classes. You can specify dependencies
-between modules and "wire" an application together via external XML configuration files. Although
-you can use Spring with Scala and thereby use Spring's approach to achieving system-level modularity
-of your Scala programs, with Scala you have some alternatives enabled by the language itself. In the
-remainder of this chapter, we'll show how to use objects as modules to achieve the desired "in the
-large" modularity without using an external framework.
-29.2 A RECIPE APPLICATION
-Imagine you are building an enterprise web application that will allow users to manage recipes. You
-want to partition the software into layers, including a domain layer and anapplication layer. In the
-domain layer, you'll define domain objects, which will capture business concepts and rules, as well as
-encapsulate state that will be persisted to an external relational database. In the application layer, you'll
-provide an API organized in terms of the services the application offers to clients (including the user
-interface layer). The application layer will implement these services by coordinating tasks and
-delegating the work to the objects of the domain layer.footnote:[The naming of these layers follows that of Evans, Domain-Driven Design. [Eva03\]]
-You want to be able to plug in real or mock versions of certain objects in each of these layers, so that
-you can more easily write unit tests for your application. To achieve this goal, you can treat the objects
-you want to mock as modules. In Scala, there is no need for objects to be "small" things, no need to use
-some other kind of construct for "big" things like modules. One of the ways Scala is a scalable
-language is that the same constructs are used for structures both small and large.
-For example, since one of the "things" you want to mock in the domain layer is the object that
-represents the relational database, you'll make that one of the modules. In the application layer, you'll
-treat a "database browser" object as a module. The database will hold all of the recipes that a person
-has collected. The browser will help search and browse that database, for example, to find every recipe
-that includes an ingredient you have on hand.
-The first thing to do is to model foods and recipes. To keep things simple, a food will just have a name,
-as shown in Listing 29.1. A recipe will have a name, a list of ingredients, and some instructions, as
-shown in Listing 29.2.
+В Главі 1 ми стверджували, що один зі способів, в який Scala є маштабованою мовою, це те, що ви можете використовувати ті самі прийоми для конструювання малих, так само як і великих програм. Досі в цій книзі ми в основному фокусувались на програмуванні в малому: розробленні та реалізації маліших програмних частин, з яких ви можете конструювати більші програми.
+footnote:[Ця термінологія була введена в творі DeRemer, et. al., "Programming - in - the - large versus programming - in - the - small." [DeR75\]] Інша сторона історії є програмування в великому: організація та збирання менших частин в більші програми, застосування або системи. Ми торкались цього предмета, коли ми обговорювали пакунки та модифікатори доступу в Главі 13. Коротко кажучи, пакунки та модифікатори доступу дозволяють вам організувати великі програми, використовуючи пакунки як модулі, де модуль є "меньшою програмною частиною" з гарно визначеним інтерфейсом та прихованою реалізацією.
+
+В той час, коли поділення програм на пакунки завжди досить корисне, воно обмежене, оскільки воно не провадить методів для абстракції. Ви не можете переналаштувати пакунок в два способи в тій самій програмі, і ви не можете наслідувати між пакунками. Пакунок завжди включає один конкретний список компонент, і цей список фіксований, доки ви не зміните код.
+
+В цій главі ми обсудимо, як ви можете задіяти об'єктно орієнтовні можливості Scala, щоб зробити програму більш модулярною. Спочатку ми покажемо, як простий об'єкт синглтон може бути використаний як модуль. Потім ми покажемо, як ви можете використовувати трейти та класи для абстракцій в модулях. Ці абстракції можуть бути переконфігуровані в декілька модулів, навіть декілька разів в тій самій програмі. Нарешті, ми покажемо прагматичну техніку для використання трейтів для розподілу модуля по декільком файлам.
+
+29.1 Проблема
+-------------
+По мірі того, як програма зростає в розмірі, стає все більше важливим організувати її в модулярний спосіб. По перше, можливість окремо компілювати різні модулі, що складають систему, допомагає різним командам робити незалежно. На додаток, корисно мати змогу відмикати одну реалізацію модуля, та підмикати іншу, оскільки це дозволяє використовувати різні конфігурації системи в різних контекстах, таких, як юніт тестування на десктопі розробника, інтеграційні тести, тестова експлуатація та розгортання.
+
+Наприклад, ви можете мати застосування, що використовує базу даних та сервіс повідомлень. По мірі як ви пишете код, ви можете бажати виконувати юніт тести на вашому десктопі, що використовують фіктивні мок версії обох, бази даних та сервіса повідомлень, що симулює ці сервіси достатньо для тестування, без потреби розмовляти по мережі до загального ресурса. Протягом інтеграційного тестування ви можете побажати використовувати мок сервіс повідомлень, але живу базу даних. Під час тестової експлуатації, та напевне при розгортанні, ваша організація скоріше всього буде використовувати живі версії обох, бази даних та сервіс повідомлень.
+
+Люба техніка, що націлена на спрощення цього різновиду модульності потребує провадити декілька основних речей. Перше, має бути конструкція модуля, що провадить гарне розділення інтерфейса та реалізації. Друге, потрібен бути шлях заміняти один модуль на інший, що має той самий інтерфейс, без зміни або перекомпіляції модулів, що залежать від заміненого. Нарешті, повинен бути спосіб поєднувати модулі разом. Ця задача поєднання може розглядатись як конфігурація системи.
+
+Один підхід до вирішення цієї проблеми є ін'єкція залежностей, прийом, що підтримується на Java платформі фреймворками, як Spring та Guice, що популярні в корпоративній Java спільноті.footnote:[Fowler, "Inversion of control containers and the dependency injection pattern." [Fow04\]] Наприклад Spring в основному дозволяє вам презентувати інтерфейс модуля як Java інтерфейс, та реалізації модуля як Java класи. Ви можете задати залежності між модулями та "приєднати" застосування разом через зовнішній файл конфігурації XML. Хоча ви можете використовувати Spring зі Scala, і через це використовувати підхід Spring для досягнення модульності рівня системи ваших Scala програм, зі Scala ви маєте деякі альтернативи, доступні через саму мову. В залишку цієї глави ви покажемо, як використовувати об'єкти як модулі для бажаної модульності "в великому", без використання зовнішнього фреймворку.
+
+29.2 Застосування рецепту
+-------------------------
+Уявіть, що ви будуєте корпоративне веб застосування, що дозволить користувачам керувати рецептами. Ви бажаєте розбити програму на шари, включаючи прикладний шар та шар застосування. В прикладному шарі ви визначите прикладні об'єкти, що захоплять бізнес концепції та правила, так само як енкапсулюють стан, що буде збережений в зовнішній базі даних. В рівні застосування ви будете провадити API, організоване в термінах сервісів, які застосування пропонує клієнтам (включаючи рівень користувацького інтерфейсу). Рівень застосування буде реалізувати ці серсіси через координацію завдань та делегацію роботи до об'єктів прикладного домена.footnote:[Іменування ціх шарів слідує таким в Evans, Domain-Driven Design. [Eva03\]]
+
+Ви бажаєте бути в змозі під'єднати реальну або мок версію на кожному з ціх рівнів, так що ви можете більш просто писати юніт тести для вашого застосування. Щоб досягти цієї цілі ви можете розглядати об'єкти, що ви бажаєте зробити мок, як модулі. В Scala немає потреби для об'єктів бути "малими" речами, немає потреби використовувати деякий інший різновид конструктора для "великих" речей, як модулі. Один зі шляхів, в який Scala є маштабованою мовою, є те, що ті самі конструкції використовуються для структур, однаково, малих та великих.
+
+Наприклад, оскільки одне з "речей", що ви бажаєте зробити мок на прикладному рівні, є об'єкт, що представляє реляційну базу даних, ви зробите його одним з модулей. На рівні застосування ви будете трактувати об'єкт "переглядач бази даних" як модуль. База даних буде містити всі рецепти, що людина буде збирати. Переглядач буде допомагати шукати та переглядати базу даних, наприклад, щоб знайти кожний рецепт, що включає інгредієнти, що у вас є в наявності.
+
+Перша річ, що треба зробити, є моделювання їжі та рецептів. Щоб утримувати речі простими, їжа буде мати лише назву, як показано в Лістингу 29.1. Рецепт буде мати ім'я, список інгредієнтів і деякі інструкції, як показано на Лістингу 29.2.
+[source,scala]
+----
 package org.stairwaybook.recipe
+
 abstract class Food(val name: String) {
-override def toString = name
-}Listing 29.1 - A simple Food entity class.
+  override def toString = name
+}
+----
+Лістинг 29.1 - Простий клас сутності `Food`.
+
+[source,scala]
+----
 package org.stairwaybook.recipe
+
 class Recipe(
-val name: String,
-val ingredients: List[Food],
-val instructions: String
+  val name: String,
+  val ingredients: List[Food],
+  val instructions: String
 ) {
-override def toString = name
+  override def toString = name
 }
-Listing 29.2 - Simple Recipe entity class.
-The Food and Recipe classes shown in Listings 29.1 and 29.2 represent entities that will be persisted in
-the database.footnote:[These entity classes are simplified to keep the example uncluttered with too much real-world detail. But transforming these classes into entities that could be persisted with Hibernate or the Java Persistence Architecture, , for example, would require only a few modifications, such as adding a private Long id field and a no-arg constructor, placingscala.reflect.BeanProperty annotations on the fields, specifying appropriate mappings via annotations or a separate XML file, and so on.] Listing 29.3 shows some singleton instances of these classes, which can be used when
-writing tests.
+----
+Лістинг 29.2 - Простий клас сутності `Recipe`.
+
+Класи `Food` та `Recipe`, показані в Лістингу 29.1 та 29.2, представляють сутності, що будуть представлені в базі даних.footnote:[Ці класи сутностей спрощені, щоб не захаращувати приклад багатьма деталями реального світу. Але трансформація ціх класів в сутності, що можуть бути збережені за допомогою Hibernate або, наприклад, Java Persistence Architecture, буде потребувати тільки декількох модифікацій, таких як додавання поля `private Long id` та конструктора без аргументів, покладання анотацій `scala.reflect.BeanProperty` на поля, вказання відповідних відображень через анотації або окремий XML файл, і так далі.] Лістинг 29.3 показує деякі примірники синглтонів ціх класів, що можуть бути використані для написання тестів.
+[source,scala]
+----
 package org.stairwaybook.recipe
-object
-object
-object
-object
-Apple extends Food("Apple")
-Orange extends Food("Orange")
-Cream extends Food("Cream")
-Sugar extends Food("Sugar")
+
+object Apple extends Food("Apple")
+object Orange extends Food("Orange")
+object Cream extends Food("Cream")
+object Sugar extends Food("Sugar")
+
 object FruitSalad extends Recipe(
-"fruit salad",
-List(Apple, Orange, Cream, Sugar),
-"Stir it all together."
+  "fruit salad",
+  List(Apple, Orange, Cream, Sugar),
+  "Stir it all together."
 )
-Listing 29.3 - Food and Recipe examples for use in tests.
+----
+Лістинг 29.3 - Приклади `Food` та `Recipe` для використання в тестах.
+
+[source,scala]
+----
 package org.stairwaybook.recipe
+
 object SimpleDatabase {
-def allFoods = List(Apple, Orange, Cream, Sugar)
-def foodNamed(name: String): Option[Food] =
-allFoods.find(_.name == name)
-def allRecipes: List[Recipe] = List(FruitSalad)
+  def allFoods = List(Apple, Orange, Cream, Sugar)
+
+  def foodNamed(name: String): Option[Food] =
+    allFoods.find(_.name == name)
+
+  def allRecipes: List[Recipe] = List(FruitSalad)
 }
+
 object SimpleBrowser {
-def recipesUsing(food: Food) =
-SimpleDatabase.allRecipes.filter(recipe =>
-recipe.ingredients.contains(food))
+  def recipesUsing(food: Food) =
+    SimpleDatabase.allRecipes.filter(recipe =>
+      recipe.ingredients.contains(food))
 }
-Listing 29.4 - Mock database and browser modules.
-Scala uses objects for modules, so you can start modularizing your program by making two
-singleton objects to serve as mock implementations of the database and browser modules during
-testing. Because it is a mock, the database module is backed by a simple in-memory list.
-Implementations of these objects are shown in Listing 29.4. You can use this database and browser as
-follows:scala> val apple = SimpleDatabase.foodNamed("Apple").get
-apple: Food = Apple
-scala> SimpleBrowser.recipesUsing(apple)
-res0: List[Recipe] = List(fruit salad)
-To make things a little more interesting, suppose the database sorts foods into categories. To implement
-this, you can add a FoodCategory class and a list of all categories in the database, as shown in Listing
-29.5. Notice in this example that the private keyword, so useful for implementing classes, is also useful
-for implementing modules. Items marked private are part of the implementation of a module, and thus
-are particularly easy to change without affecting other modules.
-At this point, many more facilities could be added, but you get the idea. Programs can be divided into
-singleton objects, which you can think of as modules. This is not big news, but it becomes very useful
-when you consider abstraction (which we'll cover next).
-package org.stairwaybook.recipe
-object SimpleDatabase {
-def allFoods = List(Apple, Orange, Cream, Sugar)
-def foodNamed(name: String): Option[Food] =
-allFoods.find(_.name == name)
-def allRecipes: List[Recipe] = List(FruitSalad)
-case class FoodCategory(name: String, foods: List[Food])
-private var categories = List(
-FoodCategory("fruits", List(Apple, Orange)),
-FoodCategory("misc", List(Cream, Sugar)))
-}
-def allCategories = categories
-object SimpleBrowser {
-def recipesUsing(food: Food) =
-SimpleDatabase.allRecipes.filter(recipe =>
-recipe.ingredients.contains(food))
-}
-def displayCategory(category: SimpleDatabase.FoodCategory) = {
-println(category)
-}
-Listing 29.5 - Database and browser modules with categories added.
-29.3 ABSTRACTION
-Although the examples shown so far did manage to partition your application into separate database
-and browser modules, the design is not yet very "modular." The problem is that there is essentially a
-"hard link" from the browser module to the database modules:
-SimpleDatabase.allRecipes.filter(recipe => ...Because the SimpleBrowser module mentions the SimpleDatabase module by name, you won't be able
-to plug in a different implementation of the database module without modifying and recompiling the
-browser module. In addition, although there's no hard link from theSimpleDatabase module to
-the SimpleBrowser module,footnote:[This is good, because each of these architectural layers should depend only on layers below them.] there's no clear way to enable the user interface layer, for example, to be
-configured to use different implementations of the browser module.
-When making these modules more pluggable, however, it is important to avoid duplicating code,
-because much code can likely be shared by different implementations of the same module. For
-example, suppose you want the same code base to support multiple recipe databases, and you want to
-be able to create a separate browser for each of these databases. You would like to reuse the browser
-code for each of the instances, because the only thing different about the browsers is which database
-they refer to. Except for the database implementation, the rest of the code can be reused character for
-character. How can the program be arranged to minimize repetitive code? How can the code be made
-reconfigurable, so that you can configure it using either database implementation?
-The answer is a familiar one: If a module is an object, then a template for a module is a class. Just like
-a class describes the common parts of all its instances, a class can describe the parts of a module that
-are common to all of its possible configurations.
-abstract class Browser {
-val database: Database
-def recipesUsing(food: Food) =
-database.allRecipes.filter(recipe =>
-recipe.ingredients.contains(food))
-def displayCategory(category: database.FoodCategory) = {
-println(category)
-}
-}
-Listing 29.6 - A Browser class with an abstract database val.
-The browser definition therefore becomes a class, instead of an object, and the database to use is
-specified as an abstract member of the class, as shown in Listing 29.6. The database also becomes a
-class, including as much as possible that is common between all databases, and declaring the missing
-parts that a database must define. In this case, all database modules must define methods
-for allFoods, allRecipes, and allCategories, but since they can use an arbitrary definition, the methods
-must be left abstract in the Database class. The foodNamedmethod, by contrast, can be defined in the
-abstract Database class, as shown in Listing 29.7.
-abstract class Database {
-def allFoods: List[Food]
-def allRecipes: List[Recipe]
-def foodNamed(name: String) =
-allFoods.find(f => f.name == name)
-case class FoodCategory(name: String, foods: List[Food])
-def allCategories: List[FoodCategory]}
-Listing 29.7 - A Database class with abstract methods.
-The SimpleDatabase object must be updated to inherit from the abstract Database class, as shown
-in Listing 29.8.
-object SimpleDatabase extends Database {
-def allFoods = List(Apple, Orange, Cream, Sugar)
-def allRecipes: List[Recipe] = List(FruitSalad)
-private var categories = List(
-FoodCategory("fruits", List(Apple, Orange)),
-FoodCategory("misc", List(Cream, Sugar)))
-}
-def allCategories = categories
-Listing 29.8 - The SimpleDatabase object as a Database subclass.
-Then, a specific browser module is made by instantiating the Browser class and specifying which
-database to use, as shown in Listing 29.9.
-object SimpleBrowser extends Browser {
-val database = SimpleDatabase
-}
-Listing 29.9 - The SimpleBrowser object as a Browser subclass.
-You can use these more pluggable modules the same as before:
+----
+Лістинг 29.4 - Фіктивна база даних та модулі перегляду.
+
+Scala використовує об'єкти для модулів, так що ви можете почати модулізацію вашої програми зі створення двох синглтонів, що служитимуть як фіктивні мок реалізації бази даних та переглядача під час тестування. Оскільки це мок, модуль бази даних підтримується простим списком в пам'яті. Реалізації ціх об'єктів показані в Лістингу 29.4. Ви можете використовувати цю базу даних та переглядач наступним чином:
+[source,scala]
+----
 scala> val apple = SimpleDatabase.foodNamed("Apple").get
 apple: Food = Apple
+
+scala> SimpleBrowser.recipesUsing(apple)
+res0: List[Recipe] = List(fruit salad)
+----
+Щоб зробити речі трохи цікавішими, уявімо, що база даних сортує їжу по категоріях. Щоб реалізувати це, ви можете додати клас `FoodCategory`, та перерахувати всі категорії в базі даних, як показано в Лістингу 29.5. Зауважте в цьому прикладі ключове слово `private`, що корисне для реалізації класів, і також корисне для реалізації модулів. Елементи, що відмічені як приватні, є частиною реалізації модуля, і, таким чином, відносно прості для зміни без впливу на інші модулі.
+
+В цій точці можуть бути додані значно більше можливостей, але ви отримали ідею. Програми можуть бути поділені на об'єкти синглтони, про які ви можете думати як про модулі. Це не велика новина, але це стає дуже корисним, коли ви розглядатимете абстракції (про що ми скоро розповімо).
+[source,scala]
+----
+package org.stairwaybook.recipe
+
+object SimpleDatabase {
+  def allFoods = List(Apple, Orange, Cream, Sugar)
+
+  def foodNamed(name: String): Option[Food] =
+    allFoods.find(_.name == name)
+
+  def allRecipes: List[Recipe] = List(FruitSalad)
+
+  case class FoodCategory(name: String, foods: List[Food])
+
+  private var categories = List(
+    FoodCategory("fruits", List(Apple, Orange)),
+    FoodCategory("misc", List(Cream, Sugar)))
+
+  def allCategories = categories
+}
+
+object SimpleBrowser {
+  def recipesUsing(food: Food) =
+    SimpleDatabase.allRecipes.filter(recipe =>
+      recipe.ingredients.contains(food))
+  
+  def displayCategory(category: SimpleDatabase.FoodCategory) = {
+    println(category)
+  }
+}
+----
+Лістинг 29.5 - Модулі бази даних та переглядача з доданими категоріями.
+
+29.3 Абстракції
+---------------
+Хоча приклади, показані дотепер, керували розбиттям вашого застосування на окремі модулі бази даних та переглядача, досі дизай не дуже "модулярний". Проблема в тому, що існує "жорсткий зв'язок" від модуля переглядача до модуля бази даних:
+[source,scala]
+----
+SimpleDatabase.allRecipes.filter(recipe => ...
+----
+Оскільки модуль `SimpleBrowser` споминає модуль `SimpleDatabase` за ім'ям, ви не будете в змозі під'єднати іншу реалізацію модуля бази даних, без модифікації та перекомпіляції модуля переглядача. На додаток, хоча немає жорсткого посилання від модуля `SimpleDatabase` до модуля `SimpleBrowser`,footnote:[Це гарно, бо кожний з ціх архитектурних шарів повинен залежати тільки від шарів під ним.] немає ясного спосібу дозволити шару користувацького інтерфейсу, наприклад, бути сконфігурованим для використання інших реалізацій модуля переглядача.
+
+Однак, коли робити ці модулі більш підключуваними, важливо уникати дублікації кода, оскільки більшість коду з вірогідністю може бути поширений між різними реалізаціями того самого модуля. Наприклад уявімо, що ви бажаєте, щоб та сама кодова база підтримувала декілька баз даних рецептів. Ви скоріше всього захочете використати код переглядача для кожного з примірників, оскільки тільки одна річ, що буде відрізняться в переглядачах, це база даних, на яку вони посилаються. За винятком реалізації бази даних, решта коду може бути використана повторно, символ до символа. Як аранжувати програму, щоб зменшити повторення коду? Як код можна зробити конфігурованим, так що ви б могли конфігурувати його з використанням любої реалізації бази даних?
+
+Відповідь знайома: якщо модуль є об'єктом, тоді шаблоном для модуля є клас. Точно так, як клас описує загальні частини всіх своїх примірників, клас може описувати частину модуля, що є загальною для всіх можливих конфігурацій.
+[source,scala]
+----
+abstract class Browser {
+  val database: Database
+
+  def recipesUsing(food: Food) =
+    database.allRecipes.filter(recipe =>
+      recipe.ingredients.contains(food))
+
+  def displayCategory(category: database.FoodCategory) = {
+    println(category)
+  }
+}
+----
+Лістинг29.6 - Клас `Browser` з абстрактною `val` бази даних.
+
+Визначення переглядача таким чином перетворюєтья на клас, замість об'єкта, та база даних для користування задається як абстрактний член класу, як показано в Лістингу 29.6. База даних також стає класом, що включає стільки, як це можливо, загального для всіх баз даних,та декларує відсутні частини, які має визначити база даних. В цьому випадку всі модулі бази даних мають визначати методи для `allFoods`, `allRecipes` та `allCategories`, оле оскільки вони можуть використовувати довільне визначення, методи мають бути залишені абстрактними в класі `Database`. Для контрасту, метод `foodNamed`може бути визначений в абстрактному класі `Database`, як показано в Лістингу 29.7.
+[source,scala]
+----
+abstract class Database {
+  def allFoods: List[Food]
+  def allRecipes: List[Recipe]
+
+  def foodNamed(name: String) =
+    allFoods.find(f => f.name == name)
+
+  case class FoodCategory(name: String, foods: List[Food])
+  def allCategories: List[FoodCategory]}
+----
+Лістинг 29.7 - Клас `Database` з абстрактними методами.
+
+Об'єкт `SimpleDatabase` має бути оновлений для наслідування від абстрактного класу `Database`, як показано в Лістингу 29.8.
+[source,scala]
+----
+object SimpleDatabase extends Database {
+  def allFoods = List(Apple, Orange, Cream, Sugar)
+
+  def allRecipes: List[Recipe] = List(FruitSalad)
+
+  private var categories = List(
+    FoodCategory("fruits", List(Apple, Orange)),
+    FoodCategory("misc", List(Cream, Sugar)))
+
+  def allCategories = categories
+}
+----
+Лістинг 29.8 - Об'єкт `SimpleDatabase` як субклас `Database`.
+
+Тепер окремий модуль переглядача, отриманий як примірник класу `Browser`, вказує, яку базу даних використовувати, як показано в Лістингу 29.9.
+[source,scala]
+----
+object SimpleBrowser extends Browser {
+  val database = SimpleDatabase
+}
+----
+Лістинг 29.9 - Об'єкт `SimpleBrowser` як субклас `Browser`.
+
+Ви можете використовувати ці більш підключувані модулі так само, як раніше:
+[source,scala]
+----
+scala> val apple = SimpleDatabase.foodNamed("Apple").get
+apple: Food = Apple
+
 scala> SimpleBrowser.recipesUsing(apple)
 res1: List[Recipe] = List(fruit salad)
-Now, however, you can create a second mock database, and use the same browser class with it, as
-shown in Listing 29.10:
+----
+Однак тепер ви можете створити другу мок базу даних, та використовувати з нею той самий клас переглядача, як показано в Лістингу 29.10:
+[source,scala]
+----
 object StudentDatabase extends Database {
-object FrozenFood extends Food("FrozenFood")
-object HeatItUp extends Recipe(
-"heat it up",
-List(FrozenFood),
-"Microwave the 'food' for 10 minutes.")
-def allFoods = List(FrozenFood)
-def allRecipes = List(HeatItUp)
-def allCategories = List(
-FoodCategory("edible", List(FrozenFood)))
+  object FrozenFood extends Food("FrozenFood")
+
+  object HeatItUp extends Recipe(
+    "heat it up",
+    List(FrozenFood),
+    "Microwave the 'food' for 10 minutes.")
+
+  def allFoods = List(FrozenFood)
+  def allRecipes = List(HeatItUp)
+  def allCategories = List(
+    FoodCategory("edible", List(FrozenFood)))
 }
+
 object StudentBrowser extends Browser {
-val database = StudentDatabase}
-Listing 29.10 - A student database and browser.
-29.4 SPLITTING MODULES INTO TRAITS
-Often a module is too large to fit comfortably into a single file. When that happens, you can use traits
-to split a module into separate files. For example, suppose you wanted to move categorization code out
-of the main Database file and into its own. You could create a trait for the code as shown in (Listing
-29.11).
+  val database = StudentDatabase}
+----
+Лістинг 29.10 - Студентська база даних та переглядач.
+
+29.4 Поділ модулей на трейти
+----------------------------
+Часто модуль дуже великий, щоб комфортабельно міститись в одному файлі. Коли це трапляється, ви можете використовувати трейти для поділу модуля на окремі файли. Наприклад, уявімо, що ви бажаєте перенести код категоризації з головного файлу `Database` до свого власного. Ви можете створити трейт для кода, як показано в Лістингу 29.11.
+[source,scala]
+----
 trait FoodCategories {
-case class FoodCategory(name: String, foods: List[Food])
-def allCategories: List[FoodCategory]
+  case class FoodCategory(name: String, foods: List[Food])
+  def allCategories: List[FoodCategory]
 }
-Listing 29.11 - A trait for food categories.
-Now class Database can mix in the FoodCategories trait instead of
-defining FoodCategory andallCategories itself, as shown in Listing 29.12:
+----
+Лістинг 29.11 - Трейт для категорій їжі.
+
+Тепер клас `Database` може міксувати трейт `FoodCategories` замість визначення `FoodCategory` та `allCategories` самому, як показано в Лістингу 29.12:
+[source,scala]
+----
 abstract class Database extends FoodCategories {
-def allFoods: List[Food]
-def allRecipes: List[Recipe]
-def foodNamed(name: String) =
-allFoods.find(f => f.name == name)
+  def allFoods: List[Food]
+  def allRecipes: List[Recipe]
+  def foodNamed(name: String) =
+    allFoods.find(f => f.name == name)
 }
-Listing 29.12 - A Database class that mixes in the FoodCategories trait.
-You might try and divide SimpleDatabase into two traits, one for foods and one for recipes. This would
-allow you to define SimpleDatabase as shown in Listing 29.13:
+----
+Лістинг 29.12 - Клас `Database`, що міксує трейт `FoodCategories`.
+
+Ви можете спробувати, та поділити `SimpleDatabase` на два трейти, один для їжі, та один для рецептів. Це дозволить вам визначити `SimpleDatabase`, як показано в Лістингу 29.13:
+[source,scala]
+----
 object SimpleDatabase extends Database
-with SimpleFoods with SimpleRecipes
-Listing 29.13 - A SimpleDatabase object composed solely of mixins.
-The SimpleFoods trait could look as shown in Listing 29.14:
+  with SimpleFoods with SimpleRecipes
+----
+Лістинг 29.13 - Об'єкт `SimpleDatabase`, повністю складений з міксінів.
+
+Трейт `SimpleFoods` може виглядати як показано в Лістингу 29.14:
+[source,scala]
+----
 trait SimpleFoods {
-object Pear extends Food("Pear")
-def allFoods = List(Apple, Pear)
-def allCategories = Nil
+  object Pear extends Food("Pear")
+  def allFoods = List(Apple, Pear)
+  def allCategories = Nil
 }
-Listing 29.14 - A SimpleFoods trait.
-So far so good, but unfortunately, a problem arises if you try to define a SimpleRecipes trait like this:
-trait SimpleRecipes { // Does not compile
-object FruitSalad extends Recipe(
-"fruit salad",
-List(Apple, Pear), // Uh oh
-"Mix it all together."
-)}
-def allRecipes = List(FruitSalad)
-The problem is that Pear is located in a different trait from the one that uses it, so it is out of scope. The
-compiler has no idea that SimpleRecipes is only ever mixed together with SimpleFoods.
-However, there is a way you can tell this to the compiler. Scala provides the self type for precisely this
-situation. Technically, a self type is an assumed type for this whenever this is mentioned within the
-class. Pragmatically, a self type specifies the requirements on any concrete class the trait is mixed into.
-If you have a trait that is only ever used when mixed in with another trait or traits, then you can specify
-that those other traits should be assumed. In the present case, it is enough to specify a self type
-of SimpleFoods, as shown in Listing 29.15:
+----
+Лістинг 29.14 - Трейт `SimpleFoods`.
+
+Доки все добре, але нажаль постає проблема, якщо ви спробуєте визначити трейт `SimpleRecipes`, ось так: 
+[source,scala]
+----
+trait SimpleRecipes { // Не компілюється
+  object FruitSalad extends Recipe(
+    "fruit salad",
+    List(Apple, Pear), // Uh oh
+    "Mix it all together."
+  )
+
+  def allRecipes = List(FruitSalad)
+}
+----
+Проблема в тому, що `Pear` розміщений в іншому трейті, відносно того, який його використовує, так що він за полем зору. Компілятор не має уяви, що `SimpleRecipes` ще колись буде зміксований з `SimpleFoods`.
+
+Однак є спосіб, як ви можете сказати це компілятору. Scala провадить тип `self` саме для цієї ситуації. Технічно тип `self` є очікуваний тип для `this`, кожного разу коли `this` споминається в класі. Прагматично тип `self` вказує вимоги на кожному конкретному класі, до якого міксується цей трейт. Якщо ви маєте трейт, який використовується тільки тоді, коли міксується з іншим трейтом або трейтами, тоді ви маєте вказати, що ці інші трейти повинно мати на увазі. В цьому випадку досить задати тип `self` для `SimpleFoods`, як показано в Лістингу 29.15:
+[source,scala]
+----
 trait SimpleRecipes {
-this: SimpleFoods =>
-object FruitSalad extends Recipe(
-"fruit salad",
-List(Apple, Pear),
-// Now Pear is in scope
-"Mix it all together."
-)
-def allRecipes = List(FruitSalad)
+  this: SimpleFoods =>
+
+  object FruitSalad extends Recipe(
+    "fruit salad",
+    List(Apple, Pear), // Now Pear is in scope
+    "Mix it all together."
+  )
+  def allRecipes = List(FruitSalad)
 }
-Listing 29.15 - A SimpleRecipes trait with a self type.
-Given the new self type, Pear is now available. Implicitly, the reference to Pear is thought of
-asthis.Pear. This is safe, because any concrete class that mixes in SimpleRecipes must also be a subtype
-of SimpleFoods, which means that Pear will be a member. Abstract subclasses and traits do not have to
-follow this restriction, but since they cannot be instantiated with new, there is no risk that
-the this.Pear reference will fail.
-29.5 RUNTIME LINKING
-Scala modules can be linked together at runtime, and you can decide which modules will link to which
-depending on runtime computations. For example, Listing 29.16 shows a small program that chooses a
-database at runtime and then prints out all the apple recipes in it:
+----
+Лістинг 29.15 - Трейт `SimpleRecipes` з типом `self`.
+
+Маючи цей новий тип `self`, `Pear` тепер доступний. Неявно посилання до `Pear` іде як `this.Pear`. Це безпечно, бо любий суцільний клас, що міксує `SimpleRecipes`, також має бути субтипом `SimpleFoods`, що означає, що `Pear` буде членом. Абстрактні субкласи та трейти не мають слідувати цьому обмеженню, але оскільки вони не можуть утворити примірники за допомогою `new`, немає ризику, що посилання `this.Pear` схибить.
+
+29.5 Зв'язування часу виконання
+-------------------------------
+Модулі Scala можуть бути зв'язані разом під час виконання, та ви можете обрати, які модулі будуть зв'язуваться з якими, в залежності від обчислень часу виконання. Наприклад, Лістинг 29.16 показує малу програму, що обирає базу даних під час виконання, і потім роздруковує всі яблучні рецепти в ній:
+[source,scala]
+----
 object GotApples {
-def main(args: Array[String]) = {
-val db: Database =
-if(args(0) == "student")
-StudentDatabase
-else
-SimpleDatabase
-object browser extends Browser {
-val database = db
+  def main(args: Array[String]) = {
+    val db: Database =
+      if(args(0) == "student")
+        StudentDatabase
+      else
+        SimpleDatabase
+
+  object browser extends Browser {
+    val database = db
+  }
+
+  val apple = SimpleDatabase.foodNamed("Apple").get
+
+  for(recipe <- browser.recipesUsing(apple))
+    println(recipe)
+  }  
 }
-val apple = SimpleDatabase.foodNamed("Apple").get
-for(recipe <- browser.recipesUsing(apple))}
-println(recipe)
-}
-Listing 29.16 - An app that dynamically selects a module implementation.
-Now, if you use the simple database, you will find a recipe for fruit salad. If you use the student
-database, you will find no recipes at all using apples:
+----
+Лістинг 29.16 - Застосування, що динамічно обирає реалізацію модуля.
+
+Тепер, якщо ви використовуєте базу даних `simple`, ви знайдете рецепт для фруктового салату. Якщо ви використовуєте базу даних `student`, ви взагалі не знайдете рецептів з використанням яблук:
+[source,scala]
+----
 $ scala GotApples simple
 fruit salad
 $ scala GotApples student
 $
-CONFIGURING WITH SCALA CODE
-You may wonder if you are not backsliding to the hard links problem of the original examples in this
-chapter, because the GotApples object shown in Listing 29.16 contains hard links to
-both StudentDatabase and SimpleDatabase. The difference here is that the hard links are localized in
-one file that can be replaced.
-Every modular application needs some way to specify the actual module implementations to use in a
-particular situation. This act of "configuring" the application will by definition involve the naming of
-concrete module implementations. For example, in a Spring application, you configure by naming
-implementations in an external XML file. In Scala, you can configure via Scala code itself. One
-advantage to using Scala source over XML for configuration is that the process of running your
-configuration file through the Scala compiler should uncover any misspellings in it prior to its actual
-use.
-29.6 TRACKING MODULE INSTANCES
-Despite using the same code, the different browser and database modules created in the previous
-section really are separate modules. This means that each module has its own contents, including any
-nested classes. FoodCategory in SimpleDatabase, for example, is a different class
-from FoodCategory in StudentDatabase!
+----
+
+Конфігураця за допомогою Scala кода
+-----------------------------------
+Ви можете здивуватись, чи ви не зповзли до проблеми жорстких посилань оригінальних прикладів в цій главі, оскільки об'єкт `GotApples`, показаний в Лістингу 29.16, містить жорсткі посилання на обох, `StudentDatabase` та `SimpleDatabase`. Тут різниця в тому, що жорсткі посилання локалізовані в одному файлі, що може бути замінений.
+
+Кожне модулярне застосування потребує деякий спосіб вказати дійсну реалізацію модуля, що треба використовувати в певній ситуації. Ця дія "конфігурації" застосування буде по визначенню включати іменування конкретинх реалізацій модуля. Наприклад, в застосуванні Spring ви конфігуруєте через назву реалізацій в зовнішньому файлі XML. В Scala ви можете сконфігурувати через сам код Scala. Перевага використання джерела Scala над XML для конфігурації в тому, що процес виконання вашого файла конфігурації через компілятор Scala викриє любі помилки набору перед його дійсним застосуванням.
+
+29.6 Відстеження примірників модуля
+-----------------------------------
+Крім використання того самого кода, різні модулі переглядача та бази даних, створені в попередньому розділі, насправді розділяють модулі. Це означає, що кожний модуль має свій власний вміст, включаючи любі вкладені класи. `FoodCategory` в `SimpleDatabase`, наприклад, інший клас від `FoodCategory` в `StudentDatabase`!
+[source,scala]
+----
 scala> val category = StudentDatabase.allCategories.head
 category: StudentDatabase.FoodCategory =
 FoodCategory(edible,List(FrozenFood))
+
 scala> SimpleBrowser.displayCategory(category)
 <console>:21: error: type mismatch;
-found
-: StudentDatabase.FoodCategory
+found   : StudentDatabase.FoodCategory
 required: SimpleBrowser.database.FoodCategory
-SimpleBrowser.displayCategory(category)
-^
-If instead you prefer all FoodCategorys to be the same, you can accomplish this by moving the
-definition of FoodCategory outside of any class or trait. The choice is yours, but as it is written,
-each Database gets its own, unique FoodCategory class.Since the two FoodCategory classes shown in this example really are different, the compiler is correct
-to complain. Sometimes, though, you may encounter a case where two types are the same but the
-compiler can't verify it. You will see the compiler complaining that two types are not the same, even
-though you as the programmer know they are.
-In such cases you can often fix the problem using singleton types. For example, in
-theGotApples program, the type checker does not know that db and browser.database are the same.
-This will cause type errors if you try to pass categories between the two objects:
+          SimpleBrowser.displayCategory(category)
+                                        ^
+----                                        
+Якщо замість цього ви бажаєте, щоб всі `FoodCategorys` були тими самими, ви можете досягти цього через перемііщення визначення `FoodCategory` за межі класу або трейта. Вибір за вами, але так як воно написане, кожна `Database` отримує свій власний, унікальний клас `FoodCategory`.
+
+Оскільки два класи `FoodCategory`, показані в цьому прикладі, насправді різні, компілятов був правий, коли скаржився. Однак іноді ви можете натрапити на випадок, коли два типа такі ж самі, але компілятор не може верифікувати їх. Ви будете бачити, що компілятор скаржиться, що два типи не однакові, однак ви, як програміст, знаеєте що це так.
+
+В таких випадках ви можете часто полагодити проблему з використанням типів синглтонів. Наприклад, в програмі `GotApples` перевірка типів не знає, що `db` та `browser.database` такі ж самі. Це спричинить помилку типу, якщо ви спробуєте передати категорії між двома об'єктами:
+[source,scala]
+----
 object GotApples {
-// same definitions...
-for (category <- db.allCategories)
-browser.displayCategory(category)
+  // таке саме визначення...
+  for (category <- db.allCategories)
+    browser.displayCategory(category)
 // ...
 }
 GotApples2.scala:14: error: type mismatch;
-found
-: db.FoodCategory
+found   : db.FoodCategory
 required: browser.database.FoodCategory
-browser.displayCategory(category)
-^
+      browser.displayCategory(category)
+                              ^
 one error found
-To avoid this error, you need to inform the type checker that they are the same object. You can do this
-by changing the definition of browser.database as shown in Listing 29.17:
+----
+Щоб уникнути цієї помилки вам треба поінформувати перевірку типів, що вони є тим самим об'єктом. Ви можете зробити це, змінивши визначення `browser.database`, як показано в Лістингу 29.17:
+[source,scala]
+----
 object browser extends Browser {
-val database: db.type = db
+  val database: db.type = db
 }
-Listing 29.17 - Using a singleton type.
-This definition is the same as before except that database has the funny-looking type db.type. The
-".type" on the end means that this is a singleton type. A singleton type is extremely specific and holds
-only one object; in this case, whichever object is referred to by db. Usually such types are too specific
-to be useful, which is why the compiler is reluctant to insert them automatically. In this case, though,
-the singleton type allows the compiler to know that db andbrowser.database are the same object—
-enough information to eliminate the type error.
-29.7 CONCLUSION
-This chapter has shown how to use Scala's objects as modules. In addition to simple static modules, this
-approach gives you a variety of ways to create abstract, reconfigurable modules. There are actually
-even more abstraction techniques than shown, since anything that works on a class also works on a
-class used to implement a module. As always, how much of this power you use should be a matter of
-taste.
-Modules are part of programming in the large, and thus are hard to experiment with. You need a large
-program before it really makes a difference. Nonetheless, after reading this chapter you know which
-Scala features to think about when you want to program in a modular style. Think about thesetechniques when you write your own large programs and recognize these coding patterns when you see
-them in other people's code.
-Footnotes for Chapter 29:
-[1] 
-[2] 
-[3] 
-[4] 
-[5] 
+----
+Лістинг 29.17 - Використання типу синглтону.
+
+Це визначення таке саме, як раніше, за винятком що `database` має дивно виглядаючий тип `db.type`. `.type` в кінці означає, що це тип синглтон. Тип синглтон екстремально специфічний, та має лише один об'єкт; в цьому випадку будь-який об'єкт, на який посилаєтся `db`. Звичайно такі типи дуже специфічні, щоб бути корисними, ось чому компілятор неохоче вставляє їх автоматично. Однак в цьому випадку тип синглтон дозволяє компілятору знати, що `db` та `browser.database` той самий об'єкт — досить інформації, щоб прибрати помилку типу.
+
+29.7 Висновок
+-------------
+Ця глава показала, як використовувати об'єкти Scala як модулі. На додаток до простих статичних модулів, цей підхід надає вам різні шляхі для створення абстрактних, переналаштовуваних модулів. Існує навіть більше прийомів абстрагування, ніж показано, оскільки будь-що, що робить для класа, також робить для класа, задіяного для реалізації модуля. Як завжди, скільки з цієї потужності ви задієте має бути справою смаку.
+
+Модулі є частиною програмування в великому, і, таким чином, з ними важко експериментувати. Вам треба велика програма, доки різниця дійсно стане помітною. Тим не менше, після читання цієї глави ви знаєте, про які можливості Scala слід згадати, коли ви бажаєте програмувати в модульному стилі. Думайте про ці прийоми, коли ви пишете ваші власні великі програми, та розпізнавайте ці шаблони прогрумавання, коли ви бачите їх в коді інших людей.

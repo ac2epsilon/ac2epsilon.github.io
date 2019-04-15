@@ -804,404 +804,421 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="___xml">Робота з XML</h1>
-<div class="paragraph"><p>This chapter introduces Scala&#8217;s support for XML. After discussing semi-structured data in general, it
-shows the essential functionality in Scala for manipulating XML: how to make nodes with XML
-literals, how to save and load XML to files, and how to take apart XML nodes using query methods and
-pattern matching. This chapter is just a brief introduction to what is possible with XML, but it shows
-enough to get you started.
-28.1 SEMI-STRUCTURED DATA
-XML is a form of semi-structured data. It is more structured than plain strings, because it organizes the
-contents of the data into a tree. Plain XML is less structured than the objects of a programming
-language, though, as it admits free-form text between tags and it lacks a type system.<span class="footnote"><br />[There are type systems for XML, such as XML Schemas, but they are beyond the scope of this book.]<br /></span>
-Semi-structured data is very helpful any time you need to serialize program data for saving in a file or
-shipping across a network. Instead of converting structured data all the way down to bytes, you convert
-it to and from semi-structured data. You then use pre-existing library routines to convert between semi-
-structured data and binary data, saving your time for more important problems.
-There are many forms of semi-structured data, but XML is the most widely used on the Internet. There
-are XML tools on most operating systems, and most programming languages have XML libraries
-available. Its popularity is self-reinforcing. The more tools and libraries are developed in response to
-XML&#8217;s popularity, the more likely software engineers are to choose XML as part of their formats. If
-you write software that communicates over the Internet, then sooner or later you will need to interact
-with some service that speaks XML.
-For all of these reasons, Scala includes special support for processing XML. This chapter shows you
-Scala&#8217;s support for constructing XML, processing it with regular methods, and processing it with
-Scala&#8217;s pattern matching. In addition to these nuts and bolts, the chapter shows along the way several
-common idioms for using XML in Scala.
-28.2 XML OVERVIEW
-XML is built out of two basic elements, text and tags.<span class="footnote"><br />[The full story is more complicated, but this is enough to be effective with XML.]<br /></span> Text is, as usual, any sequence of characters.
-Tags, written like &lt;pod&gt;, consist of a less-than sign, an alphanumeric label, and a greater than sign.
-Tags can be start or end tags. An end tag looks just like a start tag except that it has a slash just before
-the tag&#8217;s label, like this: &lt;/pod&gt;.
-Start and end tags must match each other, just like parentheses. Any start tag must eventually be
-followed by an end tag with the same label. Thus the following is illegal:
+<div class="paragraph"><p>Ця глава вводить в підтримку XML в Scala. Після дискутування напів-структурованих даних взагалі, вона показує основну функціональність в Scala для маніпулювання XML: як створити вузли з допомогою XML літералів, як зберігти та завантажити XML з файлів, та як розбити XML вузли з використанням методів запитів та порівняння шаблонів. Ця глава є тільки коротким введенням в те, що можливо з допомогою XML, але вона показує вам досить для початку.</p></div>
+<div class="sect1">
+<h2 id="_28_1___">28.1 Напів-структуровані дані</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>XML є формою _напів-структурованих_ даних. Він є більш структурованим ніж прості рядки, оскільки він організує вміст даних в вигляді дерев. Однак простий XML менш структурований, ніж об'єкти в мові програмування, оскільки він дозволяє довільний текст між тегами, та йому бракує системи типів.<span class="footnote"><br />[Існують системи типів для XML, такі як XML Schemas, але вони за полем зору цієї книги.]<br /></span></p></div>
+<div class="paragraph"><p>Напів-структуровані дані дуже корисні кожного разу, коли вам треба серіалізувати дані програми для збереження в файлі або доставки через мережу. Замість конвертування структурованих даних кожного разу до байтів, ви конвертуєте їх до-та-з напів-структурованих даних. Потім ви використовуєте існуючу бібліотечні процедури для конвертації напів-структурованих даних в бінарні дані, зберігаючи ваш час для більш важливих проблем.</p></div>
+<div class="paragraph"><p>Існує багато форм напів-структурованих даних, але XML є найбільш широко використовуваною формою в інтернеті. Існують XML інструменти для більшості операційних систем, та більшість мов програмування мають доступні XML бібліотеки. Його популярність само-підсилююча. Чим більше інструментів та бібліотек розробляється у відповідь на популірність XML, тим вірогідніше інженери програмного забезпечення оберуть XML як частину своїх форматів. Якщо ви пишете програмне забезпечення, що комунікує через інтернет, тоді скоріше або пізніше вам буде треба взаємодіяти з якимось сервісом, що розмовляє мовою XML.</p></div>
+<div class="paragraph"><p>З усіх ціх причин Scala включає спеціальну підтримку для обробки XML. Ця глава показує вам підтримку Scala для конструювання XML, його обробку звичайними методами, та обробку за допомогою порівняння шаблонів Scala. На додаток до ціх основ, глава по ходу показує декілька загальних ідіом по використанню XML в Scala.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_2__xml">28.2 Огляд XML</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>XML побудований з двох базових елементів, тексту та тегів.<span class="footnote"><br />[Повна історія трохи складніша, але цього достатньо щоб бути ефективним з XML.]<br /></span> Текст є, як звичайно, любою послідовністю символів. Теги, записані як <code>&lt;pod&gt;</code>, складаються зі знака меньше, літерної мітки, та знака більше. Тегі можуть бути відкриваючими та закриваючими. Закриваючий тег виглядає як відкриваючий, за винятком того, що він має косу прямо перед міткою тега, як тут: &lt;/pod&gt;.</p></div>
+<div class="paragraph"><p>Відкриваючий та закриваючий тег мають відповідати один до одного, так само як дужки. Кожний відкриваючий тег повинен раніше чи пізніше мати закриваючий тег з такою ж міткою. Так що наступне нелегальне:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>// Illegal XML
+One <span class="nt">&lt;pod&gt;</span>, two <span class="nt">&lt;pod&gt;</span>, three <span class="nt">&lt;pod&gt;</span> zoo
+</pre></div></div></div>
+<div class="paragraph"><p>Більше того, вміст любих двух парних тегів сам має бути валідним XML. Ви не можете мати дві пари тегів, які перекривають один одного:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>// Also illegal
+<span class="nt">&lt;pod&gt;</span>Three <span class="nt">&lt;peas&gt;</span> in the <span class="nt">&lt;/pod&gt;&lt;/peas&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете, однак, написати таке:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nt">&lt;pod&gt;</span>Three <span class="nt">&lt;peas&gt;&lt;/peas&gt;</span> in the <span class="nt">&lt;/pod&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки теги мають співпадати один з одним в такий спосіб, XML структурований як вкладені елементи. Кожна пара відповідних відкриваючих та закриваючих тегів формують елемент, та елементи можуть бути вкладені один в другий. В прикладі вище цілий <code>&lt;pod&gt;Three &lt;peas&gt;&lt;/peas&gt; in the &lt;/pod&gt;</code> є елементом, <code>&lt;peas&gt;&lt;/peas&gt;</code> є елементом, вкладеним в перший.</p></div>
+<div class="paragraph"><p>Такі основи. Дві інші речі, які вам треба знати: перше, існує скорочена нотація для відкриваючого тега, за яким зразу іде закриваючий тег. Просто запишіть один тег з косою після мітки тегу. Такий тег складається з порожнього елементу. Використовуючи порожній елемент, попередній приклад може бути просто записаний таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="n">pod</span><span class="o">&gt;</span><span class="nc">Three</span> <span class="o">&lt;</span><span class="n">peas</span><span class="o">/&gt;</span> <span class="n">in</span> <span class="n">the</span> <span class="o">&lt;/</span><span class="n">pod</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Друге, початковий тег може мати приєднані до нього атрибути. Атрибут є пара ім'я-значення, написана зі знаком рівності між ними. Ім'я атрибуту є простим, неструктурованим текстом, та значення оточене або подвійними (<code>""</code>) або поодинокими (<code>''</code>) лапками. Атрибути виглядають так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nt">&lt;pod</span> <span class="na">peas=</span><span class="s">&quot;3&quot;</span> <span class="na">strings=</span><span class="s">&quot;true&quot;</span><span class="nt">/&gt;</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_3_xml_">28.3 XML літерали</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala дозволяє вам вбивати XML як літерал будь-де, де є валідним вираз. Просто набираєте початковий тег та потім продовжуєте писати XML вміст. Компілятор перейде в режим вводу XML та буде читати вміст XML доки не побачить закриваючий тег, що співпадає з тим, з якого ви почали:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span>
+          <span class="nc">This</span> <span class="n">is</span> <span class="n">some</span> <span class="nc">XML</span><span class="o">.</span>
+          <span class="nc">Here</span> <span class="n">is</span> <span class="n">a</span> <span class="n">tag</span><span class="k">:</span> <span class="kt">&lt;atag/&gt;</span>
+       <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span>
+<span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span>
+  <span class="nc">This</span> <span class="n">is</span> <span class="n">some</span> <span class="nc">XML</span><span class="o">.</span>
+  <span class="nc">Here</span> <span class="n">is</span> <span class="n">a</span> <span class="n">tag</span><span class="k">:</span> <span class="kt">&lt;atag/&gt;</span>
+<span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Результатом цього виразу є тип <code>Elem</code>, що означає елемент XML з міткою <code>a</code> та вмістом <code>"This is some XML...,"</code>. Деякі інші важливі XML класи:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Клас <code>Node</code> є абстрактним суперкласом всіх класів вузлів XML.
+</p>
+</li>
+<li>
+<p>
+Клас <code>Text</code> є вузол, що містить лише текст. Наприклад, <code>"stuff"</code> що є частиною <code>&lt;a&gt;stuff&lt;/a&gt;</code> має клас <code>Text</code>.
+</p>
+</li>
+<li>
+<p>
+Клас <code>NodeSeq</code> містить послідовність вузлів. Багато методів в XML бібліотеці обробляють <code>NodeSeqs</code> в місцях, де ви б могли очікувати, що вони обробляють окремі <code>Node</code>. Ви все ще можете використовувати такі методи з окремими вузлами, однак, оскільки <code>Node</code> є розширенням <code>NodeSeq</code>. Це може виглядати збочено, але це гарно робить для XML. Ви можете думати про окремі <code>Node</code>, як про одно-елементні <code>NodeSeq</code>.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Ви не обмежені виписувати точний XML який бажаєте, символ в символ. Ви можете обислити Scala код всередині XML дітерала, через використання фігурних дужок <code>{}</code> як виключення. Ось простий приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">{</span><span class="s">&quot;hello&quot;</span> <span class="o">+</span> <span class="s">&quot;, world&quot;</span><span class="o">}</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="n">hello</span><span class="o">,</span> <span class="n">world</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Виключення фігурними дужками включає довільний Scala вміст, включаючи подальші XML літерали. Таким чином, по мірі зростання рівня вкладеності, ваш код може перемикатись між XML та звичайним Scala кодом.</p></div>
+<div class="paragraph"><p>Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">yearMade</span> <span class="k">=</span> <span class="mi">1955</span>
+<span class="n">yearMade</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1955</span>
 
-One &lt;pod&gt;, two &lt;pod&gt;, three &lt;pod&gt; zooFurther, the contents of any two matching tags must itself be valid XML. You cannot have two pairs of
-matching tags overlap each other:
+<span class="n">scala</span><span class="o">&gt;</span>  <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">{</span> <span class="k">if</span> <span class="o">(</span><span class="n">yearMade</span> <span class="o">&lt;</span> <span class="mi">2000</span><span class="o">)</span> <span class="o">&lt;</span><span class="n">old</span><span class="o">&gt;{</span><span class="n">yearMade</span><span class="o">}&lt;/</span><span class="n">old</span><span class="o">&gt;</span>
+              <span class="k">else</span> <span class="n">xml</span><span class="o">.</span><span class="nc">NodeSeq</span><span class="o">.</span><span class="nc">Empty</span> <span class="o">}</span>
+        <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span>
+<span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">old</span><span class="o">&gt;</span><span class="mi">1955</span><span class="o">&lt;/</span><span class="n">old</span><span class="o">&gt;</span>
+  <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо код в фігурних дужках обчислюється або до XML вузла, або до послідовності XML вузлів, ці вузли вставляються прямо як є. В прикладі вище, якщо <code>yearMade</code> меньше ніж <code>2000</code>, він огортається в теги <code>&lt;old&gt;</code>, та додається до елемента <code>&lt;a&gt;</code>. Інакше нічого не додається. Зауважте щодо прикладу вище, що "нічого" як XML вузол позначається <code>xml.NodeSeq.Empty</code>. Вираз виключення в фігурних дужках не має обчислюватись до вузла XML. Він може обчислюватись до любого значення Scala. В такому випадку результат буде перетворено на рядок, та вставлено як текстовий вузол:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">{</span><span class="mi">3</span> <span class="o">+</span> <span class="mi">4</span><span class="o">}</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="mi">7</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Любі символи <code>&lt;</code>, <code>&gt;</code> та <code>&amp;</code> в тексті будуть виключені, якщо ви роздрукуєте вузол:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">{</span><span class="s">&quot;&lt;/a&gt;potential security hole&lt;a&gt;&quot;</span><span class="o">}</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">&amp;</span><span class="n">lt</span><span class="o">;/</span><span class="n">a</span><span class="o">&amp;</span><span class="n">gt</span><span class="o">;</span><span class="n">potential</span> <span class="n">security</span>
+<span class="n">hole</span><span class="o">&amp;</span><span class="n">lt</span><span class="o">;</span><span class="n">a</span><span class="o">&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Для контрасту, якщо ви створюєте XML з низькорівневими операціями з рядками, ви попадете в пастку, як наступна:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="s">&quot;&lt;a&gt;&quot;</span> <span class="o">+</span> <span class="s">&quot;&lt;/a&gt;potential security hole&lt;a&gt;&quot;</span> <span class="o">+</span> <span class="s">&quot;&lt;/a&gt;&quot;</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span><span class="n">potential</span> <span class="n">security</span> <span class="n">hole</span><span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що тут відбувається, це що наданий користувачем рядок включає XML теги самі по собі, в цьому випадку <code>&lt;/a&gt;</code> та <code>&lt;a&gt;</code>. Ця поведінка може дозволити деякі капосні сюрпризи для початкового програміста, оскільки дозволяє користувачеві впливати на результуюче дерево XML за межами простору, наданому для користувача в елементі <code>&lt;a&gt;</code>. Ви можете запобігти всьому цьому класу проблем, завжди конструюючи XML з використанням XML літералів, а не додавання рядків.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_4_">28.4 Сериалізація</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Тепер ви бачили досить щодо Scala підтримки XML, щоб написати першу частину серіалізатора: перетворення від внутрішніх структур даних до XML. Все що вам треба для цього, це XML літерали та їх виключення в фігурних дужках.</p></div>
+<div class="paragraph"><p>Як приклад, уявімо, що ви реалізуєте базу даних, яка відстежує вашу екстенсивну колекцію вінтажних термометрів Coca-Cola. Ви можете зробити наступний внутрішній клас, що утримуватиме елементи каталогу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">CCTherm</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">description</span><span class="k">:</span> <span class="kt">String</span>
+  <span class="k">val</span> <span class="n">yearMade</span><span class="k">:</span> <span class="kt">Int</span>
+  <span class="k">val</span> <span class="n">dateObtained</span><span class="k">:</span> <span class="kt">String</span>
+  <span class="k">val</span> <span class="n">bookPrice</span><span class="k">:</span> <span class="kt">Int</span> <span class="c1">// in US cents</span>
+  <span class="k">val</span> <span class="n">purchasePrice</span><span class="k">:</span> <span class="kt">Int</span> <span class="c1">// in US cents</span>
+  <span class="k">val</span> <span class="n">condition</span><span class="k">:</span> <span class="kt">Int</span> <span class="c1">// 1 to 10</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span> <span class="n">description</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це прямолінійний, набитий даними клас, що містить різні частини інформації, такі, як де термометр було зроблено, коли ви його отримали, та скільки заплатили за нього. Щоб конвертувати примірники цього класу до XML, просто додайте метод <code>toXML</code>, що використовує XML літерали та виключення в фігурних дужках, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">CCTherm</span> <span class="o">{</span>
+<span class="o">...</span>
+<span class="k">def</span> <span class="n">toXML</span> <span class="k">=</span>
+  <span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;{</span><span class="n">description</span><span class="o">}&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">yearMade</span><span class="o">&gt;{</span><span class="n">yearMade</span><span class="o">}&lt;/</span><span class="n">yearMade</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">dateObtained</span><span class="o">&gt;{</span><span class="n">dateObtained</span><span class="o">}&lt;/</span><span class="n">dateObtained</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">bookPrice</span><span class="o">&gt;{</span><span class="n">bookPrice</span><span class="o">}&lt;/</span><span class="n">bookPrice</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">purchasePrice</span><span class="o">&gt;{</span><span class="n">purchasePrice</span><span class="o">}&lt;/</span><span class="n">purchasePrice</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;{</span><span class="n">condition</span><span class="o">}&lt;/</span><span class="n">condition</span><span class="o">&gt;</span>
+  <span class="o">&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось цей метод в дії:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">therm</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">CCTherm</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">description</span> <span class="k">=</span> <span class="s">&quot;hot dog #5&quot;</span>
+        <span class="k">val</span> <span class="n">yearMade</span> <span class="k">=</span> <span class="mi">1952</span>
+        <span class="k">val</span> <span class="n">dateObtained</span> <span class="k">=</span> <span class="s">&quot;March 14, 2006&quot;</span>
+        <span class="k">val</span> <span class="n">bookPrice</span> <span class="k">=</span> <span class="mi">2199</span>
+        <span class="k">val</span> <span class="n">purchasePrice</span> <span class="k">=</span> <span class="mi">500</span>
+        <span class="k">val</span> <span class="n">condition</span> <span class="k">=</span> <span class="mi">9</span>
+      <span class="o">}</span>
+<span class="n">therm</span><span class="k">:</span> <span class="kt">CCTherm</span> <span class="o">=</span> <span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span>
 
-&lt;pod&gt;Three &lt;peas&gt; in the &lt;/pod&gt;&lt;/peas&gt;
-You could, however, write it like this:
-&lt;pod&gt;Three &lt;peas&gt;&lt;/peas&gt; in the &lt;/pod&gt;
-Since tags are required to match in this way, XML is structured as nested elements. Each pair of
-matching start and end tags forms an element, and elements may be nested within each other. In the
-above example, the entirety of &lt;pod&gt;Three &lt;peas&gt;&lt;/peas&gt; in the &lt;/pod&gt; is an element,
-and &lt;peas&gt;&lt;/peas&gt; is an element nested within it.
-Those are the basics. Two other things you should know are, first, there is a shorthand notation for a
-start tag followed immediately by its matching end tag. Simply write one tag with a slash put after the
-tag&#8217;s label. Such a tag comprises an empty element. Using an empty element, the previous example
-could just as well be written as follows:
-&lt;pod&gt;Three &lt;peas/&gt; in the &lt;/pod&gt;
-Second, start tags can have attributes attached to them. An attribute is a name-value pair written with
-an equals sign in the middle. The attribute name itself is plain, unstructured text, and the value is
-surrounded by either double quotes ("") or single quotes ("). Attributes look like this:
-&lt;pod peas="3" strings="true"/&gt;
-28.3 XML LITERALS
-Scala lets you type in XML as a literal anywhere that an expression is valid. Simply type a start tag and
-then continue writing XML content. The compiler will go into an XML-input mode and will read
-content as XML until it sees the end tag matching the start tag you began with:
-scala&gt; &lt;a&gt;
-This is some XML.
-Here is a tag: &lt;atag/&gt;
-&lt;/a&gt;
-res0: scala.xml.Elem =
-&lt;a&gt;
-This is some XML.
-Here is a tag: &lt;atag/&gt;
-&lt;/a&gt;
-The result of this expression is of type Elem, meaning it is an XML element with a label ("a") and
-children ("This is some XML&#8230;," etc.). Some other important XML classes are:
-• Class Node is the abstract superclass of all XML node classes.
-• Class Text is a node holding just text. For example, the "stuff" part of &lt;a&gt;stuff&lt;/a&gt; is of
-classText.• Class NodeSeq holds a sequence of nodes. Many methods in the XML library processNodeSeqs
-in places you might expect them to process individual Nodes. You can still use such methods
-with individual nodes, however, since Node extends from NodeSeq. This may sound weird, but
-it works out well for XML. You can think of an individual Node as a one-elementNodeSeq.
-You are not restricted to writing out the exact XML you want, character for character. You can evaluate
-Scala code in the middle of an XML literal by using curly braces ({}) as an escape. Here is a simple
-example:
-scala&gt; &lt;a&gt; {"hello" + ", world"} &lt;/a&gt;
-res1: scala.xml.Elem = &lt;a&gt; hello, world &lt;/a&gt;
-A braces escape can include arbitrary Scala content, including further XML literals. Thus, as the
-nesting level increases, your code can switch back and forth between XML and ordinary Scala code.
-Here&#8217;s an example:
-scala&gt; val yearMade = 1955
-yearMade: Int = 1955
-scala&gt;
-else xml.NodeSeq.Empty }
-&lt;/a&gt;
-res2: scala.xml.Elem =
-&lt;a&gt; &lt;old&gt;1955&lt;/old&gt;
-&lt;/a&gt;
-If the code inside the curly braces evaluates to either an XML node or a sequence of XML nodes, those
-nodes are inserted directly as is. In the above example, if yearMade is less than 2000, it is wrapped
-in &lt;old&gt; tags and added to the &lt;a&gt; element. Otherwise, nothing is added. Note in the above example
-that "nothing" as an XML node is denoted with xml.NodeSeq.Empty.
-An expression inside a brace escape does not have to evaluate to an XML node. It can evaluate to any
-Scala value. In such a case, the result is converted to a string and inserted as a text node:
-scala&gt; &lt;a&gt; {3 + 4} &lt;/a&gt;
-res3: scala.xml.Elem = &lt;a&gt; 7 &lt;/a&gt;
-Any &lt;, &gt;, and &amp; characters in the text will be escaped if you print the node back out:
-scala&gt; &lt;a&gt; {"&lt;/a&gt;potential security hole&lt;a&gt;"} &lt;/a&gt;
-res4: scala.xml.Elem = &lt;a&gt; &lt;/a&gt;potential security
-hole&lt;a&gt; &lt;/a&gt;
-To contrast, if you create XML with low-level string operations, you will run into traps such as the
-following:
-scala&gt; "&lt;a&gt;" + "&lt;/a&gt;potential security hole&lt;a&gt;" + "&lt;/a&gt;"
-res5: String = &lt;a&gt;&lt;/a&gt;potential security hole&lt;a&gt;&lt;/a&gt;
-What happens here is that a user-supplied string has included XML tags of its own, in this
-case &lt;/a&gt; and &lt;a&gt;. This behavior can allow some nasty surprises for the original programmer, becauseit allows the user to affect the resulting XML tree outside of the space provided for the user inside
-the &lt;a&gt; element. You can prevent this entire class of problems by always constructing XML using
-XML literals, not string appends.
-28.4 SERIALIZATION
-You have now seen enough of Scala&#8217;s XML support to write the first part of a serializer: conversion
-from internal data structures to XML. All you need for this are XML literals and their brace escapes.
-As an example, suppose you are implementing a database to keep track of your extensive collection of
-vintage Coca-Cola thermometers. You might make the following internal class to hold entries in the
-catalog:
-abstract class CCTherm {
-val description: String
-val yearMade: Int
-val dateObtained: String
-val bookPrice: Int
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">therm</span><span class="o">.</span><span class="n">toXML</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span>
+<span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;</span><span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span><span class="o">&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">yearMade</span><span class="o">&gt;</span><span class="mi">1952</span><span class="o">&lt;/</span><span class="n">yearMade</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">dateObtained</span><span class="o">&gt;</span><span class="nc">March</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">2006</span><span class="o">&lt;/</span><span class="n">dateObtained</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">bookPrice</span><span class="o">&gt;</span><span class="mi">2199</span><span class="o">&lt;/</span><span class="n">bookPrice</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">purchasePrice</span><span class="o">&gt;</span><span class="mi">500</span><span class="o">&lt;/</span><span class="n">purchasePrice</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="mi">9</span><span class="o">&lt;/</span><span class="n">condition</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span>
 
-val purchasePrice: Int // in US cents
-val condition: Int
+<span class="nc">NOTE</span><span class="k">:</span> <span class="kt">Вираз</span> <span class="kt">`new CCTherm`</span> <span class="kt">в</span> <span class="kt">попередньому</span> <span class="kt">прикладі</span> <span class="kt">робить</span><span class="o">,</span> <span class="n">навіть</span> <span class="n">якщо</span> <span class="n">`CCTherm`</span> <span class="n">є</span> <span class="n">абстрактним</span> <span class="n">класом</span><span class="o">,</span> <span class="n">оскільки</span> <span class="n">цей</span> <span class="n">синтаксис</span> <span class="n">насправді</span> <span class="n">створює</span> <span class="n">примірник</span> <span class="n">анонімного</span> <span class="n">субкласу</span> <span class="n">`CCTherm`</span><span class="o">.</span> <span class="n">Анонімні</span> <span class="n">класи</span> <span class="n">описані</span> <span class="n">в</span> <span class="n">Розділі</span> <span class="mf">20.5</span><span class="o">.</span>
 
-}
-override def toString = description
-This is a straightforward, data-heavy class that holds various pieces of information such as when the
-thermometer was made, when you got it, and how much you paid for it.
-To convert instances of this class to XML, simply add a toXML method that uses XML literals and
-brace escapes, like this:
-abstract class CCTherm {
-&#8230;
-def toXML =
-&lt;cctherm&gt;
-&lt;/cctherm&gt;
-}
-Here is the method in action:
-scala&gt; val therm = new CCTherm {
-val description = "hot dog #5"
-val yearMade = 1952
-val dateObtained = "March 14, 2006"
-val bookPrice = 2199
-val purchasePrice = 500
-val condition = 9
-}
-therm: CCTherm = hot dog #5scala&gt; therm.toXML
-res6: scala.xml.Elem =
-&lt;cctherm&gt;
-&lt;description&gt;hot dog #5&lt;/description&gt;
-&lt;yearMade&gt;1952&lt;/yearMade&gt;
-&lt;dateObtained&gt;March 14, 2006&lt;/dateObtained&gt;
-&lt;bookPrice&gt;2199&lt;/bookPrice&gt;
-&lt;purchasePrice&gt;500&lt;/purchasePrice&gt;
-&lt;condition&gt;9&lt;/condition&gt;
-&lt;/cctherm&gt;
-Note
-The "new CCTherm" expression in the previous example works even thoughCCTherm is an abstract
-class, because this syntax actually instantiates an anonymous subclass of CCTherm. Anonymous
-classes were described inSection 20.5.
-By the way, if you want to include a curly brace (&#8216;{&#8217; or &#8216;}&#8217;) as XML text, as opposed to using them to
-escape to Scala code, simply write two curly braces in a row:
-scala&gt; &lt;a&gt; {{{{brace yourself!}}}} &lt;/a&gt;
-res7: scala.xml.Elem = &lt;a&gt; {{brace yourself!}} &lt;/a&gt;
-28.5 TAKING XML APART
-Among the many methods available for the XML classes, there are three in particular that you should
-be aware of. They allow you to take apart XML without thinking too much about the precise way XML
-is represented in Scala. These methods are based on the XPath language for processing XML. As is
-common in Scala, you can write them directly in Scala code instead of needing to invoke an external
-tool.
-Extracting text. By calling the text method on any XML node you retrieve all of the text within that
-node, minus any element tags:
-scala&gt; &lt;a&gt;Sounds &lt;tag/&gt; good&lt;/a&gt;.text
-res8: String = Sounds good
-Any encoded characters are decoded automatically:
-scala&gt; &lt;a&gt; input ---&gt; output &lt;/a&gt;.text
-res9: String = " input --&#8594; output "
-Extracting sub-elements. If you want to find a sub-element by tag name, simply call \with the name of
-the tag:
-scala&gt; &lt;a&gt;&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;&lt;/a&gt; <sub>"b"
-res10: scala.xml.NodeSeq = NodeSeq(&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;)
-You can do a "deep search" and look through sub-sub-elements, etc., by using \\ instead of
-the \ operator:
-scala&gt;
-&lt;a&gt;&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;&lt;/a&gt; </sub>"c"res11: scala.xml.NodeSeq = NodeSeq()
-scala&gt; &lt;a&gt;&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;&lt;/a&gt; ~"c"
-res12: scala.xml.NodeSeq = NodeSeq(&lt;c&gt;hello&lt;/c&gt;)
-scala&gt; &lt;a&gt;&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;&lt;/a&gt; <sub>"a"
-res13: scala.xml.NodeSeq = NodeSeq()
-scala&gt; &lt;a&gt;&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;&lt;/a&gt; \</sub>"a"
-res14: scala.xml.NodeSeq =
-NodeSeq(&lt;a&gt;&lt;b&gt;&lt;c&gt;hello&lt;/c&gt;&lt;/b&gt;&lt;/a&gt;)
-Note
-Scala uses \ and \\ instead of XPath&#8217;s / and //. The reason is that // starts a comment in Scala! Thus,
-some other symbol has to be used, and using the other kind of slashes works well.
-Extracting attributes. You can extract tag attributes using the same \ and \\ methods.Simply put an at
-sign (@) before the attribute name:
-scala&gt; val joe = &lt;employee
-name="Joe"
-rank="code monkey"
-serial="123"/&gt;
-joe: scala.xml.Elem = &lt;employee name="Joe" rank="code monkey"
-serial="123"/&gt;
-scala&gt; joe <sub>"@name"
-res15: scala.xml.NodeSeq = Joe
-scala&gt; joe </sub>"@serial"
-res16: scala.xml.NodeSeq = 123
-28.6 DESERIALIZATION
-Using the previous methods for taking XML apart, you can now write the dual of a serializer, a parser
-from XML back into your internal data structures. For example, you can parse back
-aCCTherm instance by using the following code:
-def fromXML(node: scala.xml.Node): CCTherm =
-new CCTherm {
-val description
-= (node <sub>"description").text
-val yearMade
-= (node </sub>"yearMade").text.toInt
-val dateObtained = (node <sub>"dateObtained").text
-val bookPrice
-= (node </sub>"bookPrice").text.toInt
-val purchasePrice = (node <sub>"purchasePrice").text.toInt
-val condition
-= (node </sub>"condition").text.toInt
-}
-This code searches through an input XML node, named node, to find each of the six pieces of data
-needed to specify a CCTherm. The data that is text is extracted with .text and left as is. Here is this
-method in action:
-scala&gt; val node = therm.toXML
-node: scala.xml.Elem =&lt;cctherm&gt;
-&lt;description&gt;hot dog #5&lt;/description&gt;
-&lt;yearMade&gt;1952&lt;/yearMade&gt;
-&lt;dateObtained&gt;March 14, 2006&lt;/dateObtained&gt;
-&lt;bookPrice&gt;2199&lt;/bookPrice&gt;
-&lt;purchasePrice&gt;500&lt;/purchasePrice&gt;
-&lt;condition&gt;9&lt;/condition&gt;
-&lt;/cctherm&gt;
-scala&gt; fromXML(node)
-res17: CCTherm = hot dog #5
-28.7 LOADING AND SAVING
-There is one last part needed to write a data serializer: conversion between XML and streams of bytes.
-This last part is the easiest, because there are library routines that will do it all for you. You simply have
-to call the right routine on the right data.
-To convert XML to a string, all you need is toString. The presence of a workable toString is why you
-can experiment with XML in the Scala shell. However, it is better to use a library routine and convert
-all the way to bytes. That way, the resulting XML can include a directive that specifies which character
-encoding was used. If you encode the string to bytes yourself, then the onus is on you to keep track of
-the character encoding.
-To convert from XML to a file of bytes, you can use the XML.save command. You must specify a file
-name and a node to be saved:
-scala.xml.XML.save("therm1.xml", node)
-After running the above command, the resulting file therm1.xml looks like the following:
-&lt;?xml version=<em>1.0</em> encoding=<em>UTF-8</em>?&gt;
-&lt;cctherm&gt;
-&lt;description&gt;hot dog #5&lt;/description&gt;
-&lt;yearMade&gt;1952&lt;/yearMade&gt;
-&lt;dateObtained&gt;March 14, 2006&lt;/dateObtained&gt;
-&lt;bookPrice&gt;2199&lt;/bookPrice&gt;
-&lt;purchasePrice&gt;500&lt;/purchasePrice&gt;
-&lt;condition&gt;9&lt;/condition&gt;
-&lt;/cctherm&gt;
-Loading is simpler than saving, because the file includes everything the loader needs to know. Simply
-call XML.loadFile on a file name:
-scala&gt; val loadnode = xml.XML.loadFile("therm1.xml")
-loadnode: scala.xml.Elem =
-&lt;cctherm&gt;
-&lt;description&gt;hot dog #5&lt;/description&gt;
-&lt;yearMade&gt;1952&lt;/yearMade&gt;
-&lt;dateObtained&gt;March 14, 2006&lt;/dateObtained&gt;
-&lt;bookPrice&gt;2199&lt;/bookPrice&gt;
-&lt;purchasePrice&gt;500&lt;/purchasePrice&gt;
-&lt;condition&gt;9&lt;/condition&gt;
-&lt;/cctherm&gt;scala&gt; fromXML(loadnode)
-res14: CCTherm = hot dog #5
-Those are the basic methods you need. There are many variations on these loading and saving methods,
-including methods for reading and writing to various kinds of readers, writers, input and output
-streams.
-28.8 PATTERN MATCHING ON XML
-So far you have seen how to dissect XML using text and the XPath-like methods, \ and \\.These are
-good when you know exactly what kind of XML structure you are taking apart. Sometimes, though,
-there are a few possible structures the XML could have. Maybe there are multiple kinds of records
-within the data, for example because you have extended your thermometer collection to include clocks
-and sandwich plates. Maybe you simply want to skip over any white space between tags. Whatever the
-reason, you can use the pattern matcher to sift through the possibilities.
-An XML pattern looks just like an XML literal. The main difference is that if you insert a {}escape,
-then the code inside the {} is not an expression but a pattern. A pattern embedded in{} can use the full
-Scala pattern language, including binding new variables, performing type tests, and ignoring content
-using the _ and <em>* patterns. Here is a simple example:
-def proc(node: scala.xml.Node): String =
-node match {
-case _ &#8658; "It&#8217;s something else."
-}
-This function has a pattern match with three cases. The first case looks for an &lt;a&gt; element whose
-contents consist of a single sub-node. It binds those contents to a variable namedcontents and then
-evaluates the code to the right of the associated right arrow (&#8658;). The second case does the same thing
-but looks for a &lt;b&gt; instead of an &lt;a&gt;, and the third case matches anything not matched by any other
-case. Here is the function in use:
-scala&gt;
-res18:
-scala&gt;
-res19:
-scala&gt;
-res20:
-proc(&lt;a&gt;apple&lt;/a&gt;)
-String = It&#8217;s an a: apple
-proc(&lt;b&gt;banana&lt;/b&gt;)
-String = It&#8217;s a b: banana
-proc(&lt;c&gt;cherry&lt;/c&gt;)
-String = It&#8217;s something else.
-Most likely this function is not exactly what you want, because it looks precisely for contents
-consisting of a single sub-node within the &lt;a&gt; or &lt;b&gt;. Thus it will fail to match in cases like the
-following:
-scala&gt;
-res21:
-scala&gt;
-res22:
-proc(&lt;a&gt;a &lt;em&gt;red&lt;/em&gt; apple&lt;/a&gt;)
-String = It&#8217;s something else.
-proc(&lt;a/&gt;)
-String = It&#8217;s something else.If you want the function to match in cases like these, you can match against a sequence of nodes
-instead of a single one. The pattern for "any sequence" of XML nodes is written &#8216;</em>*&#8217;.Visually, this
-sequence looks like the wildcard pattern (<em>) followed by a regex-style Kleene star (<strong>). Here is the
-updated function that matches a sequence of sub-elements instead of a single sub-element:
-def proc(node: scala.xml.Node): String =
-node match {
-case &lt;a&gt;{contents @ _</strong>}&lt;/a&gt; &#8658; "It&#8217;s an a: " + contents
-case &lt;b&gt;{contents @ _*}&lt;/b&gt; &#8658; "It&#8217;s a b: " + contents
-case _ &#8658; "It&#8217;s something else."
-}
-Notice that the result of the _* is bound to the contents variable by using the @ pattern described
-in Section 15.2. Here is the new version in action:
-scala&gt;
-res23:
-apple)
-scala&gt;
-res24:
-proc(&lt;a&gt;a &lt;em&gt;red&lt;/em&gt; apple&lt;/a&gt;)
-String = It&#8217;s an a: ArrayBuffer(a , &lt;em&gt;red&lt;/em&gt;,
-proc(&lt;a/&gt;)
-String = It&#8217;s an a: WrappedArray()
-As a final tip, be aware that XML patterns work very nicely with for expressions as a way to iterate
-through some parts of an XML tree while ignoring other parts. For example, suppose you wish to skip
-over the white space between records in the following XML structure:
-val catalog =
-&lt;catalog&gt;
-&lt;cctherm&gt;
-&lt;description&gt;hot dog #5&lt;/description&gt;
-&lt;yearMade&gt;1952&lt;/yearMade&gt;
-&lt;dateObtained&gt;March 14, 2006&lt;/dateObtained&gt;
-&lt;bookPrice&gt;2199&lt;/bookPrice&gt;
-&lt;purchasePrice&gt;500&lt;/purchasePrice&gt;
-&lt;condition&gt;9&lt;/condition&gt;
-&lt;/cctherm&gt;
-&lt;cctherm&gt;
-&lt;description&gt;Sprite Boy&lt;/description&gt;
-&lt;yearMade&gt;1964&lt;/yearMade&gt;
-&lt;dateObtained&gt;April 28, 2003&lt;/dateObtained&gt;
-&lt;bookPrice&gt;1695&lt;/bookPrice&gt;
-&lt;purchasePrice&gt;595&lt;/purchasePrice&gt;
-&lt;condition&gt;5&lt;/condition&gt;
-&lt;/cctherm&gt;
-&lt;/catalog&gt;
-Visually, it looks like there are two nodes inside the &lt;catalog&gt; element. Actually, though, there are five.
-There is white space before, after, and between the two elements! If you do not consider this white
-space, you might incorrectly process the thermometer records as follows:
-catalog match {
-case &lt;catalog&gt;{therms @ _*}&lt;/catalog&gt; &#8658;
-for (therm &#8592; therms)
-println("processing: "<br />
-(therm <sub>"description").text)
-}processing:
-processing: hot dog #5
-processing:
-processing: Sprite Boy
-processing:
-Notice all of the lines that try to process white space as if it were a true thermometer record. What you
-would really like to do is ignore the white space and process only those sub-nodes that are inside
-a &lt;cctherm&gt; element. You can describe this subset using the pattern &lt;cctherm&gt;{</em>*}&lt;/cctherm&gt;, and
-you can restrict the for expression to iterating over items that match that pattern:
-catalog match {
-case &lt;catalog&gt;{therms @ <em>*}&lt;/catalog&gt; &#8658;
-for (therm @ &lt;cctherm&gt;{</em>*}&lt;/cctherm&gt; &#8592;
-println("processing: "<br />
-(therm </sub>"description").text)
-}
-therms)
-processing: hot dog #5
-processing: Sprite Boy
-28.9 CONCLUSION
-This chapter has only scratched the surface of what you can do with XML. There are many other
-extensions, libraries, and tools you could learn about, some customized for Scala, some made for Java
-but usable in Scala, and some language-neutral. What you should walk away from this chapter with is
-how to use semi-structured data for interchange, and how to access semi-structured data via Scala&#8217;s
-XML support.
-Footnotes for Chapter 28:
-[1] .</p></div>
+<span class="n">Доречі</span><span class="o">,</span> <span class="n">якщо</span> <span class="n">ви</span> <span class="n">бажаєте</span> <span class="n">включити</span> <span class="n">фігурні</span> <span class="n">дужки</span> <span class="n">`{`</span> <span class="n">або</span> <span class="n">`}`</span> <span class="n">як</span> <span class="nc">XML</span> <span class="n">текст</span><span class="o">,</span> <span class="n">але</span> <span class="n">не</span> <span class="n">використовувати</span> <span class="n">їх</span> <span class="n">для</span> <span class="n">виключення</span> <span class="nc">Scala</span> <span class="n">коду</span><span class="o">,</span> <span class="n">просто</span> <span class="n">запишіть</span> <span class="n">їх</span> <span class="n">два</span> <span class="n">рази</span> <span class="n">поспіль</span><span class="k">:</span> <span class="err">[</span><span class="kt">source</span><span class="o">,</span><span class="n">scala</span><span class="err">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>scala&gt; &lt;a&gt; {{{{brace yourself!}}}} &lt;/a&gt;
+res7: scala.xml.Elem = &lt;a&gt; {{brace yourself!}} &lt;/a&gt;</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>28.5 Розбиття XML на частини</code></pre>
+</div></div>
+<div class="paragraph"><p>Серед багатьох методів, доступних для XML класів, існує щонайменьше три, про які вам слідує знати. Вони дозволяють вам розбити XML на частини, багато не думаючи щодо того, як саме в точності XML представлений в Scala. Ці методи базуються на мові XPath для обробки XML. Як взагалі в Scala, ви можете писати їх напряму в коді Scala, замість викликати зовнішній інструмент.</p></div>
+<div class="paragraph"><p><strong>Екстрагування тексту.</strong> Через виклик метода <code>text</code> на любому вузлі XML ви отримуєте весь текст в вузлі, мінус тегі елементів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span><span class="nc">Sounds</span> <span class="o">&lt;</span><span class="n">tag</span><span class="o">/&gt;</span> <span class="n">good</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;.</span><span class="n">text</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">Sounds</span> <span class="n">good</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Любі закодовані символи розкодуються автоматично:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;</span> <span class="n">input</span> <span class="o">---&amp;</span><span class="n">gt</span><span class="o">;</span> <span class="n">output</span> <span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;.</span><span class="n">text</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="s">&quot; input ---&gt; output &quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p><strong>Екстрагування суб-елементів.</strong> Якщо ви бажаєте знайти суб-елементи за іменем тегу, просто викличте <code>\</code> з ім'ям тегу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">\</span><span class="s">&quot;b&quot;</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span> <span class="nc">NodeSeq</span><span class="o">(&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви також можете зробити "глибокий пошук", щоб шукати в суб-елементах, і так далі, використовуючи оператор <code>\\</code> замість <code>\</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span>
+<span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">\</span><span class="s">&quot;c&quot;</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span> <span class="nc">NodeSeq</span><span class="o">()</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">\\</span><span class="s">&quot;c&quot;</span>
+<span class="n">res12</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span> <span class="nc">NodeSeq</span><span class="o">(&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">\</span><span class="s">&quot;a&quot;</span>
+<span class="n">res13</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span> <span class="nc">NodeSeq</span><span class="o">()</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="o">\\</span><span class="s">&quot;a&quot;</span>
+<span class="n">res14</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span>
+<span class="nc">NodeSeq</span><span class="o">(&lt;</span><span class="n">a</span><span class="o">&gt;&lt;</span><span class="n">b</span><span class="o">&gt;&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">hello</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;&lt;/</span><span class="n">b</span><span class="o">&gt;&lt;/</span><span class="n">a</span><span class="o">&gt;)</span>
+</pre></div></div></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Scala використовує <code>\</code> та <code>\\</code> замість <code>/</code> та <code>//</code> в XPath. Причина в тому, що <code>//</code> починає коментар в Scala! Таким чином мав використовуватись якійсь інший символ, і інші косі роблять добре.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p><strong>Екстракція атрибутів.</strong> Ви можете екстрагувати атрибути тегу, використовуючі ті самі методи <code>\</code> та <code>\\</code>. Просто покладіть знак <code>at</code>
+(<code>@</code>) перед ім'ям атрибуту:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">joe</span> <span class="k">=</span> <span class="o">&lt;</span><span class="n">employee</span>
+          <span class="n">name</span><span class="o">=</span><span class="s">&quot;Joe&quot;</span>
+          <span class="n">rank</span><span class="o">=</span><span class="s">&quot;code monkey&quot;</span>
+          <span class="n">serial</span><span class="o">=</span><span class="s">&quot;123&quot;</span><span class="o">/&gt;</span>
+<span class="n">joe</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span> <span class="o">&lt;</span><span class="n">employee</span> <span class="n">name</span><span class="o">=</span><span class="s">&quot;Joe&quot;</span> <span class="n">rank</span><span class="o">=</span><span class="s">&quot;code monkey&quot;</span>
+ <span class="n">serial</span><span class="o">=</span><span class="s">&quot;123&quot;</span><span class="o">/&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">joe</span> <span class="o">\</span><span class="s">&quot;@name&quot;</span>
+<span class="n">res15</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span> <span class="nc">Joe</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">joe</span> <span class="o">\</span><span class="s">&quot;@serial&quot;</span>
+<span class="n">res16</span><span class="k">:</span> <span class="kt">scala.xml.NodeSeq</span> <span class="o">=</span> <span class="mi">123</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_6_">28.6 Десеаріалізація</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Використовуючи попередні методи для розбиття XML на частини, тепер ви можете написати пару до серіалізатора, парсер з XML знову назад до ваших внутрішніх структур даних. Наприклад, ви можете знови розбити примірник <code>CCTherm</code>, через використання наступного коду:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">fromXML</span><span class="o">(</span><span class="n">node</span><span class="k">:</span> <span class="kt">scala.xml.Node</span><span class="o">)</span><span class="k">:</span> <span class="kt">CCTherm</span> <span class="o">=</span>
+  <span class="k">new</span> <span class="nc">CCTherm</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">description</span> <span class="k">=</span> <span class="o">(</span><span class="n">node</span> <span class="o">\</span><span class="s">&quot;description&quot;</span><span class="o">).</span><span class="n">text</span>
+    <span class="k">val</span> <span class="n">yearMade</span> <span class="k">=</span> <span class="o">(</span><span class="n">node</span> <span class="o">\</span><span class="s">&quot;yearMade&quot;</span><span class="o">).</span><span class="n">text</span><span class="o">.</span><span class="n">toInt</span>
+    <span class="k">val</span> <span class="n">dateObtained</span> <span class="k">=</span> <span class="o">(</span><span class="n">node</span> <span class="o">\</span><span class="s">&quot;dateObtained&quot;</span><span class="o">).</span><span class="n">text</span>
+    <span class="k">val</span> <span class="n">bookPrice</span> <span class="k">=</span> <span class="o">(</span><span class="n">node</span> <span class="o">\</span><span class="s">&quot;bookPrice&quot;</span><span class="o">).</span><span class="n">text</span><span class="o">.</span><span class="n">toInt</span>
+    <span class="k">val</span> <span class="n">purchasePrice</span> <span class="k">=</span> <span class="o">(</span><span class="n">node</span> <span class="o">\</span><span class="s">&quot;purchasePrice&quot;</span><span class="o">).</span><span class="n">text</span><span class="o">.</span><span class="n">toInt</span>
+    <span class="k">val</span> <span class="n">condition</span> <span class="k">=</span> <span class="o">(</span><span class="n">node</span> <span class="o">\</span><span class="s">&quot;condition&quot;</span><span class="o">).</span><span class="n">text</span><span class="o">.</span><span class="n">toInt</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей код шукає по вхідному вузлу XML на ім'я <code>node</code>, щоб знайти кожну з шести частин даних, потрібних щоб зібрати <code>CCTherm</code>. Дані, що є текстом, отримуються через <code>.text</code> та залишаються як є. Ось цей метод в дії:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">node</span> <span class="k">=</span> <span class="n">therm</span><span class="o">.</span><span class="n">toXML</span>
+<span class="n">node</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span>
+<span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;</span><span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span><span class="o">&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">yearMade</span><span class="o">&gt;</span><span class="mi">1952</span><span class="o">&lt;/</span><span class="n">yearMade</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">dateObtained</span><span class="o">&gt;</span><span class="nc">March</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">2006</span><span class="o">&lt;/</span><span class="n">dateObtained</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">bookPrice</span><span class="o">&gt;</span><span class="mi">2199</span><span class="o">&lt;/</span><span class="n">bookPrice</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">purchasePrice</span><span class="o">&gt;</span><span class="mi">500</span><span class="o">&lt;/</span><span class="n">purchasePrice</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="mi">9</span><span class="o">&lt;/</span><span class="n">condition</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fromXML</span><span class="o">(</span><span class="n">node</span><span class="o">)</span>
+<span class="n">res17</span><span class="k">:</span> <span class="kt">CCTherm</span> <span class="o">=</span> <span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_7___">28.7 Загрузка та збереження</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Є одна остання частина, потрібна для серіалізатора даних: перетворення між XML anта потоками даних. Ця остання частина є найпростішою, оскільки є бібліотечні процедури, що будуть робити все це за вас. Ви просто маєте викликати правильну процедуру на правильних даних.</p></div>
+<div class="paragraph"><p>Щоб конвертувати XML в рядок все що вам треба, це <code>toString</code>. Присутність робочого <code>toString</code> це те, чому ви можете експериментувати з XML в оболонці Scala. Однак краще використавувати бібліотетчні процедури, та конвертувати все підряд до байтів. Таки чином, результуючий XML може включати директиву, що вказує, яке кодування символів було використане. Якщо ви закодуєте рядок до байтів самі, тоді відповідальність за відстеження кодування символів лягає на вас.</p></div>
+<div class="paragraph"><p>Щоб конвертувати з XML до файлу з байтів, ви можете використовувати команду <code>XML.save</code>. Ви маєте задати ім'я файлу і вузол, що треба зберегти:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">.</span><span class="n">xml</span><span class="o">.</span><span class="nc">XML</span><span class="o">.</span><span class="n">save</span><span class="o">(</span><span class="s">&quot;therm1.xml&quot;</span><span class="o">,</span> <span class="n">node</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Після виконання команди вище, отриманий файл <code>therm1.xml</code> виглядає наступним чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="cp">&lt;?xml version=&#39;1.0&#39; encoding=&#39;UTF-8&#39;?&gt;</span>
+<span class="nt">&lt;cctherm&gt;</span>
+  <span class="nt">&lt;description&gt;</span>hot dog #5<span class="nt">&lt;/description&gt;</span>
+  <span class="nt">&lt;yearMade&gt;</span>1952<span class="nt">&lt;/yearMade&gt;</span>
+  <span class="nt">&lt;dateObtained&gt;</span>March 14, 2006<span class="nt">&lt;/dateObtained&gt;</span>
+  <span class="nt">&lt;bookPrice&gt;</span>2199<span class="nt">&lt;/bookPrice&gt;</span>
+  <span class="nt">&lt;purchasePrice&gt;</span>500<span class="nt">&lt;/purchasePrice&gt;</span>
+  <span class="nt">&lt;condition&gt;</span>9<span class="nt">&lt;/condition&gt;</span>
+<span class="nt">&lt;/cctherm&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Завантаження простіше ніж збереження, оскільки файл містить все, що повинно знати завантажувачу. Просто викличте <code>XML.loadFile</code> з ім'ям файлу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">loadnode</span> <span class="k">=</span> <span class="n">xml</span><span class="o">.</span><span class="nc">XML</span><span class="o">.</span><span class="n">loadFile</span><span class="o">(</span><span class="s">&quot;therm1.xml&quot;</span><span class="o">)</span>
+<span class="n">loadnode</span><span class="k">:</span> <span class="kt">scala.xml.Elem</span> <span class="o">=</span>
+<span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;</span><span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span><span class="o">&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">yearMade</span><span class="o">&gt;</span><span class="mi">1952</span><span class="o">&lt;/</span><span class="n">yearMade</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">dateObtained</span><span class="o">&gt;</span><span class="nc">March</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">2006</span><span class="o">&lt;/</span><span class="n">dateObtained</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">bookPrice</span><span class="o">&gt;</span><span class="mi">2199</span><span class="o">&lt;/</span><span class="n">bookPrice</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">purchasePrice</span><span class="o">&gt;</span><span class="mi">500</span><span class="o">&lt;/</span><span class="n">purchasePrice</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="mi">9</span><span class="o">&lt;/</span><span class="n">condition</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fromXML</span><span class="o">(</span><span class="n">loadnode</span><span class="o">)</span>
+<span class="n">res14</span><span class="k">:</span> <span class="kt">CCTherm</span> <span class="o">=</span> <span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Those are the basic methods you need. There are many variations on these loading and saving methods, including methods for reading and writing to various kinds of readers, writers, input and output streams.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_8____xml">28.8 Порівняння шаблонів на XML</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Поки що ми бачили, як розділяти XML використовуючи <code>text</code> та методи, подібні до XPath <code>\</code> та <code>\\</code>. Вони гарні, коли ви знаєте точно, який тип структури XML ви розбиваєте на частки. Однак іноді існує декілька можливих структур, які може мати XML. Можливо багато різновидів записів з даними, наприклад, оскільки ви розширили вашу колекцію термометрів, щоб включити годинники та тарілки для сендвічів. Можливо ви просто бажаєте пропустити всі проміжки між тегами. З будь якої причини ви можете використовувати порівняння шаблонів для перемикання між можливостями.</p></div>
+<div class="paragraph"><p>Шаблон XML виглядає просто як XML літерал. Головна різниця в тому, що якщо ви вставляєте виключення <code>{}</code>, тоді код в <code>{}</code> не є виразом, але шаблоном. Шаблон, вставлений в <code>{}</code> може використовувати повну мову шаблонів Scala, включаючи прив'язку нових змінних, виконання перевірки типів, та ігнорування контенту з використанням шаблонів <code>_</code> та <code>_*</code>. Ось простий приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">proc</span><span class="o">(</span><span class="n">node</span><span class="k">:</span> <span class="kt">scala.xml.Node</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span>
+  <span class="n">node</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;{</span><span class="n">contents</span><span class="o">}&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="k">=&gt;</span> <span class="s">&quot;It&#39;s an a: &quot;</span> <span class="o">+</span> <span class="n">contents</span>
+    <span class="k">case</span> <span class="o">&lt;</span><span class="n">b</span><span class="o">&gt;{</span><span class="n">contents</span><span class="o">}&lt;/</span><span class="n">b</span><span class="o">&gt;</span> <span class="k">=&gt;</span> <span class="s">&quot;It&#39;s a b: &quot;</span> <span class="o">+</span> <span class="n">contents</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;It&#39;s something else.&quot;</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ця функція має перевірку шаблонів з трьома випадками. Перший випадок шукає елемент <code>&lt;a&gt;</code>, чий вміст складається з одного підвузла. Він прикліплює цей вміст до змінної на ім'я <code>contents</code>, та потім обчислює код зправа від асоційованої стрілки вправо (<code>=&gt;</code>). Другий випадок робить те саме для <code>&lt;b&gt;</code> замість <code>&lt;a&gt;</code>, та третій випадок співпадає з будь-чим, що не співпало з іншими випадками. Ось ця функція в дії:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">a</span><span class="o">&gt;</span><span class="n">apple</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;)</span>
+<span class="n">res18</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">an</span> <span class="n">a</span><span class="k">:</span> <span class="kt">apple</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">b</span><span class="o">&gt;</span><span class="n">banana</span><span class="o">&lt;/</span><span class="n">b</span><span class="o">&gt;)</span>
+<span class="n">res19</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">a</span> <span class="n">b</span><span class="k">:</span> <span class="kt">banana</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">c</span><span class="o">&gt;</span><span class="n">cherry</span><span class="o">&lt;/</span><span class="n">c</span><span class="o">&gt;)</span>
+<span class="n">res20</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">something</span> <span class="k">else</span><span class="o">.</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Скоріше всього, ця функція не саме те, що вам треба, тому що вона шукає точно такий вміст, що складається з одного субвузла в <code>&lt;a&gt;</code> або <code>&lt;b&gt;</code>. Таким чином вона буде хибити в випадках як наступний:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">a</span><span class="o">&gt;</span><span class="n">a</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">red</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">apple</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;)</span>
+<span class="n">res21</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">something</span> <span class="k">else</span><span class="o">.</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">a</span><span class="o">/&gt;)</span>
+<span class="n">res22</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">something</span> <span class="k">else</span><span class="o">.</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви бажаєте функцію, що співпадає з випадками, як цей, ви можете порівняти з послідовністю вузлів замість одного. Шаблон для "любої послідовності" XML вузлів записується <code>_*</code>. Візуально ця послідовність виглядає як підстановочний шаблон (<code>_</code>), за яким слідує regex-стильна зірочка Kleene (<code>*</code>). Ось оновлена функція, що порівнює послідовності субелементів, замість одного субелемента:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">proc</span><span class="o">(</span><span class="n">node</span><span class="k">:</span> <span class="kt">scala.xml.Node</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span>
+  <span class="n">node</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="o">&lt;</span><span class="n">a</span><span class="o">&gt;{</span><span class="n">contents</span> <span class="k">@</span> <span class="k">_</span><span class="o">*}&lt;/</span><span class="n">a</span><span class="o">&gt;</span> <span class="k">=&gt;</span> <span class="s">&quot;It&#39;s an a: &quot;</span> <span class="o">+</span> <span class="n">contents</span>
+    <span class="k">case</span> <span class="o">&lt;</span><span class="n">b</span><span class="o">&gt;{</span><span class="n">contents</span> <span class="k">@</span> <span class="k">_</span><span class="o">*}&lt;/</span><span class="n">b</span><span class="o">&gt;</span> <span class="k">=&gt;</span> <span class="s">&quot;It&#39;s a b: &quot;</span> <span class="o">+</span> <span class="n">contents</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="s">&quot;It&#39;s something else.&quot;</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що результат <code>_*</code> прикріплений до вмісту змінної через використання шаблону <code>@</code>, описаного в Розділі 15.2. Тут нова версія в дії:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">a</span><span class="o">&gt;</span><span class="n">a</span> <span class="o">&lt;</span><span class="n">em</span><span class="o">&gt;</span><span class="n">red</span><span class="o">&lt;/</span><span class="n">em</span><span class="o">&gt;</span> <span class="n">apple</span><span class="o">&lt;/</span><span class="n">a</span><span class="o">&gt;)</span>
+<span class="n">res23</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">an</span> <span class="n">a</span><span class="k">:</span> <span class="kt">ArrayBuffer</span><span class="o">(</span><span class="kt">a</span> <span class="o">,</span> <span class="kt">&lt;em&gt;red&lt;/em&gt;</span><span class="o">,</span> <span class="n">apple</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">proc</span><span class="o">(&lt;</span><span class="n">a</span><span class="o">/&gt;)</span>
+<span class="n">res24</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="nc">It</span><span class=" -Symbol">&#39;s</span> <span class="n">an</span> <span class="n">a</span><span class="k">:</span> <span class="kt">WrappedArray</span><span class="o">()</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як фінальна підказка, майте на увазі, що шаблони XML роблять дуже гарно з виразами <code>for</code>, як шлях ітерувати по деяких частинах дерева XML, при цьому ігноруючі інші частини. Наприклад, уявімо, що ви бажаєте пропустити деякі проміжки між записами в наступній XML структурі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">catalog</span> <span class="k">=</span>
+  <span class="o">&lt;</span><span class="n">catalog</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;</span><span class="n">hot</span> <span class="n">dog</span> <span class="k">#</span><span class="mi">5</span><span class="o">&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">yearMade</span><span class="o">&gt;</span><span class="mi">1952</span><span class="o">&lt;/</span><span class="n">yearMade</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">dateObtained</span><span class="o">&gt;</span><span class="nc">March</span> <span class="mi">14</span><span class="o">,</span> <span class="mi">2006</span><span class="o">&lt;/</span><span class="n">dateObtained</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">bookPrice</span><span class="o">&gt;</span><span class="mi">2199</span><span class="o">&lt;/</span><span class="n">bookPrice</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">purchasePrice</span><span class="o">&gt;</span><span class="mi">500</span><span class="o">&lt;/</span><span class="n">purchasePrice</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="mi">9</span><span class="o">&lt;/</span><span class="n">condition</span><span class="o">&gt;</span>
+    <span class="o">&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">description</span><span class="o">&gt;</span><span class="nc">Sprite</span> <span class="nc">Boy</span><span class="o">&lt;/</span><span class="n">description</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">yearMade</span><span class="o">&gt;</span><span class="mi">1964</span><span class="o">&lt;/</span><span class="n">yearMade</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">dateObtained</span><span class="o">&gt;</span><span class="nc">April</span> <span class="mi">28</span><span class="o">,</span> <span class="mi">2003</span><span class="o">&lt;/</span><span class="n">dateObtained</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">bookPrice</span><span class="o">&gt;</span><span class="mi">1695</span><span class="o">&lt;/</span><span class="n">bookPrice</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">purchasePrice</span><span class="o">&gt;</span><span class="mi">595</span><span class="o">&lt;/</span><span class="n">purchasePrice</span><span class="o">&gt;</span>
+      <span class="o">&lt;</span><span class="n">condition</span><span class="o">&gt;</span><span class="mi">5</span><span class="o">&lt;/</span><span class="n">condition</span><span class="o">&gt;</span>
+    <span class="o">&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span>
+<span class="o">&lt;/</span><span class="n">catalog</span><span class="o">&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Візуально це виглядає як два елементи в елементі <code>&lt;catalog&gt;</code>. Однак насправді їх п'ять. Існує проміжок перед, після та між двома елементами! Якщо ви не приймете до уваги ці проміжки, ви можете некоретно обробити записи термометрів, таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">catalog</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="o">&lt;</span><span class="n">catalog</span><span class="o">&gt;{</span><span class="n">therms</span> <span class="k">@</span> <span class="k">_</span><span class="o">*}&lt;/</span><span class="n">catalog</span><span class="o">&gt;</span> <span class="k">=&gt;</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">therm</span> <span class="k">&lt;-</span> <span class="n">therms</span><span class="o">)</span>
+      <span class="n">println</span><span class="o">(</span><span class="s">&quot;processing: &quot;</span> <span class="o">+</span>
+              <span class="o">(</span><span class="n">therm</span> <span class="o">~</span><span class="s">&quot;description&quot;</span><span class="o">).</span><span class="n">text</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="n">processing</span><span class="k">:</span>
+<span class="kt">processing:</span> <span class="kt">hot</span> <span class="kt">dog</span> <span class="k">#</span><span class="err">5</span>
+<span class="kt">processing:</span>
+<span class="n">processing</span><span class="k">:</span> <span class="kt">Sprite</span> <span class="kt">Boy</span>
+<span class="n">processing</span><span class="k">:</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте рядки, де іде спроба обробити всі проміжки так, якби це були б дійсними записами термометрів. Що б ви дійсно бажали зробити, це ігнорувати ці проміжки, та обробляти тільки ті субвузли, що є всередині елементу <code>&lt;cctherm&gt;</code>. Ви можете описати цю підмножину, використовуючи шаблон <code>&lt;cctherm&gt;{_*}&lt;/cctherm&gt;</code>, та ви можете обмежити вираз <code>for</code> до ітерації по елементах, що співпадають з шаблоном:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">catalog</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="o">&lt;</span><span class="n">catalog</span><span class="o">&gt;{</span><span class="n">therms</span> <span class="k">@</span> <span class="k">_</span><span class="o">*}&lt;/</span><span class="n">catalog</span><span class="o">&gt;</span> <span class="k">=&gt;</span>
+    <span class="k">for</span> <span class="o">(</span><span class="n">therm</span> <span class="k">@</span> <span class="o">&lt;</span><span class="n">cctherm</span><span class="o">&gt;{</span><span class="k">_</span><span class="o">*}&lt;/</span><span class="n">cctherm</span><span class="o">&gt;</span> <span class="k">&lt;-</span> <span class="n">therms</span><span class="o">)</span>
+      <span class="n">println</span><span class="o">(</span><span class="s">&quot;processing: &quot;</span> <span class="o">+</span>
+              <span class="o">(</span><span class="n">therm</span> <span class="o">/</span><span class="s">&quot;description&quot;</span><span class="o">).</span><span class="n">text</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="n">processing</span><span class="k">:</span> <span class="kt">hot</span> <span class="kt">dog</span> <span class="k">#</span><span class="err">5</span>
+<span class="kt">processing:</span> <span class="kt">Sprite</span> <span class="kt">Boy</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_28_9_">28.9 Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ця глава тільки подерла поверхню того, що можна робити за допомогою XML. Існує багато інших розширень, бібліотек та інструментів, про які ви можете знати, деякі з яких прилаштовані для Scala, деякі зроблені для Java, але корисні в Scala, та деякі мово-нейтральні. Що ми можемо винести з цієї глави, це як використовувати напів-структуровані дані для обміну, та як отримувати доступ до напів-структурованих даних через підтримку XML в Scala.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-18 00:14:22 EET
+ 2019-04-13 20:05:38 EEST
 </div>
 </div>
 </body>

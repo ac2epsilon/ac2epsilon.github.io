@@ -804,413 +804,416 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="_">Екстрактори</h1>
-<div class="paragraph"><p>By now you have probably grown accustomed to the concise way data can be decomposed and
-analyzed using pattern matching. This chapter shows you how to generalize this concept further. Until
-now, constructor patterns were linked to case classes. For instance, Some(x) is a valid pattern
-because Some is a case class. Sometimes you might wish that you could write patterns like this without
-creating an associated case class. In fact, you might wish to be able to create your own kinds of
-patterns. Extractors give you a way to do so. This chapter explains what extractors are and how you can
-use them to define patterns that are decoupled from an object&#8217;s representation.
-26.1 AN EXAMPLE: EXTRACTING EMAIL ADDRESSES
-To illustrate the problem extractors solve, imagine that you need to analyze strings that represent email
-addresses. Given a string, you want to decide whether it is an email address or not, and, if it is, you
-want to access the user and domain parts of the address. The traditional way to do this uses three helper
-functions:
-def isEMail(s: String): Boolean
-def domain(s: String): String
-def user(s: String): String
-With these functions, you could parse a given string s as follows:
-if (isEMail(s)) println(user(s) + " AT " + domain(s))
-else println("not an email address")
-This works, but is kind of clumsy. What&#8217;s more, things would become more complicated if you
-combined several such tests. For instance you might want to find two successive strings in a list that are
-both email addresses with the same user. You can try this yourself with the access functions defined
-previously to see what would be involved.
-You saw already in Chapter 15 that pattern matching is ideal for attacking problems like this. Let&#8217;s
-assume for the moment that you could match a string with a pattern:
-EMail(user, domain)
-The pattern would match if the string contained an embedded at sign (@). In that case it would bind
-variable user to the part of the string before the @ and variable domain to the part after it. Postulating a
-pattern like this, the previous expression could be written more clearly like this:
-s match {
-case EMail(user, domain) &#8658; println(user + " AT " + domain)
-case _ &#8658; println("not an email address")
-}The more complicated problem of finding two successive email addresses with the same user part
-would translate to the following pattern:
-ss match {
-case EMail(u1, d1) :: EMail(u2, d2) :: _ if (u1 == u2) &#8658; &#8230;
-&#8230;
-}
-This is much more legible than anything that could be written with access functions. However, the
-problem is that strings are not case classes; they do not have a representation that conforms
-to EMail(user, domain). This is where Scala&#8217;s extractors come in: they let you define new patterns for
-pre-existing types, where the pattern need not follow the internal representation of the type.
-26.2 EXTRACTORS
-An extractor in Scala is an object that has a method called unapply as one of its members. The purpose
-of that unapply method is to match a value and take it apart. Often, the extractor object also defines a
-dual method apply for building values, but this is not required. As an example, Listing 26.1 shows an
-extractor object for email addresses:
-object EMail {
+<div class="paragraph"><p>Тепер ви, можливо, зростили бажання мати стислий спосіб, яким дані можуть бути декомпоновані і проаналізовані з використанням співпадіння шаблонів. Ця глава показує вам,як надалі узагальнити цю концепцію. До цього часу шаблони конструкторів були пов'язані з кейс класами. Наприклад, <code>Some(x)</code> є валідним шаблоном, оскільки <code>Some</code> є кейс класом. Іноді ви будете бажати створити шаблон як цей,  без створення асоційованого кейс класу. Фактично, ви можете побажати створити власний різновид шаблону. Екстрактори дають вам спосіб зробити це. Ця глава пояснює, що таке екстрактори, і як ви їх можете використовувати для визначення шаблонів, що відділені від репрезентації об'єкта.</p></div>
+<div class="sect1">
+<h2 id="_26_1_____">26.1 Приклад: отриманння адреси електронної пошти</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Щоб проілюструвати проблему, яку використовує екстрактор, уявімо, що вам треба проаналізувати рядкі, що представляють адреси електронної пошти. Беручи рядок, ви бажаєте вирішити, чи є це адреса електронної пошти, або ні, та, якщо це так, ви бажаєте отримати доступ до частин користувача та домена цієї адреси. Традиційний спосіб зробити це задіє три допоміжні функції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">isEMail</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span>
+<span class="k">def</span> <span class="n">domain</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span>
+<span class="k">def</span> <span class="n">user</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span>
+</pre></div></div></div>
+<div class="paragraph"><p>З ціма функціями ви можете розібрати наданий рядок таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">if</span> <span class="o">(</span><span class="n">isEMail</span><span class="o">(</span><span class="n">s</span><span class="o">))</span> <span class="n">println</span><span class="o">(</span><span class="n">user</span><span class="o">(</span><span class="n">s</span><span class="o">)</span> <span class="o">+</span> <span class="s">&quot; AT &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="o">(</span><span class="n">s</span><span class="o">))</span>
+<span class="k">else</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;not an email address&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це робить, але дещо неоковирно. Що більше, речі ставатимуть складнішими, якщо вам треба зробити декілька такіх перевірок. Наприклад, ви можете побажати знайти дві послідовні рядки в списку, що обоє є адресами електрнної пошти з тим самим користувачем. Ви можете спробувати це самотужки, за допомогою попередньо визначених функцій доступу, щоб побачити, що для цього знадобиться.</p></div>
+<div class="paragraph"><p>Ви вже бачили в Главі 15, що порівняння шаблонів є ідеальним для атак на проблеми як ця. Давайте на мить уявімо, що ви можете порівняти рядок з шаблоном:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">EMail</span><span class="o">(</span><span class="n">user</span><span class="o">,</span> <span class="n">domain</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Шаблон співпадатиме, якщо рядок містить символ <code>at</code> (<code>@</code>). В цьому випадку він може прикріпляти змінну <code>user</code> до частини рядка до <code>@</code>, та змінну <code>domain</code> до частини після нього. Постулюючи шаблон такого вигляду, попередній вираз може бути записаний більш ясно, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">s</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">EMail</span><span class="o">(</span><span class="n">user</span><span class="o">,</span> <span class="n">domain</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">user</span> <span class="o">+</span> <span class="s">&quot; AT &quot;</span> <span class="o">+</span> <span class="n">domain</span><span class="o">)</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;not an email address&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Більш складна проблема пошуку двох послідовних адрес з тим же користувачем буде транслюватись в наступний шаблон:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">ss</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">EMail</span><span class="o">(</span><span class="n">u1</span><span class="o">,</span> <span class="n">d1</span><span class="o">)</span> <span class="o">::</span> <span class="nc">EMail</span><span class="o">(</span><span class="n">u2</span><span class="o">,</span> <span class="n">d2</span><span class="o">)</span> <span class="o">::</span> <span class="k">_</span> <span class="k">if</span> <span class="o">(</span><span class="n">u1</span> <span class="o">==</span> <span class="n">u2</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">...</span>
+<span class="o">...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це значно більш прийнятно, ніж будь-що, що може бути написане за допомогою функцій доступу. Однак проблема в тому, що рядкі не кейс класи; вони не мають репрезентації, що відповідає до <code>EMail(user, domain)</code>. Ось де з'являються екстрактори Scala: вони дозволяють вам визначити нові шаблони для вже визначених типів, де шаблон не має слідувати внутрішній репрезентації типу.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_26_2_">26.2 Екстрактори</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Екстрактором в Scala є об'єкт, що має метод з назвою <code>unapply`в якості свого члена. Призначення метода `unapply</code> є порівнювати значення та розбивати його на частини. Часто об'єкт екстрактора також визначає парний метод <code>apply</code> для побудови значень, але це не вимагається. Як приклад, Лістинг 26.1 показує об'єкт екстрактора для адрес електронної пошти:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">EMail</span> <span class="o">{</span>
+  <span class="c1">// Метод ін&#39;єкції (опціональний)</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">user</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">domain</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">user</span> <span class="o">+</span> <span class="s">&quot;@&quot;</span> <span class="o">+</span> <span class="n">domain</span>
 
-def apply(user: String, domain: String) = user + "@" + domain
-}
+<span class="c1">// Метод екстракції (обов&#39;язковий)</span>
+  <span class="k">def</span> <span class="n">unapply</span><span class="o">(</span><span class="n">str</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">parts</span> <span class="k">=</span> <span class="n">str</span> <span class="n">split</span> <span class="s">&quot;@&quot;</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">parts</span><span class="o">.</span><span class="n">length</span> <span class="o">==</span> <span class="mi">2</span><span class="o">)</span> <span class="nc">Some</span><span class="o">(</span><span class="n">parts</span><span class="o">(</span><span class="mi">0</span><span class="o">),</span> <span class="n">parts</span><span class="o">(</span><span class="mi">1</span><span class="o">))</span> <span class="k">else</span> <span class="nc">None</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.1 - Рядковий об'єкт <code>EMail</code> екстрактора.</p></div>
+<div class="paragraph"><p>Цей об'єкт визначає одночасно методи <code>apply</code> та <code>unapply</code>. Метод <code>apply</code> має таке значення, як і завжди: він перетворює <code>EMail</code> в об'єкт, що може бути застосований до аргументів в дужках, в той же спосіб, як застосовуються методи. Так що ви можете написати <code>EMail("John", "epfl.ch")</code> для конструювання рядка <code>"John@epfl.ch"</code>. Щоб зробити це більш явним, ви можете також дозволити <code>EMail</code> наслідувати функціональний тип Scala, як тут:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">EMail</span> <span class="k">extends</span> <span class="o">((</span><span class="nc">String</span><span class="o">,</span> <span class="nc">String</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">String</span><span class="o">)</span> <span class="o">{</span> <span class="o">...</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="admonitionblock">
+<table><tr>
+<td class="icon">
+<img src="./images/icons/note.png" alt="Note" />
+</td>
+<td class="content">Частина <code>(String, String) =&gt; String</code> декларації попереднього об'єкта означає те саме, що і <code>Function2[String, String, String]</code>, що декларує абстрактний метод <code>apply</code>, що реалізує <code>EMail</code>. Як результат цієї декларації ви можете, наприклад, передати <code>EMail</code> до метода, що очікує <code>Function2[String, String, String]</code>.</td>
+</tr></table>
+</div>
+<div class="paragraph"><p>Метод <code>unapply</code> це те, що перетворює <code>EMail</code> в екстрактор. В деякому сенсі він обератє процес конструктора в <code>apply</code>. Коли <code>apply</code> приймає два рядки, та формує на їх основі рядок адреси, <code>unapply</code> приймає рядок адреси, та потенційно повертає два рядка: <code>user</code> та <code>domain</code> цієї адреси. Але <code>unapply</code> має також обробляти випадок, коли наданий рядок не є електронною адресою. Ось чому <code>unapply</code> повертає тип <code>Option</code> для пари рядків. Його результат є або <code>Some(user, domain)</code>, якщо рядок <code>str</code> є адресою з певними частинами <code>user</code> та <code>domain</code>,<span class="footnote"><br />[Як тут демонструється, де <code>Some</code> застосовується до тапла <code>(user, domain)</code>, ви можете полишити пару дужок, коли передаєте тапл до функції, що приймає один аргумент. Таким чином, <code>Some(user, domain)</code> означає те саме, що і <code>Some((user, domain))</code>.]<br /></span> або <code>None</code>, якщо <code>str</code> не є адресою електронної пошти. Ось деякі приклади:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">unapply</span><span class="o">(</span><span class="s">&quot;John@epfl.ch&quot;</span><span class="o">)</span> <span class="n">equals</span> <span class="nc">Some</span><span class="o">(</span><span class="s">&quot;John&quot;</span><span class="o">,</span> <span class="s">&quot;epfl.ch&quot;</span><span class="o">)</span>
+<span class="n">unapply</span><span class="o">(</span><span class="s">&quot;John Doe&quot;</span><span class="o">)</span> <span class="n">equals</span> <span class="nc">None</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер, коли порівняння шаблонів натрапляє на шаблон, що посилається на об'єкт екстрактора, він викликає метод екстрактора <code>unapply</code> на виразі селектора. Наприклад, виконання кода:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">selectorString</span> <span class="k">match</span> <span class="o">{</span> <span class="k">case</span> <span class="nc">EMail</span><span class="o">(</span><span class="n">user</span><span class="o">,</span> <span class="n">domain</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">...</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>буде призводити до виклика:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">EMail</span><span class="o">.</span><span class="n">unapply</span><span class="o">(</span><span class="n">selectorString</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як ви бачили до цього, цей виклик до <code>EMail.unapply</code> буде повертати або <code>None</code> або <code>Some(u, d)</code> для деяких значень, <code>u</code> для частини адреси <code>user</code>, та <code>d</code> для чистини <code>domain</code>. В випадку <code>None</code> шаблоне на співпадає, і система намагається порівняти інший шаблон, або схибить з виключенням <code>MatchError</code>. В випадку <code>Some(u, d)</code> шаблон співпадає, та його змінні прикріплюються до елементів повернутого значення. В попередньому порівнянні <code>user</code> буде зв'язано з <code>u</code>, та <code>domain</code> буде прив'язаний до <code>d</code>.</p></div>
+<div class="paragraph"><p>В прикладі з шаблоном порівняння <code>EMail</code> тип <code>String</code> виразу селектора, <code>selectorString</code>, відповідає до типу аргумента <code>unapply</code> (що в прикладі також був <code>String</code>). Це досить загальне, але не обов'язкове. Також можливо використовувати екстрактор <code>EMail</code> для порівняння <code>match</code> виразів для більш загальних типів. Наприклад, щоб знайти, чи довільне значення <code>x</code> є рядком адреси електронної пошти, ви можете записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Any</span> <span class="o">=</span> <span class="o">...</span>
+<span class="n">x</span> <span class="k">match</span> <span class="o">{</span> <span class="k">case</span> <span class="nc">EMail</span><span class="o">(</span><span class="n">user</span><span class="o">,</span> <span class="n">domain</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">...</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи цей код, порівнювач шаблонів зпочатку перевірить, чи надане значення <code>x</code> відповідає до <code>String</code>, тип параметру метода <code>EMail</code> <code>unapply</code>. Якщо він відповідає, значення приводиться до <code>String</code>, та співпадіння шаблонів продовжується як звичайно. Якщо він не відповідає, шаблон безпосередньо зазнає невдачі.</p></div>
+<div class="paragraph"><p>В об'єкті <code>EMail</code> метод <code>apply</code> називається ін'єкцією, оскільки він приймає деякі аргументи, та отримує елемент наданої множини (в нашому випадку множину рядків, що є інтернет адресами). Метод <code>unapply</code> називається екстракцією, оскільки він бере елемент з тієї ж множини, та екстрагує деякі з його частин (в нашому випадку субрядки <code>user</code> та <code>domain</code>). Ін'єкції та екстракції часто групіюються разом в одному об'єкті, оскільки ви можете використовувати ім'я об'єкта для обох, конструктора та шаблона, що симулює домовленість про порівняння шаблонів для кейс класів. Однак також можливо визначити екстракцію в об'єкті без відповідної ін'єкції. Сам об'єкт називається екстрактором, безвідносно, чи має чи ні метод <code>apply</code>.</p></div>
+<div class="paragraph"><p>Якщо метод ін'єкції включений, він має доповнювати метод екстракції. Наприклад, виклик:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">EMail</span><span class="o">.</span><span class="n">unapply</span><span class="o">(</span><span class="nc">EMail</span><span class="o">.</span><span class="n">apply</span><span class="o">(</span><span class="n">user</span><span class="o">,</span> <span class="n">domain</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>повинен повертати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Some</span><span class="o">(</span><span class="n">user</span><span class="o">,</span> <span class="n">domain</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>тобто та сама послідовність аргументів, огорнена в <code>Some</code>. Ідучи в іншому напрямку означає спочатку викликати метод <code>unapply</code>, та потім <code>apply</code>, як показано в наступному коді:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">EMail</span><span class="o">.</span><span class="n">unapply</span><span class="o">(</span><span class="n">obj</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="n">u</span><span class="o">,</span> <span class="n">d</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">EMail</span><span class="o">.</span><span class="n">apply</span><span class="o">(</span><span class="n">u</span><span class="o">,</span> <span class="n">d</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В уьому коді, якщо <code>match</code> на <code>obj</code> матиме успіх, ви очікуєте отримати той самий об'єкт від <code>apply</code>. Ці дві умови для дуальності <code>apply</code> та <code>unapply</code> є гарним принципом дизайну. Вони не примушуються Scala, але їх рекомендовано дотримуватись, коли розробляєте ваші екстрактори.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_26_3______">26.3 Шаблони з нулем або однією змінною</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Метод <code>unapply</code> в попередньому прикладі повертає пару значень елемента в разі успіху. Це легко узагальнити до шаблонів з більш ніж двома змінними. Щоб прікрипити <code>N</code> змінних, <code>unapply</code> має повертати тапл з N елементів, огорнутий в <code>Some</code>.</p></div>
+<div class="paragraph"><p>Однак випадок, коли шаблон прикріплює лише одну змінну, трактується по-іншому. В Scala немає тапла з одним елементом. Щоб повернути тільки один елемент шаблону метод <code>unapply</code> просто огортає сам елемент в <code>Some</code>. Наприклад, об'єкт екстрактор, показаний на Лістингу 26.2, визначає <code>unapply</code> для рідків, що складається з деяких субрядків, з'являючись два рази поспіль:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Twice</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">s</span> <span class="o">+</span> <span class="n">s</span>
+  <span class="k">def</span> <span class="n">unapply</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">length</span> <span class="k">=</span> <span class="n">s</span><span class="o">.</span><span class="n">length</span> <span class="o">/</span> <span class="mi">2</span>
+    <span class="k">val</span> <span class="n">half</span> <span class="k">=</span> <span class="n">s</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">length</span><span class="o">)</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">half</span> <span class="o">==</span> <span class="n">s</span><span class="o">.</span><span class="n">substring</span><span class="o">(</span><span class="n">length</span><span class="o">))</span> <span class="nc">Some</span><span class="o">(</span><span class="n">half</span><span class="o">)</span> <span class="k">else</span> <span class="nc">None</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.2 - Об'єкт екстрактора рядків <code>Twice</code>.</p></div>
+<div class="paragraph"><p>Також можливо, щоб шаблон екстрактора взагалі не прикріпляв жодних змінних. В цьому випадку відповідний метод <code>unapply</code> повертає логічне <code>true</code> для успіха, та <code>false</code> для невдачі. Наприклад, об'єкт екстрактора, показаний в Лістингу 26.3, характеризує рядкі, що складаються лише з великих літер:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">UpperCase</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">unapply</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">s</span><span class="o">.</span><span class="n">toUpperCase</span> <span class="o">==</span> <span class="n">s</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.3 - Об'єкт екстрактора рядків <code>UpperCase</code>.</p></div>
+<div class="paragraph"><p>На це раз екстрактор тільки визначає <code>unapply</code>, але не <code>apply</code>. Не буде сенсу з визначення <code>apply</code>, бо нічого конструювати. Наступна функція <code>userTwiceUpper</code> застосовує всі попередньо визначені екстрактори разом в своєму коді співпадіння шаблонів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">userTwiceUpper</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="n">s</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">EMail</span><span class="o">(</span><span class="nc">Twice</span><span class="o">(</span><span class="n">x</span> <span class="k">@</span> <span class="nc">UpperCase</span><span class="o">()),</span> <span class="n">domain</span><span class="o">)</span> <span class="k">=&gt;</span>
+    <span class="s">&quot;match: &quot;</span> <span class="o">+</span> <span class="n">x</span> <span class="o">+</span> <span class="s">&quot; in domain &quot;</span> <span class="o">+</span> <span class="n">domain</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+    <span class="s">&quot;no match&quot;</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Перший шаблон цієї функції співпадає з рядками, що є адресами електронної пошти, чия частина <code>user</code> складається з двох входжень того самого рядка великими літерами. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">userTwiceUpper</span><span class="o">(</span><span class="s">&quot;DIDI@hotmail.com&quot;</span><span class="o">)</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="k">match:</span> <span class="kt">DI</span> <span class="kt">in</span> <span class="kt">domain</span> <span class="kt">hotmail.com</span>
 
-def unapply(str: String): Option[(String, String)] = {
-val parts = str split "@"
-if (parts.length == 2) Some(parts(0), parts(1)) else None
-}
-Listing 26.1 - The EMail string extractor object.
-This object defines both apply and unapply methods. The apply method has the same meaning as
-always: it turns EMail into an object that can be applied to arguments in parentheses in the same way a
-method is applied. So you can write EMail("John", "epfl.ch") to construct the string"John@epfl.ch". To
-make this more explicit, you could also let EMail inherit from Scala&#8217;s function type, like this:
-object EMail extends ((String, String) &#8658; String) { &#8230; }
-Note
-The "(String, String) &#8658; String" portion of the previous object declaration means the same
-as Function2[String, String, String], which declares an abstract apply method that EMail implements.
-As a result of this declaration, you could, for example, passEMail to a method expecting
-a Function2[String, String, String].
-The unapply method is what turns EMail into an extractor. In a sense, it reverses the construction
-process of apply. Where apply takes two strings and forms an email address string out ofthem, unapply takes an email address and returns potentially two strings: the user and the domain of the
-address. But unapply must also handle the case where the given string is not an email address. That&#8217;s
-why unapply returns an Option-type over pairs of strings. Its result is either Some(user, domain) if the
-string str is an email address with the given user and domainparts,<span class="footnote"><br />[As demonstrated here, where Some is applied to the tuple, (user, domain), you can leave off one pair of parentheses when passing a tuple to a function that takes a single argument. Thus,Some(user, domain) means the same as Someuser.]<br /></span> or None, if str is not an email
-address. Here are some examples:
-unapply("John@epfl.ch") equals Some("John", "epfl.ch")
-unapply("John Doe") equals None
-Now, whenever pattern matching encounters a pattern referring to an extractor object, it invokes the
-extractor&#8217;s unapply method on the selector expression. For instance, executing the code:
-selectorString match { case EMail(user, domain) &#8658; &#8230; }
-would lead to the call:
-EMail.unapply(selectorString)
-As you saw previously, this call to EMail.unapply will return either None or Some(u, d), for some
-values u for the user part of the address and d for the domain part. In the None case, the pattern does
-not match, and the system tries another pattern or fails with a MatchError exception. In
-the Some(u, d) case, the pattern matches and its variables are bound to the elements of the returned
-value. In the previous match, user would be bound to u and domain would be bound tod.
-In the EMail pattern matching example, the type String of the selector expression,selectorString,
-conformed to unapply&#8217;s argument type (which in the example was also String). This is quite common,
-but not necessary. It would also be possible to use the EMail extractor to match selector expressions for
-more general types. For instance, to find out whether an arbitrary value x was an email address string,
-you could write:
-val x: Any = &#8230;
-x match { case EMail(user, domain) &#8658; &#8230; }
-Given this code, the pattern matcher will first check whether the given value x conforms toString, the
-parameter type of EMail&#8217;s unapply method. If it does conform, the value is cast toString and pattern
-matching proceeds as before. If it does not conform, the pattern fails immediately.
-In object EMail, the apply method is called an injection, because it takes some arguments and yields an
-element of a given set (in our case: the set of strings that are email addresses). Theunapply method is
-called an extraction, because it takes an element of the same set and extracts some of its parts (in our
-case: the user and domain substrings). Injections and extractions are often grouped together in one
-object, because then you can use the object&#8217;s name for both a constructor and a pattern, which simulates
-the convention for pattern matching with case classes. However, it is also possible to define an
-extraction in an object without a corresponding injection. The object itself is called an extractor,
-regardless of whether or not it has an apply method.
-If an injection method is included, it should be the dual to the extraction method. For instance, a call of:EMail.unapply(EMail.apply(user, domain))
-should return:
-Some(user, domain)
-i.e., the same sequence of arguments wrapped in a Some. Going in the other direction means running
-first the unapply and then the apply, as shown in the following code:
-EMail.unapply(obj) match {
-case Some(u, d) &#8658; EMail.apply(u, d)
-}
-In that code, if the match on obj succeeds, you&#8217;d expect to get back that same object from theapply.
-These two conditions for the duality of apply and unapply are good design principles. They are not
-enforced by Scala, but it&#8217;s recommended to keep to them when designing your extractors.
-26.3 PATTERNS WITH ZERO OR ONE VARIABLES
-The unapply method of the previous example returned a pair of element values in the success case. This
-is easily generalized to patterns of more than two variables. To bind N variables, anunapply would
-return an N-element tuple, wrapped in a Some.
-The case where a pattern binds just one variable is treated differently, however. There is no one-tuple in
-Scala. To return just one pattern element, the unapply method simply wraps the element itself in
-a Some. For example, the extractor object shown in Listing 26.2 defines applyand unapply for strings
-that consist of the same substring appearing twice in a row:
-object Twice {
-def apply(s: String): String = s + s
-def unapply(s: String): Option[String] = {
-val length = s.length / 2
-val half = s.substring(0, length)
-if (half == s.substring(length)) Some(half) else None
-}
-}
-Listing 26.2 - The Twice string extractor object.
-It&#8217;s also possible that an extractor pattern does not bind any variables. In that case the
-corresponding unapply method returns a boolean—true for success and false for failure. For instance,
-the extractor object shown in Listing 26.3 characterizes strings consisting of all uppercase characters:
-object UpperCase {
-def unapply(s: String): Boolean = s.toUpperCase == s
-}
-Listing 26.3 - The UpperCase string extractor object.
-This time, the extractor only defines an unapply, but not an apply. It would make no sense to define
-an apply, as there&#8217;s nothing to construct.The following userTwiceUpper function applies all previously defined extractors together in its pattern
-matching code:
-def userTwiceUpper(s: String) = s match {
-case EMail(Twice(x @ UpperCase()), domain) &#8658;
-"match: " + x + " in domain " + domain
-case _ &#8658;
-"no match"
-}
-The first pattern of this function matches strings that are email addresses whose user part consists of
-two occurrences of the same string in uppercase letters. For instance:
-scala&gt; userTwiceUpper("DIDI@hotmail.com")
-res0: String = match: DI in domain hotmail.com
-scala&gt; userTwiceUpper("DIDO@hotmail.com")
-res1: String = no match
-scala&gt; userTwiceUpper("didi@hotmail.com")
-res2: String = no match
-Note that UpperCase in function userTwiceUpper takes an empty parameter list. This cannot be omitted
-as otherwise the match would test for equality with the object UpperCase! Note also that, even
-though UpperCase() itself does not bind any variables, it is still possible to associate a variable with the
-whole pattern matched by it. To do this, you use the standard scheme of variable binding explained
-in Section 15.2: the form x @ UpperCase() associates the variable xwith the pattern matched
-by UpperCase(). For instance, in the first userTwiceUpper invocation above, x was bound to "DI",
-because that was the value against which the UpperCase() pattern was matched.
-26.4 VARIABLE ARGUMENT EXTRACTORS
-The previous extraction methods for email addresses all returned a fixed number of element values.
-Sometimes, this is not flexible enough. For example, you might want to match on a string representing
-a domain name, so that every part of the domain is kept in a different sub-pattern. This would let you
-express patterns such as the following:
-dom match {
-case Domain("org", "acm") &#8658; println("acm.org")
-case Domain("com", "sun", "java") &#8658; println("java.sun.com")
-case Domain("net", _*) &#8658; println("a .net domain")
-}
-In this example things were arranged so that domains are expanded in reverse order—from the top-
-level domain down to the sub-domains. This was done so that you could better profit from sequence
-patterns. You saw in Section 15.2 that a sequence wildcard pattern, _*, at the end of an argument list
-matches any remaining elements in a sequence. This feature is more useful if the top-level domain
-comes first, because then you can use sequence wildcards to match sub-domains of arbitrary depth.The question remains how an extractor can support vararg matching as shown in the previous example,
-where patterns can have a varying number of sub-patterns. The unapplymethods encountered so far are
-not sufficient, because they each return a fixed number of sub-elements in the success case. To handle
-this case, Scala lets you define a different extraction method specifically for vararg matching. This
-method is called unapplySeq. To see how it is written, have a look at the Domain extractor, shown
-in Listing 26.4:
-object Domain {
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">userTwiceUpper</span><span class="o">(</span><span class="s">&quot;DIDO@hotmail.com&quot;</span><span class="o">)</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">no</span> <span class="k">match</span>
 
-def apply(parts: String*): String =
-parts.reverse.mkString(".")
-}
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">userTwiceUpper</span><span class="o">(</span><span class="s">&quot;didi@hotmail.com&quot;</span><span class="o">)</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">no</span> <span class="k">match</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що <code>UpperCase</code> в функції <code>userTwiceUpper</code> приймає порожній список параметрів. Цього неможливо оминути, бо тоді <code>match</code> буде тестувати на рівність з об'єктом <code>UpperCase</code>! Зауважте також, що хоча <code>UpperCase()</code> сам не прикріплює жодних змінних, все ще можливо асоціювати змінну з цілим шаблоном, що співпав. Щоб зробити це, ви використовуєте стантартну схему прикріплення змінних, пояснену в Розділі 15.2: форма <code>x @ UpperCase()</code> асоціює змінну з <code>x</code> шаблоном, співпавшим з <code>UpperCase()</code>. Наприклад, в першому виклику <code>userTwiceUpper</code> вище, <code>x</code> був прив'язаний до <code>"DI"</code>, оскільки це було значення, з яким порівнювався шаблон <code>UpperCase()</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_26_4____">26.4 Екстрактори зі змінними аргументами</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Попередні методи екстракторів для електронної пошти всі повертали фіксоване число значень елеменів. Іноді це недостатньо гнучко. Наприклад, ви можете бажати порівняти на рядку, що містить ім'я домені, так щоб кожна частина домену зберігалась в іншому субшаблоні. Це дозволить вам виразити такі шаблони:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">dom</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Domain</span><span class="o">(</span><span class="s">&quot;org&quot;</span><span class="o">,</span> <span class="s">&quot;acm&quot;</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;acm.org&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="nc">Domain</span><span class="o">(</span><span class="s">&quot;com&quot;</span><span class="o">,</span> <span class="s">&quot;sun&quot;</span><span class="o">,</span> <span class="s">&quot;java&quot;</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;java.sun.com&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="nc">Domain</span><span class="o">(</span><span class="s">&quot;net&quot;</span><span class="o">,</span> <span class="k">_</span><span class="o">*)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;a .net domain&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому прикладі речі аранжовані так, щоб домени витрачались в зворотньому порядку — від вищого рівня до субдоменів. Це зроблене так, щоб отримати більше вигод від шаблонів послідовностей. Ви бачили в Розділі 15.2, що шаблон підстановки послідовностей, <code>_*</code>, в кінці списку аргументів співпадає з любим залишком елементів в послідовності. Ця можливість більш корисна, якщо домени вищого рівня ідуть першими, оскільки тоді ви можете використовувати підстановки послідовностей для співпадіння субдоменів на довільну глибину.</p></div>
+<div class="paragraph"><p>Залишається питання, як екстрактор може підтримувати співпадіння <code>vararg</code>, як показано в попередньому прикладі, де шаблони можуть мати змінне число субшаблонів. Методи <code>unapply</code>, що ми зустрічали до цього, недостатні, оскільки кожний з них повертає фіксоване число субелементів в випадку успіху. Щоб обробити цей випадок, Scala дозволяє визначити інший метод екстрактора спеціально для vararg співпадіння. Цей метод має назву <code>unapplySeq</code>. Щоб побачити, як це записується, подивіться на екстрактор <code>Domain</code>, показаний в Лістингу 26.4:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Domain</span> <span class="o">{</span>
+  <span class="c1">// Метод ін&#39;єкції (опціональний)</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">parts</span><span class="k">:</span> <span class="kt">String*</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span>
+    <span class="n">parts</span><span class="o">.</span><span class="n">reverse</span><span class="o">.</span><span class="n">mkString</span><span class="o">(</span><span class="s">&quot;.&quot;</span><span class="o">)</span>
 
-def unapplySeq(whole: String): Option[Seq[String]] =
-Some(whole.split("\\.").reverse)
-Listing 26.4 - The Domain string extractor object.
-The Domain object defines an unapplySeq method that first splits the string into parts separated by
-periods. This is done using Java&#8217;s split method on strings, which takes a regular expression as its
-argument. The result of split is an array of substrings. The result ofunapplySeq is then that array with
-all elements reversed and wrapped in a Some.
-The result type of an unapplySeq must conform to Option[Seq[T]], where the element type T is
-arbitrary. As you saw in Section 17.1, Seq is an important class in Scala&#8217;s collection hierarchy. It&#8217;s a
-common superclass of several classes describing different kinds of
-sequences: Lists,Arrays, WrappedString, and several others.
-For symmetry, Domain also has an apply method that builds a domain string from a variable argument
-parameter of domain parts starting with the top-level domain. As always, the applymethod is optional.
-You can use the Domain extractor to get more detailed information out of email strings. For instance, to
-search for an email address named "tom" in some ".com" domain, you could write the following
-function:
-def isTomInDotCom(s: String): Boolean = s match {
-case EMail("tom", Domain("com", _*)) &#8658; true
-case _ &#8658; false
-}
-This gives the expected results:
-scala&gt; isTomInDotCom("tom@sun.com")
-res3: Boolean = true
-scala&gt; isTomInDotCom("peter@sun.com")
-res4: Boolean = false
-scala&gt; isTomInDotCom("tom@acm.org")
-res5: Boolean = falseIt&#8217;s also possible to return some fixed elements from an unapplySeq together with the variable part.
-This is expressed by returning all elements in a tuple, where the variable part comes last, as usual. As
-an example, Listing 26.5 shows a new extractor for emails where the domain part is already expanded
-into a sequence:
-object ExpandedEMail {
-def unapplySeq(email: String)
-: Option[(String, Seq[String])] = {
-val parts = email split "@"
-if (parts.length == 2)
-Some(parts(0), parts(1).split("\\.").reverse)
-else
-None
-}
-}
-Listing 26.5 - The ExpandedEMail extractor object.
-The unapplySeq method in ExpandedEMail returns an optional value of a pair (a Tuple2). The first
-element of the pair is the user part. The second element is a sequence of names representing the
-domain. You can match on this as usual:
-scala&gt; val s = "tom@support.epfl.ch"
-s: String = <a href="mailto:tom@support.epfl.ch">tom@support.epfl.ch</a>
-scala&gt; val ExpandedEMail(name, topdom, subdoms @ _*) = s
-name: String = tom
-topdom: String = ch
-subdoms: Seq[String] = WrappedArray(epfl, support)
-26.5 EXTRACTORS AND SEQUENCE PATTERNS
-You saw in Section 15.2 that you can access the elements of a list or an array using sequence patterns
-such as:
-List()
-List(x, y, _*)
-Array(x, 0, 0, _)
-In fact, these sequence patterns are all implemented using extractors in the standard Scala library. For
-instance, patterns of the form List(&#8230;) are possible because the scala.Listcompanion object is an
-extractor that defines an unapplySeq method. Listing 26.6 shows the relevant definitions:
-package scala
-object List {
-def apply[T](elems: T*) = elems.toList
-def unapplySeq[T](x: List[T]): Option[Seq[T]] = Some(x)
-&#8230;
-}Listing 26.6 - An extractor that defines an unapplySeq method.
-The List object contains an apply method that takes a variable number of arguments. That&#8217;s what lets
-you write expressions such as:
-List()
-List(1, 2, 3)
-It also contains an unapplySeq method that returns all elements of the list as a sequence. That&#8217;s what
-supports List(&#8230;) patterns. Very similar definitions exist in the object scala.Array. These support
-analogous injections and extractions for arrays.
-26.6 EXTRACTORS VERSUS CASE CLASSES
-Even though they are very useful, case classes have one shortcoming: they expose the concrete
-representation of data. This means that the name of the class in a constructor pattern corresponds to the
-concrete representation type of the selector object. If a match against:
-case C(&#8230;)
-succeeds, you know that the selector expression is an instance of class C.
-Extractors break this link between data representations and patterns. You have seen in the examples in
-this section that they enable patterns that have nothing to do with the data type of the object that&#8217;s
-selected on. This property is called representation independence. In open systems of large size,
-representation independence is very important because it allows you to change an implementation type
-used in a set of components without affecting clients of these components.
-If your component had defined and exported a set of case classes, you&#8217;d be stuck with them because
-client code could already contain pattern matches against these case classes. Renaming some case
-classes or changing the class hierarchy would affect client code. Extractors do not share this problem,
-because they represent a layer of indirection between a data representation and the way it is viewed by
-clients. You could still change a concrete representation of a type, as long as you update all your
-extractors with it.
-Representation independence is an important advantage of extractors over case classes. On the other
-hand, case classes also have some advantages of their own over extractors. First, they are much easier
-to set up and to define, and they require less code. Second, they usually lead to more efficient pattern
-matches than extractors, because the Scala compiler can optimize patterns over case classes much
-better than patterns over extractors. This is because the mechanisms of case classes are fixed, whereas
-an unapply or unapplySeq method in an extractor could do almost anything. Third, if your case classes
-inherit from a sealed base class, the Scala compiler will check your pattern matches for exhaustiveness
-and will complain if some combination of possible values is not covered by a pattern. No such
-exhaustiveness checks are available for extractors.
-So which of the two methods should you prefer for your pattern matches? It depends. If you write code
-for a closed application, case classes are usually preferable because of their advantages in conciseness,speed and static checking. If you decide to change your class hierarchy later, the application needs to be
-refactored, but this is usually not a problem. On the other hand, if you need to expose a type to
-unknown clients, extractors might be preferable because they maintain representation independence.
-Fortunately, you need not decide right away. You could always start with case classes and then, if the
-need arises, change to extractors. Because patterns over extractors and patterns over case classes look
-exactly the same in Scala, pattern matches in your clients will continue to work.
-Of course, there are also situations where it&#8217;s clear from the start that the structure of your patterns does
-not match the representation type of your data. The email addresses discussed in this chapter were one
-such example. In that case, extractors are the only possible choice.
-26.7 REGULAR EXPRESSIONS
-One particularly useful application area of extractors are regular expressions. Like Java, Scala provides
-regular expressions through a library, but extractors make it much nicer to interact with them.
-Forming regular expressions
-Scala inherits its regular expression syntax from Java, which in turn inherits most of the features of
-Perl. We assume you know that syntax already; if not, there are many accessible tutorials, starting with
-the Javadoc documentation of class java.util.regex.Pattern. Here are just some examples that should be
-enough as refreshers:
-ab?
-An &#8216;a&#8217;, possibly followed by a &#8216;b&#8217;.
-[1em] \d+ A number consisting of one or more digits represented by \d.
-A word starting with a letter between a and d in lower or upper case, followed by a
-[a-dA-D]\w* sequence of zero or more "word characters" denoted by \w. (A word character is a letter,
-digit, or underscore.)
-A number consisting of an optional minus sign, followed by one or more digits,
-[1em](-)?
-optionally followed by a period and zero or more digits. The number contains
-(\d+)(\.\d*)? three groups, i.e., the minus sign, the part before the decimal point, and the fractional
-part including the decimal point. Groups are enclosed in parentheses.
-Scala&#8217;s regular expression class resides in package scala.util.matching.
-scala&gt; import scala.util.matching.Regex
-A new regular expression value is created by passing a string to the Regex constructor. For instance:
-scala&gt; val Decimal = new Regex("(-)?(\\d+)(\\.\\d*)?")
-Decimal: scala.util.matching.Regex = (-)?(\d+)(\.\d*)?
-Note that, compared to the regular expression for decimal numbers given previously, every backslash
-appears twice in the string above. This is because in Java and Scala a single backslash is an escape
-character in a string literal, not a regular character that shows up in the string. So instead of &#8216;\&#8217; you need
-to write &#8216;\\&#8217; to get a single backslash in the string.If a regular expression contains many backslashes this might be a bit painful to write and to read.
-Scala&#8217;s raw strings provide an alternative. As you saw in Section 5.2, a raw string is a sequence of
-characters between triple quotes. The difference between a raw and a normal string is that all characters
-in a raw string appear exactly as they are typed. This includes backslashes, which are not treated as
-escape characters. So you could write equivalently and somewhat more legibly:
-scala&gt; val Decimal = new Regex("""(-)?(\d+)(\.\d*)?""")
-Decimal: scala.util.matching.Regex = (-)?(\d+)(\.\d*)?
-As you can see from the interpreter&#8217;s output, the generated result value for Decimal is exactly the same
-as before.
-Another, even shorter way to write a regular expression in Scala is this:
-scala&gt; val Decimal = """(-)?(\d+)(\.\d*)?""".r
-Decimal: scala.util.matching.Regex = (-)?(\d+)(\.\d*)?
-In other words, simply append a .r to a string to obtain a regular expression. This is possible because
-there is a method named r in class StringOps, which converts a string to a regular expression. The
-method is defined as shown in Listing 26.7:
-package scala.runtime
-import scala.util.matching.Regex
-class StringOps(self: String) &#8230; {
-&#8230;
-def r = new Regex(self)
-}
-Listing 26.7 - How the r method is defined in StringOps.
-Searching for regular expressions
-You can search for occurrences of a regular expression in a string using several different operators:
-regex findFirstIn str
-Finds first occurrence of regular expression regex in string str, returning the result in an Optiontype.
-regex findAllIn str
-Finds all occurrences of regular expression regex in string str, returning the results in anIterator.
-regex findPrefixOf str
-Finds an occurrence of regular expression regex at the start of string str, returning the result in
-an Option type.For instance, you could define the input sequence below and then search decimal numbers in it:
-scala&gt; val Decimal = """(-)?(\d+)(\.\d*)?""".r
-Decimal: scala.util.matching.Regex = (-)?(\d+)(\.\d*)?
-scala&gt; val input = "for -1.0 to 99 by 3"
-input: String = for -1.0 to 99 by 3
-scala&gt; for (s &#8592; Decimal findAllIn input)
-println(s)
--1.0
-99
-3
-scala&gt; Decimal findFirstIn input
-res7: Option[String] = Some(-1.0)
-scala&gt; Decimal findPrefixOf input
-res8: Option[String] = None
-Extracting with regular expressions
-What&#8217;s more, every regular expression in Scala defines an extractor. The extractor is used to identify
-substrings that are matched by the groups of the regular expression. For instance, you could decompose
-a decimal number string as follows:
-scala&gt; val Decimal(sign, integerpart, decimalpart) = "-1.23"
-sign: String = -
-integerpart: String = 1
-decimalpart: String = .23
-In this example, the pattern, Decimal(&#8230;), is used in a val definition, as described in Section 15.7. What
-happens here is that the Decimal regular expression value defines an unapplySeqmethod. That method
-matches every string that corresponds to the regular expression syntax for decimal numbers. If the
-string matches, the parts that correspond to the three groups in the regular expression (-)?(\d+)
-(\.\d*)? are returned as elements of the pattern and are then matched by the three pattern
-variables sign, integerpart, and decimalpart. If a group is missing, the element value is set to null, as
-can be seen in the following example:
-scala&gt; val Decimal(sign, integerpart, decimalpart) = "1.0"
-sign: String = null
-integerpart: String = 1
-decimalpart: String = .0
-It&#8217;s also possible to mix extractors with regular expression searches in a for expression. For instance,
-the following expression decomposes all decimal numbers it finds in the inputstring:
-scala&gt; for (Decimal(s, i, d) &#8592; Decimal findAllIn input)
-println("sign: " + s + ", integer: "<br />
-i + ", decimal: " + d)
-sign: -, integer: 1, decimal: .0
-sign: null, integer: 99, decimal: nullsign: null, integer: 3, decimal: null
-26.8 CONCLUSION
-In this chapter you saw how to generalize pattern matching with extractors. Extractors let you define
-your own kinds of patterns, which need not correspond to the type of the expressions you select on.
-This gives you more flexibility in the kinds of patterns you can use for matching. In effect it&#8217;s like
-having different possible views on the same data. It also gives you a layer between a type&#8217;s
-representation and the way clients view it. This lets you do pattern matching while maintaining
-representation independence, a property which is very useful in large software systems.
-Extractors are one more element in your tool box that let you define flexible library abstractions. They
-are used heavily in Scala&#8217;s libraries, for instance, to enable convenient regular expression matching.</p></div>
+  <span class="c1">// Метод екстракції (обов&#39;язковий)</span>
+  <span class="k">def</span> <span class="n">unapplySeq</span><span class="o">(</span><span class="n">whole</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Seq</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span> <span class="k">=</span>
+    <span class="nc">Some</span><span class="o">(</span><span class="n">whole</span><span class="o">.</span><span class="n">split</span><span class="o">(</span><span class="s">&quot;\\.&quot;</span><span class="o">).</span><span class="n">reverse</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.4 - Об'єкт екстрактора рядків <code>Domain</code>.</p></div>
+<div class="paragraph"><p>Об'єкт <code>Domain</code> визначає метод <code>unapplySeq</code>, що зпочатку розбиває рядок на частини, розділені крапками. Це робиться за допомогою Java метода <code>split</code> на рядках, що приймає регулярний вираз в якості аргумента. Цей результат <code>split</code> є масивом субрядків. Результат <code>unapplySeq</code> є цей масив з усіма елементами, також огорнутий в <code>Some</code>.</p></div>
+<div class="paragraph"><p>Тип результату <code>unapplySeq</code> має відповідати до <code>Option[Seq[T]]</code>, де тип елемента <code>T</code> є довільним. Як ви бачили в Розділі 17.1, <code>Seq</code> є важливим класом в ієрархії колекцій Scala. Це загальний суперклас декількох класів, що описують різні типи послідовностей: <code>List</code>,<code>Array</code>, <code>WrappedString</code> та декілька інших.</p></div>
+<div class="paragraph"><p>Для симетрії <code>Domain</code> також має метод <code>apply</code>, що будує рядок домену зі списку параметрів частин домена, що починається з домену вищого рівня. Як завжди, метод <code>apply</code> є опціональним.</p></div>
+<div class="paragraph"><p>Ви можете використовувати естрактор <code>Domain</code> для отримання більш детальної інформації від адрес електронної пошти. Наприклад, щоб знайти всі адреси з ім'ям <code>"tom"</code> в деякому домені <code>".com"</code>, ви можете написати наступну функцію:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">isTomInDotCom</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">s</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">EMail</span><span class="o">(</span><span class="s">&quot;tom&quot;</span><span class="o">,</span> <span class="nc">Domain</span><span class="o">(</span><span class="s">&quot;com&quot;</span><span class="o">,</span> <span class="k">_</span><span class="o">*))</span> <span class="k">=&gt;</span> <span class="kc">true</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це дає очікувані результати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">isTomInDotCom</span><span class="o">(</span><span class="s">&quot;tom@sun.com&quot;</span><span class="o">)</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">isTomInDotCom</span><span class="o">(</span><span class="s">&quot;peter@sun.com&quot;</span><span class="o">)</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">isTomInDotCom</span><span class="o">(</span><span class="s">&quot;tom@acm.org&quot;</span><span class="o">)</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Також можливо повернути деякі фіксовані елементи від <code>unapplySeq</code> разом зі змінною частиною. Це виражається через повернення всіх елементів в таплі, де змінна частина іде, як звичайно, останньою. Як приклад, Лістинг 26.5 показує новий екстрактор для адрес, де частина домена вже розширена в послідовність:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">ExpandedEMail</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">unapplySeq</span><span class="o">(</span><span class="n">email</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+      <span class="k">:</span> <span class="kt">Option</span><span class="o">[(</span><span class="kt">String</span>, <span class="kt">Seq</span><span class="o">[</span><span class="kt">String</span><span class="o">])]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">parts</span> <span class="k">=</span> <span class="n">email</span> <span class="n">split</span> <span class="s">&quot;@&quot;</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">parts</span><span class="o">.</span><span class="n">length</span> <span class="o">==</span> <span class="mi">2</span><span class="o">)</span>
+      <span class="nc">Some</span><span class="o">(</span><span class="n">parts</span><span class="o">(</span><span class="mi">0</span><span class="o">),</span> <span class="n">parts</span><span class="o">(</span><span class="mi">1</span><span class="o">).</span><span class="n">split</span><span class="o">(</span><span class="s">&quot;\\.&quot;</span><span class="o">).</span><span class="n">reverse</span><span class="o">)</span>
+    <span class="k">else</span>
+      <span class="nc">None</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.5 - Об'єкт екстрактора <code>ExpandedEMail</code>.</p></div>
+<div class="paragraph"><p>Метод <code>unapplySeq</code> в <code>ExpandedEMail</code> повертає опціональне значення пари (<code>Tuple2</code>). Перший елемент в парі є частина <code>user</code>. Другий елемент є послідовність імен, що представляють домен. Ви можете зробити співпадіння на них, як звичайно:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">s</span> <span class="k">=</span> <span class="s">&quot;tom@support.epfl.ch&quot;</span>
+<span class="n">s</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">tom</span><span class="nd">@support</span><span class="o">.</span><span class="n">epfl</span><span class="o">.</span><span class="n">ch</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">ExpandedEMail</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">topdom</span><span class="o">,</span> <span class="n">subdoms</span> <span class="k">@</span> <span class="k">_</span><span class="o">*)</span> <span class="k">=</span> <span class="n">s</span>
+<span class="n">name</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">tom</span>
+<span class="n">topdom</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">ch</span>
+<span class="n">subdoms</span><span class="k">:</span> <span class="kt">Seq</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">WrappedArray</span><span class="o">(</span><span class="n">epfl</span><span class="o">,</span> <span class="n">support</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_26_5____">26.5 Екстрактори та шаблони послідовностей</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ви бачили в Розділі 15.2, що ви можете отримати доступ до елементів списку або масива, використовуючи шаблони послідовностей, як тут:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">List</span><span class="o">()</span>
+<span class="nc">List</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">,</span> <span class="k">_</span><span class="o">*)</span>
+<span class="nc">Array</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="k">_</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Фактично, ці шаблони послідовностей всі реалізовані з використанням екстракторів в стандартній бібліотеці Scala. Наприклад, шаблони в формі <code>List(...)</code> стали можливі, оскільки об'єкт компанйон <code>scala.List</code> є екстрактором, що визначає метод <code>unapplySeq</code>. Лістинг 26.6 показує маючі відношення визначення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">scala</span>
+<span class="k">object</span> <span class="nc">List</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">elems</span><span class="k">:</span> <span class="kt">T*</span><span class="o">)</span> <span class="k">=</span> <span class="n">elems</span><span class="o">.</span><span class="n">toList</span>
+  <span class="k">def</span> <span class="n">unapplySeq</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">x</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Seq</span><span class="o">[</span><span class="kt">T</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.6 - Екстрактор, що визначає метод <code>unapplySeq</code>.</p></div>
+<div class="paragraph"><p>Об'єкт <code>List</code> містить метод <code>apply</code>, що приймає змінне число аргументів. Це те, що дозволяє вам писати вирази як цей:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">List</span><span class="o">()</span>
+<span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Він також містить метод <code>unapplySeq</code>, що повертає всі елементи зі списка як послідовність. Ось що підтримує шаблони <code>List(...)</code>. Дуже подібні визначення існують в об'єкті <code>scala.Array</code>. Вони підтримують ін'єкції та екстрактори для масивів.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_26_6____">26.6 Екстрактори проти кейс класів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Навіть якщо вони і дуже корисні, кейс класи мають одне обмеження: вони демонструють дійсну репрезентацію даних. Це означає, що імя класу в шаблоні конструктора відповідає конкретній репрезентації типу об'єкта селектора. Якщо співпадіння з:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="n">C</span><span class="o">(...)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>успішне, ви знаєте, що вираз селектора є примірником класу <code>C</code>.</p></div>
+<div class="paragraph"><p>Екстрактори руйнують цей зв'язок між репрезентацією даних та шаблонами. Ви бачили в прикладах в цьому розділі, що вони дозволяють шаблони, що не мають нічого загального з типом даних об'єкта, що вибирається. Ця властивість називається незалежністю від репрезентації. В відкритих системах великого розміру незалежність від репрезентації дуже важлива, оскільки вона дозволяє вам змінити тип реалізації, що використовується в множині компонент, без впливу на клієнтів ціх компонент.</p></div>
+<div class="paragraph"><p>Якщо ваш компонент був визначений та експортований як набір кейс класів, ви будете прив'язані до них, оскільки клієнтській код завжди може містити порівняння шаблонів на ці кейс класи. Переіменування деяких кейс класів або змінення ієрархії класів буде впливати на клієнтський код. Екстрактори не поділяють цю проблему, оскільки вони представляють прошарок перенаправлення між репрезентацією даних та способом, як їх бачать клієнти. Ви все ще можете змінити конкретну репрезентацію типу, доки ви оновлюєте всі ваші екстрактори разом з цім.</p></div>
+<div class="paragraph"><p>Незалежність від репрезентації є важливою перевагою екстракторів над кейс класами. З іншого боку кейс класи також мають деякі переваги над екстракторами. Перше, вони значно простіші для встановлення та визначення, та вони потребують меньше коду. Друге, вони звичайно призводять до більш ефективного порівняння шаблонів, ніж екстрактори, оскільки компілятор Scala може оптимізувати шаблони по кейс класам значно краще, ніж по екстракторам. Це так тому, що механізми кейс класів фіксовані, тоді як методи <code>unapply</code> або <code>unapplySeq</code> в екстракторі можуть робити майже все. Третє, якщо ваші кейс класи наслідують від закоркованого базового класа, компілятор Scala буде перевіряти ваше співпадіння шаблонів на вичерпність, та буде скаржитись, якщо деяка комбінація можливих значень не покрита шаблоном. Для екстракторів така перевірка на вичерпність не доступна.</p></div>
+<div class="paragraph"><p>То який з двох методів ви маєте обрати для ваших порівнянь шаблонів? Це залежить від декількох факторів. Якщо ви пишете код для закритого застосування, кейс класи звичайно мають перевагу, завдяки їх стислості, швидкості та статичній перевірці. Якщо ви потім вирішите змінити вашу ієрархію класів, застосування буде вимагати рефакторингу, але це звичайно не проблема. З іншого боку, якщо вам треба показати клас невідомим клієнтам, екстрактори можуть переважити, оскільки вони підтримують незалежність від репрезентації.</p></div>
+<div class="paragraph"><p>Нащастя, вам не треба вирішувати прямо зараз. Ви можете в любому випадку почати з кейс класів, і потім, коли постане потреба, змінити їх на екстрактори. Оскільки шаблони по екстракторам та шаблони по кейс класах виглядають так само в Scala, порівняння шаблонів в ваших клієнтах буде продовжувати робити.</p></div>
+<div class="paragraph"><p>Звичайно, також існують ситуації, коли ясно з самого початку, що структура ваших шаблонів не співпадає з репрезентацією типу ваших даних. Обговорена адреса електронної пошти в цій главі є одним з таких прикладів. В такому випадку екстрактори є єдиним можливим вибором.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_26_7__">26.7 Регулярні вирази</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Одна виключено корисна оболасть застосування екстракторів є регулярні вирази. Як і Java, Scala провадить регулярні вирази через бібліотеку, але екстрактори роблять більш приємною взаємодію з ними.</p></div>
+<div class="sect2">
+<h3 id="___">Формування регулярних виразів</h3>
+<div class="paragraph"><p>Scala наслідує синтаксис своїх регулярних виразів від Java, що, в свою чергу, наслідує більшість з можливостей від Perl. Ми вважатимемо, що ви вже знаєте синтаксис; якщо ні, існує багато доступних інструкцій, починаючи з документації Javadoc для класа <code>java.util.regex.Pattern</code>. Ось тільки деякі приклади, що повинні бути достатні для нагадування:</p></div>
+<div class="tableblock">
+<table rules="all"
+width="100%"
+frame="border"
+cellspacing="0" cellpadding="4">
+<col width="50%" />
+<col width="50%" />
+<tbody>
+<tr>
+<td align="left" valign="top"><p class="table">ab?</p></td>
+<td align="left" valign="top"><p class="table"><code>'a'</code>, за яким можливо іде <code>'b'</code>.</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">[1em] \d+</p></td>
+<td align="left" valign="top"><p class="table">Число, що складається з одної або більше цифр, представлених <code>\d</code>.</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">[a-dA-D]\w*</p></td>
+<td align="left" valign="top"><p class="table">Слово, що починається з літери між <code>a</code> та <code>d</code> в верхньому або нижньому реєстрі, за яким іде послідовність з нуля або більше "слівних  символів", позначених <code>\w</code>. (Слівні символи це літери, цифри та підкреслення.)</p></td>
+</tr>
+<tr>
+<td align="left" valign="top"><p class="table">[1em](-)?(\d+)(\.\d*)?</p></td>
+<td align="left" valign="top"><p class="table">Число, що складається з опціонального знаку мінуса, за яким слідує одна або більше цифр, за якими опціонально слідує крапка, та нуль або більше цифр. Число складається з трьох груп, тобто знаку мінусу, частини до десятичної крапки, та дрібної частини. Групи оточені дужками.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="paragraph"><p>Клас регулярних виразів Scala знаходиться в пакунку <code>scala.util.matching</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.util.matching.Regex</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Значення нового регулярного виразу створено через передачу рядка до конструктора <code>Regex</code>. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">Decimal</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Regex</span><span class="o">(</span><span class="s">&quot;(-)?(\\d+)(\\.\\d*)?&quot;</span><span class="o">)</span>
+<span class="nc">Decimal</span><span class="k">:</span> <span class="kt">scala.util.matching.Regex</span> <span class="o">=</span> <span class="o">(-)?(\</span><span class="n">d</span><span class="o">+)(\.\</span><span class="n">d</span><span class="o">*)?</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що порівняно з регулярним виразом для десятичних чисел, наданого перед цім, кожна зворотня коса надаєтся двічі в рядку вище. Це через те, що в Java та Scala поодинока зворотня коса є символом виключення в рядковому літералі, а не звичайним символом, що показується в рядку. Так що замість <code>'\'</code> вам треба писати <code>'\\'</code> щоб отримати поодиноку зворотню косу в рядку.</p></div>
+<div class="paragraph"><p>Якщо регулярний вираз містить багато зворотніх косих, це може бути болісним для написання та читання. Сирі рядки Scala провадять альтернативу. Як ви бачили в Розділі 5.2, сирий рядок є послідовність символів між потроєними лапками. Різниця між сиром та звичайним рядком в тому, що всі символи в сирому рядку з'являються саме так, як вони надрукувані. Це включає зворотні косі, що не трактуються як символи виключення. Так що ви можете і дещо більш зрозуміле:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">Decimal</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Regex</span><span class="o">(</span><span class="s">&quot;&quot;&quot;(-)?(\d+)(\.\d*)?&quot;&quot;&quot;</span><span class="o">)</span>
+<span class="nc">Decimal</span><span class="k">:</span> <span class="kt">scala.util.matching.Regex</span> <span class="o">=</span> <span class="o">(-)?(\</span><span class="n">d</span><span class="o">+)(\.\</span><span class="n">d</span><span class="o">*)?</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як ви бачите з виводу інтерпретатора, згенерований значення результату для <code>Decimal</code> точно таке, як і раніше. Інший, навіть коротший шлях написати регулярний вираз в Scala, є такий:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">Decimal</span> <span class="k">=</span> <span class="s">&quot;&quot;&quot;(-)?(\d+)(\.\d*)?&quot;&quot;&quot;</span><span class="o">.</span><span class="n">r</span>
+<span class="nc">Decimal</span><span class="k">:</span> <span class="kt">scala.util.matching.Regex</span> <span class="o">=</span> <span class="o">(-)?(\</span><span class="n">d</span><span class="o">+)(\.\</span><span class="n">d</span><span class="o">*)?</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Іншими словами, просто додайте <code>.r</code> до рядка для отримання регулярного виразу. Це можливо, оскільки існує метод на ім'я <code>r</code> в класі <code>StringOps</code>, що конвертує рядок на регулярний вираз. Метод визначений як показано в Лістингу 26.7:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">package</span> <span class="nn">scala.runtime</span>
+<span class="k">import</span> <span class="nn">scala.util.matching.Regex</span>
+
+<span class="k">class</span> <span class="nc">StringOps</span><span class="o">(</span><span class="n">self</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="o">...</span> <span class="o">{</span>
+  <span class="o">...</span>
+  <span class="k">def</span> <span class="n">r</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Regex</span><span class="o">(</span><span class="n">self</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 26.7 - Як метод <code>r</code> визначений в <code>StringOps</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____2">Пошук регулярних виразів</h3>
+<div class="paragraph"><p>Ви можете пошукати появи регулярного виразу в рядку, використовуючи різні оператори:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>regex findFirstIn str</code></pre>
+</div></div>
+<div class="paragraph"><p>Знаходить першу появу регулярного виразу <code>regex</code> в рядку <code>str</code>, повертаючи результат в типі <code>Option</code>.</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>regex findAllIn str</code></pre>
+</div></div>
+<div class="paragraph"><p>Знаходить всі появи регулярного виразу <code>regex</code> в рядку <code>str</code>, повертаючи результат як <code>Iterator</code>.</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>regex findPrefixOf str</code></pre>
+</div></div>
+<div class="paragraph"><p>Знаходить появу регулярного виразу <code>regex</code> на початку рядка <code>str</code>, повертаючи результат в типі <code>Option</code>. Наприклад, ви можете визначити вхідну послідовність нижче, та пошукати в ній десятичні числа:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">Decimal</span> <span class="k">=</span> <span class="s">&quot;&quot;&quot;(-)?(\d+)(\.\d*)?&quot;&quot;&quot;</span><span class="o">.</span><span class="n">r</span>
+<span class="nc">Decimal</span><span class="k">:</span> <span class="kt">scala.util.matching.Regex</span> <span class="o">=</span> <span class="o">(-)?(\</span><span class="n">d</span><span class="o">+)(\.\</span><span class="n">d</span><span class="o">*)?</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">input</span> <span class="k">=</span> <span class="s">&quot;for -1.0 to 99 by 3&quot;</span>
+<span class="n">input</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="k">for</span> <span class="o">-</span><span class="mf">1.0</span> <span class="n">to</span> <span class="mi">99</span> <span class="n">by</span> <span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="n">s</span> <span class="k">&lt;-</span> <span class="nc">Decimal</span> <span class="n">findAllIn</span> <span class="n">input</span><span class="o">)</span>
+<span class="n">println</span><span class="o">(</span><span class="n">s</span><span class="o">)</span>
+<span class="o">-</span><span class="mf">1.0</span>
+<span class="mi">99</span>
+<span class="mi">3</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Decimal</span> <span class="n">findFirstIn</span> <span class="n">input</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(-</span><span class="mf">1.0</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Decimal</span> <span class="n">findPrefixOf</span> <span class="n">input</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="_____">Екстракція за допомогою регулярних виразів</h3>
+<div class="paragraph"><p>Більше того, кожний регулярний вираз в Scala визначає екстрактор. Екстрактор використовується для ідентифкації субрядків, що співпадають з групами регулярного виразу. Наприклад, ви можете декомпонувати рядок числа таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">Decimal</span><span class="o">(</span><span class="n">sign</span><span class="o">,</span> <span class="n">integerpart</span><span class="o">,</span> <span class="n">decimalpart</span><span class="o">)</span> <span class="k">=</span> <span class="s">&quot;-1.23&quot;</span>
+<span class="n">sign</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">-</span>
+<span class="n">integerpart</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">decimalpart</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">.</span><span class="mi">23</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому прикладі шаблон <code>Decimal(...)</code> використовується в визначенні <code>val</code>, як описано в Розділі 15.7. Що тут відбувається, це значення регулярного виразу <code>Decimal</code> визначає метод <code>unapplySeq</code>. Цей метод співпадає з кожним рядком, що відповідає до синтаксису регулярного виразу для десятичних чисел. Якщо рядок співпадає, частини відповідно до трьох груп в регулярному виразі <code>(-)?(\d+) (\.\d*)?</code> повертаються як елементи шаблону, та потім співпадають з трома змінними шаблону: <code>sign</code>, <code>integerpart</code> та <code>decimalpart</code>. Якщо група відсутня, значення встановлюється в <code>null</code>, як можна бачити в наступному прикладі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="nc">Decimal</span><span class="o">(</span><span class="n">sign</span><span class="o">,</span> <span class="n">integerpart</span><span class="o">,</span> <span class="n">decimalpart</span><span class="o">)</span> <span class="k">=</span> <span class="s">&quot;1.0&quot;</span>
+<span class="n">sign</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="kc">null</span>
+<span class="n">integerpart</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">decimalpart</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="o">.</span><span class="mi">0</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Також можливо міксувати екстрактори з пошуком регулярних виразів в  <code>for</code> виразах. Наприклад, наступний вираз декомпонує всі десятичні числа, що він знайде у вхідному рядку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="nc">Decimal</span><span class="o">(</span><span class="n">s</span><span class="o">,</span> <span class="n">i</span><span class="o">,</span> <span class="n">d</span><span class="o">)</span> <span class="k">&lt;-</span> <span class="nc">Decimal</span> <span class="n">findAllIn</span> <span class="n">input</span><span class="o">)</span>
+          <span class="n">println</span><span class="o">(</span><span class="s">&quot;sign: &quot;</span> <span class="o">+</span> <span class="n">s</span> <span class="o">+</span> <span class="s">&quot;, integer: &quot;</span> <span class="o">+</span>
+              <span class="n">i</span> <span class="o">+</span> <span class="s">&quot;, decimal: &quot;</span> <span class="o">+</span> <span class="n">d</span><span class="o">)</span>
+<span class="n">sign</span><span class="k">:</span> <span class="kt">-</span><span class="o">,</span> <span class="n">integer</span><span class="k">:</span> <span class="err">1</span><span class="o">,</span> <span class="n">decimal</span><span class="k">:</span> <span class="kt">.</span><span class="err">0</span>
+<span class="kt">sign:</span> <span class="kt">null</span><span class="o">,</span> <span class="n">integer</span><span class="k">:</span> <span class="err">99</span><span class="o">,</span> <span class="n">decimal</span><span class="k">:</span> <span class="kt">null</span>
+<span class="n">sign</span><span class="k">:</span> <span class="kt">null</span><span class="o">,</span> <span class="n">integer</span><span class="k">:</span> <span class="err">3</span><span class="o">,</span> <span class="n">decimal</span><span class="k">:</span> <span class="kt">null</span>
+</pre></div></div></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="__2">Висновок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В цій главі ви бачили, як узагальнити співпадіння шаблонів за допомогою екстракторів. Екстрактори дозволяють вам визначити ваші власні типи шаблонів, що не мають відповідати типу виразів, по яких ви робите вибірку. Це дає вам більше гнучкості в типах шаблонів, що ви можете використовувати для співпадіння. Ефективно це як мати різні можливі погляди на ті самі дані. Це також дає вам прошарок між репрезентацією типа, та тим, як клієнт бачить його. Це дозволяє вам робити порівняння шаблонів, при цьому підтримуючи незалежність репрезентації, властивість, що дуже корисна в великих програмних системах.</p></div>
+<div class="paragraph"><p>Екстрактори - це ще один елемент серед ваших інструментів, що дозволяє вам визначити гнучкі абстракції бібліотеки. Вони потужно використовуються в бібліотеках Scala, наприклад, для зручного порівняння регулярних виразів.</p></div>
+</div>
+</div>
 </div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-02-18 00:09:52 EET
+ 2019-04-12 02:42:46 EEST
 </div>
 </div>
 </body>
