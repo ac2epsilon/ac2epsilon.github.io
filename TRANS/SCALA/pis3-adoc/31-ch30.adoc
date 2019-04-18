@@ -6,634 +6,685 @@ include::headers.adoc[]
 Еквівалентність об'єктів
 ========================
 
-Порівняння двох об'єктів на рівність (еквівалентність) є необхідним для програмування ubiquitous in programming. It is also more tricky than it looks at first glance. This chapter looks at object equality in detail and gives some recommendations to consider when you design your own equality tests.
+Порівняння двох об'єктів на еквівалентність є наріжним в програмуванні. Воно більш заплутане, ніж здається на перший погляд. Ця глава дає погляд на еквівалентність в деталях, та дає деякі рекомендації для розгляду, коли ви розробляєте ваші власні тести еквівалентності.
 
 30.1 Еквівалентність в Scala
 ----------------------------
-As mentioned in Section 11.2, the definition of equality is different in Scala and Java. Java has two
-equality comparisons: the == operator, which is the natural equality for value types and object identity
-for reference types, and the equals method, which is (user-defined) canonical equality for reference
-types. This convention is problematic because the more natural symbol,==, does not always correspond
-to the natural notion of equality. When programming in Java, a common pitfall for beginners is to
-compare objects with == when they should be compared with equals. For instance, comparing two
-strings x and y using "x == y" might yield false in Java, even if x and y have exactly the same
-characters in the same order.
-Scala also has an equality method signifying object identity, but it is not used much. That kind of
-equality, written "x eq y", is true if x and y reference the same object. The == equality is reserved in
-Scala for the "natural" equality of each type. For value types, == is value comparison, just like in Java.
-For reference types, == is the same as equals in Scala. You can redefine the behavior of == for new
-types by overriding the equals method, which is always inherited from class Any. The inherited equals,
-which takes effect unless overridden, is object identity, as is the case in Java. So equals (and with
-it, ==) is by default the same as eq, but you can change its behavior by overriding the equals method in
-the classes you define. It is not possible to override == directly, as it is defined as a final method in
-class Any. That is, Scala treats == as if it were defined as follows in class Any:
+Як зазначалось в Розділі 11.2, визначення еквівалентності є різне в Scala та Java. Java має два порівняння на еквівалентність: оператор `==`, що є природною рівністю для типів значення та ідентичності об'єктів для типів посилань, та метод `equals`, що є  (визначена користувачем) канонічна еквівалентність для типів посилань. Ця домовленість є проблематичною, оскільки більш природний символ `==` не завжди відповідає до природної нотації еквівалентності. При програмуванні на Java загальна пастка для початківців є порівняння об'єктів за допомогою `==`, коли вони мають порівнюватись за допомогою `equals`. Наприклад, порівняння двох рядків `x` та `y` з використанням `x == y` може дати `false` в Java, навіть якщо `x` та `y` мають ті самі символи в тому ж порядку.
+
+Scala також має метод еквівалентності, що означає ідентичність об'єктів, але він використовується не часто. Цей різновид еквівалентності, що записується `x eq y`, є `true`, якщо `x` та `y` посилаються на той самий об'єкт. Еквівалентність `==` зарезервована в Scala для "природної" еквівалентності кожного типу. Для типів значень `==` є порівняння значень, так само, як в Java. Для типів посилань `==` є те саме, що `equals` в Java. Ви можете перевизначити поведінку `==` для нових типів через перевизначення метода `equals`, що завжди наслідується від класу `Any`. Наслідуване `equals`, що набуває сили якщо не перекрите, є ідентичність об'єкта, як це відбувається в Java. Так що `equals` (та разом і `==`) по замовчанню те саме, що і `eq`, але ви можете змінити його поведінку через перекриття метода `equals` в класі, що ви визначаєте. Неможливо перекрити `==` напряму, бо це визначене як фінальний метод в класі `Any`. Тобто Scala трактує `==` якби воно було визначене наступним чином в класі `Any`:
+[source,scala]
+----
 final def == (that: Any): Boolean =
-if (null eq this) {null eq that} else {this equals that}
-30.2 WRITING AN EQUALITY METHOD
-How should the equals method be defined? It turns out that writing a correct equality method is
-surprisingly difficult in object-oriented languages. In fact, after studying a large body of Java code, the
-authors of a 2007 paper concluded that almost all implementations of equalsmethods are faulty.footnote:[Vaziri, et. al., "Declarative Object Identity Using Relation Types" [Vaz07\]] This
-is problematic because equality is at the basis of many other things. For one, a faulty equality method
-for a type C might mean that you cannot reliably put an object of type C in a collection.
-For example, you might have two elements, elem1 and elem2, of type C which are equal (i.e.,
-"elem1 equals elem2" yields true). Nevertheless, with commonly occurring faulty implementations of
-the equals method, you could still see behavior like the following:
-var hashSet: Set[C] = new collection.immutable.HashSethashSet += elem1
-hashSet contains elem2
-// returns false!
-Here are four common pitfalls,footnote:[All but the third pitfall are described in the context of Java in the book, Effective Java Second Edition, by Joshua Bloch. [Blo08\]] that can cause inconsistent behavior when overridingequals:
-1.
-2.
-3.
-4.
-Defining equals with the wrong signature.
-Changing equals without also changing hashCode.
-Defining equals in terms of mutable fields.
-Failing to define equals as an equivalence relation.
-These four pitfalls are discussed in the remainder of this section.
-Pitfall #1: Defining equals with the wrong signature
-Consider adding an equality method to the following class of simple points:
+  if (null eq this) {null eq that} else {this equals that}
+----
+
+30.2 Написання метода еквівалентності
+-------------------------------------
+Як має бути визначений метод `equals`? З'ясовується, що написання коректного метода еквівалентності є несподівано складним в об'єктно орієнтованих мовах. Фактично, після вивчення великого обсягу Java коду, автори документу 2007 прийшли до висновку, що майже всі реалізації метода `equals` невдалі.footnote:[Vaziri, et. al., "Declarative Object Identity Using Relation Types" [Vaz07\]] Це проблематично, бо еквівалентність є базисом багатьої інших речей. Для початку, хибний метод еквівалентності для типу `C` може означати, що ви не можете надійно покласти об'єкт типу `C` до колекції.
+
+Наприклад, ви можете мати два елементи, `elem1` та `elem2`, типу `C`, що еквівалентні (тобто, `elem1 equals elem2` дає `true`). Тим не менше, з загально зустріваною хибною реалізацією метода `equals` ви можете все ще бачити поведінку, подібну до такої:
+[source,scala]
+----
+var hashSet: Set[C] = new collection.immutable.HashSet
+hashSet += elem1
+hashSet contains elem2 // повертає false!
+----
+Ось чотири загальні пастки,footnote:[Всі крім третьої описані і контексті Java в книзі Effective Java Second Edition, by Joshua Bloch. [Blo08\]] що можуть спричинити неузгоджену поведінку при перекритті `equals`:
+
+1. Визначення `equals` з помилковою сигнатурою.
+
+2. Зміна `equals` без одночасної зміни `hashCode`.
+
+3. Визначення `equals` в термінах змінних полів.
+
+4. Схиблене визнечення `equals` як відношення еквівалентності.
+
+Ці чотири пастки дискутуються в залишку цього розділу. 
+
+Пастка #1: Визначення `equals` з помилковою сигнатурою 
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Розглянемо додавання метода еквівалентності до наступного класу простих точок:
+[source,scala]
+----
 class Point(val x: Int, val y: Int) { ... }
-A seemingly obvious but wrong way would be to define it like this:
-// An utterly wrong definition of equals
+----
+Майже очевидний, але невірний шлях буде визначити це так:
+[source,scala]
+----
+// Повністю невірне визначення `equals`
 def equals(other: Point): Boolean =
-this.x == other.x && this.y == other.y
-What's wrong with this method? At first glance, it seems to work OK:
+  this.x == other.x && this.y == other.y
+----
+Що не так з цім методом? На перший погляд здається, що все робить OK:
+[source,scala]
+----
 scala> val p1, p2 = new Point(1, 2)
 p1: Point = Point@37d7d90f
 p2: Point = Point@3beb846d
+
 scala> val q = new Point(2, 3)
 q: Point = Point@e0cf182
+
 scala> p1 equals p2
 res0: Boolean = true
+
 scala> p1 equals q
 res1: Boolean = false
-However, trouble starts once you start putting points into a collection:
+----
+Однак проблеми починаються, як тільки ви починаєте покладати точки до колекції:
+[source,scala]
+----
 scala> import scala.collection.mutable
 import scala.collection.mutable
+
 scala> val coll = mutable.HashSet(p1)
 coll: scala.collection.mutable.HashSet[Point] =
 Set(Point@37d7d90f)
+
 scala> coll contains p2
 res2: Boolean = false
-How to explain that coll does not contain p2, even though p1 was added to it, and p1 and p2 are equal
-objects? The reason becomes clear in the following interaction, where the precise type of one of the
-compared points is masked. Define p2a as an alias of p2, but with type Any instead of Point:scala> val p2a: Any = p2
+----
+Як пояснити, що `coll` не містить `p2`, навіть якщо `p1` був доданий до неї, та `p1` та `p2` еквівалентні об'єкти? Причина явно полягає в наступній ітерації, де точний тип однієї з порівнюваних точок замаскований. Визначте `p2a` як псевдоним `p2`, але з типом `Any` замість `Point`:
+[source,scala]
+----
+scala> val p2a: Any = p2
 p2a: Any = Point@3beb846d
-Now, were you to repeat the first comparison, but with the alias p2a instead of p2, you would get:
+----
+Тепер, коли ви повторите перше порівняння, але з псевдонимом `p2a` замість `p2`, ви отримаєте:
+[source,scala]
+----
 scala> p1 equals p2a
 res3: Boolean = false
-What went wrong? The version of equals given previously does not override the standard
-method equals because its type is different. Here is the type of the equals method as it is defined in the
-root class Any:footnote:[If you write a lot of Java, you might expect the argument to this method to be type Objectinstead of type Any. Don't worry about it; it is the same equals method. The compiler simply makes it appear to have type Any.]
+----
+Що не так? Версія `equals`, надана до цього, не перекриває стандартний метод `equals`, оскільки її тип інший. Ось тип метода `equals`, як він визначений в кореневому класі `Any`:footnote:[Якщо ви багато пишете на Java, ви можете очікувати, що аргумент цього метода буде типу `Object`, замість типу `Any`. Не турбуйтесь про це; це той самий метод `equals`. Компілятор просто робить що воно виглядає як тип `Any`.]
+[source,scala]
+----
 def equals(other: Any): Boolean
-Because the equals method in Point takes a Point instead of an Any as an argument, it does not
-override equals in Any. Instead, it is just an overloaded alternative. Now, overloading in Scala and in
-Java is resolved by the static type of the argument, not the run-time type. So as long as the static type of
-the argument is Point, the equals method in Point is called. However, once the static argument is of
-type Any, the equals method in Any is called instead. This method has not been overridden, so it is still
-implemented by comparing object identity.
-That's why the comparison "p1 equals p2a" yields false even though points p1 and p2a have the
-same x and y values. That's also why the contains method in HashSet returned false. Since that method
-operates on generic sets, it calls the generic equals method in Object instead of the overloaded variant
-in Point. Here's a better equals method:
-// A better definition, but still not perfect
+----
+Оскільки метод `equals` в `Point` приймає `Point` замість `Any` як аргумент, він не перекриває `equals` в `Any`. Замість цього він просто є перевантаженою альтернативою. Тепер, перевантаження в Scala та в Java розрішене статичним типом аргумента, не типом часу виконання. Так що доки статичний тип аргумента є `Point`, буде викликатись метод `equals` в `Point`. Однак як тільки статичний аргумент стає типу `Any`, замість цього починає викликатись метод `equals` в Any. Цей метод не був перекритий, так що він досі реалізований через порівняння ідентичності об'єктів.
+
+Ось чому порівняння  `p1 equals p2a` дає `false`, навіть якщо точки `p1` та `p2a` мають ті самі значення `x` та `y`. Ось чому метод `contains` в `HashSet` повертає `false`. Оскільки цей метод оперує на дженерік множинах, він викликає дженерік метод `equals` в `Object`, замість перевантаженого варіанта в `Point`. Ось кращий метод `equals`:
+[source,scala]
+----
+// Краще визначення, але все ще не ідеальне
 override def equals(other: Any) = other match {
-case that: Point => this.x == that.x && this.y == that.y
-case _ => false
+  case that: Point => this.x == that.x && this.y == that.y
+  case _ => false
 }
-Now equals has the correct type. It takes a value of type Any as parameter and it yields
-a Booleanresult. The implementation of this method uses a pattern match. It first tests whether
-theother object is also of type Point. If it is, it compares the coordinates of the two points and returns
-the result. Otherwise the result is false.
-A related pitfall is to define == with a wrong signature. Normally, if you try to redefine == with the
-correct signature, which takes an argument of type Any, the compiler will give you an error because
-you try to override a final method of type Any.
-Newcomers to Scala sometimes make two errors at once: They try to override == and they give it the
-wrong signature. For instance:
-def ==(other: Point): Boolean = // Don't do this!
-In this case, the user-defined == method is treated as an overloaded variant of the same-named method
-class Any and the program compiles. However, the behavior of the program would be just as dubious
-as if you had defined equals with the wrong signature.Pitfall #2: Changing equals without also changing hashCode
-We'll continue to use the example from pitfall #1. If you repeat the comparison of p1 and p2awith the
-latest definition of Point, you will get true, as expected. However, if you repeat
-theHashSet.contains test, you will probably still get false:
+----
+Тепер `equals` має коректний тип. Він приймає значення типу `Any` як параметр, та дає результат `Boolean`. Реалізація цього метода використовує порівняння шаблонів. Спочатку він перевіряє, чи об'єкт також є типу `Point`. Якщо це так, він порівнює координати двох точок, та повертає результат. Інакше результат `false`.
+
+Пов'язана пастка є визначити `==` з невірноє сигнатурою. Нормально, якщо ви намагаєтесь перевизначити `==` з коректною сигнатурою, що приймає аргумент типу `Any`, компілятор буде давати вам помилку, оскільки ви намагаєтесь переписати фінальний метод типу `Any`.
+
+Новачки в Scala іноді роблять дві помилки разом: вони намагаються перекрити `==`, і вони дають невірну сигнатуру. Наприклад:
+[source,scala]
+----
+def ==(other: Point): Boolean = // Не робіть цього!
+----
+В цьому випадку визначений користувачем метод `==` трактується як перевантажений варіант так само названого метода з класа `Any`, і програма компілюється. Однак поведінка програми буде такою ж сумнівною, якби ви визначили `equals` з невірною сигнатурою.
+
+Пастка #2: Зміна `equals` без одночасної зміни `hashCode`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ми будемо продовжувати використовувати приклад з пастки #1. Якщо ви продовжите порівняння `p1` та `p2a` з останнім визначенням `Point`, ви отримаєте `true`, як очікувалось. Однак якщо ми повторимо перевірку `HashSet.contains`, ви будете вірогідно все ще отримувати `false`:
+[source,scala]
+----
 scala> val p1, p2 = new Point(1, 2)
 p1: Point = Point@122c1533
 p2: Point = Point@c23d097
+
 scala> collection.mutable.HashSet(p1) contains p2
 res4: Boolean = false
-But this outcome is not 100% certain. You might also get true from the experiment. If you do, you can
-try with some other points with coordinates 1 and 2. Eventually, you'll get one that is not contained in
-the set. What goes wrong here is that Point redefined equals without also redefining hashCode.
-Note that the collection in the example here is a HashSet. This means elements of the collection are put
-in "hash buckets" determined by their hash code. The contains test first determines a hash bucket to
-look in and then compares the given elements with all elements in that bucket. Now, the last version of
-class Point did redefine equals, but it did not redefine hashCode at the same time. So hashCode is still
-what it was in its version in class AnyRef: some transformation of the address of the allocated object.
-The hash codes of p1 and p2 are almost certainly different, even though the fields of both points are the
-same. Different hash codes mean, with high probability, different hash buckets in the set.
-The contains test will look for a matching element in the bucket which corresponds to p2's hash code.
-In most cases, point p1 will be in another bucket, so it will never be found. p1and p2 might also end up
-by chance in the same hash bucket. In that case the test would return true. The problem is that the last
-implementation of Point violated the contract onhashCode as defined for class Any:footnote:[The text of Any's hashCode contract is inspired by the Javadoc documentation of classjava.lang.Object.]
-If two objects are equal according to the equals method, then calling the hashCode method on each of
-the two objects must produce the same integer result.
-In fact, it's well known in Java that hashCode and equals should always be redefined together.
-Furthermore, hashCode may only depend on fields that equals depends on. For the Point class, the
-following would be a suitable definition of hashCode:
+----
+Але цей результат не на 100% певний. Ви можете також отримати `true` в простому експерименті. Якщо ви зробите це, ви можете спробувати деякі інші точки з координатами 1 та 2. З часом ви отримаєте таку, що не містилась в множині. Що тут не так, це те, що `Point` перевизначає `equals`, при цьому також не перевизначаючи `hashCode`.
+
+Зауважте, що колекція в прикладі є `HashSet`. Це означає, що елементи колекції покладаються в "хеш ьакети", що визначаються їх хеш кодом. Перевірка `contains` спершу визначає хеш бакет, де дивитись, та потім порівнює надані елементи з усіма елементами в бакеті. Тепер, остання версія класу `Point` перевизначила `equals`, але вона в той же час не перевизначила `hashCode`. Так що `hashCode` все ще той, що був в версії для класа `AnyRef`: деяка трансформація адреси розміщеного об'єкта.
+
+Хеш коди `p1` та `p2` майже напевне різні, навіть якщо поля обох точок однакові. Різні хеш коди означають, з великою вірогідністю, різні хеш бакети в множині. Перевірка `contains` буде шукати співпадаючий елемент в бакеті, що відповідає до хеш коду `p2`. В більшості випадків точка `p1` буде в іншому бакеті, так що вона ніколи не буде знайдена. `p1` та `p2` можуть також з вірогідністю попасти в той самий хеш бакет. В цьому випадку перевірка поверне `true`. Проблема в тому, що остання реалізація `Point` порушує контракт на `hashCode`, як визначено для класа `Any`:footnote:[Текст контракту `Any` `hashCode` надихнено документацією Javadoc класу `java.lang.Object`.]
+
+  Якщо два класи еквівалентні відповідно до метода `equals`, тоді виклик `hashCode` на кожному з двох об'єктів має продукувати той самий цілий результат.
+
+Фактично, це добре відомо в Java, що `hashCode` та `equals` повинні завжди бути перевизначені разом. Більше того, `hashCode` можу залежати тільки від полів, на які покладається `equals`. Для класа `Point` наступне може бути підходящим визначенням `hashCode`:
+[source,scala]
+----
 class Point(val x: Int, val y: Int) {
-override def hashCode = (x, y).##
-override def equals(other: Any) = other match {
-case that: Point => this.x == that.x && this.y == that.y
-case _ => false
+  override def hashCode = (x, y).##
+  override def equals(other: Any) = other match {
+    case that: Point => this.x == that.x && this.y == that.y
+    case _ => false
+  }
 }
+----
+Це тільки одне з багатьох можливих реалізацій `hashCode`. Нагадаємо, що метод `##`є скороченням для обчислення хеш кодів, що роблять з примітивними значеннями, типами посилань та `null`. Коли викликається на колекції або таплі, він обчислює змішаний хеш, що чутливий до хеш кодів всіх елементів в колекції. Ми запровадимо більше настанов по написанню  `hashCode` пізніше в цій главі.
+
+Додавання `hashCode` лагодить проблему еквівалентності, коли визначаються класи як `Point`; однак є інші проблемні місця, до яких треба придивитись.
+
+Пастка #3: Визначення `equals` в термінах змінних полів
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Розглянемо наступну невелику варіацію класу `Point`:
+[source,scala]
+----
+class Point(var x: Int, var y: Int) { // Проблематично
+  override def hashCode = (x, y).##
+  override def equals(other: Any) = other match {
+    case that: Point => this.x == that.x && this.y == that.y
+    case _ => false
+  }
 }
-This is just one of many possible implementations of hashCode. Recall that the ## method is a
-shorthand for computing hash codes that works for primitive values, reference types, andnull. When
-invoked on a collection or a tuple, it computes a mixed hash that is sensitive to the hash codes of all the
-elements in the collection. We'll provide more guidance on writinghashCode later in this chapter.Adding hashCode fixes the problems of equality when defining classes like Point; however, there are
-other trouble spots to watch out for.
-Pitfall #3: Defining equals in terms of mutable fields
-Consider the following slight variation of class Point:
-class Point(var x: Int, var y: Int) { // Problematic
-override def hashCode = (x, y).##
-override def equals(other: Any) = other match {
-case that: Point => this.x == that.x && this.y == that.y
-case _ => false
-}
-}
-The only difference is that the fields x and y are now vars instead
-of vals. The equals andhashCode methods are now defined in terms of these mutable fields, so their
-results change when the fields change. This can have strange effects once you put points in collections:
+----
+Єдина відмінність в тому, що поля `x` та `y` тепер `var` замість `val`. Методи `equals` та `hashCode` тепер визначені в термінах ціх змінних полів, так що їх результати змінюються, коли змінюються поля. Це може мати дивний ефект, коли ваші точки потраплять до колекції:
+[source,scala]
+----
 scala> val p = new Point(1, 2)
 p: Point = Point@5428bd62
+
 scala> val coll = collection.mutable.HashSet(p)
 coll: scala.collection.mutable.HashSet[Point] =
 Set(Point@5428bd62)
+
 scala> coll contains p
 res5: Boolean = true
-Now, if you change a field in point p, does the collection still contain the point? We'll try it:
+----
+Тепер, якщо ви зміните поле в `p`, чи буде колекція все ще містити точку? Ми спробуємо це:
+[source,scala]
+----
 scala> p.x += 1
+
 scala> coll contains p
 res7: Boolean = false
-This looks strange. Where did p go? More strangeness results if you check whether the iterator of the
-set contains p:
+----
+Це виглядає дивно. Куди зникла `p`? Більше дивини буде, якщо ви перевірите, чи ітератор по множині містить `p`:
+[source,scala]
+----
 scala> coll.iterator contains p
 res8: Boolean = true
-So here's a set that does not contain p, yet p is among the elements of the set! What happened is that
-after the change to the x field, the point p ended up in the wrong hash bucket of the setcoll. That is, its
-original hash bucket no longer corresponded to the new value of its hash code. In a manner of speaking,
-point p "dropped out of sight" in the set coll even though it still belonged to its elements.
-The lesson to be drawn from this example is that when equals and hashCode depend on mutable state,
-it causes problems for potential users. If you put such objects into collections, you have to be careful to
-never modify the depended-on state, and this is tricky. If you need a comparison that takes the current
-state of an object into account, you should usually name it something else, not equals.Considering the last definition of Point, it would have been preferable to omit a redefinition
-ofhashCode and name the comparison method equalContents or some other name different
-fromequals. Point would then have inherited the default implementation
-of equals and hashCode; pwould have stayed locatable in coll even after the modification to its x field.
-Pitfall #4: Failing to define equals as an equivalence relation
-The contract of the equals method in scala.Any specifies that equals must implement an equivalence
-relation on non-null objects:footnote:[As with hashCode, Any's equals method contract is based on java.lang.Object's equals method contract.]
-• It is reflexive: For any non-null value x , the expression x.equals(x) should return true.
-• It is symmetric: For any non-null values x and y, x.equals(y) should return true if and only
-if y.equals(x) returns true.
-• It is transitive: For any non-null values x, y, and z,
-if x.equals(y) returns true andy.equals(z) returns true, then x.equals(z) should return true.
-• It is consistent: For any non-null values x and y, multiple invocations of x.equals(y)should
-consistently return true or consistently return false, provided no information used in equals
-comparisons on the objects is modified.
-• For any non-null value x, x.equals(null) should return false.
-The definition of equals developed for class Point up to now satisfies the contract for equals. However,
-things become more complicated once subclasses are considered. Say there is a
-subclass ColoredPoint of Point that adds a field color of type Color. Assume Color is defined as an
-enumeration, as presented in Section 20.9:
+----
+Так що тут множина, що не містить `p`, але `p` є серед елементів множини! Що трапилось, це те, що після зміни поля `x`, точка `p` залишилась з невірним хеш бакетом в множині `coll`. Тобто, її оригінальний хеш бакет більше не відповідає до нового значення її хеш коду. Кажучи розмовною мовою, точка `p` "випала з поля зору" в множині `coll`, навіть якщо вона все ще належить до її елементів.
+
+Урок, що треба винести з цього прикладу, в тому, що коли `equals` та `hashCode` залежать від змінного стану, це призводить до проблем для потенційних користувачів. Якщо ви покладете такі об'єкти до колекцій, ви маєте бути уважними, щоб ніколи не модифікувати цей стан, і це складно. Якщо вам треба порівняння, що приймає до уваги поточний стан об'єкта, вам слідує назвати це якось інакше, не `equals`.
+
+Розглядаючи останнє визначення `Point`, можливо буде мати вигоду оминути перевизначення `hashCode`, та назвати метод порівняння `equalContents` або деяким ішим ім'ям, відмінним від `equals`. Після цього `Point` буде наслідувати реалізацію по замовчанню `equals` та `hashCode`; `p` буде шукатись в `coll` навіть після модифікацій до його поля `x`.
+
+Пастка #4: Схиблене визнечення `equals` як відношення еквівалентності
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Контракт метода `equals` в `scala.Any` вказує, що `equals` має реалізувати відношення еквівалентності на не-`null` об'єктах:footnote:[Як з `hashCode`, контракт `Any` для метода `equals` базується на контракті метода equals в `java.lang.Object`.]
+
+* Він рефлексивний: Для любого не-`null` значення `x` вираз `x.equals(x)` повинен повертати `true`.
+
+* Він симетричний: для любих не-`null` значень `x` та `y`, `x.equals(y)` повинно повертати `true` тоді і тільки тоді, якщо `y.equals(x)` повертає `true`.
+
+* Він транзитивний: для любих не-`null` значень `x`, `y`, та `z`, якщо `x.equals(y)` повертає `true`, та `y.equals(z)` повертає `true`, тоді `x.equals(z)` повинно повертати `true`.
+
+* Він узгоджений: для любих не-`null` значень `x` та `y`, декілька викликів `x.equals(y)` повинно узгоджено повертати `true`, або узгоджено повертати `false`, вважаючи, що інформація, яка використовувалась для порівнянь не змінювалась.
+
+* Для кожного не-`null` значення `x`, `x.equals(null)` повинно повертати `false`.
+
+Визначення `equals`, розроблене для класа `Point` дотепер, задовільняє контракту для `equals`. Однак речі стають складнішими, коли прийняти до уваги субкласи. Скажімо, існує субклас `ColoredPoint` від `Point`, що додає поле `color` типу `Color`. Нехай `Color` визначений як перелік, як представлено в Розділі 20.9:
+[source,scala]
+----
 object Color extends Enumeration {
-val Red, Orange, Yellow, Green, Blue, Indigo, Violet = Value
+  val Red, Orange, Yellow, Green, Blue, Indigo, Violet = Value
 }
-ColoredPoint overrides equals to take the new color field into account:
+----
+`ColoredPoint` перекриває `equals`, щоб прийняти до уваги нове поле `color`:
+[source,scala]
+----
 class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) { // Problem: equals not symmetric
+    extends Point(x, y) { // Пробелма: equals не симетричне
+
+  override def equals(other: Any) = other match {
+    case that: ColoredPoint =>
+      this.color == that.color && super.equals(that)
+    case _ => false
+  }
 }
-override def equals(other: Any) = other match {
-case that: ColoredPoint =>
-this.color == that.color && super.equals(that)
-case _ => false
-}
-This is what many programmers would likely write. Note that in this case, class ColoredPointneed not
-override hashCode. Because the new definition of equals on ColoredPoint is stricter than the
-overridden definition in Point (meaning it equates fewer pairs of objects), the contract
-forhashCode stays valid. If two colored points are equal, they must have the same coordinates, so their
-hash codes are guaranteed to be equal as well.Taking the class ColoredPoint by itself, its definition of equals looks OK. However, the contract
-for equals is broken once points and colored points are mixed. Consider:
+----
+Це те, що більшість програмістів скоріше всього напишуть. Зауважте, що в цьому випадку клас `ColoredPoint` не повинен перекрити `hashCode`. Оскільки нове визначення `equals` на `ColoredPoint` суворіше, ніж перекрите визначення в `Point` (що означає, що воно прирівняє меньшу кількість об'єктів), контракт для `hashCode` залишається валідним. Якщо дві кольорові точки еквівалентні, вони повинні мати ті самі координати, так що їх хеш коди також гарантовано рівні.
+
+Беручи сам клас `ColoredPoint`, його визначення `equals` виглядає OK. Однак контракт для `equals` ламається, як тільки точки і кольорові точки змішуються. Розглянемо:
+[source,scala]
+----
 scala> val p = new Point(1, 2)
 p: Point = Point@5428bd62
+
 scala> val cp = new ColoredPoint(1, 2, Color.Red)
 cp: ColoredPoint = ColoredPoint@5428bd62
+
 scala> p equals cp
 res9: Boolean = true
+
 scala> cp equals p
 res10: Boolean = false
-The comparison "p equals cp" invokes p's equals method, which is defined in class Point. This method
-only takes into account the coordinates of the two points. Consequently, the comparison yields true. On
-the other hand, the comparison "cp equals p" invokes cp's equalsmethod, which is defined in
-class ColoredPoint. This method returns false because p is not aColoredPoint. So the relation defined
-by equals is not symmetric.
-The loss in symmetry can have unexpected consequences for collections. Here's an example:
+----
+Порівняння `p equals cp` викликає метод `p.equals`, що визначений в класі `Point`. Цей метод приймає до уваги тільки координати двох точок. Як слідоцтво, порівняння дає `true`. З іншого боку, порівняння `cp equals p` викликає метод `cp.equals`, що визначений в класі `ColoredPoint`. Цей метод повертає `false`, оскільки `p` не є `ColoredPoint`. Так що відношення, визначене `equals`, не є симетричним.
+
+Втрата симетрії може мати неочікувані наслідки для колекцій. Ось приклад:
+[source,scala]
+----
 scala> collection.mutable.HashSet[Point](p) contains cp
 res11: Boolean = true
+
 scala> collection.mutable.HashSet[Point](cp) contains p
 res12: Boolean = false
-Even though p and cp are equal, one contains test succeeds whereas the other one fails:
-How can you change the definition of equals so that it becomes symmetric? Essentially there are two
-ways. You can either make the relation more general or more strict. Making it more general means that
-a pair of two objects, x and y, is taken to be equal if either comparing xwith y or
-comparing y with x yields true. Here's code that does this:
+----
+Навіть якщо `p` та `cp` рівні, одна перевірка `contains` буде успішна, та інша невдала:
+
+Як ви можете змінити визначення `equals`, так щоб він став симетричний? В основному є два шляхи. Ви можете або зробити відношення більш загальним, або більш суворим. Створення його більш загальним означає, що пара з двох об'єктів, `x` та `y`, має вважатись рівними, якщо любе з порівнянь `x` до `y`, або `y` до `x`, дасть `true`. Ось код що робить це:
+[source,scala]
+----
 class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) { // Problem: equals not transitive
-override def equals(other: Any) = other match {
-case that: ColoredPoint =>
-(this.color == that.color) && super.equals(that)
-case that: Point =>
-that equals this
-case _ =>
-false
+    extends Point(x, y) { // Проблема: equals не транзитивне
+
+  override def equals(other: Any) = other match {
+    case that: ColoredPoint =>
+      (this.color == that.color) && super.equals(that)
+    case that: Point =>
+      that equals this
+    case _ =>
+      false
+  }
 }
-}
-The new definition of equals in ColoredPoint has one more case than the old one: If the otherobject is
-a Point but not a ColoredPoint, the method forwards to the equals method of Point. This has the desired
-effect of making equals symmetric. Now, both "cp equals p" and "p equals cp" result in true. However,
-the contract for equals is still broken. The problem is that the new relation is no longer transitive!Here's a sequence of statements that demonstrates this. Define a point and two colored points of
-different colors, all at the same position:
+----
+Нове визначення `ColoredPoint` має один додатковий `case`, ніж старе: якщо об'єкт `other` є `Point`, але не `ColoredPoint`, метод відсилає до метода `equals` в `Point`. Це має бажаний ефект, що робить `equals` симетричним. Тепер обоє, `cp equals p` та `p equals cp` дають `true`. Однак контракт для `equals` все ще поломаний. Проблема в тому, що нове відношення більше не транзитивне!
+
+Ось послідовність тверджень, що демонструють це. Визначте точку і дві кольорові точки різного кольору, всі з однаковими координатами:
+[source,scala]
+----
 scala> val redp = new ColoredPoint(1, 2, Color.Red)
 redp: ColoredPoint = ColoredPoint@5428bd62
+
 scala> val bluep = new ColoredPoint(1, 2, Color.Blue)
 bluep: ColoredPoint = ColoredPoint@5428bd62
-Taken individually, redp is equal to p and p is equal to bluep:
+----
+Взяті окремо, `redp` рівне до `p`, та `p` рівне до `bluep`:
+[source,scala]
+----
 scala> redp == p
 res13: Boolean = true
+
 scala> p == bluep
 res14: Boolean = true
-However, comparing redp and bluep yields false:
+----
+Однак порівняння `redp` та `bluep` дає `false`:
+[source,scala]
+----
 scala> redp == bluep
 res15: Boolean = false
-Hence, the transitivity clause of the equals's contract is violated.
-Making the equals relation more general seems to lead to a dead end. We'll try to make it stricter
-instead. One way to make equals stricter is to always treat objects of different classes as different. This
-could be achieved by modifying the equals methods in classes Point andColoredPoint. In class Point,
-you could add an extra comparison that checks whether the run-time class of the other Point is exactly
-the same as this Point's class:
-// A technically valid, but unsatisfying, equals method
+----
+Таким чином, твердження транзитивності контракту `equals` порушене.
+
+Створення відношення `equals` більш загальним, здається, призводить до глухого кута. Ми спробуємо зробити його замість цього суворішим. Один спосіб зробити `equals` суворішим - це завжди вприймати об'єкти різних типів як різні. Цього можна досягти, можифікуючи методи `equals` в класах `Point` та `ColoredPoint`. В класі `Point` ви можете додати додаткове порівняння, що перевіряє, чи клас часу виконання іншої `Point` точно такий самий, як і в класа цієї `Point`:
+[source,scala]
+----
+// Технічно валідний, але незадовільний метод equals
 class Point(val x: Int, val y: Int) {
-override def hashCode = (x, y).##
-override def equals(other: Any) = other match {
-case that: Point =>
-this.x == that.x && this.y == that.y &&
-this.getClass == that.getClass
-case _ => false
+  override def hashCode = (x, y).##
+  override def equals(other: Any) = other match {
+    case that: Point =>
+      this.x == that.x && this.y == that.y &&
+          this.getClass == that.getClass
+    case _ => false
+  }
 }
-}
-You can then revert class ColoredPoint's implementation back to the version that previously had
-violated the symmetry requirement:footnote:[Given the new implementation of equals in Point, this version of ColoredPoint no longer violates the symmetry requirement.]
+----
+Тепер ви можете відкатити реалізацію класа `ColoredPoint` назад до версії, що перед цім порушувала вимогу симетричності:footnote:[Маючи нову реалізацію `equals` в `Point`, ця версія `ColoredPoint` більше не порушує вимогу симетрії.]
+[source,scala]
+----
 class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) {
-override def equals(other: Any) = other match {
-case that: ColoredPoint =>
-(this.color == that.color) && super.equals(that)
-case _ => false
+    extends Point(x, y) {
+
+  override def equals(other: Any) = other match {
+    case that: ColoredPoint =>
+      (this.color == that.color) && super.equals(that)
+    case _ => false
+  }
 }
-}Here, an instance of class Point is considered to be equal to some other instance of the same class, only
-if the objects have the same coordinates and they have the same run-time class, meaning getClass on
-either object returns the same value. The new definitions satisfy symmetry and transitivity because now
-every comparison between objects of different classes yields false. So a colored point can never be
-equal to a point. This convention looks reasonable, but one could argue that the new definition is too
-strict.
-Consider the following slightly roundabout way to define a point at coordinates (1, 2):
+----
+Тут примірник класу `Point` визнається рівним до деякого іншого примірника того самого класу, тільки якщо об'єкти мають ті самі координати, та вони мають той клас часу виконання, що означає, що `getClass` на кожному об'єкті поверне те саме значення. Нові визначення задовільняють симетрії та транзитивності, оскільки тепер кожне порівняння між об'єктами різних класів дає `false`. Так що кольорова точка ніколи не буде рівна точці. Ця домовленість виглядає логічною, але ви можете сказати, що нове обмеження дуже суворе.
+
+Розглянеом наступний обхідний шлях визначити точку з координатами `(1, 2)`:
+[source,scala]
+----
 scala> val pAnon = new Point(1, 1) { override val y = 2 }
 pAnon: Point = $anon$1@5428bd62
-Is pAnon equal to p? The answer is no because the java.lang.Class objects associated
-with p andpAnon are different. For p it is Point, whereas for pAnon it is an anonymous subclass
-of Point. But clearly, pAnon is just another point at coordinates (1, 2). It does not seem reasonable to
-treat it as being different from p.
-So it seems we are stuck. Is there a sane way to redefine equality on several levels of the class
-hierarchy while keeping its contract? In fact, there is such a way, but it requires one more method to
-redefine together with equals and hashCode. The idea is that as soon as a class
-redefines equals (and hashCode), it should also explicitly state that objects of this class are never equal
-to objects of some superclass that implement a different equality method. This is achieved by adding a
-method canEqual to every class that redefines equals. Here's the method's signature:
+----
+Чи `pAnon` рівне до `p`? Відповідь є ні, оскільки об'єкти `java.lang.Class`, асоційовані з `p` та `pAnon` є різні. Для `p` це `Point`, тоді як для `pAnon` це анонімний субклас `Point`. Але ясно, що `pAnon` є тільки нова точка з координатами `(1, 2)`. Не виглядає логічним розглядати її як іншу, ніж `p`.
+
+Виглядає що ми буксуємо. Чи існує розумний спосіб перевизначити еквівалентність на декількох рівнях ієрархії класів, при цьому дотримуючись контракту? Фактично, існує такий метод, але він потребує одночасного перевизначення ще одного метода разом з `equals` та `hashCode`. Ідея в тому, що як тільки клас перевизначає `equals` (та `hashCode`), він також має явно встановити, що об'єкти цього класу ніколи не рівні до об'єктів деякого суперкласу, що реалізує інший метод еквівалентності. Це досягається додаванням методу `canEqual` до кожного класу, що перевизначає `equals`. Ось сигнатура метода:
+[source,scala]
+----
 def canEqual(other: Any): Boolean
-The method should return true if the other object is an instance of the class in which canEqual is
-(re)defined, false otherwise. It is called from equals to make sure that the objects are comparable both
-ways. Listing 30.1 shows a new (and final) implementation of class Pointalong these lines:
+----
+Метод повинен повертати `true`, якщо інший об'єкт є примірником класу, в якому `canEqual` є (пере)визначеним, інакше `false`. Він викликається з `equals`, щоб переконатись, що об'єкти можна порівняти в обох напрямках. Лістинг 30.1 показує нову (та фінальну) реалізацію класу `Point`, разом з ціма рядками:
+[source,scala]
+----
 class Point(val x: Int, val y: Int) {
-override def hashCode = (x, y).##
-override def equals(other: Any) = other match {
-case that: Point =>
-(that canEqual this) &&
-(this.x == that.x) && (this.y == that.y)
-case _ =>
-false
+  override def hashCode = (x, y).##
+  override def equals(other: Any) = other match {
+    case that: Point =>
+      (that canEqual this) &&
+          (this.x == that.x) && (this.y == that.y)
+    case _ =>
+      false
+  }
+  def canEqual(other: Any) = other.isInstanceOf[Point]
 }
-def canEqual(other: Any) = other.isInstanceOf[Point]
+----
+Лістинг 30.1 - Метод суперкласа `equals`, що викликає `canEqual`.
+
+Метод `equals` в цій версії класу `Point` містить додаткову вимогу, щоб об'єкт `other` міг бути еквівалентним до `this`, як визначено в методі `canEqual`. Реалізація `canEqual` в `Point` стверджує, що всі примірники `Point` можуть бути рівними.
+
+Лістинг 30.2 показує відповідну реалізацію `ColoredPoint`.
+[source,scala]
+----
+class ColoredPoint(x: Int, y: Int, val color: Color.Value)
+    extends Point(x, y) {
+
+  override def hashCode = (super.hashCode, color).##
+  override def equals(other: Any) = other match {
+    case that: ColoredPoint =>
+      (that canEqual this) &&
+          super.equals(that) && this.color == that.color
+    case _ =>
+      false
+  }
+  override def canEqual(other: Any) =
+    other.isInstanceOf[ColoredPoint]
 }
-Listing 30.1 - A superclass equals method that calls canEqual.
-The equals method in this version of class Point contains the additional requirement that the other
-object can equal this one, as determined by the canEqual method. The implementation
-ofcanEqual in Point states that all instances of Point can be equal.
-Listing 30.2 shows the corresponding implementation of ColoredPoint.class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) {
-}
-override def hashCode = (super.hashCode, color).##
-override def equals(other: Any) = other match {
-case that: ColoredPoint =>
-(that canEqual this) &&
-super.equals(that) && this.color == that.color
-case _ =>
-false
-}
-override def canEqual(other: Any) =
-other.isInstanceOf[ColoredPoint]
-Listing 30.2 - A subclass equals method that calls canEqual.
-It can be shown that the new definition of Point and ColoredPoint keeps the contract of equals. Equality
-is symmetric and transitive. Comparing a Point to a ColoredPoint always yields false. Indeed, for any
-point p and colored point cp, "p equals cp" will return false because "cp canEqual p" will return false.
-The reverse comparison, "cp equals p", will also return falsebecause p is not a ColoredPoint, so the first
-pattern match in the body of equals in ColoredPointwill fail.
-On the other hand, instances of different subclasses of Point can be equal, as long as none of the classes
-redefines the equality method. For instance, with the new class definitions, the comparison
-of p and pAnon would yield true. Here are some examples:
+----
+Лістинг 30.2 - Метод субкласу `equals`, що викликає `canEqual`.
+
+Може бути показане, що нове визначення `Point` та `ColoredPoint` дотрумуються контракту для `equals`. Еквівалентність є симетричною та транзитивною. Порівняння `Point` з `ColoredPoint` завжди дає `false`. Зрозуміло, що для кожної точки `p` та кольорової точки `cp`, `p equals cp` буде повертати `false`, оскільки `cp canEqual p` буде повертати `false`. Зворотнє порівняння `cp equals p` буде також повертати `false`, оскільки `p` не є `ColoredPoint`, так що перше співпадіння шаблонів в тілі `equals` в `ColoredPoint` схибить.
+
+З іншого боку, примірники різних субкласів `Point` можуть бути рівні, доти, докі ніякий з субкласів не перевизначає метод рівності. Наприклад, з повим визначенням класу, порівняння `p` та `pAnon` даватиме `true`. Ось деякі приклади:
+[source,scala]
+----
 scala> val p = new Point(1, 2)
 p: Point = Point@5428bd62
+
 scala> val cp = new ColoredPoint(1, 2, Color.Indigo)
 cp: ColoredPoint = ColoredPoint@e6230d8f
+
 scala> val pAnon = new Point(1, 1) { override val y = 2 }
 pAnon: Point = $anon$1@5428bd62
+
 scala> val coll = List(p)
 coll: List[Point] = List(Point@5428bd62)
+
 scala> coll contains p
 res16: Boolean = true
+
 scala> coll contains cp
 res17: Boolean = false
+
 scala> coll contains pAnon
 res18: Boolean = true
-These examples demonstrate that if a superclass equals implementation defines and callscanEqual, then
-programmers who implement subclasses can decide whether or not their subclasses may be equal to
-instances of the superclass. Because ColoredPoint overrides canEqual, for example, a colored point
-may never be equal to a plain-old point. But because the anonymous subclass referenced
-from pAnon does not override canEqual, its instance can be equal to a Point instance.One potential criticism of the canEqual approach is that it violates the Liskov Substitution Principle.
-For example, the technique of implementing equals by comparing run-time classes, which led to the
-inability to define a subclass whose instances can equal instances of the superclass, has been described
-as a violation of the LSP.footnote:[Bloch, Effective Java Second Edition, p. 39 [Blo08\]] The LSP states you should be able to use (substitute) a subclass instance
-where a superclass instance is required.
-In the previous example, however, "coll contains cp" returned false even though cp's x and yvalues
-matched those of the point in the collection. Thus, it may seem like a violation of the LSP because you
-can't use a ColoredPoint here where a Point is expected. We believe this is the wrong interpretation,
-because the LSP doesn't require that a subclass behaves identically to its superclass, just that it behaves
-in a way that fulfills the contract of its superclass.
-The problem with writing an equals method that compares run-time classes is not that it violates the
-LSP, but that it doesn't give you a way to create a subclass whose instances can equal superclass
-instances. For example, had we used the run-time class technique in the previous example,
-"coll contains pAnon" would have returned false, and that's not what we wanted. By contrast, we really
-did want "coll contains cp" to return false, because by overriding equals in ColoredPoint, we were
-basically saying that an indigo-colored point at coordinates (1, 2) is not the same thing as an uncolored
-point at (1, 2). Thus, in the previous example we were able to pass two different Point subclass
-instances to the collection's containsmethod, and we got back two different answers, both correct.
-30.3 DEFINING EQUALITY FOR PARAMETERIZED TYPES
-The equals methods in the previous examples all started with a pattern match that tested whether the
-type of the operand conformed to the type of the class containing the equalsmethod. When classes are
-parameterized, this scheme needs to be adapted a little bit.
-As an example, consider binary trees. The class hierarchy shown in Listing 30.3 defines an abstract
-class Tree for a binary tree, with two alternative implementations: an EmptyTree object and
-a Branch class representing non-empty trees. A non-empty tree is made up of some element elem, and
-a left and right child tree. The type of its element is given by a type parameter T.
-trait
-def
-def
-def
+----
+Ці приклади демонструють, що якщо реалізація `equals` суперкласа визначає та викликає `canEqual`, тоді програмісти, що реалізують субкласи можуть вирішувати, зможе чи ні примірник їхнього субкласу бути рівний примірникам суперкласу. Наприклад, оскільки `ColoredPoint` перекриває `canEqual`, кольорова точка ніколи не може бути рівною до простої старої точки. Але оскільки анонімний субклас, на який посилається `pAnon` не перекриває `canEqual`, його примірник може бути рівним до примірника `Point`.
+
+Одне з потенційних зауважень підходу `canEqual` в тому, що він порушує Принцип Підстановки Ліскова (LSP). Наприклад, техніка реалізації `equals` через порівняння типів часу виконання, що призводить до неможливості визначити субклас, чиї примірники можуть бути рівні примірникам суперкласу, була описана як порушення LSP.footnote:[Bloch, Effective Java Second Edition, p. 39 [Blo08\]] LSP стверджує, що повинна бути можливість використовувати (підставляти) примірники субкласів, там, де потрібні примірники суперкласа.
+
+Однак в попередньому прикладі `coll contains cp` повертає `false`, навіть якщо в `cp` значення `x` та `y` співпадають з такими для точки в колекції. Таким чином, це може виглядати як порушення LSP, оскільки ви не можете використовувати `ColoredPoint` там, де очікувався `Point`. Ми віримо, що це помилкова інтерпретація, оскільки LSP не вимагає, щоб субклас поводився ідентично до своїх суперкласів, а тільки щоб він поводився так, щоб задовільняти контракту свого суперкласу.
+
+Проблема з написанням метода `equals`, що порівнює класи часу виконання не в тому, що він порушує LSP, але в тому, що він не дає вам спосіб створити субклас, чиї примірники можуть бути еквівалентні примірникам суперкласу. Наприклад, як ми використовували техніку рантайм класів в попередньому прикладі, `coll contains pAnon` мало б повертати `false`, але не те, чого ми б хотіли. Для контрасту, ми реально хочемо, щоб `coll contains cp повертав `false`, оскільки через перекриття `equals` в `ColoredPoint` ми в основному кажемо, що точка кольору індіго з координатами `(1, 2)` не те саме, що некольорова точка `(1, 2)`. Таким чином, в попередньому прикладі ми були в змозі передати два різні примірники субкласа `Point` до метода `contains`, та ми отримали назад дві різні відповіді, обоє коректні.
+
+30.3 Визначення параметрів для параметризованих типів
+-----------------------------------------------------
+В методі `equals` в попередніх прикладах все починалось з шаблона порівняння, що перевіряв, чи тип операнда відповідав типу класу, що містить метод `equals`. Коли класи параметризовані, ця схема потребує невеликої адаптації.
+
+Як приклад розглянемо бінарні дерева. Ієрархія класів, показана на Лістингу 30.3 визначає абстрактний клса `Tree` для бінарного дерева, з двома альтернативними реалізаціями: об'єкт `EmptyTree`, та клас `Branch`, що представляє непорожні дерева. Непорожне дерево складається з деякого елемента `elem`, та лівого та правого дочірніх дерев. Тип цього елементу береться з параметру типу `T`.
+[source,scala]
+----
+trait Tree[+T] {
+  def elem: T
+  def left: Tree[T]
+  def right: Tree[T] 
 }
-Tree[+T] {
-elem: T
-left: Tree[T]
-right: Tree[T]
+
 object EmptyTree extends Tree[Nothing] {
-def elem =
-throw new NoSuchElementException("EmptyTree.elem")
-def left =
-throw new NoSuchElementException("EmptyTree.left")
-def right =
-throw new NoSuchElementException("EmptyTree.right")
+  def elem =
+    throw new NoSuchElementException("EmptyTree.elem")
+  def left =
+    throw new NoSuchElementException("EmptyTree.left")
+  def right =
+    throw new NoSuchElementException("EmptyTree.right")
 }
+
 class Branch[+T](
-val elem: T,val left: Tree[T],
-val right: Tree[T]
+  val elem: T,val left: Tree[T],
+  val right: Tree[T]
 ) extends Tree[T]
-Listing 30.3 - Hierarchy for binary trees.
-We'll now add equals and hashCode methods to these classes. For class Tree itself there's nothing to do
-because we assume that these methods are implemented separately for each implementation of the
-abstract class. For object EmptyTree, there's still nothing to do because the default implementations
-of equals and hashCode that EmptyTree inherits from AnyRef work just fine. After all, an EmptyTree is
-only equal to itself, so equality should be reference equality, which is what's inherited from AnyRef.
-But adding equals and hashCode to Branch requires some work. A Branch value should only be equal
-to other Branch values, and only if the two values have equal elem, left and right fields. It's natural to
-apply the schema for equals that was developed in the previous sections of this chapter. This would
-give you:
+----  
+Лістинг 30.3 - Ієрархія для бінарних дерев.
+
+Тепер ми додамо методи `equals` та `hashCode` до ціх класів. Для самого класу `Tree` нічого робити, оскільки ми вважаємо, що ці методи реалізовані окремо для кожної реалізації абстрактного класу. Для об'єкту `EmptyTree` все ще нічого робити, оскільки реалізація по замовчанню для `equals` та `hashCode`, які `EmptyTree` наслідує від `AnyRef`, роблять чудово. Кінець кінцем, `EmptyTree` единий буде рівний сам собі, так що еквівалентність буде посилатись на ідентичність, що наслідується від `AnyRef`.
+
+Але додавання `equals` та `hashCode` до `Branch` потребує деякої роботи. Значення `Branch` має бути рівне тільки іншим значенням `Branch`, та тільки в тому випадку, якщо два значення мають рівні поля `elem`, `left` та `right`. Буде природним застосувати схему для `equals`, що була розроблена в попередніх розділах цієї глави. Це дасть вам:
+[source,scala]
+----
 class Branch[T](
-val elem: T,
-val left: Tree[T],
-val right: Tree[T]
+  val elem: T,
+  val left: Tree[T],
+  val right: Tree[T]
 ) extends Tree[T] {
-override def equals(other: Any) = other match {
-case that: Branch[T] => this.elem == that.elem &&
-this.left == that.left &&
-this.right == that.right
-case _ => false
+
+  override def equals(other: Any) = other match {
+    case that: Branch[T] => this.elem == that.elem &&
+                            this.left == that.left &&
+                            this.right == that.right
+    case _ => false
+  }
 }
-}
-Compiling this example, however, gives an indication that "unchecked" warnings occurred. Compiling
-again with the -unchecked option reveals the following problem:
+----
+Однак компіляція цього прикладу дає позначку, що виникло попередження "unchecked". Нова компіляція з опцією -unchecked викриває наступну проблему:
+[source,scala]
+----
 $ fsc -unchecked Tree.scala
 Tree.scala:14: warning: non variable type-argument T in type
 pattern is unchecked since it is eliminated by erasure
-case that: Branch[T] => this.elem == that.elem &&
-^
-As the warning says, there is a pattern match against a Branch[T] type, yet the system can only check
-that the other reference is (some kind of) Branch; it cannot check that the element type of the tree is T.
-You encountered in Chapter 19 the reason for this: Element types of parameterized types are eliminated
-by the compiler's erasure phase; they are not available to be inspected at run-time.
-So what can you do? Fortunately, it turns out that you need not necessarily check that twoBranches
-have the same element types when comparing them. It's quite possible that twoBranches with different
-element types are equal, as long as their fields are the same. A simple example of this would be
-the Branch that consists of a single Nil element and two empty subtrees. It's plausible to consider any
-two such Branches to be equal, no matter what static types they have:scala> val b1 = new Branch[List[String]](Nil,
-EmptyTree, EmptyTree)
+    case that: Branch[T] => this.elem == that.elem &&
+               ^
+----
+Як каже попередження, існує порівняння шаблонів щодо типу `Branch[T]`, але вивтема може тільки перевірити, що інше посилання є (деяким різновидом) `Branch`; вона не може перевірити, що тип елементу дерева є `T`. В Главі 19 ви зустрічали причину цього: типи елементів параметризованих типів видаляються на фазі затирання компілятора; вони недоступні для інспекції під час виконання.
+
+Так що ми можемо зробити? Нащастя, з'ясовується, що вам не обов'язково перевіряти, що два `Branch` мають той самий тип елементів при їх порівнянні. Досить можливо, що два `Branch` з різними типами елементів рівні, доки їх поля такі самі. Простий приклад цього може бути `Branch`, що складається з одного елементу `Nil` та двох порожніх субдерев. Прийнятно вважати любі два таких  `Branch` як рівні, не важливо, які статичні типи вони мають:
+[source,scala]
+----
+scala> val b1 = new Branch[List[String]](Nil,
+           EmptyTree, EmptyTree)
 b1: Branch[List[String]] = Branch@9d5fa4f
+
 scala> val b2 = new Branch[List[Int]](Nil,
-EmptyTree, EmptyTree)
+           EmptyTree, EmptyTree)
 b2: Branch[List[Int]] = Branch@56cdfc29
+
 scala> b1 == b2
 res19: Boolean = true
-The positive result of the comparison above was obtained with the implementation
-of equalson Branch shown previously. This demonstrates that the element type of the Branch was not
-checked—if it had been checked, the result would have been false.
-We can disagree on which of the two possible outcomes of the comparison would be more natural. In
-the end, this depends on the mental model of how classes are represented. In a model where type-
-parameters are present only at compile-time, it's natural to consider the two Branch values b1 and b2 to
-be equal. In an alternative model where a type parameter forms part of an object's value, it's equally
-natural to consider them different. Since Scala adopts the type erasure model, type parameters are not
-preserved at run time, so that b1 and b2 are naturally considered to be equal.
-There's only a tiny change needed to formulate an equals method that does not produce
-anunchecked warning. Instead of an element type T, use a lower case letter, such as t:
+----
+Позитивний результат порівняння вище було отримане від реалізації `equals` на `Branch`, показаної до цього. Це демонструє, що тип елементу `Branch` не був перевірений — якщо б він був перевірений, результатом мало б бути `false`.
+
+Ми можемо не погоджуватись, який з двох результатів буде більш натуральний. Кінець цінцем, це залежить від ментальної моделі того, як класи представлені. В моделі, де параметри типу присутні лише під час компіляції, природно вважати, що два `Branch`, `b1` та `b2`, рівні. В альтернатівній моделі, де параметри типу формують частину значення об'єкту, так само природно розглядати їх як різні. Оскільки Scala приймає модель затирання типів, параметри типів неприсутні під час виконання, так що `b1` та `b2` природно розглядаються як рівні.
+
+Існує тільки маленька зміна, потрібна для формулювання методу `equals`, що не продукує неперевіреного попередження. Замість елементу типу `T` використовуйте літеру малого реєсту, таку як `t`:
+[source,scala]
+----
 case that: Branch[t] => this.elem == that.elem &&
-this.left == that.left &&
-this.right == that.right
-Recall from Section 15.2 that a type parameter in a pattern starting with a lower-case letter represents
-an unknown type. Now the pattern match:
+                        this.left == that.left &&
+                        this.right == that.right
+----
+Згадайте з Розділу 15.2, що параметр типу в шаблоні, що починається з малої літери, представляє невідомий тип. Тепер шаблон співпаде:
+[source,scala]
+----
 case that: Branch[t] =>
-will succeed for Branch values of any type. The type parameter t represents the unknown element type
-of the Branch. It can also be replaced by an underscore, as in the following case, which is equivalent to
-the previous one:
+----
+буде успішним для значень `Branch` любого типу. Параметр типу `t` представляє невідомий елемент типу для `Branch`. Він також може бути замінений на підкреслення, що те саме, що і попередній варіант:
+[source,scala]
+----
 case that: Branch[_] =>
-The only thing that remains is to define for class Branch the other two
-methods, hashCode andcanEqual, which go with equals. Here's a possible implementation
-of hashCode:
+----
+Одна річ, що залишилось визначити для класу `Branch` є два інші методи, `hashCode` та `canEqual`, що ідуть з `equals`. Ось можлива реалізація `hashCode`:
+[source,scala]
+----
 override def hashCode: Int = (elem, left, right).##
-This is only one of many possible implementations. As shown previously, the principle is to
-take hashCode values of all fields and combine them. Here's an implementation of methodcanEqual in
-class Branch:
+----
+Це тільки одна з багатьох можливих реалізацій. Як показано раніше, принцип є взяти `hashCode` з усіх полів, та скомбінувати їх. Ось реалізація методу `canEqual` в класі `Branch`:
+[source,scala]
+----
 def canEqual(other: Any) = other match {case that: Branch[_] => true
-case _ => false
+  case _ => false
 }
-The implementation of the canEqual method used a typed pattern match. It would also be possible to
-formulate it with isInstanceOf:
+----
+Реалізація метода `canEqual` використовує типізоване порівняння шаблонів. Також можливо свормулювати його за допомогою `isInstanceOf`:
+[source,scala]
+----
 def canEqual(other: Any) = other.isInstanceOf[Branch[_]]
-If you feel like nit-picking—and we encourage you to do so!—you might wonder what the occurrence
-of the underscore in the type above signifies. After all, Branch[_] is technically a type parameter of a
-method, not a type pattern. So how is it possible to leave some parts of it undefined?
-The answer to this question is discussed in the next chapter. Branch[_] is shorthand for a so-
-called wildcard type, which is, roughly speaking, a type with some unknown parts in it. So even though
-technically the underscore stands for two different things in a pattern match and in a type parameter of
-a method call, in essence, the meaning is the same: It lets you label something that is unknown. The
-final version of Branch is shown in Listing 30.4.
+----
+Якщо ви почуваєтесь як nit-picking — і ми заохочуємо, щоб ви так і почувались! — ви можете здивуватись, що значить поява підкреслення в типі вище. Кінець кінцем, `Branch[_]` є технічно параметром типу для метода, не типом шаблону. То як це можливо залишити деякі його частини невизначеними?
+
+Відповідь на це запитання обговорюється в наступній главі. `Branch[_]` є скороченням для так званого підстановочного типу, що є, грубо кажучи, типом з деякими невідомими частинами. Так що навіть якщо технічно підкреслення означає дві різні речі в порівнянні шаблонів та параметрі типу в виклику метода, в основному значення те саме: воно дозволяє вам помітити дещо, що є невідомим. Фінальна версія `Branch` показана в Лістингу 30.4.
+[source,scala]
+----
 class Branch[T](
-val elem: T,
-val left: Tree[T],
-val right: Tree[T]
+  val elem: T,
+  val left: Tree[T],
+  val right: Tree[T]
 ) extends Tree[T] {
-override def equals(other: Any) = other match {
-case that: Branch[_] => (that canEqual this) &&
-this.elem == that.elem &&
-this.left == that.left &&
-this.right == that.right
-case _ => false
+
+  override def equals(other: Any) = other match {
+    case that: Branch[_] => (that canEqual this) &&
+                            this.elem == that.elem &&
+                            this.left == that.left &&
+                            this.right == that.right
+    case _ => false
+  }
+  
+  def canEqual(other: Any) = other.isInstanceOf[Branch[_]]
+  
+  override def hashCode: Int = (elem, left, right).##
 }
-def canEqual(other: Any) = other.isInstanceOf[Branch[_]]
-}
-override def hashCode: Int = (elem, left, right).##
-Listing 30.4 - A parameterized type with equals and hashCode.
-30.4 RECIPES FOR EQUALS AND HASHCODE
-In this section, we'll provide step-by-step recipes for creating equals and hashCode methods that should
-suffice for most situations. As an illustration, we'll use the methods of class Rational, shown in Listing
-30.5.
-To create this class, we removed the mathematical operator methods from the version of
-classRational shown in Listing 6.5 here. We also made a minor enhancement to toString, and modified
-the initializers of numer and denom to normalize all fractions to have a positive denominator (i.e., to
-transform 1/-2 to -1/2).Recipe for equals
-Here's the recipe for overriding equals:
-1. To override equals in a non-final class, create a canEqual method. If the inherited definition
-of equals is from AnyRef (that is, equals was not redefined higher up in the class hierarchy), the
-definition of canEqual should be new; otherwise, it will override a previous definition of a
-method with the same name. The only exception to this requirement is for final classes that
-redefine the equals method inherited from AnyRef. For them the subclass anomalies described
-in Section 30.2 cannot arise; consequently they need not define canEqual. The type of object
-passed to canEqual should be Any:
+
+Лістинг 30.4 - Параметризований тип з `equals` та `hashCode`.
+
+30.4 Рецепти щодо `equals` та `hashCode`
+----------------------------------------
+В цьому розділі ми надамо крок-за-кроком рецепти для створення методів `equals` та `hashCode`, що повинні підходити для більшості ситуацій. Як ілюстрація, ми будемо використовувати методи класу `Rational`, показаного в Лістингу 30.5.
+
+Щоб створити цей клас ми видалили методи математичних операцій з версії класу `Rational`, показаного в Лістингу 6.5. Ми також зробили мінорні покращення до `toString`, та модифікували ініціалізатори `numer` та `denom`, щоб нормалізувати всі дробі, що мають додатний дільник (тобто, трансформувати `1/-2` до `-1/2`).
+
+Рецепт для `equals`
+~~~~~~~~~~~~~~~~~~~
+Ось рецепт для перекриття `equals`:
+
+1. Щоб перекрити `equals` в нефінальному класі, створіть метод `canEqual`. Якщо наслідуване визначення `equals` походить від `AnyRef` (тобто `equals` не був перевизначений вище в ієрархії класів), визначення `canEqual` повинне бути нове; інакше воно буде перекривати повереднє визначення метода з таким же ім'ям. Одне виключення до цієї вимоги є для фінальних класів, що перевизначають метод `equals`, наслідуваний від `AnyRef`. Для них аномалії субкласів, описані в Розділі 30.2 не можуть виникти; відповідно вони не мають визначати `canEqual`. Тип об'єкту, переданий до `canEqual` повинен бути `Any`:
+[source,scala]
+----
 def canEqual(other: Any): Boolean =
-2. The canEqual method should yield true if the argument object is an instance of the current class
-(i.e., the class in which canEqual is defined), and false otherwise:
+----
+
+2. Метод `canEqual` повинен давати `true`, якщо об'єкт аргумента є примірником поточного класу (iтобто класу, в якому визначений `canEqual`), та `false` інакше:
+[source,scala]
+----
 other.isInstanceOf[Rational]
-3. In the equals method, make sure you declare the type of the object passed as an Any:
+----
+
+3. В методі `equals` переконайтесь, що ви задекларували тип об'єкта, переданого як `Any`:
+[source,scala]
+----
 override def equals(other: Any): Boolean =
-4. Write the body of the equals method as a single match expression. The selector of
-the matchshould be the object passed to equals:
+----
+
+4. Напишіть тіло метода `equals` як єдиний вираз `match`. Селектор  `match` повинен бути об'єктом, переданим до `equals`:
+[source,scala]
+----
 other match {
 // ...
 }
-5. The match expression should have two cases. The first case should declare a typed pattern for
-the type of the class on which you're defining the equals method:
+----
+
+5. Вираз `match` повинен мати два випадки. Перший повинен декларувати шаблон типу для класу, в якому ви визначаєте метод `equals`:
+[source,scala]
+----
 case that: Rational =>
-6. In the body of this case, write an expression that logical-ands together the individual
-expressions that must be true for the objects to be equal. If the equals method you are overriding
-is not that of AnyRef, you will most likely want to include an invocation of the
-superclass's equals method:
+----
+
+6. В тілі цього `case` запишіть вираз, що логчно пов'язує разом окремі вирази, що мають бути `true` для рівних об'єктів. Якщо метод `equals`, що ви перекриваєте, не походить від `AnyRef`, ви будете найбільш вірогідно включати виклик метода `equals` суперкласа:
+[source,scala]
+----
 super.equals(that) &&
-If you are defining equals for a class that first introduced canEqual, you should
-invokecanEqual on the argument to the equality method, passing this as the argument:
+----
+Якщо ви визначаєте `equals` для класа, що перший визначає `canEqual`,ви повинні викликати `canEqual` на аргументі до метода рівності, передавши його як аргумент:
+[source,scala]
+----
 (that canEqual this) &&
-Overriding redefinitions of equals should also include the canEqual invocation, unless they
-contain a call to super.equals. In the latter case, the canEqual test will already be done by thesuperclass call. Lastly, for each field relevant to equality, verify that the field in this object is
-equal to the corresponding field in the passed object:
+----
+Перекриття перевизначень `equals` також повенне включати виклик `canEqual`, якщо вони не включають виклик до `super.equals`. В останньому випадку перевірка `canEqual` буде вже зроблена викликом суперкласа. Нарешті, для кожного поля, що має відношення до рівності, перевірте, що поле для об'єкту `this` рівне до відповідного поля переданого об'єкта:
+[source,scala]
+----
 numer == that.numer &&
 denom == that.denom
-7. For the second case, use a wildcard pattern that yields false:
+----
+
+7. Для другого випадку використовуйте підстановочний шаблон, що дає `false`:
+[source,scala]
+----
 case _ => false
-If you adhere to this recipe for equals, equality is guaranteed to be an equivalence relation, as is
-required by the equals contract.
+----
+Якщо ви дотримуватиметесь цього рецепту для `equals`, рівність гарантовано буде відношенням еквівалентності, як вимагається контрактом `equals`.
+[source,scala]
+----
 class Rational(n: Int, d: Int) {
-require(d != 0)
-private val g = gcd(n.abs, d.abs)
-val numer = (if (d < 0) -n else n) / g
-val denom = d.abs / g
-private def gcd(a: Int, b: Int): Int =
-if (b == 0) a else gcd(b, a % b)
-override def equals(other: Any): Boolean =
-other match {
-case that: Rational =>
-(that canEqual this) &&
-numer == that.numer &&
-denom == that.denom
-case _ => false
+  require(d != 0)
+  private val g = gcd(n.abs, d.abs)
+  val numer = (if (d < 0) -n else n) / g
+  val denom = d.abs / g
+  private def gcd(a: Int, b: Int): Int =
+  if (b == 0) a else gcd(b, a % b)
+
+  override def equals(other: Any): Boolean =
+    other match {
+      case that: Rational =>
+        (that canEqual this) &&
+        numer == that.numer &&
+        denom == that.denom
+      case _ => false
+    }
+
+  def canEqual(other: Any): Boolean =
+    other.isInstanceOf[Rational]
+
+  override def hashCode: Int = (numer, denom).##
+
+  override def toString =
+    if (denom == 1) numer.toString else numer + "/" + denom
 }
-def canEqual(other: Any): Boolean =
-other.isInstanceOf[Rational]
-override def hashCode: Int = (numer, denom).##
-}
-override def toString =
-if (denom == 1) numer.toString else numer + "/" + denom
-Listing 30.5 - Class Rational with equals and hashCode.
-Recipe for hashCode
-For hashCode, you can usually achieve satisfactory results if you use the following recipe, whichis
-similar to a recipe recommended for Java classes in Effective Java.footnote:[Bloch, Effective Java Second Edition. [Blo08\]] Include in the calculation each
-field in your object that is used to determine equality in the equals method (the "relevant" fields). Make
-a tuple containing the values of all those fields. Then, invoke ##on the resulting tuple.
-For example, to implement the hash code for an object that has five relevant fields named a, b,c, d,
-and e, you would write:override def hashCode: Int = (a, b, c, d, e).##
-If the equals method invokes super.equals(that) as part of its calculation, you should start
-yourhashCode calculation with an invocation of super.hashCode. For example,
-had Rational's equalsmethod invoked super.equals(that), its hashCode would have been:
+----
+Лістинг 30.5 - Клас `Rational` з `equals` та `hashCode`.
+
+Рецепт для `hashCode`
+~~~~~~~~~~~~~~~~~~~~~
+Для `hashCode` ви звичайно можете досягти задовільних результатів, якщо будете використовувати наступний рецепт, що подібний до рецепту, рекомендуємого для Java класів в Effective Java.footnote:[Bloch, Effective Java Second Edition. [Blo08\]] Включіть в обчислення кожне поле в вашому об'єкту, що використовується для визначення рівності в методі `equals` ("відповідні" поля). Зробіть тапл, що містить значення з усіх ціх полів. Потім викличте `##` на отриманому таплі.
+
+Наприклад, щоб реалізувати хеш код для об'єкта, що має п'ять відповідних полів з іменами `a`, `b`, `c`, `d`, `e`, ви можете записати:
+[source,scala]
+----
+override def hashCode: Int = (a, b, c, d, e).##
+----
+Якщо метод `equals` викликає `super.equals(that)` як частину своїх обчислень, ви маєет почати ваше обчислення `hashCode` з виклика` super.hashCode`. Наприклад, якщо метод `Rational` `equals` мав викликати `super.equals(that)`, його `hashCode` був би такий:
+[source,scala]
+----
 override def hashCode: Int = (super.hashCode, numer, denom).##
-One thing to keep in mind as you write hashCode methods using this approach is that your hash code
-will only be as good as the hash codes you build out of it, namely the hash codes you obtain by
-calling hashCode on the relevant fields of your object. Sometimes you may need to do something extra
-besides just calling hashCode on the field to get a useful hash code for that field. For example, if one of
-your fields is a collection, you probably want a hash code for that field that is based on all the elements
-contained in the collection. If the field is a Vector, List,Set, Map, or tuple, you can simply include it in
-the list of items you are hashing over, becauseequals and hashCode are overridden in those classes to
-take into account the contained elements. However the same is not true for Arrays, which do not take
-elements into account when calculating a hash code. Thus for an array, you should treat each element of
-the array like an individual field of your object, calling ## on each element explicitly or passing the
-array to one of the hashCode methods in singleton object java.util.Arrays.
-Lastly, if you find that a particular hash code calculation is harming the performance of your program,
-consider caching the hash code. If the object is immutable, you can calculate the hash code when the
-object is created and store it in a field. You can do this by simply overriding hashCode with
-a val instead of a def, like this:
+----
+Одна річ, що треба пам'ятати коли пишете методи `hashCode` за допомогою цього підходу, це те, ваш хеш код буде гарний тільки настільки, наскільки гарні хеш коди, на яких він побудований, а саме хеш коди, що ви отримали викликаючи `hashCode` на відповідних полях вашого об'єкта. Іноді вам буде треба дещо крім простого виклику  `hashCode` на полі, щоб отримати корисний хеш код для цього поля. Наприклад, якщо одне з ваших полів є колекція, ви вірогідно бажаєте хеш код для цього поля, що базується на всіх елементах, що містяться в цій колекції. Якщо поле є `Vector`, `List`, `Set`, `Map`, або тапл, ви можете просто включити його в список елементів, по яких ви хешуєте, оскільки `equals` та `hashCode` перекриті в ціх класах, щоб прийняти до уваги елементи, які вони містять. Але це не так для  `Array`, що не приймає до уваги елементи при обчисленні хеш коду. таким чином для масивів ви маєте трактувати кожний елемент масиву як окреме поле вашого об'єкту, викликаюч `##` на кожному елементі явно, або передаючи масив до одного з методів `hashCode` в синглтон об'єкті `java.util.Arrays`.
+
+Нарешті, якщо ви знайдете, що окреме обчислення хеш коду шкодить продуктивності вашої програми, розгляньте кешування хеш коду. Якщо об'єкт незмінний, ви можете обчислити хеш код, коли об'єкт створюється, та зберігти його в полі. Ви можете зробити це, просто перекривши `hashCode` за допомогою `val` замість `def`, ось так:
+[source,scala]
+----
 override val hashCode: Int = (numer, denom).##
-This approach trades off memory for computation time, because each instance of the immutable class
-will have one more field to hold the cached hash code value.
+----
+Цей підхід є компроміс між пам'ятю та часом виконання, оскільки кожний примірник незмінного класу буде мати на одне поле більше, що зберігатиме кешоване значення хеш коду.
 
 30.5 Висновок
 -------------
-In retrospect, defining a correct implementation of equals has been surprisingly subtle. You must be
-careful about the type signature; you must override hashCode; you should avoid dependencies on
-mutable state; and you should implement and use a canEqual method if your class is non-final.
-Given how difficult it is to implement a correct equality method, you might prefer to define your
-classes of comparable objects as case classes. That way, the Scala compiler will
-addequals and hashCode methods with the right properties automatically.
+В ретроспктиві визначення коректної реалізації `equals` було несподівано тонким. Ви маєте бути уважним щодо сигнатури типу; ви маєте перекрити `hashCode`; ви повинні уникати залежностей від змінного стану; та ви маєте реалізувати та використовувати метод `canEqual`, якщо ваш клас не є фінальним.
+
+Беручи до уваги, як складно реалізувати коректний метод рівності, ви можете схилитись до визначення ваших класів для об'єктів що порівнюються як кейс класів. Таким чином компілятор Scala буде додавати методи `equals` та `hashCode` з правильними властивостями автоматично.

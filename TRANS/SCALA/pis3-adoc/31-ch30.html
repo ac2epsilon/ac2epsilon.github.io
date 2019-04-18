@@ -804,639 +804,672 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="___">Еквівалентність об'єктів</h1>
-<div class="paragraph"><p>Порівняння двох об'єктів на рівність (еквівалентність) є необхідним для програмування ubiquitous in programming. It is also more tricky than it looks at first glance. This chapter looks at object equality in detail and gives some recommendations to consider when you design your own equality tests.</p></div>
+<div class="paragraph"><p>Порівняння двох об'єктів на еквівалентність є наріжним в програмуванні. Воно більш заплутане, ніж здається на перший погляд. Ця глава дає погляд на еквівалентність в деталях, та дає деякі рекомендації для розгляду, коли ви розробляєте ваші власні тести еквівалентності.</p></div>
 <div class="sect1">
 <h2 id="_30_1___scala">30.1 Еквівалентність в Scala</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>As mentioned in Section 11.2, the definition of equality is different in Scala and Java. Java has two
-equality comparisons: the == operator, which is the natural equality for value types and object identity
-for reference types, and the equals method, which is (user-defined) canonical equality for reference
-types. This convention is problematic because the more natural symbol,==, does not always correspond
-to the natural notion of equality. When programming in Java, a common pitfall for beginners is to
-compare objects with == when they should be compared with equals. For instance, comparing two
-strings x and y using "x == y" might yield false in Java, even if x and y have exactly the same
-characters in the same order.
-Scala also has an equality method signifying object identity, but it is not used much. That kind of
-equality, written "x eq y", is true if x and y reference the same object. The == equality is reserved in
-Scala for the "natural" equality of each type. For value types, == is value comparison, just like in Java.
-For reference types, == is the same as equals in Scala. You can redefine the behavior of == for new
-types by overriding the equals method, which is always inherited from class Any. The inherited equals,
-which takes effect unless overridden, is object identity, as is the case in Java. So equals (and with
-it, ==) is by default the same as eq, but you can change its behavior by overriding the equals method in
-the classes you define. It is not possible to override == directly, as it is defined as a final method in
-class Any. That is, Scala treats == as if it were defined as follows in class Any:
-final def == (that: Any): Boolean =
-if (null eq this) {null eq that} else {this equals that}
-30.2 WRITING AN EQUALITY METHOD
-How should the equals method be defined? It turns out that writing a correct equality method is
-surprisingly difficult in object-oriented languages. In fact, after studying a large body of Java code, the
-authors of a 2007 paper concluded that almost all implementations of equalsmethods are faulty.<span class="footnote"><br />[Vaziri, et. al., "Declarative Object Identity Using Relation Types" [Vaz07]]<br /></span> This
-is problematic because equality is at the basis of many other things. For one, a faulty equality method
-for a type C might mean that you cannot reliably put an object of type C in a collection.
-For example, you might have two elements, elem1 and elem2, of type C which are equal (i.e.,
-"elem1 equals elem2" yields true). Nevertheless, with commonly occurring faulty implementations of
-the equals method, you could still see behavior like the following:
-var hashSet: Set[C] = new collection.immutable.HashSethashSet += elem1
-hashSet contains elem2
+<div class="paragraph"><p>Як зазначалось в Розділі 11.2, визначення еквівалентності є різне в Scala та Java. Java має два порівняння на еквівалентність: оператор <code>==</code>, що є природною рівністю для типів значення та ідентичності об'єктів для типів посилань, та метод <code>equals</code>, що є  (визначена користувачем) канонічна еквівалентність для типів посилань. Ця домовленість є проблематичною, оскільки більш природний символ <code>==</code> не завжди відповідає до природної нотації еквівалентності. При програмуванні на Java загальна пастка для початківців є порівняння об'єктів за допомогою <code>==</code>, коли вони мають порівнюватись за допомогою <code>equals</code>. Наприклад, порівняння двох рядків <code>x</code> та <code>y</code> з використанням <code>x == y</code> може дати <code>false</code> в Java, навіть якщо <code>x</code> та <code>y</code> мають ті самі символи в тому ж порядку.</p></div>
+<div class="paragraph"><p>Scala також має метод еквівалентності, що означає ідентичність об'єктів, але він використовується не часто. Цей різновид еквівалентності, що записується <code>x eq y</code>, є <code>true</code>, якщо <code>x</code> та <code>y</code> посилаються на той самий об'єкт. Еквівалентність <code>==</code> зарезервована в Scala для "природної" еквівалентності кожного типу. Для типів значень <code>==</code> є порівняння значень, так само, як в Java. Для типів посилань <code>==</code> є те саме, що <code>equals</code> в Java. Ви можете перевизначити поведінку <code>==</code> для нових типів через перевизначення метода <code>equals</code>, що завжди наслідується від класу <code>Any</code>. Наслідуване <code>equals</code>, що набуває сили якщо не перекрите, є ідентичність об'єкта, як це відбувається в Java. Так що <code>equals</code> (та разом і <code>==</code>) по замовчанню те саме, що і <code>eq</code>, але ви можете змінити його поведінку через перекриття метода <code>equals</code> в класі, що ви визначаєте. Неможливо перекрити <code>==</code> напряму, бо це визначене як фінальний метод в класі <code>Any</code>. Тобто Scala трактує <code>==</code> якби воно було визначене наступним чином в класі <code>Any</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">final</span> <span class="k">def</span> <span class="o">==</span> <span class="o">(</span><span class="n">that</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="kc">null</span> <span class="n">eq</span> <span class="k">this</span><span class="o">)</span> <span class="o">{</span><span class="kc">null</span> <span class="n">eq</span> <span class="n">that</span><span class="o">}</span> <span class="k">else</span> <span class="o">{</span><span class="k">this</span> <span class="n">equals</span> <span class="n">that</span><span class="o">}</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_30_2___">30.2 Написання метода еквівалентності</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Як має бути визначений метод <code>equals</code>? З'ясовується, що написання коректного метода еквівалентності є несподівано складним в об'єктно орієнтованих мовах. Фактично, після вивчення великого обсягу Java коду, автори документу 2007 прийшли до висновку, що майже всі реалізації метода <code>equals</code> невдалі.<span class="footnote"><br />[Vaziri, et. al., "Declarative Object Identity Using Relation Types" [Vaz07]]<br /></span> Це проблематично, бо еквівалентність є базисом багатьої інших речей. Для початку, хибний метод еквівалентності для типу <code>C</code> може означати, що ви не можете надійно покласти об'єкт типу <code>C</code> до колекції.</p></div>
+<div class="paragraph"><p>Наприклад, ви можете мати два елементи, <code>elem1</code> та <code>elem2</code>, типу <code>C</code>, що еквівалентні (тобто, <code>elem1 equals elem2</code> дає <code>true</code>). Тим не менше, з загально зустріваною хибною реалізацією метода <code>equals</code> ви можете все ще бачити поведінку, подібну до такої:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">hashSet</span><span class="k">:</span> <span class="kt">Set</span><span class="o">[</span><span class="kt">C</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="n">collection</span><span class="o">.</span><span class="n">immutable</span><span class="o">.</span><span class="nc">HashSet</span>
+<span class="n">hashSet</span> <span class="o">+=</span> <span class="n">elem1</span>
+<span class="n">hashSet</span> <span class="n">contains</span> <span class="n">elem2</span> <span class="c1">// повертає false!</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось чотири загальні пастки,<span class="footnote"><br />[Всі крім третьої описані і контексті Java в книзі Effective Java Second Edition, by Joshua Bloch. [Blo08]]<br /></span> що можуть спричинити неузгоджену поведінку при перекритті <code>equals</code>:</p></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Визначення <code>equals</code> з помилковою сигнатурою.
+</p>
+</li>
+<li>
+<p>
+Зміна <code>equals</code> без одночасної зміни <code>hashCode</code>.
+</p>
+</li>
+<li>
+<p>
+Визначення <code>equals</code> в термінах змінних полів.
+</p>
+</li>
+<li>
+<p>
+Схиблене визнечення <code>equals</code> як відношення еквівалентності.
+</p>
+</li>
+</ol></div>
+<div class="paragraph"><p>Ці чотири пастки дискутуються в залишку цього розділу.</p></div>
+<div class="sect2">
+<h3 id="__1__code_equals_code___">Пастка #1: Визначення <code>equals</code> з помилковою сигнатурою</h3>
+<div class="paragraph"><p>Розглянемо додавання метода еквівалентності до наступного класу простих точок:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Point</span><span class="o">(</span><span class="k">val</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span> <span class="o">...</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Майже очевидний, але невірний шлях буде визначити це так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Повністю невірне визначення `equals`</span>
+<span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Point</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+  <span class="k">this</span><span class="o">.</span><span class="n">x</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">x</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">y</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що не так з цім методом? На перший погляд здається, що все робить OK:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">p1</span><span class="o">,</span> <span class="n">p2</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">p1</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">Point</span><span class="k">@</span><span class="mi">37</span><span class="n">d7d90f</span>
+<span class="n">p2</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">Point</span><span class="k">@</span><span class="mi">3</span><span class="n">beb846d</span>
 
-Here are four common pitfalls,<span class="footnote"><br />[All but the third pitfall are described in the context of Java in the book, Effective Java Second Edition, by Joshua Bloch. [Blo08]]<br /></span> that can cause inconsistent behavior when overridingequals:
-1.
-2.
-3.
-4.
-Defining equals with the wrong signature.
-Changing equals without also changing hashCode.
-Defining equals in terms of mutable fields.
-Failing to define equals as an equivalence relation.
-These four pitfalls are discussed in the remainder of this section.
-Pitfall #1: Defining equals with the wrong signature
-Consider adding an equality method to the following class of simple points:
-class Point(val x: Int, val y: Int) { &#8230; }
-A seemingly obvious but wrong way would be to define it like this:
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">q</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+<span class="n">q</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">Point</span><span class="nd">@e0cf182</span>
 
-def equals(other: Point): Boolean =
-this.x == other.x &amp;&amp; this.y == other.y
-What&#8217;s wrong with this method? At first glance, it seems to work OK:
-scala&gt; val p1, p2 = new Point(1, 2)
-p1: Point = <a href="mailto:Point@37d7d90f">Point@37d7d90f</a>
-p2: Point = <a href="mailto:Point@3beb846d">Point@3beb846d</a>
-scala&gt; val q = new Point(2, 3)
-q: Point = <a href="mailto:Point@e0cf182">Point@e0cf182</a>
-scala&gt; p1 equals p2
-res0: Boolean = true
-scala&gt; p1 equals q
-res1: Boolean = false
-However, trouble starts once you start putting points into a collection:
-scala&gt; import scala.collection.mutable
-import scala.collection.mutable
-scala&gt; val coll = mutable.HashSet(p1)
-coll: scala.collection.mutable.HashSet[Point] =
-Set(<a href="mailto:Point@37d7d90f">Point@37d7d90f</a>)
-scala&gt; coll contains p2
-res2: Boolean = false
-How to explain that coll does not contain p2, even though p1 was added to it, and p1 and p2 are equal
-objects? The reason becomes clear in the following interaction, where the precise type of one of the
-compared points is masked. Define p2a as an alias of p2, but with type Any instead of Point:scala&gt; val p2a: Any = p2
-p2a: Any = <a href="mailto:Point@3beb846d">Point@3beb846d</a>
-Now, were you to repeat the first comparison, but with the alias p2a instead of p2, you would get:
-scala&gt; p1 equals p2a
-res3: Boolean = false
-What went wrong? The version of equals given previously does not override the standard
-method equals because its type is different. Here is the type of the equals method as it is defined in the
-root class Any:<span class="footnote"><br />[If you write a lot of Java, you might expect the argument to this method to be type Objectinstead of type Any. Don&#8217;t worry about it; it is the same equals method. The compiler simply makes it appear to have type Any.]<br /></span>
-def equals(other: Any): Boolean
-Because the equals method in Point takes a Point instead of an Any as an argument, it does not
-override equals in Any. Instead, it is just an overloaded alternative. Now, overloading in Scala and in
-Java is resolved by the static type of the argument, not the run-time type. So as long as the static type of
-the argument is Point, the equals method in Point is called. However, once the static argument is of
-type Any, the equals method in Any is called instead. This method has not been overridden, so it is still
-implemented by comparing object identity.
-That&#8217;s why the comparison "p1 equals p2a" yields false even though points p1 and p2a have the
-same x and y values. That&#8217;s also why the contains method in HashSet returned false. Since that method
-operates on generic sets, it calls the generic equals method in Object instead of the overloaded variant
-in Point. Here&#8217;s a better equals method:
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">p1</span> <span class="n">equals</span> <span class="n">p2</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
 
-override def equals(other: Any) = other match {
-case that: Point &#8658; this.x == that.x &amp;&amp; this.y == that.y
-case _ &#8658; false
-}
-Now equals has the correct type. It takes a value of type Any as parameter and it yields
-a Booleanresult. The implementation of this method uses a pattern match. It first tests whether
-theother object is also of type Point. If it is, it compares the coordinates of the two points and returns
-the result. Otherwise the result is false.
-A related pitfall is to define == with a wrong signature. Normally, if you try to redefine == with the
-correct signature, which takes an argument of type Any, the compiler will give you an error because
-you try to override a final method of type Any.
-Newcomers to Scala sometimes make two errors at once: They try to override == and they give it the
-wrong signature. For instance:
-def ==(other: Point): Boolean = // Don&#8217;t do this!
-In this case, the user-defined == method is treated as an overloaded variant of the same-named method
-class Any and the program compiles. However, the behavior of the program would be just as dubious
-as if you had defined equals with the wrong signature.Pitfall #2: Changing equals without also changing hashCode
-We&#8217;ll continue to use the example from pitfall #1. If you repeat the comparison of p1 and p2awith the
-latest definition of Point, you will get true, as expected. However, if you repeat
-theHashSet.contains test, you will probably still get false:
-scala&gt; val p1, p2 = new Point(1, 2)
-p1: Point = <a href="mailto:Point@122c1533">Point@122c1533</a>
-p2: Point = <a href="mailto:Point@c23d097">Point@c23d097</a>
-scala&gt; collection.mutable.HashSet(p1) contains p2
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">p1</span> <span class="n">equals</span> <span class="n">q</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак проблеми починаються, як тільки ви починаєте покладати точки до колекції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.collection.mutable</span>
+<span class="k">import</span> <span class="nn">scala.collection.mutable</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">coll</span> <span class="k">=</span> <span class="n">mutable</span><span class="o">.</span><span class="nc">HashSet</span><span class="o">(</span><span class="n">p1</span><span class="o">)</span>
+<span class="n">coll</span><span class="k">:</span> <span class="kt">scala.collection.mutable.HashSet</span><span class="o">[</span><span class="kt">Point</span><span class="o">]</span> <span class="k">=</span>
+<span class="nc">Set</span><span class="o">(</span><span class="nc">Point</span><span class="k">@</span><span class="mi">37</span><span class="n">d7d90f</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span> <span class="n">contains</span> <span class="n">p2</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як пояснити, що <code>coll</code> не містить <code>p2</code>, навіть якщо <code>p1</code> був доданий до неї, та <code>p1</code> та <code>p2</code> еквівалентні об'єкти? Причина явно полягає в наступній ітерації, де точний тип однієї з порівнюваних точок замаскований. Визначте <code>p2a</code> як псевдоним <code>p2</code>, але з типом <code>Any</code> замість <code>Point</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">p2a</span><span class="k">:</span> <span class="kt">Any</span> <span class="o">=</span> <span class="n">p2</span>
+<span class="n">p2a</span><span class="k">:</span> <span class="kt">Any</span> <span class="o">=</span> <span class="nc">Point</span><span class="k">@</span><span class="mi">3</span><span class="n">beb846d</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер, коли ви повторите перше порівняння, але з псевдонимом <code>p2a</code> замість <code>p2</code>, ви отримаєте:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">p1</span> <span class="n">equals</span> <span class="n">p2a</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що не так? Версія <code>equals</code>, надана до цього, не перекриває стандартний метод <code>equals</code>, оскільки її тип інший. Ось тип метода <code>equals</code>, як він визначений в кореневому класі <code>Any</code>:<span class="footnote"><br />[Якщо ви багато пишете на Java, ви можете очікувати, що аргумент цього метода буде типу <code>Object</code>, замість типу <code>Any</code>. Не турбуйтесь про це; це той самий метод <code>equals</code>. Компілятор просто робить що воно виглядає як тип <code>Any</code>.]<br /></span></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки метод <code>equals</code> в <code>Point</code> приймає <code>Point</code> замість <code>Any</code> як аргумент, він не перекриває <code>equals</code> в <code>Any</code>. Замість цього він просто є перевантаженою альтернативою. Тепер, перевантаження в Scala та в Java розрішене статичним типом аргумента, не типом часу виконання. Так що доки статичний тип аргумента є <code>Point</code>, буде викликатись метод <code>equals</code> в <code>Point</code>. Однак як тільки статичний аргумент стає типу <code>Any</code>, замість цього починає викликатись метод <code>equals</code> в Any. Цей метод не був перекритий, так що він досі реалізований через порівняння ідентичності об'єктів.</p></div>
+<div class="paragraph"><p>Ось чому порівняння  <code>p1 equals p2a</code> дає <code>false</code>, навіть якщо точки <code>p1</code> та <code>p2a</code> мають ті самі значення <code>x</code> та <code>y</code>. Ось чому метод <code>contains</code> в <code>HashSet</code> повертає <code>false</code>. Оскільки цей метод оперує на дженерік множинах, він викликає дженерік метод <code>equals</code> в <code>Object</code>, замість перевантаженого варіанта в <code>Point</code>. Ось кращий метод <code>equals</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Краще визначення, але все ще не ідеальне</span>
+<span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=&gt;</span> <span class="k">this</span><span class="o">.</span><span class="n">x</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">x</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">y</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер <code>equals</code> має коректний тип. Він приймає значення типу <code>Any</code> як параметр, та дає результат <code>Boolean</code>. Реалізація цього метода використовує порівняння шаблонів. Спочатку він перевіряє, чи об'єкт також є типу <code>Point</code>. Якщо це так, він порівнює координати двох точок, та повертає результат. Інакше результат <code>false</code>.</p></div>
+<div class="paragraph"><p>Пов'язана пастка є визначити <code>==</code> з невірноє сигнатурою. Нормально, якщо ви намагаєтесь перевизначити <code>==</code> з коректною сигнатурою, що приймає аргумент типу <code>Any</code>, компілятор буде давати вам помилку, оскільки ви намагаєтесь переписати фінальний метод типу <code>Any</code>.</p></div>
+<div class="paragraph"><p>Новачки в Scala іноді роблять дві помилки разом: вони намагаються перекрити <code>==</code>, і вони дають невірну сигнатуру. Наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="o">==(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Point</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="c1">// Не робіть цього!</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому випадку визначений користувачем метод <code>==</code> трактується як перевантажений варіант так само названого метода з класа <code>Any</code>, і програма компілюється. Однак поведінка програми буде такою ж сумнівною, якби ви визначили <code>equals</code> з невірною сигнатурою.</p></div>
+<div class="paragraph"><p>Пастка #2: Зміна <code>equals</code> без одночасної зміни <code>hashCode</code></p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>Ми будемо продовжувати використовувати приклад з пастки #1. Якщо ви продовжите порівняння `p1` та `p2a` з останнім визначенням `Point`, ви отримаєте `true`, як очікувалось. Однак якщо ми повторимо перевірку `HashSet.contains`, ви будете вірогідно все ще отримувати `false`:
+[source,scala]
+----
+scala> val p1, p2 = new Point(1, 2)
+p1: Point = Point@122c1533
+p2: Point = Point@c23d097
+
+scala> collection.mutable.HashSet(p1) contains p2
 res4: Boolean = false
-But this outcome is not 100% certain. You might also get true from the experiment. If you do, you can
-try with some other points with coordinates 1 and 2. Eventually, you&#8217;ll get one that is not contained in
-the set. What goes wrong here is that Point redefined equals without also redefining hashCode.
-Note that the collection in the example here is a HashSet. This means elements of the collection are put
-in "hash buckets" determined by their hash code. The contains test first determines a hash bucket to
-look in and then compares the given elements with all elements in that bucket. Now, the last version of
-class Point did redefine equals, but it did not redefine hashCode at the same time. So hashCode is still
-what it was in its version in class AnyRef: some transformation of the address of the allocated object.
-The hash codes of p1 and p2 are almost certainly different, even though the fields of both points are the
-same. Different hash codes mean, with high probability, different hash buckets in the set.
-The contains test will look for a matching element in the bucket which corresponds to p2&#8217;s hash code.
-In most cases, point p1 will be in another bucket, so it will never be found. p1and p2 might also end up
-by chance in the same hash bucket. In that case the test would return true. The problem is that the last
-implementation of Point violated the contract onhashCode as defined for class Any:<span class="footnote"><br />[The text of Any&#8217;s hashCode contract is inspired by the Javadoc documentation of classjava.lang.Object.]<br /></span>
-If two objects are equal according to the equals method, then calling the hashCode method on each of
-the two objects must produce the same integer result.
-In fact, it&#8217;s well known in Java that hashCode and equals should always be redefined together.
-Furthermore, hashCode may only depend on fields that equals depends on. For the Point class, the
-following would be a suitable definition of hashCode:
-class Point(val x: Int, val y: Int) {
-override def hashCode = (x, y).
-override def equals(other: Any) = other match {
-case that: Point &#8658; this.x == that.x &amp;&amp; this.y == that.y
-case _ &#8658; false
-}
-}
-This is just one of many possible implementations of hashCode. Recall that the  method is a
-shorthand for computing hash codes that works for primitive values, reference types, andnull. When
-invoked on a collection or a tuple, it computes a mixed hash that is sensitive to the hash codes of all the
-elements in the collection. We&#8217;ll provide more guidance on writinghashCode later in this chapter.Adding hashCode fixes the problems of equality when defining classes like Point; however, there are
-other trouble spots to watch out for.
-Pitfall #3: Defining equals in terms of mutable fields
-Consider the following slight variation of class Point:
-class Point(var x: Int, var y: Int) { // Problematic
-override def hashCode = (x, y).
-override def equals(other: Any) = other match {
-case that: Point &#8658; this.x == that.x &amp;&amp; this.y == that.y
-case _ &#8658; false
-}
-}
-The only difference is that the fields x and y are now vars instead
-of vals. The equals andhashCode methods are now defined in terms of these mutable fields, so their
-results change when the fields change. This can have strange effects once you put points in collections:
-scala&gt; val p = new Point(1, 2)
-p: Point = <a href="mailto:Point@5428bd62">Point@5428bd62</a>
-scala&gt; val coll = collection.mutable.HashSet(p)
-coll: scala.collection.mutable.HashSet[Point] =
-Set(<a href="mailto:Point@5428bd62">Point@5428bd62</a>)
-scala&gt; coll contains p
-res5: Boolean = true
-Now, if you change a field in point p, does the collection still contain the point? We&#8217;ll try it:
-scala&gt; p.x += 1
-scala&gt; coll contains p
-res7: Boolean = false
-This looks strange. Where did p go? More strangeness results if you check whether the iterator of the
-set contains p:
-scala&gt; coll.iterator contains p
-res8: Boolean = true
-So here&#8217;s a set that does not contain p, yet p is among the elements of the set! What happened is that
-after the change to the x field, the point p ended up in the wrong hash bucket of the setcoll. That is, its
-original hash bucket no longer corresponded to the new value of its hash code. In a manner of speaking,
-point p "dropped out of sight" in the set coll even though it still belonged to its elements.
-The lesson to be drawn from this example is that when equals and hashCode depend on mutable state,
-it causes problems for potential users. If you put such objects into collections, you have to be careful to
-never modify the depended-on state, and this is tricky. If you need a comparison that takes the current
-state of an object into account, you should usually name it something else, not equals.Considering the last definition of Point, it would have been preferable to omit a redefinition
-ofhashCode and name the comparison method equalContents or some other name different
-fromequals. Point would then have inherited the default implementation
-of equals and hashCode; pwould have stayed locatable in coll even after the modification to its x field.
-Pitfall #4: Failing to define equals as an equivalence relation
-The contract of the equals method in scala.Any specifies that equals must implement an equivalence
-relation on non-null objects:<span class="footnote"><br />[As with hashCode, Any&#8217;s equals method contract is based on java.lang.Object&#8217;s equals method contract.]<br /></span>
-• It is reflexive: For any non-null value x , the expression x.equals(x) should return true.
-• It is symmetric: For any non-null values x and y, x.equals(y) should return true if and only
-if y.equals(x) returns true.
-• It is transitive: For any non-null values x, y, and z,
-if x.equals(y) returns true andy.equals(z) returns true, then x.equals(z) should return true.
-• It is consistent: For any non-null values x and y, multiple invocations of x.equals(y)should
-consistently return true or consistently return false, provided no information used in equals
-comparisons on the objects is modified.
-• For any non-null value x, x.equals(null) should return false.
-The definition of equals developed for class Point up to now satisfies the contract for equals. However,
-things become more complicated once subclasses are considered. Say there is a
-subclass ColoredPoint of Point that adds a field color of type Color. Assume Color is defined as an
-enumeration, as presented in Section 20.9:
-object Color extends Enumeration {
-val Red, Orange, Yellow, Green, Blue, Indigo, Violet = Value
-}
-ColoredPoint overrides equals to take the new color field into account:
-class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) { // Problem: equals not symmetric
-}
-override def equals(other: Any) = other match {
-case that: ColoredPoint &#8658;
-this.color == that.color &amp;&amp; super.equals(that)
-case _ &#8658; false
-}
-This is what many programmers would likely write. Note that in this case, class ColoredPointneed not
-override hashCode. Because the new definition of equals on ColoredPoint is stricter than the
-overridden definition in Point (meaning it equates fewer pairs of objects), the contract
-forhashCode stays valid. If two colored points are equal, they must have the same coordinates, so their
-hash codes are guaranteed to be equal as well.Taking the class ColoredPoint by itself, its definition of equals looks OK. However, the contract
-for equals is broken once points and colored points are mixed. Consider:
-scala&gt; val p = new Point(1, 2)
-p: Point = <a href="mailto:Point@5428bd62">Point@5428bd62</a>
-scala&gt; val cp = new ColoredPoint(1, 2, Color.Red)
-cp: ColoredPoint = <a href="mailto:ColoredPoint@5428bd62">ColoredPoint@5428bd62</a>
-scala&gt; p equals cp
-res9: Boolean = true
-scala&gt; cp equals p
-res10: Boolean = false
-The comparison "p equals cp" invokes p&#8217;s equals method, which is defined in class Point. This method
-only takes into account the coordinates of the two points. Consequently, the comparison yields true. On
-the other hand, the comparison "cp equals p" invokes cp&#8217;s equalsmethod, which is defined in
-class ColoredPoint. This method returns false because p is not aColoredPoint. So the relation defined
-by equals is not symmetric.
-The loss in symmetry can have unexpected consequences for collections. Here&#8217;s an example:
-scala&gt; collection.mutable.HashSet[Point](p) contains cp
-res11: Boolean = true
-scala&gt; collection.mutable.HashSet[Point](cp) contains p
-res12: Boolean = false
-Even though p and cp are equal, one contains test succeeds whereas the other one fails:
-How can you change the definition of equals so that it becomes symmetric? Essentially there are two
-ways. You can either make the relation more general or more strict. Making it more general means that
-a pair of two objects, x and y, is taken to be equal if either comparing xwith y or
-comparing y with x yields true. Here&#8217;s code that does this:
-class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) { // Problem: equals not transitive
-override def equals(other: Any) = other match {
-case that: ColoredPoint &#8658;
-(this.color == that.color) &amp;&amp; super.equals(that)
-case that: Point &#8658;
-that equals this
-case _ &#8658;
-false
-}
-}
-The new definition of equals in ColoredPoint has one more case than the old one: If the otherobject is
-a Point but not a ColoredPoint, the method forwards to the equals method of Point. This has the desired
-effect of making equals symmetric. Now, both "cp equals p" and "p equals cp" result in true. However,
-the contract for equals is still broken. The problem is that the new relation is no longer transitive!Here&#8217;s a sequence of statements that demonstrates this. Define a point and two colored points of
-different colors, all at the same position:
-scala&gt; val redp = new ColoredPoint(1, 2, Color.Red)
-redp: ColoredPoint = <a href="mailto:ColoredPoint@5428bd62">ColoredPoint@5428bd62</a>
-scala&gt; val bluep = new ColoredPoint(1, 2, Color.Blue)
-bluep: ColoredPoint = <a href="mailto:ColoredPoint@5428bd62">ColoredPoint@5428bd62</a>
-Taken individually, redp is equal to p and p is equal to bluep:
-scala&gt; redp == p
-res13: Boolean = true
-scala&gt; p == bluep
-res14: Boolean = true
-However, comparing redp and bluep yields false:
-scala&gt; redp == bluep
-res15: Boolean = false
-Hence, the transitivity clause of the equals&#8217;s contract is violated.
-Making the equals relation more general seems to lead to a dead end. We&#8217;ll try to make it stricter
-instead. One way to make equals stricter is to always treat objects of different classes as different. This
-could be achieved by modifying the equals methods in classes Point andColoredPoint. In class Point,
-you could add an extra comparison that checks whether the run-time class of the other Point is exactly
-the same as this Point&#8217;s class:
+----
+Але цей результат не на 100% певний. Ви можете також отримати `true` в простому експерименті. Якщо ви зробите це, ви можете спробувати деякі інші точки з координатами 1 та 2. З часом ви отримаєте таку, що не містилась в множині. Що тут не так, це те, що `Point` перевизначає `equals`, при цьому також не перевизначаючи `hashCode`.
 
-class Point(val x: Int, val y: Int) {
-override def hashCode = (x, y).
-override def equals(other: Any) = other match {
-case that: Point &#8658;
-this.x == that.x &amp;&amp; this.y == that.y &amp;&amp;
-this.getClass == that.getClass
-case _ &#8658; false
-}
-}
-You can then revert class ColoredPoint&#8217;s implementation back to the version that previously had
-violated the symmetry requirement:<span class="footnote"><br />[Given the new implementation of equals in Point, this version of ColoredPoint no longer violates the symmetry requirement.]<br /></span>
-class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) {
-override def equals(other: Any) = other match {
-case that: ColoredPoint &#8658;
-(this.color == that.color) &amp;&amp; super.equals(that)
-case _ &#8658; false
-}
-}Here, an instance of class Point is considered to be equal to some other instance of the same class, only
-if the objects have the same coordinates and they have the same run-time class, meaning getClass on
-either object returns the same value. The new definitions satisfy symmetry and transitivity because now
-every comparison between objects of different classes yields false. So a colored point can never be
-equal to a point. This convention looks reasonable, but one could argue that the new definition is too
-strict.
-Consider the following slightly roundabout way to define a point at coordinates (1, 2):
-scala&gt; val pAnon = new Point(1, 1) { override val y = 2 }
-pAnon: Point = $anon$<a href="mailto:1@5428bd62">1@5428bd62</a>
-Is pAnon equal to p? The answer is no because the java.lang.Class objects associated
-with p andpAnon are different. For p it is Point, whereas for pAnon it is an anonymous subclass
-of Point. But clearly, pAnon is just another point at coordinates (1, 2). It does not seem reasonable to
-treat it as being different from p.
-So it seems we are stuck. Is there a sane way to redefine equality on several levels of the class
-hierarchy while keeping its contract? In fact, there is such a way, but it requires one more method to
-redefine together with equals and hashCode. The idea is that as soon as a class
-redefines equals (and hashCode), it should also explicitly state that objects of this class are never equal
-to objects of some superclass that implement a different equality method. This is achieved by adding a
-method canEqual to every class that redefines equals. Here&#8217;s the method&#8217;s signature:
-def canEqual(other: Any): Boolean
-The method should return true if the other object is an instance of the class in which canEqual is
-(re)defined, false otherwise. It is called from equals to make sure that the objects are comparable both
-ways. Listing 30.1 shows a new (and final) implementation of class Pointalong these lines:
-class Point(val x: Int, val y: Int) {
-override def hashCode = (x, y).
-override def equals(other: Any) = other match {
-case that: Point &#8658;
-(that canEqual this) &amp;&amp;
-(this.x == that.x) &amp;&amp; (this.y == that.y)
-case _ &#8658;
-false
-}
-def canEqual(other: Any) = other.isInstanceOf[Point]
-}
-Listing 30.1 - A superclass equals method that calls canEqual.
-The equals method in this version of class Point contains the additional requirement that the other
-object can equal this one, as determined by the canEqual method. The implementation
-ofcanEqual in Point states that all instances of Point can be equal.
-Listing 30.2 shows the corresponding implementation of ColoredPoint.class ColoredPoint(x: Int, y: Int, val color: Color.Value)
-extends Point(x, y) {
-}
-override def hashCode = (super.hashCode, color).
-override def equals(other: Any) = other match {
-case that: ColoredPoint &#8658;
-(that canEqual this) &amp;&amp;
-super.equals(that) &amp;&amp; this.color == that.color
-case _ &#8658;
-false
-}
-override def canEqual(other: Any) =
-other.isInstanceOf[ColoredPoint]
-Listing 30.2 - A subclass equals method that calls canEqual.
-It can be shown that the new definition of Point and ColoredPoint keeps the contract of equals. Equality
-is symmetric and transitive. Comparing a Point to a ColoredPoint always yields false. Indeed, for any
-point p and colored point cp, "p equals cp" will return false because "cp canEqual p" will return false.
-The reverse comparison, "cp equals p", will also return falsebecause p is not a ColoredPoint, so the first
-pattern match in the body of equals in ColoredPointwill fail.
-On the other hand, instances of different subclasses of Point can be equal, as long as none of the classes
-redefines the equality method. For instance, with the new class definitions, the comparison
-of p and pAnon would yield true. Here are some examples:
-scala&gt; val p = new Point(1, 2)
-p: Point = <a href="mailto:Point@5428bd62">Point@5428bd62</a>
-scala&gt; val cp = new ColoredPoint(1, 2, Color.Indigo)
-cp: ColoredPoint = <a href="mailto:ColoredPoint@e6230d8f">ColoredPoint@e6230d8f</a>
-scala&gt; val pAnon = new Point(1, 1) { override val y = 2 }
-pAnon: Point = $anon$<a href="mailto:1@5428bd62">1@5428bd62</a>
-scala&gt; val coll = List(p)
-coll: List[Point] = List(<a href="mailto:Point@5428bd62">Point@5428bd62</a>)
-scala&gt; coll contains p
-res16: Boolean = true
-scala&gt; coll contains cp
-res17: Boolean = false
-scala&gt; coll contains pAnon
-res18: Boolean = true
-These examples demonstrate that if a superclass equals implementation defines and callscanEqual, then
-programmers who implement subclasses can decide whether or not their subclasses may be equal to
-instances of the superclass. Because ColoredPoint overrides canEqual, for example, a colored point
-may never be equal to a plain-old point. But because the anonymous subclass referenced
-from pAnon does not override canEqual, its instance can be equal to a Point instance.One potential criticism of the canEqual approach is that it violates the Liskov Substitution Principle.
-For example, the technique of implementing equals by comparing run-time classes, which led to the
-inability to define a subclass whose instances can equal instances of the superclass, has been described
-as a violation of the LSP.<span class="footnote"><br />[Bloch, Effective Java Second Edition, p. 39 [Blo08]]<br /></span> The LSP states you should be able to use (substitute) a subclass instance
-where a superclass instance is required.
-In the previous example, however, "coll contains cp" returned false even though cp&#8217;s x and yvalues
-matched those of the point in the collection. Thus, it may seem like a violation of the LSP because you
-can&#8217;t use a ColoredPoint here where a Point is expected. We believe this is the wrong interpretation,
-because the LSP doesn&#8217;t require that a subclass behaves identically to its superclass, just that it behaves
-in a way that fulfills the contract of its superclass.
-The problem with writing an equals method that compares run-time classes is not that it violates the
-LSP, but that it doesn&#8217;t give you a way to create a subclass whose instances can equal superclass
-instances. For example, had we used the run-time class technique in the previous example,
-"coll contains pAnon" would have returned false, and that&#8217;s not what we wanted. By contrast, we really
-did want "coll contains cp" to return false, because by overriding equals in ColoredPoint, we were
-basically saying that an indigo-colored point at coordinates (1, 2) is not the same thing as an uncolored
-point at (1, 2). Thus, in the previous example we were able to pass two different Point subclass
-instances to the collection&#8217;s containsmethod, and we got back two different answers, both correct.
-30.3 DEFINING EQUALITY FOR PARAMETERIZED TYPES
-The equals methods in the previous examples all started with a pattern match that tested whether the
-type of the operand conformed to the type of the class containing the equalsmethod. When classes are
-parameterized, this scheme needs to be adapted a little bit.
-As an example, consider binary trees. The class hierarchy shown in Listing 30.3 defines an abstract
-class Tree for a binary tree, with two alternative implementations: an EmptyTree object and
-a Branch class representing non-empty trees. A non-empty tree is made up of some element elem, and
-a left and right child tree. The type of its element is given by a type parameter T.
-trait
-def
-def
-def
-}
-Tree[+T] {
-elem: T
-left: Tree[T]
-right: Tree[T]
-object EmptyTree extends Tree[Nothing] {
-def elem =
-throw new NoSuchElementException("EmptyTree.elem")
-def left =
-throw new NoSuchElementException("EmptyTree.left")
-def right =
-throw new NoSuchElementException("EmptyTree.right")
-}
-class Branch[+T](
-val elem: T,val left: Tree[T],
-val right: Tree[T]
-) extends Tree[T]
-Listing 30.3 - Hierarchy for binary trees.
-We&#8217;ll now add equals and hashCode methods to these classes. For class Tree itself there&#8217;s nothing to do
-because we assume that these methods are implemented separately for each implementation of the
-abstract class. For object EmptyTree, there&#8217;s still nothing to do because the default implementations
-of equals and hashCode that EmptyTree inherits from AnyRef work just fine. After all, an EmptyTree is
-only equal to itself, so equality should be reference equality, which is what&#8217;s inherited from AnyRef.
-But adding equals and hashCode to Branch requires some work. A Branch value should only be equal
-to other Branch values, and only if the two values have equal elem, left and right fields. It&#8217;s natural to
-apply the schema for equals that was developed in the previous sections of this chapter. This would
-give you:
-class Branch[T](
-val elem: T,
-val left: Tree[T],
-val right: Tree[T]
-) extends Tree[T] {
-override def equals(other: Any) = other match {
-case that: Branch[T] &#8658; this.elem == that.elem &amp;&amp;
-this.left == that.left &amp;&amp;
-this.right == that.right
-case _ &#8658; false
-}
-}
-Compiling this example, however, gives an indication that "unchecked" warnings occurred. Compiling
-again with the -unchecked option reveals the following problem:
-$ fsc -unchecked Tree.scala
-Tree.scala:14: warning: non variable type-argument T in type
-pattern is unchecked since it is eliminated by erasure
-case that: Branch[T] &#8658; this.elem == that.elem &amp;&amp;
-^
-As the warning says, there is a pattern match against a Branch[T] type, yet the system can only check
-that the other reference is (some kind of) Branch; it cannot check that the element type of the tree is T.
-You encountered in Chapter 19 the reason for this: Element types of parameterized types are eliminated
-by the compiler&#8217;s erasure phase; they are not available to be inspected at run-time.
-So what can you do? Fortunately, it turns out that you need not necessarily check that twoBranches
-have the same element types when comparing them. It&#8217;s quite possible that twoBranches with different
-element types are equal, as long as their fields are the same. A simple example of this would be
-the Branch that consists of a single Nil element and two empty subtrees. It&#8217;s plausible to consider any
-two such Branches to be equal, no matter what static types they have:scala&gt; val b1 = new Branch[List[String]](Nil,
-EmptyTree, EmptyTree)
-b1: Branch[List[String]] = <a href="mailto:Branch@9d5fa4f">Branch@9d5fa4f</a>
-scala&gt; val b2 = new Branch[List[Int]](Nil,
-EmptyTree, EmptyTree)
-b2: Branch[List[Int]] = <a href="mailto:Branch@56cdfc29">Branch@56cdfc29</a>
-scala&gt; b1 == b2
-res19: Boolean = true
-The positive result of the comparison above was obtained with the implementation
-of equalson Branch shown previously. This demonstrates that the element type of the Branch was not
-checked—if it had been checked, the result would have been false.
-We can disagree on which of the two possible outcomes of the comparison would be more natural. In
-the end, this depends on the mental model of how classes are represented. In a model where type-
-parameters are present only at compile-time, it&#8217;s natural to consider the two Branch values b1 and b2 to
-be equal. In an alternative model where a type parameter forms part of an object&#8217;s value, it&#8217;s equally
-natural to consider them different. Since Scala adopts the type erasure model, type parameters are not
-preserved at run time, so that b1 and b2 are naturally considered to be equal.
-There&#8217;s only a tiny change needed to formulate an equals method that does not produce
-anunchecked warning. Instead of an element type T, use a lower case letter, such as t:
-case that: Branch[t] &#8658; this.elem == that.elem &amp;&amp;
-this.left == that.left &amp;&amp;
-this.right == that.right
-Recall from Section 15.2 that a type parameter in a pattern starting with a lower-case letter represents
-an unknown type. Now the pattern match:
-case that: Branch[t] &#8658;
-will succeed for Branch values of any type. The type parameter t represents the unknown element type
-of the Branch. It can also be replaced by an underscore, as in the following case, which is equivalent to
-the previous one:
-case that: Branch[<em>] &#8658;
-The only thing that remains is to define for class Branch the other two
-methods, hashCode andcanEqual, which go with equals. Here&#8217;s a possible implementation
-of hashCode:
-override def hashCode: Int = (elem, left, right).
-This is only one of many possible implementations. As shown previously, the principle is to
-take hashCode values of all fields and combine them. Here&#8217;s an implementation of methodcanEqual in
-class Branch:
-def canEqual(other: Any) = other match {case that: Branch[</em>] &#8658; true
-case _ &#8658; false
-}
-The implementation of the canEqual method used a typed pattern match. It would also be possible to
-formulate it with isInstanceOf:
-def canEqual(other: Any) = other.isInstanceOf[Branch[<em>]]
-If you feel like nit-picking—and we encourage you to do so!—you might wonder what the occurrence
-of the underscore in the type above signifies. After all, Branch[</em>] is technically a type parameter of a
-method, not a type pattern. So how is it possible to leave some parts of it undefined?
-The answer to this question is discussed in the next chapter. Branch[<em>] is shorthand for a so-
-called wildcard type, which is, roughly speaking, a type with some unknown parts in it. So even though
-technically the underscore stands for two different things in a pattern match and in a type parameter of
-a method call, in essence, the meaning is the same: It lets you label something that is unknown. The
-final version of Branch is shown in Listing 30.4.
-class Branch[T](
-val elem: T,
-val left: Tree[T],
-val right: Tree[T]
-) extends Tree[T] {
-override def equals(other: Any) = other match {
-case that: Branch[</em>] &#8658; (that canEqual this) &amp;&amp;
-this.elem == that.elem &amp;&amp;
-this.left == that.left &amp;&amp;
-this.right == that.right
-case _ &#8658; false
-}
-def canEqual(other: Any) = other.isInstanceOf[Branch[_]]
-}
-override def hashCode: Int = (elem, left, right).
-Listing 30.4 - A parameterized type with equals and hashCode.
-30.4 RECIPES FOR EQUALS AND HASHCODE
-In this section, we&#8217;ll provide step-by-step recipes for creating equals and hashCode methods that should
-suffice for most situations. As an illustration, we&#8217;ll use the methods of class Rational, shown in Listing
-30.5.
-To create this class, we removed the mathematical operator methods from the version of
-classRational shown in Listing 6.5 here. We also made a minor enhancement to toString, and modified
-the initializers of numer and denom to normalize all fractions to have a positive denominator (i.e., to
-transform 1/-2 to -1/2).Recipe for equals
-Here&#8217;s the recipe for overriding equals:
-1. To override equals in a non-final class, create a canEqual method. If the inherited definition
-of equals is from AnyRef (that is, equals was not redefined higher up in the class hierarchy), the
-definition of canEqual should be new; otherwise, it will override a previous definition of a
-method with the same name. The only exception to this requirement is for final classes that
-redefine the equals method inherited from AnyRef. For them the subclass anomalies described
-in Section 30.2 cannot arise; consequently they need not define canEqual. The type of object
-passed to canEqual should be Any:
-def canEqual(other: Any): Boolean =
-2. The canEqual method should yield true if the argument object is an instance of the current class
-(i.e., the class in which canEqual is defined), and false otherwise:
-other.isInstanceOf[Rational]
-3. In the equals method, make sure you declare the type of the object passed as an Any:
-override def equals(other: Any): Boolean =
-4. Write the body of the equals method as a single match expression. The selector of
-the matchshould be the object passed to equals:
-other match {
+Зауважте, що колекція в прикладі є `HashSet`. Це означає, що елементи колекції покладаються в "хеш ьакети", що визначаються їх хеш кодом. Перевірка `contains` спершу визначає хеш бакет, де дивитись, та потім порівнює надані елементи з усіма елементами в бакеті. Тепер, остання версія класу `Point` перевизначила `equals`, але вона в той же час не перевизначила `hashCode`. Так що `hashCode` все ще той, що був в версії для класа `AnyRef`: деяка трансформація адреси розміщеного об'єкта.
 
+Хеш коди `p1` та `p2` майже напевне різні, навіть якщо поля обох точок однакові. Різні хеш коди означають, з великою вірогідністю, різні хеш бакети в множині. Перевірка `contains` буде шукати співпадаючий елемент в бакеті, що відповідає до хеш коду `p2`. В більшості випадків точка `p1` буде в іншому бакеті, так що вона ніколи не буде знайдена. `p1` та `p2` можуть також з вірогідністю попасти в той самий хеш бакет. В цьому випадку перевірка поверне `true`. Проблема в тому, що остання реалізація `Point` порушує контракт на `hashCode`, як визначено для класа `Any`:footnote:[Текст контракту `Any` `hashCode` надихнено документацією Javadoc класу `java.lang.Object`.]
+
+  Якщо два класи еквівалентні відповідно до метода `equals`, тоді виклик `hashCode` на кожному з двох об'єктів має продукувати той самий цілий результат.
+
+Фактично, це добре відомо в Java, що `hashCode` та `equals` повинні завжди бути перевизначені разом. Більше того, `hashCode` можу залежати тільки від полів, на які покладається `equals`. Для класа `Point` наступне може бути підходящим визначенням `hashCode`:
+[source,scala]
+----
+class Point(val x: Int, val y: Int) {
+  override def hashCode = (x, y).##
+  override def equals(other: Any) = other match {
+    case that: Point => this.x == that.x && this.y == that.y
+    case _ => false
+  }
 }
-5. The match expression should have two cases. The first case should declare a typed pattern for
-the type of the class on which you&#8217;re defining the equals method:
-case that: Rational &#8658;
-6. In the body of this case, write an expression that logical-ands together the individual
-expressions that must be true for the objects to be equal. If the equals method you are overriding
-is not that of AnyRef, you will most likely want to include an invocation of the
-superclass&#8217;s equals method:
-super.equals(that) &amp;&amp;
-If you are defining equals for a class that first introduced canEqual, you should
-invokecanEqual on the argument to the equality method, passing this as the argument:
-(that canEqual this) &amp;&amp;
-Overriding redefinitions of equals should also include the canEqual invocation, unless they
-contain a call to super.equals. In the latter case, the canEqual test will already be done by thesuperclass call. Lastly, for each field relevant to equality, verify that the field in this object is
-equal to the corresponding field in the passed object:
-numer == that.numer &amp;&amp;
-denom == that.denom
-7. For the second case, use a wildcard pattern that yields false:
-case _ &#8658; false
-If you adhere to this recipe for equals, equality is guaranteed to be an equivalence relation, as is
-required by the equals contract.
-class Rational(n: Int, d: Int) {
-require(d != 0)
-private val g = gcd(n.abs, d.abs)
-val numer = (if (d &lt; 0) -n else n) / g
-val denom = d.abs / g
-private def gcd(a: Int, b: Int): Int =
-if (b == 0) a else gcd(b, a % b)
-override def equals(other: Any): Boolean =
-other match {
-case that: Rational &#8658;
-(that canEqual this) &amp;&amp;
-numer == that.numer &amp;&amp;
-denom == that.denom
-case _ &#8658; false
-}
-def canEqual(other: Any): Boolean =
-other.isInstanceOf[Rational]
-override def hashCode: Int = (numer, denom).
-}
-override def toString =
-if (denom == 1) numer.toString else numer + "/" + denom
-Listing 30.5 - Class Rational with equals and hashCode.
-Recipe for hashCode
-For hashCode, you can usually achieve satisfactory results if you use the following recipe, whichis
-similar to a recipe recommended for Java classes in Effective Java.<span class="footnote"><br />[Bloch, Effective Java Second Edition. [Blo08]]<br /></span> Include in the calculation each
-field in your object that is used to determine equality in the equals method (the "relevant" fields). Make
-a tuple containing the values of all those fields. Then, invoke on the resulting tuple.
-For example, to implement the hash code for an object that has five relevant fields named a, b,c, d,
-and e, you would write:override def hashCode: Int = (a, b, c, d, e).
-If the equals method invokes super.equals(that) as part of its calculation, you should start
-yourhashCode calculation with an invocation of super.hashCode. For example,
-had Rational&#8217;s equalsmethod invoked super.equals(that), its hashCode would have been:
-override def hashCode: Int = (super.hashCode, numer, denom).
-One thing to keep in mind as you write hashCode methods using this approach is that your hash code
-will only be as good as the hash codes you build out of it, namely the hash codes you obtain by
-calling hashCode on the relevant fields of your object. Sometimes you may need to do something extra
-besides just calling hashCode on the field to get a useful hash code for that field. For example, if one of
-your fields is a collection, you probably want a hash code for that field that is based on all the elements
-contained in the collection. If the field is a Vector, List,Set, Map, or tuple, you can simply include it in
-the list of items you are hashing over, becauseequals and hashCode are overridden in those classes to
-take into account the contained elements. However the same is not true for Arrays, which do not take
-elements into account when calculating a hash code. Thus for an array, you should treat each element of
-the array like an individual field of your object, calling  on each element explicitly or passing the
-array to one of the hashCode methods in singleton object java.util.Arrays.
-Lastly, if you find that a particular hash code calculation is harming the performance of your program,
-consider caching the hash code. If the object is immutable, you can calculate the hash code when the
-object is created and store it in a field. You can do this by simply overriding hashCode with
-a val instead of a def, like this:
-override val hashCode: Int = (numer, denom).
-This approach trades off memory for computation time, because each instance of the immutable class
-will have one more field to hold the cached hash code value.</p></div>
+----
+Це тільки одне з багатьох можливих реалізацій `hashCode`. Нагадаємо, що метод `##`є скороченням для обчислення хеш кодів, що роблять з примітивними значеннями, типами посилань та `null`. Коли викликається на колекції або таплі, він обчислює змішаний хеш, що чутливий до хеш кодів всіх елементів в колекції. Ми запровадимо більше настанов по написанню  `hashCode` пізніше в цій главі.
+
+Додавання `hashCode` лагодить проблему еквівалентності, коли визначаються класи як `Point`; однак є інші проблемні місця, до яких треба придивитись.
+
+Пастка #3: Визначення `equals` в термінах змінних полів</code></pre>
+</div></div>
+<div class="paragraph"><p>Розглянемо наступну невелику варіацію класу <code>Point</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Point</span><span class="o">(</span><span class="k">var</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">var</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// Проблематично</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">).#</span><span class="k">#</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=&gt;</span> <span class="k">this</span><span class="o">.</span><span class="n">x</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">x</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">y</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Єдина відмінність в тому, що поля <code>x</code> та <code>y</code> тепер <code>var</code> замість <code>val</code>. Методи <code>equals</code> та <code>hashCode</code> тепер визначені в термінах ціх змінних полів, так що їх результати змінюються, коли змінюються поля. Це може мати дивний ефект, коли ваші точки потраплять до колекції:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">p</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">p</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">Point</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">coll</span> <span class="k">=</span> <span class="n">collection</span><span class="o">.</span><span class="n">mutable</span><span class="o">.</span><span class="nc">HashSet</span><span class="o">(</span><span class="n">p</span><span class="o">)</span>
+<span class="n">coll</span><span class="k">:</span> <span class="kt">scala.collection.mutable.HashSet</span><span class="o">[</span><span class="kt">Point</span><span class="o">]</span> <span class="k">=</span>
+<span class="nc">Set</span><span class="o">(</span><span class="nc">Point</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span> <span class="n">contains</span> <span class="n">p</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер, якщо ви зміните поле в <code>p</code>, чи буде колекція все ще містити точку? Ми спробуємо це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">p</span><span class="o">.</span><span class="n">x</span> <span class="o">+=</span> <span class="mi">1</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span> <span class="n">contains</span> <span class="n">p</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це виглядає дивно. Куди зникла <code>p</code>? Більше дивини буде, якщо ви перевірите, чи ітератор по множині містить <code>p</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span><span class="o">.</span><span class="n">iterator</span> <span class="n">contains</span> <span class="n">p</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Так що тут множина, що не містить <code>p</code>, але <code>p</code> є серед елементів множини! Що трапилось, це те, що після зміни поля <code>x</code>, точка <code>p</code> залишилась з невірним хеш бакетом в множині <code>coll</code>. Тобто, її оригінальний хеш бакет більше не відповідає до нового значення її хеш коду. Кажучи розмовною мовою, точка <code>p</code> "випала з поля зору" в множині <code>coll</code>, навіть якщо вона все ще належить до її елементів.</p></div>
+<div class="paragraph"><p>Урок, що треба винести з цього прикладу, в тому, що коли <code>equals</code> та <code>hashCode</code> залежать від змінного стану, це призводить до проблем для потенційних користувачів. Якщо ви покладете такі об'єкти до колекцій, ви маєте бути уважними, щоб ніколи не модифікувати цей стан, і це складно. Якщо вам треба порівняння, що приймає до уваги поточний стан об'єкта, вам слідує назвати це якось інакше, не <code>equals</code>.</p></div>
+<div class="paragraph"><p>Розглядаючи останнє визначення <code>Point</code>, можливо буде мати вигоду оминути перевизначення <code>hashCode</code>, та назвати метод порівняння <code>equalContents</code> або деяким ішим ім'ям, відмінним від <code>equals</code>. Після цього <code>Point</code> буде наслідувати реалізацію по замовчанню <code>equals</code> та <code>hashCode</code>; <code>p</code> буде шукатись в <code>coll</code> навіть після модифікацій до його поля <code>x</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__4___code_equals_code___">Пастка #4: Схиблене визнечення <code>equals</code> як відношення еквівалентності</h3>
+<div class="paragraph"><p>Контракт метода <code>equals</code> в <code>scala.Any</code> вказує, що <code>equals</code> має реалізувати відношення еквівалентності на не-<code>null</code> об'єктах:<span class="footnote"><br />[Як з <code>hashCode</code>, контракт <code>Any</code> для метода <code>equals</code> базується на контракті метода equals в <code>java.lang.Object</code>.]<br /></span></p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Він рефлексивний: Для любого не-<code>null</code> значення <code>x</code> вираз <code>x.equals(x)</code> повинен повертати <code>true</code>.
+</p>
+</li>
+<li>
+<p>
+Він симетричний: для любих не-<code>null</code> значень <code>x</code> та <code>y</code>, <code>x.equals(y)</code> повинно повертати <code>true</code> тоді і тільки тоді, якщо <code>y.equals(x)</code> повертає <code>true</code>.
+</p>
+</li>
+<li>
+<p>
+Він транзитивний: для любих не-<code>null</code> значень <code>x</code>, <code>y</code>, та <code>z</code>, якщо <code>x.equals(y)</code> повертає <code>true</code>, та <code>y.equals(z)</code> повертає <code>true</code>, тоді <code>x.equals(z)</code> повинно повертати <code>true</code>.
+</p>
+</li>
+<li>
+<p>
+Він узгоджений: для любих не-<code>null</code> значень <code>x</code> та <code>y</code>, декілька викликів <code>x.equals(y)</code> повинно узгоджено повертати <code>true</code>, або узгоджено повертати <code>false</code>, вважаючи, що інформація, яка використовувалась для порівнянь не змінювалась.
+</p>
+</li>
+<li>
+<p>
+Для кожного не-<code>null</code> значення <code>x</code>, <code>x.equals(null)</code> повинно повертати <code>false</code>.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Визначення <code>equals</code>, розроблене для класа <code>Point</code> дотепер, задовільняє контракту для <code>equals</code>. Однак речі стають складнішими, коли прийняти до уваги субкласи. Скажімо, існує субклас <code>ColoredPoint</code> від <code>Point</code>, що додає поле <code>color</code> типу <code>Color</code>. Нехай <code>Color</code> визначений як перелік, як представлено в Розділі 20.9:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Color</span> <span class="k">extends</span> <span class="nc">Enumeration</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="nc">Red</span><span class="o">,</span> <span class="nc">Orange</span><span class="o">,</span> <span class="nc">Yellow</span><span class="o">,</span> <span class="nc">Green</span><span class="o">,</span> <span class="nc">Blue</span><span class="o">,</span> <span class="nc">Indigo</span><span class="o">,</span> <span class="nc">Violet</span> <span class="k">=</span> <span class="nc">Value</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>ColoredPoint</code> перекриває <code>equals</code>, щоб прийняти до уваги нове поле <code>color</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">color</span><span class="k">:</span> <span class="kt">Color.Value</span><span class="o">)</span>
+    <span class="k">extends</span> <span class="nc">Point</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// Пробелма: equals не симетричне</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=&gt;</span>
+      <span class="k">this</span><span class="o">.</span><span class="n">color</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">color</span> <span class="o">&amp;&amp;</span> <span class="k">super</span><span class="o">.</span><span class="n">equals</span><span class="o">(</span><span class="n">that</span><span class="o">)</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це те, що більшість програмістів скоріше всього напишуть. Зауважте, що в цьому випадку клас <code>ColoredPoint</code> не повинен перекрити <code>hashCode</code>. Оскільки нове визначення <code>equals</code> на <code>ColoredPoint</code> суворіше, ніж перекрите визначення в <code>Point</code> (що означає, що воно прирівняє меньшу кількість об'єктів), контракт для <code>hashCode</code> залишається валідним. Якщо дві кольорові точки еквівалентні, вони повинні мати ті самі координати, так що їх хеш коди також гарантовано рівні.</p></div>
+<div class="paragraph"><p>Беручи сам клас <code>ColoredPoint</code>, його визначення <code>equals</code> виглядає OK. Однак контракт для <code>equals</code> ламається, як тільки точки і кольорові точки змішуються. Розглянемо:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">p</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">p</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">Point</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">cp</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="nc">Color</span><span class="o">.</span><span class="nc">Red</span><span class="o">)</span>
+<span class="n">cp</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=</span> <span class="nc">ColoredPoint</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">p</span> <span class="n">equals</span> <span class="n">cp</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">cp</span> <span class="n">equals</span> <span class="n">p</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Порівняння <code>p equals cp</code> викликає метод <code>p.equals</code>, що визначений в класі <code>Point</code>. Цей метод приймає до уваги тільки координати двох точок. Як слідоцтво, порівняння дає <code>true</code>. З іншого боку, порівняння <code>cp equals p</code> викликає метод <code>cp.equals</code>, що визначений в класі <code>ColoredPoint</code>. Цей метод повертає <code>false</code>, оскільки <code>p</code> не є <code>ColoredPoint</code>. Так що відношення, визначене <code>equals</code>, не є симетричним.</p></div>
+<div class="paragraph"><p>Втрата симетрії може мати неочікувані наслідки для колекцій. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">collection</span><span class="o">.</span><span class="n">mutable</span><span class="o">.</span><span class="nc">HashSet</span><span class="o">[</span><span class="kt">Point</span><span class="o">](</span><span class="n">p</span><span class="o">)</span> <span class="n">contains</span> <span class="n">cp</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">collection</span><span class="o">.</span><span class="n">mutable</span><span class="o">.</span><span class="nc">HashSet</span><span class="o">[</span><span class="kt">Point</span><span class="o">](</span><span class="n">cp</span><span class="o">)</span> <span class="n">contains</span> <span class="n">p</span>
+<span class="n">res12</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Навіть якщо <code>p</code> та <code>cp</code> рівні, одна перевірка <code>contains</code> буде успішна, та інша невдала:</p></div>
+<div class="paragraph"><p>Як ви можете змінити визначення <code>equals</code>, так щоб він став симетричний? В основному є два шляхи. Ви можете або зробити відношення більш загальним, або більш суворим. Створення його більш загальним означає, що пара з двох об'єктів, <code>x</code> та <code>y</code>, має вважатись рівними, якщо любе з порівнянь <code>x</code> до <code>y</code>, або <code>y</code> до <code>x</code>, дасть <code>true</code>. Ось код що робить це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">color</span><span class="k">:</span> <span class="kt">Color.Value</span><span class="o">)</span>
+    <span class="k">extends</span> <span class="nc">Point</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// Проблема: equals не транзитивне</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=&gt;</span>
+      <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">color</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">color</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="k">super</span><span class="o">.</span><span class="n">equals</span><span class="o">(</span><span class="n">that</span><span class="o">)</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=&gt;</span>
+      <span class="n">that</span> <span class="n">equals</span> <span class="k">this</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+      <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Нове визначення <code>ColoredPoint</code> має один додатковий <code>case</code>, ніж старе: якщо об'єкт <code>other</code> є <code>Point</code>, але не <code>ColoredPoint</code>, метод відсилає до метода <code>equals</code> в <code>Point</code>. Це має бажаний ефект, що робить <code>equals</code> симетричним. Тепер обоє, <code>cp equals p</code> та <code>p equals cp</code> дають <code>true</code>. Однак контракт для <code>equals</code> все ще поломаний. Проблема в тому, що нове відношення більше не транзитивне!</p></div>
+<div class="paragraph"><p>Ось послідовність тверджень, що демонструють це. Визначте точку і дві кольорові точки різного кольору, всі з однаковими координатами:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">redp</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="nc">Color</span><span class="o">.</span><span class="nc">Red</span><span class="o">)</span>
+<span class="n">redp</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=</span> <span class="nc">ColoredPoint</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">bluep</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="nc">Color</span><span class="o">.</span><span class="nc">Blue</span><span class="o">)</span>
+<span class="n">bluep</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=</span> <span class="nc">ColoredPoint</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Взяті окремо, <code>redp</code> рівне до <code>p</code>, та <code>p</code> рівне до <code>bluep</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">redp</span> <span class="o">==</span> <span class="n">p</span>
+<span class="n">res13</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">p</span> <span class="o">==</span> <span class="n">bluep</span>
+<span class="n">res14</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак порівняння <code>redp</code> та <code>bluep</code> дає <code>false</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">redp</span> <span class="o">==</span> <span class="n">bluep</span>
+<span class="n">res15</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Таким чином, твердження транзитивності контракту <code>equals</code> порушене.</p></div>
+<div class="paragraph"><p>Створення відношення <code>equals</code> більш загальним, здається, призводить до глухого кута. Ми спробуємо зробити його замість цього суворішим. Один спосіб зробити <code>equals</code> суворішим - це завжди вприймати об'єкти різних типів як різні. Цього можна досягти, можифікуючи методи <code>equals</code> в класах <code>Point</code> та <code>ColoredPoint</code>. В класі <code>Point</code> ви можете додати додаткове порівняння, що перевіряє, чи клас часу виконання іншої <code>Point</code> точно такий самий, як і в класа цієї <code>Point</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// Технічно валідний, але незадовільний метод equals</span>
+<span class="k">class</span> <span class="nc">Point</span><span class="o">(</span><span class="k">val</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">).#</span><span class="k">#</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=&gt;</span>
+      <span class="k">this</span><span class="o">.</span><span class="n">x</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">x</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">y</span> <span class="o">&amp;&amp;</span>
+          <span class="k">this</span><span class="o">.</span><span class="n">getClass</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">getClass</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер ви можете відкатити реалізацію класа <code>ColoredPoint</code> назад до версії, що перед цім порушувала вимогу симетричності:<span class="footnote"><br />[Маючи нову реалізацію <code>equals</code> в <code>Point</code>, ця версія <code>ColoredPoint</code> більше не порушує вимогу симетрії.]<br /></span></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">color</span><span class="k">:</span> <span class="kt">Color.Value</span><span class="o">)</span>
+    <span class="k">extends</span> <span class="nc">Point</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=&gt;</span>
+      <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">color</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">color</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="k">super</span><span class="o">.</span><span class="n">equals</span><span class="o">(</span><span class="n">that</span><span class="o">)</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут примірник класу <code>Point</code> визнається рівним до деякого іншого примірника того самого класу, тільки якщо об'єкти мають ті самі координати, та вони мають той клас часу виконання, що означає, що <code>getClass</code> на кожному об'єкті поверне те саме значення. Нові визначення задовільняють симетрії та транзитивності, оскільки тепер кожне порівняння між об'єктами різних класів дає <code>false</code>. Так що кольорова точка ніколи не буде рівна точці. Ця домовленість виглядає логічною, але ви можете сказати, що нове обмеження дуже суворе.</p></div>
+<div class="paragraph"><p>Розглянеом наступний обхідний шлях визначити точку з координатами <code>(1, 2)</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">pAnon</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span> <span class="k">override</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="mi">2</span> <span class="o">}</span>
+<span class="n">pAnon</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">$anon$1</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Чи <code>pAnon</code> рівне до <code>p</code>? Відповідь є ні, оскільки об'єкти <code>java.lang.Class</code>, асоційовані з <code>p</code> та <code>pAnon</code> є різні. Для <code>p</code> це <code>Point</code>, тоді як для <code>pAnon</code> це анонімний субклас <code>Point</code>. Але ясно, що <code>pAnon</code> є тільки нова точка з координатами <code>(1, 2)</code>. Не виглядає логічним розглядати її як іншу, ніж <code>p</code>.</p></div>
+<div class="paragraph"><p>Виглядає що ми буксуємо. Чи існує розумний спосіб перевизначити еквівалентність на декількох рівнях ієрархії класів, при цьому дотримуючись контракту? Фактично, існує такий метод, але він потребує одночасного перевизначення ще одного метода разом з <code>equals</code> та <code>hashCode</code>. Ідея в тому, що як тільки клас перевизначає <code>equals</code> (та <code>hashCode</code>), він також має явно встановити, що об'єкти цього класу ніколи не рівні до об'єктів деякого суперкласу, що реалізує інший метод еквівалентності. Це досягається додаванням методу <code>canEqual</code> до кожного класу, що перевизначає <code>equals</code>. Ось сигнатура метода:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод повинен повертати <code>true</code>, якщо інший об'єкт є примірником класу, в якому <code>canEqual</code> є (пере)визначеним, інакше <code>false</code>. Він викликається з <code>equals</code>, щоб переконатись, що об'єкти можна порівняти в обох напрямках. Лістинг 30.1 показує нову (та фінальну) реалізацію класу <code>Point</code>, разом з ціма рядками:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Point</span><span class="o">(</span><span class="k">val</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span> <span class="k">=</span> <span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">).#</span><span class="k">#</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=&gt;</span>
+      <span class="o">(</span><span class="n">that</span> <span class="n">canEqual</span> <span class="k">this</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+          <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">x</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">x</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="o">(</span><span class="k">this</span><span class="o">.</span><span class="n">y</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">y</span><span class="o">)</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+      <span class="kc">false</span>
+  <span class="o">}</span>
+  <span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span><span class="o">.</span><span class="n">isInstanceOf</span><span class="o">[</span><span class="kt">Point</span><span class="o">]</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 30.1 - Метод суперкласа <code>equals</code>, що викликає <code>canEqual</code>.</p></div>
+<div class="paragraph"><p>Метод <code>equals</code> в цій версії класу <code>Point</code> містить додаткову вимогу, щоб об'єкт <code>other</code> міг бути еквівалентним до <code>this</code>, як визначено в методі <code>canEqual</code>. Реалізація <code>canEqual</code> в <code>Point</code> стверджує, що всі примірники <code>Point</code> можуть бути рівними.</p></div>
+<div class="paragraph"><p>Лістинг 30.2 показує відповідну реалізацію <code>ColoredPoint</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="k">val</span> <span class="n">color</span><span class="k">:</span> <span class="kt">Color.Value</span><span class="o">)</span>
+    <span class="k">extends</span> <span class="nc">Point</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span> <span class="k">=</span> <span class="o">(</span><span class="k">super</span><span class="o">.</span><span class="n">hashCode</span><span class="o">,</span> <span class="n">color</span><span class="o">).#</span><span class="k">#</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=&gt;</span>
+      <span class="o">(</span><span class="n">that</span> <span class="n">canEqual</span> <span class="k">this</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+          <span class="k">super</span><span class="o">.</span><span class="n">equals</span><span class="o">(</span><span class="n">that</span><span class="o">)</span> <span class="o">&amp;&amp;</span> <span class="k">this</span><span class="o">.</span><span class="n">color</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">color</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+      <span class="kc">false</span>
+  <span class="o">}</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span>
+    <span class="n">other</span><span class="o">.</span><span class="n">isInstanceOf</span><span class="o">[</span><span class="kt">ColoredPoint</span><span class="o">]</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 30.2 - Метод субкласу <code>equals</code>, що викликає <code>canEqual</code>.</p></div>
+<div class="paragraph"><p>Може бути показане, що нове визначення <code>Point</code> та <code>ColoredPoint</code> дотрумуються контракту для <code>equals</code>. Еквівалентність є симетричною та транзитивною. Порівняння <code>Point</code> з <code>ColoredPoint</code> завжди дає <code>false</code>. Зрозуміло, що для кожної точки <code>p</code> та кольорової точки <code>cp</code>, <code>p equals cp</code> буде повертати <code>false</code>, оскільки <code>cp canEqual p</code> буде повертати <code>false</code>. Зворотнє порівняння <code>cp equals p</code> буде також повертати <code>false</code>, оскільки <code>p</code> не є <code>ColoredPoint</code>, так що перше співпадіння шаблонів в тілі <code>equals</code> в <code>ColoredPoint</code> схибить.</p></div>
+<div class="paragraph"><p>З іншого боку, примірники різних субкласів <code>Point</code> можуть бути рівні, доти, докі ніякий з субкласів не перевизначає метод рівності. Наприклад, з повим визначенням класу, порівняння <code>p</code> та <code>pAnon</code> даватиме <code>true</code>. Ось деякі приклади:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">p</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+<span class="n">p</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">Point</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">cp</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">ColoredPoint</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="nc">Color</span><span class="o">.</span><span class="nc">Indigo</span><span class="o">)</span>
+<span class="n">cp</span><span class="k">:</span> <span class="kt">ColoredPoint</span> <span class="o">=</span> <span class="nc">ColoredPoint</span><span class="nd">@e6230d8f</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">pAnon</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Point</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">1</span><span class="o">)</span> <span class="o">{</span> <span class="k">override</span> <span class="k">val</span> <span class="n">y</span> <span class="k">=</span> <span class="mi">2</span> <span class="o">}</span>
+<span class="n">pAnon</span><span class="k">:</span> <span class="kt">Point</span> <span class="o">=</span> <span class="nc">$anon$1</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">coll</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">p</span><span class="o">)</span>
+<span class="n">coll</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Point</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="nc">Point</span><span class="k">@</span><span class="mi">5428</span><span class="n">bd62</span><span class="o">)</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span> <span class="n">contains</span> <span class="n">p</span>
+<span class="n">res16</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span> <span class="n">contains</span> <span class="n">cp</span>
+<span class="n">res17</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">coll</span> <span class="n">contains</span> <span class="n">pAnon</span>
+<span class="n">res18</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ці приклади демонструють, що якщо реалізація <code>equals</code> суперкласа визначає та викликає <code>canEqual</code>, тоді програмісти, що реалізують субкласи можуть вирішувати, зможе чи ні примірник їхнього субкласу бути рівний примірникам суперкласу. Наприклад, оскільки <code>ColoredPoint</code> перекриває <code>canEqual</code>, кольорова точка ніколи не може бути рівною до простої старої точки. Але оскільки анонімний субклас, на який посилається <code>pAnon</code> не перекриває <code>canEqual</code>, його примірник може бути рівним до примірника <code>Point</code>.</p></div>
+<div class="paragraph"><p>Одне з потенційних зауважень підходу <code>canEqual</code> в тому, що він порушує Принцип Підстановки Ліскова (LSP). Наприклад, техніка реалізації <code>equals</code> через порівняння типів часу виконання, що призводить до неможливості визначити субклас, чиї примірники можуть бути рівні примірникам суперкласу, була описана як порушення LSP.<span class="footnote"><br />[Bloch, Effective Java Second Edition, p. 39 [Blo08]]<br /></span> LSP стверджує, що повинна бути можливість використовувати (підставляти) примірники субкласів, там, де потрібні примірники суперкласа.</p></div>
+<div class="paragraph"><p>Однак в попередньому прикладі <code>coll contains cp</code> повертає <code>false</code>, навіть якщо в <code>cp</code> значення <code>x</code> та <code>y</code> співпадають з такими для точки в колекції. Таким чином, це може виглядати як порушення LSP, оскільки ви не можете використовувати <code>ColoredPoint</code> там, де очікувався <code>Point</code>. Ми віримо, що це помилкова інтерпретація, оскільки LSP не вимагає, щоб субклас поводився ідентично до своїх суперкласів, а тільки щоб він поводився так, щоб задовільняти контракту свого суперкласу.</p></div>
+<div class="paragraph"><p>Проблема з написанням метода <code>equals</code>, що порівнює класи часу виконання не в тому, що він порушує LSP, але в тому, що він не дає вам спосіб створити субклас, чиї примірники можуть бути еквівалентні примірникам суперкласу. Наприклад, як ми використовували техніку рантайм класів в попередньому прикладі, <code>coll contains pAnon</code> мало б повертати <code>false</code>, але не те, чого ми б хотіли. Для контрасту, ми реально хочемо, щоб <code>coll contains cp повертав `false</code>, оскільки через перекриття <code>equals</code> в <code>ColoredPoint</code> ми в основному кажемо, що точка кольору індіго з координатами <code>(1, 2)</code> не те саме, що некольорова точка <code>(1, 2)</code>. Таким чином, в попередньому прикладі ми були в змозі передати два різні примірники субкласа <code>Point</code> до метода <code>contains</code>, та ми отримали назад дві різні відповіді, обоє коректні.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_30_3_____">30.3 Визначення параметрів для параметризованих типів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В методі <code>equals</code> в попередніх прикладах все починалось з шаблона порівняння, що перевіряв, чи тип операнда відповідав типу класу, що містить метод <code>equals</code>. Коли класи параметризовані, ця схема потребує невеликої адаптації.</p></div>
+<div class="paragraph"><p>Як приклад розглянемо бінарні дерева. Ієрархія класів, показана на Лістингу 30.3 визначає абстрактний клса <code>Tree</code> для бінарного дерева, з двома альтернативними реалізаціями: об'єкт <code>EmptyTree</code>, та клас <code>Branch</code>, що представляє непорожні дерева. Непорожне дерево складається з деякого елемента <code>elem</code>, та лівого та правого дочірніх дерев. Тип цього елементу береться з параметру типу <code>T</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">trait</span> <span class="nc">Tree</span><span class="o">[</span><span class="kt">+T</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">elem</span><span class="k">:</span> <span class="kt">T</span>
+  <span class="k">def</span> <span class="n">left</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">right</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+<span class="o">}</span>
+
+<span class="k">object</span> <span class="nc">EmptyTree</span> <span class="k">extends</span> <span class="nc">Tree</span><span class="o">[</span><span class="kt">Nothing</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">elem</span> <span class="k">=</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">NoSuchElementException</span><span class="o">(</span><span class="s">&quot;EmptyTree.elem&quot;</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">left</span> <span class="k">=</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">NoSuchElementException</span><span class="o">(</span><span class="s">&quot;EmptyTree.left&quot;</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">right</span> <span class="k">=</span>
+    <span class="k">throw</span> <span class="k">new</span> <span class="nc">NoSuchElementException</span><span class="o">(</span><span class="s">&quot;EmptyTree.right&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">Branch</span><span class="o">[</span><span class="kt">+T</span><span class="o">](</span>
+  <span class="k">val</span> <span class="n">elem</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span><span class="k">val</span> <span class="n">left</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">],</span>
+  <span class="k">val</span> <span class="n">right</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+<span class="o">)</span> <span class="k">extends</span> <span class="nc">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 30.3 - Ієрархія для бінарних дерев.</p></div>
+<div class="paragraph"><p>Тепер ми додамо методи <code>equals</code> та <code>hashCode</code> до ціх класів. Для самого класу <code>Tree</code> нічого робити, оскільки ми вважаємо, що ці методи реалізовані окремо для кожної реалізації абстрактного класу. Для об'єкту <code>EmptyTree</code> все ще нічого робити, оскільки реалізація по замовчанню для <code>equals</code> та <code>hashCode</code>, які <code>EmptyTree</code> наслідує від <code>AnyRef</code>, роблять чудово. Кінець кінцем, <code>EmptyTree</code> единий буде рівний сам собі, так що еквівалентність буде посилатись на ідентичність, що наслідується від <code>AnyRef</code>.</p></div>
+<div class="paragraph"><p>Але додавання <code>equals</code> та <code>hashCode</code> до <code>Branch</code> потребує деякої роботи. Значення <code>Branch</code> має бути рівне тільки іншим значенням <code>Branch</code>, та тільки в тому випадку, якщо два значення мають рівні поля <code>elem</code>, <code>left</code> та <code>right</code>. Буде природним застосувати схему для <code>equals</code>, що була розроблена в попередніх розділах цієї глави. Це дасть вам:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Branch</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span>
+  <span class="k">val</span> <span class="n">elem</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span>
+  <span class="k">val</span> <span class="n">left</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">],</span>
+  <span class="k">val</span> <span class="n">right</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+<span class="o">)</span> <span class="k">extends</span> <span class="nc">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="k">this</span><span class="o">.</span><span class="n">elem</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">elem</span> <span class="o">&amp;&amp;</span>
+                            <span class="k">this</span><span class="o">.</span><span class="n">left</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">left</span> <span class="o">&amp;&amp;</span>
+                            <span class="k">this</span><span class="o">.</span><span class="n">right</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">right</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак компіляція цього прикладу дає позначку, що виникло попередження "unchecked". Нова компіляція з опцією -unchecked викриває наступну проблему:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">$</span> <span class="n">fsc</span> <span class="o">-</span><span class="n">unchecked</span> <span class="nc">Tree</span><span class="o">.</span><span class="n">scala</span>
+<span class="nc">Tree</span><span class="o">.</span><span class="n">scala</span><span class="k">:</span><span class="err">14</span><span class="kt">:</span> <span class="kt">warning:</span> <span class="kt">non</span> <span class="kt">variable</span> <span class="k">type</span><span class="kt">-argument</span> <span class="kt">T</span> <span class="kt">in</span> <span class="k">type</span>
+<span class="kt">pattern</span> <span class="kt">is</span> <span class="kt">unchecked</span> <span class="kt">since</span> <span class="kt">it</span> <span class="kt">is</span> <span class="kt">eliminated</span> <span class="kt">by</span> <span class="kt">erasure</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="k">this</span><span class="o">.</span><span class="n">elem</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">elem</span> <span class="o">&amp;&amp;</span>
+               <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як каже попередження, існує порівняння шаблонів щодо типу <code>Branch[T]</code>, але вивтема може тільки перевірити, що інше посилання є (деяким різновидом) <code>Branch</code>; вона не може перевірити, що тип елементу дерева є <code>T</code>. В Главі 19 ви зустрічали причину цього: типи елементів параметризованих типів видаляються на фазі затирання компілятора; вони недоступні для інспекції під час виконання.</p></div>
+<div class="paragraph"><p>Так що ми можемо зробити? Нащастя, з'ясовується, що вам не обов'язково перевіряти, що два <code>Branch</code> мають той самий тип елементів при їх порівнянні. Досить можливо, що два <code>Branch</code> з різними типами елементів рівні, доки їх поля такі самі. Простий приклад цього може бути <code>Branch</code>, що складається з одного елементу <code>Nil</code> та двох порожніх субдерев. Прийнятно вважати любі два таких  <code>Branch</code> як рівні, не важливо, які статичні типи вони мають:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">b1</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Branch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">]](</span><span class="nc">Nil</span><span class="o">,</span>
+           <span class="nc">EmptyTree</span><span class="o">,</span> <span class="nc">EmptyTree</span><span class="o">)</span>
+<span class="n">b1</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Branch</span><span class="k">@</span><span class="mi">9</span><span class="n">d5fa4f</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">b2</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Branch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]](</span><span class="nc">Nil</span><span class="o">,</span>
+           <span class="nc">EmptyTree</span><span class="o">,</span> <span class="nc">EmptyTree</span><span class="o">)</span>
+<span class="n">b2</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Branch</span><span class="k">@</span><span class="mi">56</span><span class="n">cdfc29</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">b1</span> <span class="o">==</span> <span class="n">b2</span>
+<span class="n">res19</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Позитивний результат порівняння вище було отримане від реалізації <code>equals</code> на <code>Branch</code>, показаної до цього. Це демонструє, що тип елементу <code>Branch</code> не був перевірений — якщо б він був перевірений, результатом мало б бути <code>false</code>.</p></div>
+<div class="paragraph"><p>Ми можемо не погоджуватись, який з двох результатів буде більш натуральний. Кінець цінцем, це залежить від ментальної моделі того, як класи представлені. В моделі, де параметри типу присутні лише під час компіляції, природно вважати, що два <code>Branch</code>, <code>b1</code> та <code>b2</code>, рівні. В альтернатівній моделі, де параметри типу формують частину значення об'єкту, так само природно розглядати їх як різні. Оскільки Scala приймає модель затирання типів, параметри типів неприсутні під час виконання, так що <code>b1</code> та <code>b2</code> природно розглядаються як рівні.</p></div>
+<div class="paragraph"><p>Існує тільки маленька зміна, потрібна для формулювання методу <code>equals</code>, що не продукує неперевіреного попередження. Замість елементу типу <code>T</code> використовуйте літеру малого реєсту, таку як <code>t</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="kt">t</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="k">this</span><span class="o">.</span><span class="n">elem</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">elem</span> <span class="o">&amp;&amp;</span>
+                        <span class="k">this</span><span class="o">.</span><span class="n">left</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">left</span> <span class="o">&amp;&amp;</span>
+                        <span class="k">this</span><span class="o">.</span><span class="n">right</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">right</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Згадайте з Розділу 15.2, що параметр типу в шаблоні, що починається з малої літери, представляє невідомий тип. Тепер шаблон співпаде:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="kt">t</span><span class="o">]</span> <span class="k">=&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>буде успішним для значень <code>Branch</code> любого типу. Параметр типу <code>t</code> представляє невідомий елемент типу для <code>Branch</code>. Він також може бути замінений на підкреслення, що те саме, що і попередній варіант:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="k">=&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Одна річ, що залишилось визначити для класу <code>Branch</code> є два інші методи, <code>hashCode</code> та <code>canEqual</code>, що ідуть з <code>equals</code>. Ось можлива реалізація <code>hashCode</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">(</span><span class="n">elem</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">).#</span><span class="k">#</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це тільки одна з багатьох можливих реалізацій. Як показано раніше, принцип є взяти <code>hashCode</code> з усіх полів, та скомбінувати їх. Ось реалізація методу <code>canEqual</code> в класі <code>Branch</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span><span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="kc">true</span>
+  <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Реалізація метода <code>canEqual</code> використовує типізоване порівняння шаблонів. Також можливо свормулювати його за допомогою <code>isInstanceOf</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span><span class="o">.</span><span class="n">isInstanceOf</span><span class="o">[</span><span class="kt">Branch</span><span class="o">[</span><span class="k">_</span><span class="o">]]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви почуваєтесь як nit-picking — і ми заохочуємо, щоб ви так і почувались! — ви можете здивуватись, що значить поява підкреслення в типі вище. Кінець кінцем, <code>Branch[_]</code> є технічно параметром типу для метода, не типом шаблону. То як це можливо залишити деякі його частини невизначеними?</p></div>
+<div class="paragraph"><p>Відповідь на це запитання обговорюється в наступній главі. <code>Branch[_]</code> є скороченням для так званого підстановочного типу, що є, грубо кажучи, типом з деякими невідомими частинами. Так що навіть якщо технічно підкреслення означає дві різні речі в порівнянні шаблонів та параметрі типу в виклику метода, в основному значення те саме: воно дозволяє вам помітити дещо, що є невідомим. Фінальна версія <code>Branch</code> показана в Лістингу 30.4.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Branch</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span>
+  <span class="k">val</span> <span class="n">elem</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span>
+  <span class="k">val</span> <span class="n">left</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">],</span>
+  <span class="k">val</span> <span class="n">right</span><span class="k">:</span> <span class="kt">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+<span class="o">)</span> <span class="k">extends</span> <span class="nc">Tree</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Branch</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">that</span> <span class="n">canEqual</span> <span class="k">this</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+                            <span class="k">this</span><span class="o">.</span><span class="n">elem</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">elem</span> <span class="o">&amp;&amp;</span>
+                            <span class="k">this</span><span class="o">.</span><span class="n">left</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">left</span> <span class="o">&amp;&amp;</span>
+                            <span class="k">this</span><span class="o">.</span><span class="n">right</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">right</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span> <span class="k">=</span> <span class="n">other</span><span class="o">.</span><span class="n">isInstanceOf</span><span class="o">[</span><span class="kt">Branch</span><span class="o">[</span><span class="k">_</span><span class="o">]]</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">(</span><span class="n">elem</span><span class="o">,</span> <span class="n">left</span><span class="o">,</span> <span class="n">right</span><span class="o">).#</span><span class="k">#</span>
+<span class="o">}</span>
+
+<span class="n">Лістинг</span> <span class="mf">30.4</span> <span class="o">-</span> <span class="n">Параметризований</span> <span class="n">тип</span> <span class="n">з</span> <span class="n">`equals`</span> <span class="n">та</span> <span class="n">`hashCode`</span><span class="o">.</span>
+
+<span class="mf">30.4</span> <span class="n">Рецепти</span> <span class="n">щодо</span> <span class="n">`equals`</span> <span class="n">та</span> <span class="n">`hashCode`</span>
+</pre></div></div></div>
+<div class="paragraph"><p>В цьому розділі ми надамо крок-за-кроком рецепти для створення методів <code>equals</code> та <code>hashCode</code>, що повинні підходити для більшості ситуацій. Як ілюстрація, ми будемо використовувати методи класу <code>Rational</code>, показаного в Лістингу 30.5.</p></div>
+<div class="paragraph"><p>Щоб створити цей клас ми видалили методи математичних операцій з версії класу <code>Rational</code>, показаного в Лістингу 6.5. Ми також зробили мінорні покращення до <code>toString</code>, та модифікували ініціалізатори <code>numer</code> та <code>denom</code>, щоб нормалізувати всі дробі, що мають додатний дільник (тобто, трансформувати <code>1/-2</code> до <code>-1/2</code>).</p></div>
+<div class="sect2">
+<h3 id="___code_equals_code">Рецепт для <code>equals</code></h3>
+<div class="paragraph"><p>Ось рецепт для перекриття <code>equals</code>:</p></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Щоб перекрити <code>equals</code> в нефінальному класі, створіть метод <code>canEqual</code>. Якщо наслідуване визначення <code>equals</code> походить від <code>AnyRef</code> (тобто <code>equals</code> не був перевизначений вище в ієрархії класів), визначення <code>canEqual</code> повинне бути нове; інакше воно буде перекривати повереднє визначення метода з таким же ім'ям. Одне виключення до цієї вимоги є для фінальних класів, що перевизначають метод <code>equals</code>, наслідуваний від <code>AnyRef</code>. Для них аномалії субкласів, описані в Розділі 30.2 не можуть виникти; відповідно вони не мають визначати <code>canEqual</code>. Тип об'єкту, переданий до <code>canEqual</code> повинен бути <code>Any</code>:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+</pre></div></div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Метод <code>canEqual</code> повинен давати <code>true</code>, якщо об'єкт аргумента є примірником поточного класу (iтобто класу, в якому визначений <code>canEqual</code>), та <code>false</code> інакше:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">other</span><span class="o">.</span><span class="n">isInstanceOf</span><span class="o">[</span><span class="kt">Rational</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+В методі <code>equals</code> переконайтесь, що ви задекларували тип об'єкта, переданого як <code>Any</code>:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+</pre></div></div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Напишіть тіло метода <code>equals</code> як єдиний вираз <code>match</code>. Селектор  <code>match</code> повинен бути об'єктом, переданим до <code>equals</code>:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+<span class="c1">// ...</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Вираз <code>match</code> повинен мати два випадки. Перший повинен декларувати шаблон типу для класу, в якому ви визначаєте метод <code>equals</code>:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=&gt;</span>
+</pre></div></div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+В тілі цього <code>case</code> запишіть вираз, що логчно пов'язує разом окремі вирази, що мають бути <code>true</code> для рівних об'єктів. Якщо метод <code>equals</code>, що ви перекриваєте, не походить від <code>AnyRef</code>, ви будете найбільш вірогідно включати виклик метода <code>equals</code> суперкласа:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">super</span><span class="o">.</span><span class="n">equals</span><span class="o">(</span><span class="n">that</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви визначаєте <code>equals</code> для класа, що перший визначає <code>canEqual</code>,ви повинні викликати <code>canEqual</code> на аргументі до метода рівності, передавши його як аргумент:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">(</span><span class="n">that</span> <span class="n">canEqual</span> <span class="k">this</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Перекриття перевизначень <code>equals</code> також повенне включати виклик <code>canEqual</code>, якщо вони не включають виклик до <code>super.equals</code>. В останньому випадку перевірка <code>canEqual</code> буде вже зроблена викликом суперкласа. Нарешті, для кожного поля, що має відношення до рівності, перевірте, що поле для об'єкту <code>this</code> рівне до відповідного поля переданого об'єкта:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">numer</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">&amp;&amp;</span>
+<span class="n">denom</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+</pre></div></div></div>
+<div class="olist arabic"><ol class="arabic">
+<li>
+<p>
+Для другого випадку використовуйте підстановочний шаблон, що дає <code>false</code>:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви дотримуватиметесь цього рецепту для <code>equals</code>, рівність гарантовано буде відношенням еквівалентності, як вимагається контрактом <code>equals</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Rational</span><span class="o">(</span><span class="n">n</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">d</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">d</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">val</span> <span class="n">g</span> <span class="k">=</span> <span class="n">gcd</span><span class="o">(</span><span class="n">n</span><span class="o">.</span><span class="n">abs</span><span class="o">,</span> <span class="n">d</span><span class="o">.</span><span class="n">abs</span><span class="o">)</span>
+  <span class="k">val</span> <span class="n">numer</span> <span class="k">=</span> <span class="o">(</span><span class="k">if</span> <span class="o">(</span><span class="n">d</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="o">-</span><span class="n">n</span> <span class="k">else</span> <span class="n">n</span><span class="o">)</span> <span class="o">/</span> <span class="n">g</span>
+  <span class="k">val</span> <span class="n">denom</span> <span class="k">=</span> <span class="n">d</span><span class="o">.</span><span class="n">abs</span> <span class="o">/</span> <span class="n">g</span>
+  <span class="k">private</span> <span class="k">def</span> <span class="n">gcd</span><span class="o">(</span><span class="n">a</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">b</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span>
+  <span class="k">if</span> <span class="o">(</span><span class="n">b</span> <span class="o">==</span> <span class="mi">0</span><span class="o">)</span> <span class="n">a</span> <span class="k">else</span> <span class="n">gcd</span><span class="o">(</span><span class="n">b</span><span class="o">,</span> <span class="n">a</span> <span class="o">%</span> <span class="n">b</span><span class="o">)</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">equals</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+    <span class="n">other</span> <span class="k">match</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="n">that</span><span class="k">:</span> <span class="kt">Rational</span> <span class="o">=&gt;</span>
+        <span class="o">(</span><span class="n">that</span> <span class="n">canEqual</span> <span class="k">this</span><span class="o">)</span> <span class="o">&amp;&amp;</span>
+        <span class="n">numer</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">numer</span> <span class="o">&amp;&amp;</span>
+        <span class="n">denom</span> <span class="o">==</span> <span class="n">that</span><span class="o">.</span><span class="n">denom</span>
+      <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="kc">false</span>
+    <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">canEqual</span><span class="o">(</span><span class="n">other</span><span class="k">:</span> <span class="kt">Any</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span>
+    <span class="n">other</span><span class="o">.</span><span class="n">isInstanceOf</span><span class="o">[</span><span class="kt">Rational</span><span class="o">]</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">(</span><span class="n">numer</span><span class="o">,</span> <span class="n">denom</span><span class="o">).#</span><span class="k">#</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">toString</span> <span class="k">=</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">denom</span> <span class="o">==</span> <span class="mi">1</span><span class="o">)</span> <span class="n">numer</span><span class="o">.</span><span class="n">toString</span> <span class="k">else</span> <span class="n">numer</span> <span class="o">+</span> <span class="s">&quot;/&quot;</span> <span class="o">+</span> <span class="n">denom</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 30.5 - Клас <code>Rational</code> з <code>equals</code> та <code>hashCode</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___code_hashcode_code">Рецепт для <code>hashCode</code></h3>
+<div class="paragraph"><p>Для <code>hashCode</code> ви звичайно можете досягти задовільних результатів, якщо будете використовувати наступний рецепт, що подібний до рецепту, рекомендуємого для Java класів в Effective Java.<span class="footnote"><br />[Bloch, Effective Java Second Edition. [Blo08]]<br /></span> Включіть в обчислення кожне поле в вашому об'єкту, що використовується для визначення рівності в методі <code>equals</code> ("відповідні" поля). Зробіть тапл, що містить значення з усіх ціх полів. Потім викличте <code>##</code> на отриманому таплі.</p></div>
+<div class="paragraph"><p>Наприклад, щоб реалізувати хеш код для об'єкта, що має п'ять відповідних полів з іменами <code>a</code>, <code>b</code>, <code>c</code>, <code>d</code>, <code>e</code>, ви можете записати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">(</span><span class="n">a</span><span class="o">,</span> <span class="n">b</span><span class="o">,</span> <span class="n">c</span><span class="o">,</span> <span class="n">d</span><span class="o">,</span> <span class="n">e</span><span class="o">).#</span><span class="k">#</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо метод <code>equals</code> викликає <code>super.equals(that)</code> як частину своїх обчислень, ви маєет почати ваше обчислення <code>hashCode</code> з виклика` super.hashCode`. Наприклад, якщо метод <code>Rational</code> <code>equals</code> мав викликати <code>super.equals(that)</code>, його <code>hashCode</code> був би такий:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">def</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">(</span><span class="k">super</span><span class="o">.</span><span class="n">hashCode</span><span class="o">,</span> <span class="n">numer</span><span class="o">,</span> <span class="n">denom</span><span class="o">).#</span><span class="k">#</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Одна річ, що треба пам'ятати коли пишете методи <code>hashCode</code> за допомогою цього підходу, це те, ваш хеш код буде гарний тільки настільки, наскільки гарні хеш коди, на яких він побудований, а саме хеш коди, що ви отримали викликаючи <code>hashCode</code> на відповідних полях вашого об'єкта. Іноді вам буде треба дещо крім простого виклику  <code>hashCode</code> на полі, щоб отримати корисний хеш код для цього поля. Наприклад, якщо одне з ваших полів є колекція, ви вірогідно бажаєте хеш код для цього поля, що базується на всіх елементах, що містяться в цій колекції. Якщо поле є <code>Vector</code>, <code>List</code>, <code>Set</code>, <code>Map</code>, або тапл, ви можете просто включити його в список елементів, по яких ви хешуєте, оскільки <code>equals</code> та <code>hashCode</code> перекриті в ціх класах, щоб прийняти до уваги елементи, які вони містять. Але це не так для  <code>Array</code>, що не приймає до уваги елементи при обчисленні хеш коду. таким чином для масивів ви маєте трактувати кожний елемент масиву як окреме поле вашого об'єкту, викликаюч <code>##</code> на кожному елементі явно, або передаючи масив до одного з методів <code>hashCode</code> в синглтон об'єкті <code>java.util.Arrays</code>.</p></div>
+<div class="paragraph"><p>Нарешті, якщо ви знайдете, що окреме обчислення хеш коду шкодить продуктивності вашої програми, розгляньте кешування хеш коду. Якщо об'єкт незмінний, ви можете обчислити хеш код, коли об'єкт створюється, та зберігти його в полі. Ви можете зробити це, просто перекривши <code>hashCode</code> за допомогою <code>val</code> замість <code>def</code>, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">override</span> <span class="k">val</span> <span class="n">hashCode</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">(</span><span class="n">numer</span><span class="o">,</span> <span class="n">denom</span><span class="o">).#</span><span class="k">#</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Цей підхід є компроміс між пам'ятю та часом виконання, оскільки кожний примірник незмінного класу буде мати на одне поле більше, що зберігатиме кешоване значення хеш коду.</p></div>
+</div>
 </div>
 </div>
 <div class="sect1">
 <h2 id="_30_5_">30.5 Висновок</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>In retrospect, defining a correct implementation of equals has been surprisingly subtle. You must be
-careful about the type signature; you must override hashCode; you should avoid dependencies on
-mutable state; and you should implement and use a canEqual method if your class is non-final.
-Given how difficult it is to implement a correct equality method, you might prefer to define your
-classes of comparable objects as case classes. That way, the Scala compiler will
-addequals and hashCode methods with the right properties automatically.</p></div>
+<div class="paragraph"><p>В ретроспктиві визначення коректної реалізації <code>equals</code> було несподівано тонким. Ви маєте бути уважним щодо сигнатури типу; ви маєте перекрити <code>hashCode</code>; ви повинні уникати залежностей від змінного стану; та ви маєте реалізувати та використовувати метод <code>canEqual</code>, якщо ваш клас не є фінальним.</p></div>
+<div class="paragraph"><p>Беручи до уваги, як складно реалізувати коректний метод рівності, ви можете схилитись до визначення ваших класів для об'єктів що порівнюються як кейс класів. Таким чином компілятор Scala буде додавати методи <code>equals</code> та <code>hashCode</code> з правильними властивостями автоматично.</p></div>
 </div>
 </div>
 </div>
@@ -1444,7 +1477,7 @@ addequals and hashCode methods with the right properties automatically.</p></div
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-04-15 03:51:39 EEST
+ 2019-04-17 05:03:01 EEST
 </div>
 </div>
 </body>
