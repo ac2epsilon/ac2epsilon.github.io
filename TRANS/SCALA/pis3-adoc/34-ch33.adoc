@@ -699,16 +699,16 @@ expr ::= expr "+" term | term.
 ----
 expr ::= term "+" expr | term.
 ----
-What happens if the expr parser is applied to an input such as (1 + 2) * 3 which constitutes a legal term? The first alternative would be tried, and would fail when matching the + sign. Then the second alternative would be tried on the same term and this would succeed. In the end the term ended up being parsed twice.
+Що трапится, якщо парсер `expr` застосується до вводу, такому як `(1 + 2) * 3`, що складає легальний `term`? Буде спробувана перша альтернатива, та схибить, коли порівняється зі знаком `+`. Потім буде спробувана друга альтернатива з тим самим термом, і вона буде успішною. В результаті терм буде розібраний двічі.
 
-It is often possible to modify the grammar so that backtracking can be avoided. For instance, in the case of arithmetic expressions, either one of the following productions would work:
+Часто можливо так модифікувати граматику, так щоб уникнути бектрекінгу. Наприклад, в випадку арифметичних виразів, люба з наступних продукцій має працювати:
 ----
 expr ::= term ["+" expr].
 expr ::= term \{"+" term\}.
 ----
-Many languages admit so-called "LL(1)" grammars.footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] When a combinator parser is formed from such a grammar, it will never backtrack, i.e., the input position will never be reset to an earlier value. For instance, the grammars for arithmetic expressions and JSON terms earlier in this chapter are both LL(1), so the backtracking capabilities of the parser combinator framework are never exercised for inputs from these languages.
+Багто мов приймають так звані `LL(1)` граматики.footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] Коли комбінаторний парсер сформований з такої граматики, він ніколи не буде виконувати бектрекінг, тобто позиція ніколи не буде скидатись в попереднє значення. Наприклад, граматики для арифметичних виразів та JSON термінів раніше в цій главі обоє є `LL(1)`, так що здібності бектрекінга фреймворка комбінаторних парсерів ніколи не задіються для входів з ціх мов.
 
-The combinator parsing framework allows you to express the expectation that a grammar is LL(1) explicitly, using a new operator ~!. This operator is like sequential composition ~ but it will never backtrack to "un-read" input elements that have already been parsed. Using this operator, the productions in the arithmetic expression parser could alternatively be written as follows:
+Комбінаторний парсерний фреймворк дозволяє вам виражати очікування, що граматика є `LL(1)` явно, використовуючи новий оператор `~!`. Цей оператор подібний до послідовної композиції `~`, але він ніколи не буде робити бектрекінг для "від-читування" вхідних елементів, що вже були розібрані. Використовуючи цей оператор, продукція в парсері арифметичних виразів може альтернативно бути записана таким чином:
 [source,scala]
 ----
 def expr : Parser[Any] =
@@ -720,17 +720,17 @@ def term : Parser[Any] =
 def factor: Parser[Any] =
   "(" ~! expr ~! ")" | floatingPointNumber
 ----
-One advantage of an LL(1) parser is that it can use a simpler input technique. Input can be read sequentially, and input elements can be discarded once they are read. That's another reason why LL(1) parsers are usually more efficient than backtracking parsers.
+Одна з переваг `LL(1)` парсера є те, що він використовує простішую техніку ввода. Ввод може бути прочитаний послідовно, та вхідні елементи можуть бути описані як тільки вони прочитані. Це інша причина, чому `LL(1)` парсери зазвичай більш ефективні, ніж бектрекінг парсери.
 
 33.11 Висновок
 --------------
-You have now seen all the essential elements of Scala's combinator parsing framework. It's surprisingly little code for something that's genuinely useful. With the framework you can construct parsers for a large class of context-free grammars. The framework lets you get started quickly, but it is also customizable to new kinds of grammars and input methods. Being a Scala library, it integrates seamlessly with the rest of the language. So it's easy to integrate a combinator parser in a larger Scala program.
+Тепер ви бачили всі головні елементи фреймворку комбінаторного парсінгу Scala. Це напрочуд малий код для чогось, що напрочуд корисне. З цім фреймворком ви можете сконструювати парсери для широкого класу контекст-вільних граматик. Фреймворк дозволяє вам розпочати дуже швидко, але він також дуже налаштовуваний на нові типи граматик та метоідв вводу. Будучи бібліотекою Scala, він легко інтегрується з залишком мови. Так що просто інтегрувати комбінаторний парсер в більшу Scala програму.
 
-One downside of combinator parsers is that they are not very efficient, at least not when compared with parsers generated from special purpose tools such as Yacc or Bison. There are two reasons for this. First, the backtracking method used by combinator parsing is itself not very efficient. Depending on the grammar and the parse input, it might yield an exponential slow-down due to repeated backtracking.This can be fixed by making the grammar LL(1) and by using the committed sequential composition operator, ~!.
+Один з недоліків комбінаторних парсерів в тому, що вони не дуже ефективні, щонайменьше коли порівнювати з парсерами, згенерованими від інструментів спеціального призначення,  таких як Yacc або Bison. Для цього є дві причини. Перше, метод бектрекінга, використаний для комбінаторного парсингу, сам по собі не дуже ефективний. В залежності від граматики та входу парсингу, він може видати експоненціальне уповільнення через повторюваний бектракінг. Це може бути полагоджене через роблення граматики `LL(1)`, та використання підтвердженної послідовної композиції, оператора `~!`.
 
-The second problem affecting the performance of combinator parsers is that they mix parser construction and input analysis in the same set of operations. In effect, a parser is generated anew for each input that's parsed.
+Друга проблема, що впливає на продуктивність комбінаторних парсерів є те, що вони міксують парсерні конструкції та аналіз входу в тій самій множині операцій. Фактично, парсер гененується поновому для кожного входа, що розбирається.
 
-This problem can be overcome, but it requires a different implementation of the parser combinator framework. In an optimizing framework, a parser would no longer be represented as a function from inputs to parse results. Instead, it would be represented as a tree, where every construction step was represented as a case class. For instance, sequential composition could be represented by a case class Seq, alternative by Alt, and so on. The "outermost" parser method, phrase, could then take this symbolic representation of a parser and convert it to highly efficient parsing tables, using standard parser generator algorithms.
+Цю проблему можливо подолати, але вона потребує іншої реалізації фреймворка парсерного комбінатора. В оптимізованоому фреймворку парсер більше не буде представлений як фунукція від входу на розібраний результат. Замість цього він буде представлений як дерево, де кожний крок конструкції був представлений як кейс клас. Наприклад, послідовна композиція може бути представлена як кейс клас `Seq`, альтернативу як `Alt`, і так далі. "Самий зовнішній" метод персера, `phrase`, could then take this symbolic representation of a parser and convert it to highly efficient parsing tables, using standard parser generator algorithms.
 
 What's nice about all this is that from a user perspective nothing changes compared to plain combinator parsers. Users still write parsers in terms of ident, floatingPointNumber, ~, |, and so on. They need not be aware that these methods generate a symbolic representation of a parser instead of a parser function. Since the phrase combinator converts these representations into real parsers, everything works as before.
 
