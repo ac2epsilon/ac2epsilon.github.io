@@ -6,590 +6,711 @@ include::headers.adoc[]
 Ф'ючерси та конкурентність
 ==========================
 
-One consequence of the proliferation of multicore processors has been an increased interest in
-concurrency. Java provides concurrency support built around shared memory and locking. Although
-this support is sufficient, this approach turns out to be quite difficult to get right in practice. Scala's
-standard library offers an alternative that avoids these difficulties by focusing on asynchronous
-transformations of immutable state: the Future.
-Although Java also offers a Future, it is very different from Scala's. Both represent the result of an
-asynchronous computation, but Java's Future requires that you access the result via a
-blocking get method. Although you can call isDone to find out if a Java Future has completed before
-calling get, thereby avoiding any blocking, you must wait until the Java Future has completed before
-proceeding with any computation that uses the result.
-By contrast, you can specify transformations on a Scala Future whether it has completed or not. Each
-transformation results in a new Future representing the asynchronous result of the
-original Future transformed by the function. The thread that performs the computation is determined by
-an implicitly provided execution context. This allows you to describe asynchronous computations as a
-series of transformations of immutable values, with no need to reason about shared memory and locks.
-32.1 TROUBLE IN PARADISE
-On the Java platform, each object is associated with a logical monitor, which can be used to control
-multi-threaded access to data. To use this model, you decide what data will be shared by multiple
-threads and mark as "synchronized" sections of the code that access, or control access to, the shared
-data. The Java runtime employs a locking mechanism to ensure that only one thread at a time enters
-synchronized sections guarded by the same lock, thereby enabling you to orchestrate multi-threaded
-access to the shared data.
-For compatibility's sake, Scala provides access to Java's concurrency primitives. The wait,notify,
-and notifyAll methods can be called in Scala, and they have the same meaning as in Java. Scala doesn't
-technically have a synchronized keyword, but it includes a predefinedsynchronized method that can be
-called as follows:
+Один з наслідків розповсюдження багатоядерних процесорів був збільшена зацікавленість до конкуренції. Java провадить підтримку конкуренції, побудовану коло розділеної пам'яті та блокування. Хоча ця підтримка є достатньою, цей підхід виявився досить складним, щоб зрозуміти його на практиці. Стандартна бібліотека Scala пропонує альтернативу, що уникає ціх складностей, через фокусування на асинхронних трансофрмаціях незмінного стану: `Future`.
+
+Хоча Java також пропонує `Future`, воно дуже різне від Scala. Обоє представляють результат асинхронного обчислення, але Java `Future` потребує, щоб ви отримували доступ до результату через блокуючий метод `get`. Хоча ви можете викликати `isDone` для визначення, чи Java `Future` завершилось, перед викликом `get`, і так уникнути блокування, ви маєте чекати, доки Java `Future` буде завершене, перед продовженням любих обчислень, що використовують цей результат.
+
+Для конрасту, ви можете вказати трансформації на Scala `Future`, чи воно завершилось, чи ні. Кожна трансформація має результатом новий `Future`, що представляє асинхронний результат оригінального `Future`, трансформованого функцією. Потік, що виконує обчислення, визначається неявно запровадженим контекстом виконання. Це дозволяє вам описати асинхронні обчислення як серії трансформацій незмінних значень, без потреби розмірковувати про розділену пам'ять та блокування.
+
+32.1 Проблеми в раю
+-------------------
+На Java платформі кожний об'єкт асоційований з логічним монітором, що може бути використаний для контролю багато поточного доступу до даних. Щоб використовувати цю модель, ви вирішуєте, які дані будуть розділені між декількома потоками, та відмічаєте як `synchronized` розділи коду, що мають доступ, або контролюють доступ до розділених даних. Рантайм Java задіє механізм для переконання, що тільки один потік в момент часу заходить в синхронізовані розділи, захищені тим самим блокуванням, і таким чином дозволяючи вам оркеструвати багато поточним доступом до розділених даних.
+
+З причин сумісності Scala провадить доступ до примітивів конкурентності Java. Методи `wait`, `notify` та `notifyAll` можуть бути викликані в Scala, і вони мають те саме значення, що і в Java. Scala технічно не має ключового слова `synchronized`, але вона включає передвизначений метод `synchronized`, що може бути викликаний таким чином:
+[source,scala]
+----
 var counter = 0
 synchronized {
-// One thread in here at a time
-counter = counter + 1
+  // один потік в кожний момент часу
+  counter = counter + 1
 }
-Unfortunately, programmers have found it very difficult to reliably build robust multi-threaded
-applications using the shared data and locks model, especially as applications grow in size and
-complexity. The problem is that at each point in the program, you must reason about what data you aremodifying or accessing that might be modified or accessed by other threads, and what locks are being
-held. At each method call, you must reason about what locks it will try to hold and convince yourself
-that it will not deadlock while trying to obtain them. Compounding the problem, the locks you reason
-about are not fixed at compile time, because the program is free to create new locks at run time as it
-progresses.
-Making things worse, testing is not reliable with multi-threaded code. Since threads are non-
-deterministic, you might successfully test a program one thousand times—and the program could still
-go wrong the first time it runs on a customer's machine. With shared data and locks, you must get the
-program correct through reason alone.
-Moreover, you can't solve the problem by over-synchronizing either. It can be just as problematic to
-synchronize everything as it is to synchronize nothing. Although new lock operations may remove
-possibilities for race conditions, they simultaneously add possibilities for deadlocks. A correct lock-
-using program must have neither race conditions nor deadlocks, so you cannot play it safe by
-overdoing it in either direction.
-The java.util.concurrent library provides higher level abstractions for concurrent programming. Using
-the concurrency utilities makes multi-threaded programming far less error prone than rolling your own
-abstractions with Java's low-level synchronization primitives. Nevertheless, the concurrent utilities are
-also based on the shared data and locks model, and as a result, do not solve the fundamental difficulties
-of using that model.
-32.2 ASYNCHRONOUS EXECUTION AND TRYS
-Although not a silver bullet, Scala's Future offers one way to deal with concurrency that can reduce,
-and often eliminate, the need to reason about shared data and locks. When you invoke a Scala method,
-it performs a computation "while you wait" and returns a result. If that result is a Future,
-the Future represents another computation to be performed asynchronously, often by a completely
-different thread. As a result, many operations on Futurerequire an implicit execution context that
-provides a strategy for executing functions asynchronously. For example, if you try to create a future
-via the Future.apply factory methodwithout providing an implicit execution context, an instance
-ofscala.concurrent.ExecutionContext, you'll get a compiler error:
+----
+Нажаль, програмісти визнали дуже складним побудувати надійні багато-поточні застосування з використанням розділених даних та моделі блокування, особливо як застовування зростають в розмірі та складності. Проблема в тому, що в кожній точці в програмі ви маєте продумувати щодо того, які дані змінені або мають доступ, що можуть бути модифіковані або мати доступ з інших потоків, та які блокування утримуються. На кожному виклику метода, ви маєте продумувати щодо того, які блокування була спроба захопити, та переконувати себе, що не виникає глухого блокування під час отримати їх. Ускладнюючи проблему, блокування, про які ви розмірковуєте, не зафіксовані під час компіляції, оскільки програма вільна створювати нові блокування під час виконання, по мірі просування.
+
+Що робить речі гуршими, тестування ненадійне з багато-поточним кодом. Оскільки потоки недетерміновані, ви можете успішно тестувати програму тисячу раз, та програма може все ще бути помилковою перший раз, коли вона використовується на машині клієнта. З розділеними даними та блокуваннями ви маєте зробити програму коректною через самі міркування.
+
+Більше того, ви не можете рішити проблему через пере-синхронізацію, також. Це буде так само проблематично синхронізувати геть усе, як взагалі не синхронізувати нічого. Хоча нові операції блокуваня можуть видалити можливості стану гонок, вони одночасно додають можливості глихого блокування. Коректна програма, що використовує блокування, повинна не мати одночасно ні станів гонки, ані глухих блокувань, так що ви не можете грати безпечно через надміру в жодному напрямку.
+
+Бібліотека `java.util.concurrent` провадить вищий рівень абстракції для конкурентного програмування. Використовуючи конкуренті утілити можна зробити багато-поточне програмування значно менш схильним до помилок, ніж розвертаючи ваші власні абстракції з низькорівневими примітивами синхронізації Java. Тим не менш, конкурентні утіліти також базовані на розділених даних та моделі блокувань, та як результат не вирішують фундаментальні складності використання цієї моделі.
+
+32.2 Асинхронне використання та Try
+-----------------------------------
+Хоча це і не срібна куля, Scala `Future` пропонує один спосіб мати справу з конкурентністю, що може зменьшити, а часто і видалити потребу думати про розділені дані та блокування. Коли це включає Scala метод, він виконує обчислення "доки ви очікуєте", та повертає результат. Якщо результат є `Future`, цей `Future` представляє інше обчислення, що має бути виконане асинхронно, часто в зовсім іншому потоці. Як результат, багато операцій на `Future` потребують неявного контексту виконання, що провадить стратегію для виконання функцій асинхронно. Наприклад, якщо ви спробуєте створити ф'ючерс через метод фабрики `Future.apply` без надання неявного контексту виконання, примірника `scala.concurrent.ExecutionContext`, ви отримаєте помилку компілятора:
+[source,scala]
+----
 scala> import scala.concurrent.Future
 import scala.concurrent.Future
+
 scala> val fut = Future { Thread.sleep(10000); 21 + 21 }
 <console>:11: error: Cannot find an implicit ExecutionContext.
-You might pass an (implicit ec: ExecutionContext)
-parameter to your method or import
-scala.concurrent.ExecutionContext.Implicits.global.
-val fut = Future { Thread.sleep(10000); 21 + 21 }
-^The error message gives you one way to solve the problem: importing a global execution context
-provided by Scala itself. On the JVM, the global execution context uses a thread pool.footnote:[On Scala.js, the global execution context places tasks on the JavaScript event queue.] Once you
-bring an implicit execution context into scope, you can create a future:
+    You might pass an (implicit ec: ExecutionContext)
+    parameter to your method or import
+    scala.concurrent.ExecutionContext.Implicits.global.
+        val fut = Future { Thread.sleep(10000); 21 + 21 }
+                         ^
+----
+Повідомлення про помилку дає вам один шлях вирішити цю проблему: імпортування глобального контексту виконання, що провадить сама Scala. На JVM глобальний контекст використовує пул потоків.footnote:[На Scala.js глобальний контекст виконання покладає завдання на чергу подій JavaScript.] Коли ви занесли неявний контекст виконання в поле зору, ви можете створири ф'ючерс:
+[source,scala]
+----
 scala> import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.ExecutionContext.Implicits.global
+
 scala> val fut = Future { Thread.sleep(10000); 21 + 21 }
 fut: scala.concurrent.Future[Int] = ...
-The future created in the previous example asynchronously executes the block of code, using
-the global execution context, then completes with the value 42. Once it starts execution, that thread will
-sleep for ten seconds. Thus this future will take at least ten seconds to complete.
-Two methods on Future allow you to poll: isCompleted and value. When invoked on a future that has
-not yet completed, isCompleted will return false and value will return None.
+----
+Ф'ючерс, створений в попередньому прикладі, асинхронно виконує блок коду, використовуючи глобальний контекст виконання, що завершується зі значенням 42. Як тільки він розпочинає виконання, цей потік буде спати протягом десяти секунд. Таким чином, ф'ючерс буде забирати щонайменьше десять секунд на завершення.
+
+Два методи на `Future` дозволяють вам опитання: `isCompleted` та `value`. Коли виконується на ф'ючерсі, що ще не завершений, `isCompleted` буде повертати `false`, та `value` буде повертати `None`.
+[source,scala]
+----
 scala> fut.isCompleted
 res0: Boolean = false
+
 scala> fut.value
 res1: Option[scala.util.Try[Int]] = None
-Once the future completes (in this case, after at least ten seconds has gone by), isCompleted will
-return true and value will return a Some:
+----
+Коли ф'ючерс завершиться (в цьому випадку коли пройде щонайменш десять секунд), `isCompleted` буде повертати `true`, та значення буде повертати `Some`:
+[source,scala]
+----
 scala> fut.isCompleted
 res2: Boolean = true
+
 scala> fut.value
 res3: Option[scala.util.Try[Int]] = Some(Success(42))
-The option returned by value contains a Try. As shown in Figure 32.1, a Try is either a Success, which
-contains a value of type T, or a Failure, which contains an exception (an instance
-ofjava.lang.Throwable). The purpose of Try is to provide for asynchronous computations what
-thetry expression provides for synchronous computations: It allows you to deal with the possibility that
-the computation will complete abruptly with an exception rather than return a result.footnotes:[Note that the Java Future also has a way to deal with the potential of an exception being thrown by the asynchronous computation: its get method will throw that exception wrapped in an ExecutionException.]
+----
+Опція, що повертається `value`, містить `Try`. Як показано на Малюнку 32.1, `Try` є або `Success`, що містить значення типу `T`, або `Failure`, що містить виключення ( примірник `java.lang.Throwable`). Призначення `Try` є провадити асинхронні обчислення, що вираз `try` провадить для синхронних обчислень: він дозволяє вам мати справу з можливістю, що обчислення буде закінчено неспродівано з виключенням, скоріше ніж поверне результат.footnotes:[Зауважте, що Java `Future` також має спосіб мати справу з потенційними виключеннями, що були закинуті асинхронними виключеннями: його метод `get` буде закидати це виключення, огорнуте в `ExecutionException`.]
 
-Figure 32.1 - Class hierarchy for Try.
+Малюнок 32.1 - Ієрархія класів для `Try`.
 
-For synchronous computations you can use try/catch to ensure that a thread that invokes a method
-catches and handles exceptions thrown by the method. For asynchronous computations, however, the
-thread that initiates the computation often moves on to other tasks. Later if that asynchronous
-computation fails with an exception, the original thread is no longer able to handle the exception in
-a catch clause. Thus when working with a Futurerepresenting an asynchronous activity, you use Try to
-deal with the possibility that the activity fails to yield a value and instead completes abruptly an
-exception. Here's an example that shows what happens when an asynchronous activity fails:
+Для синхронних обчислень ви можете використати `try`/`catch` для переконання, що потік, який викликає метод, перехоплює та обробляє виключення, закинуті методом. Однак для асинхронних обчислень потік, що ініціює обчислення, часто переходить до інших завдань. Пізніше, якшо це асинхронно обчислення схибить з виключенням,оригінальний потік буде більше не в змозі обробити виключення в твердженні `catch`. Таким чином, коли робите з `Future` що представляє асинхронну активність, ви використовуєте `Try` щоб мати справу з можливістю, що активність схибить видати значення, та замість цього завершиться несподівано як виключення. Ось приклад, що показує, що відбувається, коли асинхронна активність схибить:
+[source,scala]
+----
 scala> val fut = Future { Thread.sleep(10000); 21 / 0 }
 fut: scala.concurrent.Future[Int] = ...
+
 scala> fut.value
 res4: Option[scala.util.Try[Int]] = None
-Then, after ten seconds:
+----
+Поітм, через десять секунд:
+[source,scala]
+----
 scala> fut.value
 res5: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-32.3 WORKING WITH FUTURES
-Scala's Future allows you to specify transformations on Future results and obtain a new futurethat
-represents the composition of the two asynchronous computations: the original and the transformation.
-Transforming Futures with map
-The most fundamental such operation is map. Instead of blocking then continuing with another
-computation, you can just map the next computation onto the future. The result will be a new future
-that represents the original asynchronously computed result transformed asynchronously by the
-function passed to map.
-For example, the following future will complete after ten seconds:
+  Some(Failure(java.lang.ArithmeticException: / by zero))
+----
+
+32.3 Робота з ф'ючерсами
+------------------------
+Scala `Future` дозволяє вам вказати трансформації на результаті `Future`, та отримати новий ф'ючерс, що представляє композицію двох асинхронних обчислень: оригінального та трансформації.
+
+Трансформація `Futures` за допомогою `map`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Сама фундаментальна така операція є `map`. Замість блокування, та потім продовження з іншим обчисленням, ви можете просто відобразити наступне обчислення на ф'ючерс. Результатом буде новий ф'ючерс, що представляє оригінальний, асинхронно обчислений результат, асинхронно трансформований функцією, переданою до `map`.
+
+Наприклад, наступний ф'ючерс буде завершений через десять секунд:
+[source,scala]
+----
 scala> val fut = Future { Thread.sleep(10000); 21 + 21 }
 fut: scala.concurrent.Future[Int] = ...
-Mapping this future with a function that increments by one will yield another future. This new future
-will represent a computation consisting of the original addition followed by the subsequent increment:
+----
+Відображення цього ф'ючерса функцією, що збільшує на одиницю, буде давати інший ф'ючерс. Цей новий ф'ючерс буде представляти обчислення, що складається з оригінального додавання, за яким слідує наступне збільшення:
+[source,scala]
+----
 scala> val result = fut.map(x => x + 1)
 result: scala.concurrent.Future[Int] = ...
+
 scala> result.value
 res5: Option[scala.util.Try[Int]] = None
-Once the original future completes and the function has been applied to its result, the future returned
-by map will complete:
-scala> result.valueres6: Option[scala.util.Try[Int]] = Some(Success(43))
-Note that the operations performed in this example—the future creation, the 21 + 21 sum calculation,
-and the 42 + 1 increment—may be performed by three different threads.
-Transforming Futures with for expressions
-Because Scala's future also declares a flatMap method, you can transform futures using
-a forexpression. For example, consider the following two futures that will, after ten seconds, produce
-42 and 46:
+----
+Як тільки оригінальний ф'ючерс завершується, та функція буде застосована до його результату, ф'ючерс, що повертається з `map`, буде завершено:
+[source,scala]
+----
+scala> result.value
+res6: Option[scala.util.Try[Int]] = Some(Success(43))
+----
+Зауважте, що операція, виконана в цьому прикладі, створення ф'ючерса, обчислення суми `21 + 21`, та інкремент `42 + 1`, може бути виконана в трьох різних потоках.
+
+Трансформування `Future` за допомогою виразів `for`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Оскільки ф'ючерс Scala також декларує метод `flatMap`, ви можете трансформувати ф'ючерси з використанням виразу `for`. Наприклад, розглянемо наступні два ф'ючерса, що будуть через десять секунд виробляти `42` та `46`:
+[source,scala]
+----
 scala> val fut1 = Future { Thread.sleep(10000); 21 + 21 }
 fut1: scala.concurrent.Future[Int] = ...
+
 scala> val fut2 = Future { Thread.sleep(10000); 23 + 23 }
 fut2: scala.concurrent.Future[Int] = ...
-Given these two futures, you can obtain a new future representing the asynchronous sum of their results
-like this:
+----
+Маючи ці два ф'ючерси, ви можете отримати новий ф'ючерс, що представляє асинхронну суму їх результатів, як це:
+[source,scala]
+----
 scala> for {
-x <- fut1
-y <- fut2
-} yield x + y
+          x <- fut1
+          y <- fut2
+       } yield x + y
 res7: scala.concurrent.Future[Int] = ...
-Once the original futures have completed, and the subsequent sum completes, you'll be able to see the
-result:
+----
+Як тільки оригінальні ф'ючерси будуть завершені, та завершиться наступна сума, ви будете в змозі побачити результат:
+[source,scala]
+----
 scala> res7.value
 res8: Option[scala.util.Try[Int]] = Some(Success(88))
-Because for expressions serialize their transformations,footnotes:[The for expression shown in this example will be rewritten as a call to fut1.flatMap passing in a function that calls fut2.map: fut1.flatMap(x => fut2.map(y => x + y)).] if you don't create the futures before
-the for expression, they won't run in parallel. For example, although the previous forexpression requires
-around ten seconds to complete, the following for expression requires at least twenty seconds:
+----
+Оскільки `for` вирази серіалізують їх перетворення,footnotes:[Вираз `for`, показаний в цьому прикладі, буде переписаний як виклик до `fut1.flatMap`, переданий до функції, що викликає `fut2.map`: `fut1.flatMap(x => fut2.map(y => x + y))`.] якщо ви не створите ф'ючерси пере виразом, вони не будуть робити паралельно. Наприклад, хоча попередній `for` вираз потребує близько десяти секунд для завершення, наступний вираз `for` потребує щонайменьше двадцять секунд:
+[source,scala]
+----
 scala> for {
-x <- Future { Thread.sleep(10000); 21 + 21 }
-y <- Future { Thread.sleep(10000); 23 + 23 }
-} yield x + y
+        x <- Future { Thread.sleep(10000); 21 + 21 }
+        y <- Future { Thread.sleep(10000); 23 + 23 }
+       } yield x + y
 res9: scala.concurrent.Future[Int] = ...
+
 scala> res9.value
 res27: Option[scala.util.Try[Int]] = None
-scala> // Will need at least 20 seconds to complete
+
+scala> // буде потребувати щонайменьше 20 секунд для завершення
+
 scala> res9.value
-res28: Option[scala.util.Try[Int]] = Some(Success(88))Creating the Future: Future.failed, Future.successful, Future.fromTry, and Promises
-Besides the apply method, used in earlier examples to create futures, the Future companion object also
-includes three factory methods for creating already-completed futures: successful,failed, and fromTry.
-These factory methods do not require an ExecutionContext.
-The successful factory method creates a future that has already succeeded:
+res28: Option[scala.util.Try[Int]] = Some(Success(88))
+----
+
+Створення `Future`: `Future.failed`,` Future.successful`, `Future.fromTry`, та Promise
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Окрім метода `apply`, використаного в попередніх прикладах для створення ф'ючерсів, об'єкт компанйон `Future` також включає три метода фабрики для створення вже завершених ф'ючерсів: `successful`, `failed` та `fromTry`. Ці методи фабрики не потребують `ExecutionContext`.
+
+Метод фабрика `successful` створює ф'ючерс, що вже успішний:
+[source,scala]
+----
 scala> Future.successful { 21 + 21 }
 res2: scala.concurrent.Future[Int] = ...
-The failed method creates a future that has already failed:
+----
+Метод `failed` створює ф'ючерс, що вже схибив:
+[source,scala]
+----
 scala> Future.failed(new Exception("bummer!"))
 res3: scala.concurrent.Future[Nothing] = ...
-The fromTry method creates an already completed future from a Try:
+----
+Метод `fromTry` створює вже завершений ф'ючерс на основі `Try`:
+[source,scala]
+----
 scala> import scala.util.{Success,Failure}
 import scala.util.{Success, Failure}
+
 scala> Future.fromTry(Success { 21 + 21 })
 res4: scala.concurrent.Future[Int] = ...
+
 scala> Future.fromTry(Failure(new Exception("bummer!")))
 res5: scala.concurrent.Future[Nothing] = ...
-The most general way to create a future is to use a Promise. Given a promise you can obtain a future
-that is controlled by the promise. The future will complete when you complete the promise. Here's an
-example:
+----
+Найбільш загальний спосіб створити ф'ючерс це використати `Promise`. Маючи проміс ви можете отримати ф'ючерс, що контрольований цім промісом. Ф'ючерс буде завершено, коли ви завершите проміс. Ось приклад:
+[source,scala]
+----
 scala> val pro = Promise[Int]
 pro: scala.concurrent.Promise[Int] = ...
+
 scala> val fut = pro.future
 fut: scala.concurrent.Future[Int] = ...
+
 scala> fut.value
 res8: Option[scala.util.Try[Int]] = None
-You can complete the promise with methods named success, failure, and complete. These methods
-on Promise are similar to those described previously for constructing already completed futures. For
-example, the success method will complete the future successfully:
+----
+Ви можете завершити проміс за допомогою методів на ім'я `success`, `failure` та `complete`. Ці методи на `Promise` подібні до таких, описаних до цього для конструювання вже завершеного ф'ючерса. Наприклад, метод `success` буде завершувати ф'ючерс успішно:
+[source,scala]
+----
 scala> pro.success(42)
 res9: pro.type = ...
+
 scala> fut.value
 res10: Option[scala.util.Try[Int]] = Some(Success(42))
-The failure method takes an exception that will cause the future to fail with that exception.
-The complete method takes a Try. A completeWith method, which takes a future, also exists; the
-promise's future will thereafter mirror the completion status of the future you passed tocompleteWith.Filtering: filter and collect
-Scala's future offers two methods, filter and collect, that allow you to ensure a property holds true about
-a future value. The filter method validates the future result, leaving it the same if it is valid. Here's an
-example that ensures an Int is positive:
+----
+Метод `failure` приймає виключення, що змусить ф'ючерс схибити з цім виключенням. Метод `complete` приймає `Try`. Метод `completeWith`, що приймає ф'ючерс, також існує; ф'ючерс промісу буде таким чином відображувати статус ф'ючерса, що ви передали до `completeWith`.
+
+Фільтрування: `filter` та `collect`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ф'ючерси Scala пропонують два методи, `filter` та `collect`, що дозволяють вам переконатись, що властивість дотримується `true` щодо значень ф'ючерса. Метод `filter` валідує результат ф'ючерса, залишаючи його тим самим, якщо він валідний. Ось приклад, що переконується, що `Int` є додатним:
+[source,scala]
+----
 scala> val fut = Future { 42 }
 fut: scala.concurrent.Future[Int] = ...
+
 scala> val valid = fut.filter(res => res > 0)
 valid: scala.concurrent.Future[Int] = ...
+
 scala> valid.value
 res0: Option[scala.util.Try[Int]] = Some(Success(42))
-If the future value is not valid, the future returned by filter will fail with aNoSuchElementException:
+----
+Якщо значення ф'ючерса невалідне, ф'ючерс буде хибити з `NoSuchElementException`:
+[source,scala]
+----
 scala> val invalid = fut.filter(res => res < 0)
 invalid: scala.concurrent.Future[Int] = ...
+
 scala> invalid.value
 res1: Option[scala.util.Try[Int]] =
-Some(Failure(java.util.NoSuchElementException:
-Future.filter predicate is not satisfied))
-Because Future also offers a withFilter method, you can perform the same operation with forexpression
-filters:
+  Some(Failure(java.util.NoSuchElementException:
+  Future.filter predicate is not satisfied))
+----
+Оскільки `Future` також пропонує метод `withFilter`, ви можете виконати таку саму операцію з фільтрами `for` виразів:
+[source,scala]
+----
 scala> val valid = for (res <- fut if res > 0) yield res
 valid: scala.concurrent.Future[Int] = ...
+
 scala> valid.value
 res2: Option[scala.util.Try[Int]] = Some(Success(42))
+
 scala> val invalid = for (res <- fut if res < 0) yield res
 invalid: scala.concurrent.Future[Int] = ...
+
 scala> invalid.value
 res3: Option[scala.util.Try[Int]] =
-Some(Failure(java.util.NoSuchElementException:
-Future.filter predicate is not satisfied))
-Future's collect method allows you to validate the future value and transform it in one operation. If the
-partial function passed to collect is defined at the future result, the future returned by collect will
-succeed with that value transformed by the function:
+  Some(Failure(java.util.NoSuchElementException:
+  Future.filter predicate is not satisfied))
+----
+Метод `Future` дозволяє вам валідувати ф'ючерс, та трансформувати це в одну операцію. Якщо часткова функція, передана до `collect`, визначена на результаті ф'ючерса, ф'ючерс, що повертає `collect`, буде успішним зі значенням, що трансформований функцією:
+[source,scala]
+----
 scala> val valid =
-fut collect { case res if res > 0 => res + 46 }
+         fut collect { case res if res > 0 => res + 46 }
 valid: scala.concurrent.Future[Int] = ...
+
 scala> valid.value
 res17: Option[scala.util.Try[Int]] = Some(Success(88))
-Otherwise, the future will fail with NoSuchElementException:
+----
+Інакше ф'ючерс буде хибити з `NoSuchElementException`:
+[source,scala]
+----
 scala> val invalid =fut collect { case res if res < 0 => res + 46 }
 invalid: scala.concurrent.Future[Int] = ...
+
 scala> invalid.value
 res18: Option[scala.util.Try[Int]] =
 Some(Failure(java.util.NoSuchElementException:
 Future.collect partial function is not defined at: 42))
-Dealing with failure: failed, fallBackTo, recover, and recoverWith
-Scala's future provides ways to work with futures that fail, including failed, fallBackTo, recover,
-and recoverWith. The failed method will transform a failed future of any type into a
-successfulFuture[Throwable] that holds onto the exception that caused the failure. Here's an example:
+----
+Робота з збоями: `failed`, `fallBackTo`, `recover` та `recoverWith`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Ф'ючерси Scala провадять спосіб робити з ф'ючерсами, що схибили, включаючи `failed`, `fallBackTo`, `recover`,та `recoverWith`. Метод `failed` буде трансформувати невдалий ф'ючерс любого типу в `successfulFuture[Throwable]`, що містить вираз, що спричинив сбій. Ось приклад:
+[source,scala]
+----
 scala> val failure = Future { 42 / 0 }
 failure: scala.concurrent.Future[Int] = ...
+
 scala> failure.value
 res23: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
+  Some(Failure(java.lang.ArithmeticException: / by zero))
+
 scala> val expectedFailure = failure.failed
 expectedFailure: scala.concurrent.Future[Throwable] = ...
+
 scala> expectedFailure.value
 res25: Option[scala.util.Try[Throwable]] =
-Some(Success(java.lang.ArithmeticException: / by zero))
-If the future on which the failed method is called ultimately succeeds, the future returned byfailed will
-itself fail with a NoSuchElementException. The failed method is appropriate, therefore, only when you
-expect that the future will fail. Here's an example:
+  Some(Success(java.lang.ArithmeticException: / by zero))
+----
+Якщо ф'ючерс, на якому викликаний метод `failed`, кінець кінцем буде успішним, ф'ючерс, повернутий `failed` сам буде хибити з `NoSuchElementException`. Метод `failed`, таким чином, доречний тільки коли ви очікуєте, що ф'ючерс схибить. Ось приклад:
+[source,scala]
+----
 scala> val success = Future { 42 / 1 }
 success: scala.concurrent.Future[Int] = ...
+
 scala> success.value
 res21: Option[scala.util.Try[Int]] = Some(Success(42))
+
 scala> val unexpectedSuccess = success.failed
 unexpectedSuccess: scala.concurrent.Future[Throwable] = ...
+
 scala> unexpectedSuccess.value
 res26: Option[scala.util.Try[Throwable]] =
-Some(Failure(java.util.NoSuchElementException:
+  Some(Failure(java.util.NoSuchElementException:
 Future.failed not completed with a throwable.))
-The fallbackTo method allows you to provide an alternate future to use in case the future on which you
-invoke fallbackTo fails. Here's an example in which a failed future falls back to a successful future:
+----
+Метод `fallbackTo` дозволяє вам провадити альтернативний ф'ючерс, для використання в випадку, коли ф'ючерс, на якому ви викликаєте `fallbackTo`, схибить. Ось приклад, в якому збійний ф'ючерс відкочується до вдалого ф'ючерса:
+[source,scala]
+----
 scala> val fallback = failure.fallbackTo(success)
 fallback: scala.concurrent.Future[Int] = ...
+
 scala> fallback.value
-res27: Option[scala.util.Try[Int]] = Some(Success(42))If the original future on which fallbackTo is invoked fails, a failure of the future passed tofallbackTo is
-essentially ignored. The future returned by fallbackTo will fail with the initial exception. Here's an
-example:
+res27: Option[scala.util.Try[Int]] = Some(Success(42))
+----
+Якщо оригінальний ф'ючерс, на якому викликається `fallbackTo`, схибить, збій ф'ючерса, переданого до `fallbackTo`, просто ігнорується. Ф'ючерс, повернутий `fallbackTo`, буде хибити з початковим виключенням. Ось приклад:
+[source,scala]
+----
 scala> val failedFallback = failure.fallbackTo(
-Future { val res = 42; require(res < 0); res }
-)
+        Future { val res = 42; require(res < 0); res }
+       )
 failedFallback: scala.concurrent.Future[Int] = ...
+
 scala> failedFallback.value
 res28: Option[scala.util.Try[Int]] =
 Some(Failure(java.lang.ArithmeticException: / by zero))
-The recover method allows you to transform a failed future into a successful one, allowing a successful
-future's result to pass through unchanged. For example, on a future that fails withArithmeticException,
-you can use the recover method to transform the failure into a success, like this:
+----
+Метод `recover` дозволяє вам трансформувати вам невдалий ф'ючерс в успішний, дозволяючи результату вдалого ф'ючерса проходити без змін. Наприклад, на ф'ючерсі, що схибив з `ArithmeticException`, ви можете використати метод `recover`, щоб трансформувати збій в успіх, ось так:
+[source,scala]
+----
 scala> val recovered = failedFallback recover {
-case ex: ArithmeticException => -1
-}
+          case ex: ArithmeticException => -1
+        }
 recovered: scala.concurrent.Future[Int] = ...
+
 scala> recovered.value
 res32: Option[scala.util.Try[Int]] = Some(Success(-1))
-If the original future doesn't fail, the future returned by recover will complete with the same value:
+----
+Якщо оригінальний ф'ючерс не схибить, ф'ючерс, що повертається з `recover`, буде завершений з тим самим значенням:
+[source,scala]
+----
 scala> val unrecovered = fallback recover {
-case ex: ArithmeticException => -1
-}
+          case ex: ArithmeticException => -1
+        }
 unrecovered: scala.concurrent.Future[Int] = ...
+
 scala> unrecovered.value
 res33: Option[scala.util.Try[Int]] = Some(Success(42))
-Similarly, if the partial function passed to recover isn't defined at the exception with which the original
-future ultimately fails, that original failure will pass through:
+----
+Подібним чином, якщо часткова функція, передана до `recover`, не визначена на виключенні, з яким оригінальний ф'ючерс кінець кінцем схибив, цей оригінальний збій буде передано без змін:
+[source,scala]
+----
 scala> val alsoUnrecovered = failedFallback recover {
-case ex: IllegalArgumentException => -2
-}
+          case ex: IllegalArgumentException => -2
+        }
 alsoUnrecovered: scala.concurrent.Future[Int] = ...
+
 scala> alsoUnrecovered.value
 res34: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-The recoverWith method is similar to recover, except instead of recovering to a value like recover,
-the recoverWith method allows you to recover to a future value. Here's an example:
+  Some(Failure(java.lang.ArithmeticException: / by zero))
+----
+Метод `recoverWith` подібний до `recover`, за винятком того, що замість відновлення до значення, як в `recover`, метод `recoverWith` дозволяє вам відновити до значення ф'ючерса. Ось приклад:
+[source,scala]
+----
 scala> val alsoRecovered = failedFallback recoverWith {
-case ex: ArithmeticException => Future { 42 + 46 }
-}
+          case ex: ArithmeticException => Future { 42 + 46 }
+        }
 alsoRecovered: scala.concurrent.Future[Int] = ...scala> alsoRecovered.value
 res35: Option[scala.util.Try[Int]] = Some(Success(88))
-As with recover, if either the original future doesn't fail, or the partial function passed
-torecoverWith isn't defined at the exception the original future ultimately fails with, the original success
-(or failure) will pass through to the future returned by recoverWith.
-Mapping both possibilities: transform
-Future's transform method accepts two functions with which to transform a future: one to use in case of
-success and the other in case of failure:
+----
+Як і з `recover`, якщо оригінальний ф'ючерс не схибив, або часткова функція, передана до `recoverWith` не визначена на виключенні, з яким схибив оригінальний ф'ючерс, оригінальний успіх (або збій) будуть передані наскрізь до ф'ючерса, що повертається `recoverWith`.
+
+Відображення обох можливостей: `transform`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `Future` `transform` приймає дві функції, якими він трансформує ф'ючерс: одну для використання в разі вдачі, та іншу для випадку невдачі:
+[source,scala]
+----
 scala> val first = success.transform(
-res => res * -1,
-ex => new Exception("see cause", ex)
-)
+          res => res * -1,
+          ex => new Exception("see cause", ex)
+        )
 first: scala.concurrent.Future[Int] = ...
-If the future succeeds, the first function is used:
+----
+Якщо ф'ючерс успішний використовується перша функція:
+[source,scala]
+----
 scala> first.value
 res42: Option[scala.util.Try[Int]] = Some(Success(-42))
-If the future fails, the second function is used:
+----
+Якщо ф'ючерс зазнає невдачі використовується друга функція:
+[source,scala]
+----
 scala> val second = failure.transform(
-res => res * -1,
-ex => new Exception("see cause", ex)
-)
+          res => res * -1,
+          ex => new Exception("see cause", ex)
+        )
 second: scala.concurrent.Future[Int] = ...
+
 scala> second.value
 res43: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.Exception: see cause))
-Note that with the transform method shown in the previous examples, you can't change a successful
-future into a failed one, nor can you change a failed future into a successful one. To make this kind of
-transformation easier, Scala 2.12 introduced an alternate overloaded form of transform that takes a
-function from Try to Try. Here are some examples:
+  Some(Failure(java.lang.Exception: see cause))
+----
+Зауважте, що за допомогою метода `transform`, показаного в попередніх прикладах, ви не можете змінити успішний ф'ючерс на невдалий, так само як неможете перетворити невдалий на успішний. Щоб зробити цей різновид трансформації простішим, Scala 2.12 вводить альтернативну перевантажену форму `transform`, що приймає функцію з `Try` до `Try`. Ось декілька прикладів:
+[source,scala]
+----
 scala> val firstCase = success.transform { // Scala 2.12
-case Success(res) => Success(res * -1)
-case Failure(ex) =>
-Failure(new Exception("see cause", ex))
-}
+          case Success(res) => Success(res * -1)
+          case Failure(ex) =>
+            Failure(new Exception("see cause", ex))
+        }
 first: scala.concurrent.Future[Int] = ...
+
 scala> firstCase.value
 res6: Option[scala.util.Try[Int]] = Some(Success(-42))
+
 scala> val secondCase = failure.transform {
-case Success(res) => Success(res * -1)
-case Failure(ex) =>
-Failure(new Exception("see cause", ex))
-}secondCase: scala.concurrent.Future[Int] = ...
+          case Success(res) => Success(res * -1)
+          case Failure(ex) =>
+            Failure(new Exception("see cause", ex))
+        }
+secondCase: scala.concurrent.Future[Int] = ...
+
 scala> secondCase.value
 res8: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.Exception: see cause))
-Here's an example of using the new transform method to transform a failure into a success:
+  Some(Failure(java.lang.Exception: see cause))
+----
+Ось приклад використання нового метода `transform` для трансформації невдачі до успіху:
+[source,scala]
+----
 scala> val nonNegative = failure.transform { // Scala 2.12
-case Success(res) => Success(res.abs + 1)
-case Failure(_) => Success(0)
-}
+          case Success(res) => Success(res.abs + 1)
+          case Failure(_) => Success(0)
+        }
 nonNegative: scala.concurrent.Future[Int] = ...
+
 scala> nonNegative.value
 res11: Option[scala.util.Try[Int]] = Some(Success(0))
-Combining futures: zip, Future.fold, Future.reduce, Future.sequence, and Future.traverse
-Future and its companion object offer methods that allow you to combine multiple futures.
-The zip method will transform two successful futures into a future tuple of both values. Here's an
-example:
+----
+Комбінування ф'ючерсів: `zip`, `Future.fold`, `Future.reduce`, `Future.sequence` та `Future.traverse`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+`Future` та його об'єкт компанйон пропонує методи, що дозволяють вам комбінувати декілька ф'ючерсів. Метод `zip` буде трансформувати два успішні ф'ючерса в тапл ф'ючерсів з обох значень. Ось приклад:
+[source,scala]
+----
 scala> val zippedSuccess = success zip recovered
 zippedSuccess: scala.concurrent.Future[(Int, Int)] = ...
+
 scala> zippedSuccess.value
 res46: Option[scala.util.Try[(Int, Int)]] =
-Some(Success((42,-1)))
-If either of the futures fail, however, the future returned by zip will also fail with the same exception:
+    Some(Success((42,-1)))
+----
+Однак якщо любий з ф'ючерсів схибить, ф'ючерс, що повертається з `zip` також бути хибним з тим самим виключенням:
+[source,scala]
+----
 scala> val zippedFailure = success zip failure
 zippedFailure: scala.concurrent.Future[(Int, Int)] = ...
+
 scala> zippedFailure.value
 res48: Option[scala.util.Try[(Int, Int)]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-If both futures fail, the failed future that results will contain the exception stored in the initial future, the
-one on which zip was invoked.
-Future's companion object offers a fold method that allows you to accumulate a result across
-aTraversableOnce collection of futures, yielding a future result. If all futures in the collection succeed,
-the resulting future will succeed with the accumulated result. If any future in the collection fails, the
-resulting future will fail. If multiple futures fail, the result will fail with the same exception with which
-the first future (earliest in the TraversableOnce collection) fails. Here's an example:
+    Some(Failure(java.lang.ArithmeticException: / by zero))
+----
+Якщо обоє з ф'ючерсів невдалі, невдалий ф'ючерс буде містити виключення, що зберігається в початковому ф'ючерсі, тому, на якому був викликаний `zip`.
+
+Об'єкт компанйон пропонує метод `fold`, що  дозволяє вам акумулювати результати по `TraversableOnce` колекції ф'ючерсів, отримуючи результуючий ф'ючерс. Якщо всі ф'ючерси в колекції успішні, результуючий ф'ючерс буде успішний з акумульованим результатом. Якщо любий ф'ючерс в колекції схибить, результуючий ф'ючерс буде невдалим. Якщо схиблять декілька ф'ючерсів, результат буде мати невдачу з тим самим виключенням, з яким схибив перший ф'ючерс (більш ранішній в колекції `TraversableOnce`). Ось приклад:
+[source,scala]
+----
 scala> val fortyTwo = Future { 21 + 21 }
 fortyTwo: scala.concurrent.Future[Int] = ...
+
 scala> val fortySix = Future { 23 + 23 }
-fortySix: scala.concurrent.Future[Int] = ...scala> val futureNums = List(fortyTwo, fortySix)
+fortySix: scala.concurrent.Future[Int] = ...
+
+scala> val futureNums = List(fortyTwo, fortySix)
 futureNums: List[scala.concurrent.Future[Int]] = ...
+
 scala> val folded =
-Future.fold(futureNums)(0) { (acc, num) =>
-acc + num
-}
+      Future.fold(futureNums)(0) { (acc, num) =>
+        acc + num
+      }
 folded: scala.concurrent.Future[Int] = ...
+
 scala> folded.value
 res53: Option[scala.util.Try[Int]] = Some(Success(88))
-The Future.reduce method performs a fold without a zero, using the initial future result as the start
-value. Here's an example:
+----
+Метод `Future.reduce` виконує `fold` без нуля, використовуючи початковий результат ф'ючерса як стартове значення. Ось приклад:
+[source,scala]
+----
 scala> val reduced =
-Future.reduce(futureNums) { (acc, num) =>
-acc + num
-}
+        Future.reduce(futureNums) { (acc, num) =>
+          acc + num
+        }
 reduced: scala.concurrent.Future[Int] = ...
+
 scala> reduced.value
 res54: Option[scala.util.Try[Int]] = Some(Success(88))
-If you pass an empty collection to reduce, the resulting future will fail with aNoSuchElementException.
-The Future.sequence method transforms a TraversableOnce collection of futures into a
-futureTraversableOnce of values. For instance, in the following example, sequence is used to transform
-a List[Future[Int]] to a Future[List[Int]]:
+----
+Якщо ви передасте порожню колекцію до `reduce`, отриманий ф'ючерс буде хибити з `NoSuchElementException`.
+
+Метод `Future.sequence` трансформує колекцію `TraversableOnce` ф'ючерсів в ф'ючерс `TraversableOnce` зі значень. Наприклад, в неступному прикладі послідовність використовується до трансформації `List[Future[Int]]` до `Future[List[Int]]`:
+[source,scala]
+----
 scala> val futureList = Future.sequence(futureNums)
 futureList: scala.concurrent.Future[List[Int]] = ...
+
 scala> futureList.value
 res55: Option[scala.util.Try[List[Int]]] =
-Some(Success(List(42, 46)))
-The Future.traverse method will change a TraversableOnce of any element type into
-aTraversableOnce of futures and "sequence" that into a future TraversableOnce of values. For example,
-here a List[Int] is transformed into a Future[List[Int]] by Future.traverse:
+  Some(Success(List(42, 46)))
+----
+Метод `Future.traverse` буде змінювати `TraversableOnce` з любим типом елементів до `TraversableOnce` ф'ючерсів, та "послідовність" в ф'ючерс `TraversableOnce` зі значень. Наприклад, ось `List[Int]`, що трансформований до `Future[List[Int]]` через `Future.traverse`:
+[source,scala]
+----
 scala> val traversed =
-Future.traverse(List(1, 2, 3)) { i => Future(i) }
+        Future.traverse(List(1, 2, 3)) { i => Future(i) }
 traversed: scala.concurrent.Future[List[Int]] = ...
+
 scala> traversed.value
 res58: Option[scala.util.Try[List[Int]]] =
-Some(Success(List(1, 2, 3)))
-Performing side-effects: foreach, onComplete, and andThen
-Sometimes you may need to perform a side effect after a future completes. Future provides several
-methods for this purpose. The most basic method is foreach, which will perform a side effect if a futurecompletes successfully. For instance, in the following example a println is not executed in the case of a
-failed future, just a successful future:
+  Some(Success(List(1, 2, 3)))
+----  
+
+Виконання побічних ефектів: `foreach`, `onComplete` та `andThen`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Іноді вам буває потрібно виконати побічних ефект після закунчення ф'ючерса. `Future` провадить декілька методів для ціх цілей. Найбільш базовий метод є `foreach`, що буде виконувати побічний ефект, якщо ф'ючерс закінчився успішно. Наприклад, в наступному прикладі `println` не виконується в випадку невдалого ф'ючерса, тільки в випадку вдалого:
+[source,scala]
+----
 scala> failure.foreach(ex => println(ex))
+
 scala> success.foreach(res => println(res))
 42
-Since for without yield will rewrite to an invocation of foreach, you can also accomplish the same
-effect using for expressions:
+----
+Оскільки `for` без `yield` буде переписане до виклика `foreach`, ви також можете досягти того самого ефекту з використанням `for` виразу:
+[source,scala]
+----
 scala> for (res <- failure) println(res)
 scala> for (res <- success) println(res)
 42
-Future also offers two methods for registering "callback" functions. The onComplete method will be
-executed whether the future ultimately succeeds or fails. The function will be passed a Try—
-a Success holding the result if the future succeeded, else a Failure holding the exception that caused the
-future to fail. Here's an example:
+----
+`Future` також пропонує два методи для реєстрації функцій "зворотнього виклику". Метод `onComplete` буде виконаний кожного разу, коли ф'ючерс нарешті завершується, вдало або невдало. Функції буде переданий `Try` — `Success`, що буде містити результат, якщо ф'ючерс успішний, інакше `Failure`, що міститиме виключення, що призвело до збою ф'ючерса. Ось приклад:
+[source,scala]
+----
 scala> import scala.util.{Success, Failure}
 import scala.util.{Success, Failure}
+
 scala> success onComplete {
-case Success(res) => println(res)
-case Failure(ex) => println(ex)
-}
+        case Success(res) => println(res)
+        case Failure(ex) => println(ex)
+      }
 42
+
 scala> failure onComplete {
-case Success(res) => println(res)
-case Failure(ex) => println(ex)
-}
+          case Success(res) => println(res)
+          case Failure(ex) => println(ex)
+        }
 java.lang.ArithmeticException: / by zero
-Future does not guarantee any order of execution for callback functions registered withonComplete. If
-you want to enforce an order for callback functions, you must
-use andThen instead.The andThen method returns a new future that mirrors (succeeds or fails in the
-same way as) the original future on which you invoke andThen, but it does not complete until the
-callback function has been fully executed:
+----
+`Future` не гарантує жодний порядок виконання для функцій зворотнього виклику, зареєстрованих за допомогою `onComplete`. Якщо ви бажаєте примусити порядок для функцій зворотнього виклику, замість цього ви маєте використовувати `andThen`. Метод `andThen` повертає новий ф'ючерс, що відображує (успіхом або невдачею в той же спосіб) оригінальний ф'ючерс на те що ви викликаєте `andThen`, але він не завершується, доки функція зворотнього виклику не буде повністю виконаний:
+[source,scala]
+----
 scala> val newFuture = success andThen {
-case Success(res) => println(res)
-case Failure(ex) => println(ex)
-}
+          case Success(res) => println(res)
+          case Failure(ex) => println(ex)
+        }
 42
 newFuture: scala.concurrent.Future[Int] = ...
+
 scala> newFuture.value
-res76: Option[scala.util.Try[Int]] = Some(Success(42))Note that if a callback function passed to andThen throws an exception when executed, that exception
-will not be propagated to subsequent callbacks or reported via the resulting future.
-Other methods added in 2.12: flatten, zipWith, and transformWith
-The flatten method, added in 2.12, transforms a Future nested inside another Future into aFuture of the
-nested type. For example, flatten can transform a Future[Future[Int]] into aFuture[Int]:
+res76: Option[scala.util.Try[Int]] = Some(Success(42))
+----
+Зауважте, що якщо функція зворотнього виклику, передана до `andThen`, при виконанні закидає виключення, це виключення не буде просуватись до наступних зворотніх викликів, або повідомлятись через отриманий ф'ючерс.
+
+Інші методи, додані в 2.12: `flatten`, `zipWith` та `transformWith`
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Метод `flatten`, доданий в 2.12, трансформує `Future`, вкладене до іншого `Future` на `Future` вкладеного типу. Наприклад, `flatten` може трансформувати `Future[Future[Int]]` на `Future[Int]`:
+[source,scala]
+----
 scala> val nestedFuture = Future { Future { 42 } }
 nestedFuture: Future[Future[Int]] = ...
+
 scala> val flattened = nestedFuture.flatten // Scala 2.12
 flattened: scala.concurrent.Future[Int] = Future(Success(42))
-The zipWith method, added in 2.12, essentially zips two Futures together, then performs a mapon the
-resulting tuple. Here's an example of the two-step process, a zip followed by a map:
+----
+Метод `zipWith`, доданий в 2.12, в основному поєднує два `Future` разом, потім виконує `map` на результуючому таплі. Ось приклад двокрокового процесу, `zip`, за яким іде `map`:
+[source,scala]
+----
 scala> val futNum = Future { 21 + 21 }
 futNum: scala.concurrent.Future[Int] = ...
+
 scala> val futStr = Future { "ans" + "wer" }
 futStr: scala.concurrent.Future[String] = ...
+
 scala> val zipped = futNum zip futStr
 zipped: scala.concurrent.Future[(Int, String)] = ...
+
 scala> val mapped = zipped map {
-case (num, str) => s"$num is the $str"
-}
+          case (num, str) => s"$num is the $str"
+        }
 mapped: scala.concurrent.Future[String] = ...
+
 scala> mapped.value
 res2: Option[scala.util.Try[String]] =
-Some(Success(42 is the answer))
-The zipWith method allows you to perform the same operation in one step:
+  Some(Success(42 is the answer))
+----
+Метод `zipWith` дозволяє вам виконати ту ж операцію в один крок:
+[source,scala]
+----
 scala> val fut = futNum.zipWith(futStr) { // Scala 2.12
-case (num, str) => s"$num is the $str"
-}
+          case (num, str) => s"$num is the $str"
+        }
 zipWithed: scala.concurrent.Future[String] = ...
+
 scala> fut.value
 res3: Option[scala.util.Try[String]] =
-Some(Success(42 is the answer))
-Future also gained a transformWith method in Scala 2.12, which allows you to transform a future using
-a function from Try to Future. Here's an example:
+  Some(Success(42 is the answer))
+----
+`Future` також отримав метод `transformWith` в Scala 2.12, що дозволяє вам трансформувати ф'ючерс, використовуючи функцію від `Try` до `Future`. Ось приклад:
+[source,scala]
+----
 scala> val flipped = success.transformWith { // Scala 2.12
-case Success(res) =>
-Future { throw new Exception(res.toString) }
-case Failure(ex) => Future { 21 + 21 }
-}
+          case Success(res) =>
+            Future { throw new Exception(res.toString) }
+          case Failure(ex) => Future { 21 + 21 }
+        }
 flipped: scala.concurrent.Future[Int] = ...scala> flipped.value
 res5: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.Exception: 42))
-The transformWith method is similar to the new, overloaded transform method added in Scala 2.12,
-except instead of yielding a Try in your passed function as in transform, transformWithallows you to
-yield a future.
-32.4 TESTING WITH FUTURES
-One advantage of Scala's futures is that they help you avoid blocking. On most JVM implementations,
-after creating just a few thousand threads, the cost of context switching between threads will degrade
-performance to an unnacceptable level. By avoiding blocking, you can keep the finite number of
-threads you decide to work with busy. Nevertheless, Scala does allow you to block on a future result
-when you need to. Scala's Await object facilitates blocking to wait for future results. Here's an example:
+  Some(Failure(java.lang.Exception: 42))
+----
+Метод `transformWith` подібний до нового, перевантаженого метода `transform`, доданого в Scala 2.12, за винятком, що замість видачі `Try` в вашу передану функцію як в `transform`, `transformWith` дозволяє вам видати функцію.
+
+32.4 Тестування ф'ючерсів
+-------------------------
+Одна перевага ф'ючерсів Scala в тому, що вони допомагають уникати блокування. На більшості JVM реалізацій після створення тільки декількох тисяч потоків, вартість перемикання між потоками буде деградувати продкутивність до неприйнятного рівня. Через уникнення блокування ви можете підтримувати скінчене число потоків, які ви вважаєте необхідними для напруженої роботи. Тим не менш Scala дозволяє вам блокувати на результаті ф'ючерса, якщо вам потрібно. Об'єкт Scala `Await` спрощує блокування для очікування результату ф'ючерса. Ось приклад:
+[source,scala]
+----
 scala> import scala.concurrent.Await
 import scala.concurrent.Await
+
 scala> import scala.concurrent.duration._
 import scala.concurrent.duration._
+
 scala> val fut = Future { Thread.sleep(10000); 21 + 21 }
 fut: scala.concurrent.Future[Int] = ...
+
 scala> val x = Await.result(fut, 15.seconds) // blocks
 x: Int = 42
-Await.result takes a Future and a Duration. The Duration indicates how long Await.result should wait
-for a Future to complete before timing out. In this example, fifteen seconds was specified for
-the Duration. Thus the Await.result method should not time out before the future completes with its
-eventual value, 42.
-One place where blocking has been generally accepted is in tests of asynchronous code. Now that
-the Await.result has returned, you can perform a computation using that result, such as an assertion in a
-test:
+----
+`Await.result` приймає `Future` та `Duration`. `Duration` вказує, як довго `Await.result` має чекати завершення `Future` перед таймаутом. В цьому прикладі для `Duration` було вказано 15 секунд. Таким чином, метод `Await.result` не повинен вийти в таймаут перед завершенням функції, що обчислює значення `42`.
+
+Одне місце, де блокування загалом прийнятне, це в тестах асинхронного коду. Коли цей `Await.result` повертається, ви можете виконувати обчислення з використанням результату, як твердження в тесті:
+[source,scala]
+----
 scala> import org.scalatest.Matchers._
 import org.scalatest.Matchers._
+
 scala> x should be (42)
 res0: org.scalatest.Assertion = Succeeded
-Alternatively, you can use blocking constructs provided by ScalaTest's trait ScalaFutures. For example,
-the futureValue method, implicitly added to Future by ScalaFutures, will block until the future
-completes. If the future fails, futureValue will throw a TestFailedException describing the problem. If
-the future succeeds, futureValue will return the successful result of the future so you can perform
-asssertions on that value:
+----
+Альтернативно, ви можете використовувати блокуючі конструкції, що провадить ScalaTest трейт `ScalaFutures`. Наприклад, метод `futureValue`, неявно доданий до `Future` через `ScalaFutures`, буде блокувати, доки ф'ючерс не завершиться. Якщо ф'ючерс схибить, `futureValue` буде закидати `TestFailedException`, що описує проблему. Якщо ф'ючерс успішний, `futureValue` буде повертати успішний результат ф'ючерса, так що ви можете виконати твердження для значення:
+[source,scala]
+----
 scala> import org.scalatest.concurrent.ScalaFutures._
-import org.scalatest.concurrent.ScalaFutures._scala> val fut = Future { Thread.sleep(10000); 21 + 21 }
+import org.scalatest.concurrent.ScalaFutures._
+
+scala> val fut = Future { Thread.sleep(10000); 21 + 21 }
 fut: scala.concurrent.Future[Int] = ...
-scala> fut.futureValue should be (42) // futureValue blocks
+
+scala> fut.futureValue should be (42) // futureValue блокується
 res1: org.scalatest.Assertion = Succeeded
-While blocking in tests is often fine, ScalaTest 3.0 adds "async" testing styles that allow you to test
-futures without blocking. Given a future, instead of blocking and performing assertions on the result,
-you can map assertions directly onto that future and return the resultingFuture[Assertion] to ScalaTest.
-An example is shown in Listing 32.1. When the future assertion completes, ScalaTest will fire events
-(test succeeded, test failed, etc.) to the test reporter asynchronously.
+----
+Хоча блокування в тестах часто гарне, ScalaTest 3.0 додає "асинхронні" стилі тестування, що дозволяють вам тестувати ф'ючерсси без блокування. Маючи ф'ючерс, замість блокування і виконання тверджень на результаті, ви можете відображити твердження напряму на цей ф'ючерс, та повернути результуючий `Future[Assertion]` до ScalaTest.
+
+Приклад показаний на Лістингу 32.1. Коли твердження ф'ючерса завершиться, ScalaTest запустить події (тест успішний, тест схибив, тощо) то доповідача тестів асинхронно.
+[source,scala]
+----
 import org.scalatest.AsyncFunSpec
 import scala.concurrent.Future
+
 class AddSpec extends AsyncFunSpec {
-def addSoon(addends: Int*): Future[Int] =
-Future { addends.sum }
-describe("addSoon") {
-it("will eventually compute a sum of passed Ints") {
-val futureSum: Future[Int] = addSoon(1, 2)
-// You can map assertions onto a Future, then return
-// the resulting Future[Assertion] to ScalaTest:
-futureSum map { sum => assert(sum == 3) }
+  def addSoon(addends: Int*): Future[Int] =
+    Future { addends.sum }
+
+  describe("addSoon") {
+    it("will eventually compute a sum of passed Ints") {
+      val futureSum: Future[Int] = addSoon(1, 2)
+      // Ви можете відобразити твердежння на Future, потім
+      // повернути отриманий Future[Assertion] до ScalaTest:
+      futureSum map { sum => assert(sum == 3) }
+    }
+  }
 }
-}
-}
-Listing 32.1 - Returning a future assertion to ScalaTest.
-The async testing use case illustrates a general principle for working with futures: Once in "future
-space," try to stay in future space. Don't block on a future then continue the computation with the
-result. Stay asynchronous by performing a series of transformations, each of which returns a new future
-to transform. To get results out of future space, register side effects to be performed asynchronously
-once futures complete. This approach will help you make maximum use of your threads.
+----
+Лістинг 32.1 - Повернення ф'ючерного твердження до `ScalaTest`.
+
+Випадок використання асинхронного тестування ілюструє загальний принцип для роботи з ф'ючерсами: опинившись у "ф'ючерному космосі", намагайтесь залишатись у ф'ючерному космосі. Не блокуйте на ф'ючерсі, та потім не продовжуйте обчислення з результатом. Залишайтесь асинхронним через виконання серій трансформацій, кожна з яких повертає новий ф'ючерс до `transform`. Щоб отримати результати з ф'ючерного космосу, реєструйте побічні ефекти, що будуть виконуватись асинхронно, коли ф'ючерс завершиться. Цей підхід допоможе вам максимально задіяти ваші потоки.
 
 32.5 Висновок
 -------------
-Concurrent programming gives you great power. It lets you simplify your code and take advantage of
-multiple processors. It's unfortunate that the most widely used concurrency primitives, threads, locks,
-and monitors, are such a minefield of deadlocks and race conditions. Futures provide a way out of that
-minefield, letting you write concurrent programs without as great a risk of deadlocks and race
-conditions. This chapter has introduced several fundamental constructs for working with futures in
-Scala, including how to create futures, how to transform them, and how to test them, among other nuts
-and bolts. It then showed you how to use these constructs as part of a general futures style.
+Конкуренте програмування надає вам велику силу. Воно дозволяє вам отримати перевагу від декількох процесорів. На невдачу, що найбільш широко застосовувані конкурентні примітиви, потоки, блокування та монітори, є таким мінним полем з глухих блокувань та станів гонок. Ф'ючерси провадять спосіб виходу з цього мінного поля, дозволяючи вам писати конкурентні програми без великого ризику глухих блокувань та станів гонок. Ця глава ввела декіклька фундаментальних конструкцій для роботи зі ф'ючерсами в Scala, включаючи як створити ф'ючерси, як трансормувати їх, та як їх протестувати, крім інших дрібниць. Вона також показала вам, як використовувати ці конструкції, як частину загального стилю ф'ючерсів.

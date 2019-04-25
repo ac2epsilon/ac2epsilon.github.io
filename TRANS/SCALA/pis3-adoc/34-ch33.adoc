@@ -6,277 +6,254 @@ include::headers.adoc[]
 Парсинг комбінатора
 ===================
 
-Occasionally, you may need to process a small, special-purpose language. For example, you may need
-to read configuration files for your software, and you want to make them easier to modify by hand than
-XML. Alternatively, maybe you want to support an input language in your program, such as search
-terms with boolean operators (computer, find me a movie "with `space ships' and without `love
-stories"'). Whatever the reason, you are going to need aparser. You need a way to convert the input
-language into some data structure your software can process.
-Essentially, you have only a few choices. One choice is to roll your own parser (and lexical analyzer).
-If you are not an expert, this is hard. If you are an expert, it is still time consuming.
-An alternative choice is to use a parser generator. There exist quite a few of these generators. Some of
-the better known are Yacc and Bison for parsers written in C and ANTLR for parsers written in
-Java. You'll probably also need a scanner generator such as Lex, Flex, or JFlex to go with it. This might
-be the best solution, except for a couple of inconveniences. You need to learn new tools, including their
-—sometimes obscure—error messages. You also need to figure out how to connect the output of these
-tools to your program. This might limit the choice of your programming language, and complicate your
-tool chain.
-This chapter presents a third alternative. Instead of using the standalone domain specific language of a
-parser generator, you will use an internal domain specific language, or internal DSL for short. The
-internal DSL will consist of a library of parser combinators—functions and operators defined in Scala
-that will serve as building blocks for parsers. These building blocks will map one to one to the
-constructions of a context-free grammar, to make them easy to understand.
-This chapter introduces only one language feature that was not explained before: thisaliasing,
-in Section 33.6. The chapter does, however, heavily use several other features that were explained in
-previous chapters. Among others, parameterized types, abstract types, functions as objects, operator
-overloading, by-name parameters, and implicit conversions all play important roles. The chapter shows
-how these language elements can be combined in the design of a very high-level library.
-The concepts explained in this chapter tend to be a bit more advanced than previous chapters. If you
-have a good grounding in compiler construction, you'll profit from it reading this chapter, because it
-will help you put things better in perspective. However, the only prerequisite for understanding this
-chapter is that you know about regular and context-free grammars. If you don't, the material in this
-chapter can also safely be skipped.33.1 EXAMPLE: ARITHMETIC EXPRESSIONS
-We'll start with an example. Say you want to construct a parser for arithmetic expressions consisting of
-floating-point numbers, parentheses, and the binary operators +, -, *, and /. The first step is always to
-write down a grammar for the language to be parsed. Here's the grammar for arithmetic expressions:
-expr ::= term \{"+" term | "-" term\}.
-term ::= factor \{"*" factor | "/" factor\}.
-factor ::= floatingPointNumber | "(" expr ")".
-Here, | denotes alternative productions, and \{ ... \} denotes repetition (zero or more times). And
-although there's no use of it in this example, [ ... ] denotes an optional occurrence.
-This context-free grammar defines formally a language of arithmetic expressions. Every expression
-(represented by expr) is a term, which can be followed by a sequence of + or -operators and
-further terms. A term is a factor, possibly followed by a sequence of * or /operators and further factors.
-A factor is either a numeric literal or an expression in parentheses. Note that the grammar already
-encodes the relative precedence of operators. For instance, * binds more tightly than +, because
-a * operation gives a term, whereas a +operation gives an expr, and exprs can contain terms but
-a term can contain an expr only when the latter is enclosed in parentheses.
-Now that you have defined the grammar, what's next? If you use Scala's combinator parsers, you are
-basically done! You only need to perform some systematic text replacements and wrap the parser in a
-class, as shown in Listing 33.1:
+Часом вам треба обробити малу мову особливого призначення. Наприклад, вам може бути треба прочитати файли конфігурації для вашої програми, і ви бажаєте зробити їх простішими до ручної модифікації, ніж XML. Альтернативно, можливо ви бажаєте підтримати вхідну мову в вашій програмі, таку як пошук термінів з логічними операторами (комп'ютер, знайди мені кіно "з `космічні кораблі' та без `любовні історії"'). Якою б не була причина, вам буде треба парсер. Вам треба спосіб конвертувати вхідну мову в деякі структури даних, які ваша програма може обробити.
+
+В основному у вас лише декілька варіантів. Один варіант є розгорнути ваш власний парсер (та лексічний аналізатор). Якщо ви не експерт, це буде складно. Якщо ви експерт, це все одно витратить час.
+
+Альтернативний вибір є використання генератора парсерів. Існує декілька таких генераторів. Деякі з краще відомих є Yacc та Bison для персерів, написаних на C, ANTLR для персерів, написаних на Java. Вам також, можливо, знадобиться генератор сканерів, такий, як Lex, Flex або JFlex, щоб йшли з ними. Це може бути кращим рішенням, за винятком пари незручностей. Вам треба вивчити нові інструменти, включаючи їх, іноді таємні, повідомлення про помилки. Вам також треба зрозуміти, як під'єднати вивід ціх інструментів до вашої програми. Це може обмежити вибір вашої мови програмування, та ускладнити ваш ланцюжок інструментів.
+
+Ця глава представляє третю альтернативу. Замість використання окремої специфічної мови генератора парсерів, ви будете використовувати використовувати внутрішню домен специфічну мову, або скорочено інутрішню DSL. Внутрішній DSL буде складатись з бібліотеки комбінаторів парсера — функцій та операторів, визначених в Scala, що будуть служити як будівельні блоки для парсерів. Ці будівельні блоки будуть відповідати один до одного з конструкціями контекст-вільної граматики, щоб зробити їх простішими для розуміння.
+
+Ця глава вводить тільки одну мовну можливість, що не було пояснена до цього: псевдоними `this` з Розділа 33.6. Однак, ця глава важко використовує деякі інші можливості, що були пояснені в попередніх главах. Крім інших: параметризовані типи, абстрактні типи, функції та об'єкти, перевантаження операторів, параметри за-ім'ям та неявні перетворення - всі відіграють важливі ролі. Ця глава показує, як ці мовні елементи можуть бути скомбіновані в розробці дуже високорівневої бібліотеки.
+
+Пояснені в цій главі концепції мають схильність бути більш просунутими, ніж в попередніх главах. Якщо ви маєте гарне підгрунтя в комп'юторній конструкції, ви отримаєте вигоду від цієї глави, оскільки вона допоможе розуміти речі краще в перспективі. Однак єдиною передумовою для розуміння цієї глави є лише ваше знання про регулярні вирази та контекст-вільні граматики. Якщо ви не знаєте, що це, матеріал цієї глави також може бути безпечно пропущений.
+
+33.1 Приклад: арифметичні вирази
+--------------------------------
+Ми почнемо з приклада. Скажімо, ви бажаєте сконструювати парсер для арифметичних виразів, що складаються з чисел з плаваючою крапкою, дужок та двійникових операторів `+`, `-`, `*`, та `/`. Перший крок завжди є виписати граматику для мови, яку ми будемо розбирати. Ось граматика для арифметичних виразів:
+----
+  expr ::= term {"+" term | "-" term}.
+  term ::= factor {"*" factor | "/" factor}.
+  factor ::= floatingPointNumber | "(" expr ")".
+----
+Тут, `|` позначає альтернативні продукції, та `\{ ... \}` означає повторення (нуль або більше раз). Та хоча в даному прикладі це не використовується, `[ ... ]` означатиме опціональну присутність.
+
+Ця контекст-вільна граматика формально визначає мову арифметичних виразів. Кожний вираз (представлений _expr_) є `term`, за яким може іти послідовність операторів `+` або `-`, та подальші терми. Терм _term_ є _factor_, за яким можливо іде послідовність операторів `*` або `/` та подальші фактори. Фактор є числовий літерал або вираз в дужках. Зауважте, що граматика завжди кодує відносні преоритети операторів. Наприклад, `*` прикріплюється сильніше, ніж `+`, оскільки операція `*` дає `term`, тоді як операція `+` дає `expr`, та `expr` можуть містити `term`, але `term` може містити `expr`, тільки якщо останній оточений в дужки.
+
+Тепер, коли ми маємо визначену граматику - що далі? Якщо ви використовуєте комбінаторний парсер Scala, ви вже в основному закінчили! Вам тільки потрібно виконати деякі систематичні текстові заміни, та огорнути парсер в клас, як показано в Лістингу 33.1:
+[source,scala]
+----
 import scala.util.parsing.combinator._
-class
-def
-def
-def
+class Arith extends JavaTokenParsers {
+  def expr: Parser[Any] = term rep("+"~term | "-"~term)
+  def term: Parser[Any] = factor rep("*"~factor | "/"~factor)
+  def factor: Parser[Any] = floatingPointNumber | "("~expr~")"
 }
-Arith extends JavaTokenParsers {
-expr: Parser[Any] = term~rep("+"~term | "-"~term)
-term: Parser[Any] = factor~rep("*"~factor | "/"~factor)
-factor: Parser[Any] = floatingPointNumber | "("~expr~")"
-Listing 33.1 - An arithmetic expression parser.
-The parsers for arithmetic expressions are contained in a class that inherits from the
-traitJavaTokenParsers. This trait provides the basic machinery for writing a parser and also provides
-some primitive parsers that recognize some word classes: identifiers, string literals and numbers. In the
-example in Listing 33.1 you need only the primitive floatingPointNumberparser, which is inherited
-from this trait.
-The three definitions in class Arith represent the productions for arithmetic expressions. As you can
-see, they follow very closely the productions of the context-free grammar. In fact, you could generate
-this part automatically from the context-free grammar, by performing a number of simple text
-replacements:
-1. Every production becomes a method, so you need to prefix it with def.2. The result type of each method is Parser[Any], so you need to change the ::= symbol to
-": Parser[Any] =". You'll find out later in this chapter what the type Parser[Any] signifies, and
-also how to make it more precise.
-3. In the grammar, sequential composition was implicit, but in the program it is expressed by an
-explicit operator: ~. So you need to insert a ~ between every two consecutive symbols of a
-production. In the example in Listing 33.1 we chose not to write any spaces around
-the ~ operator. That way, the parser code keeps closely to the visual appearance of the grammar
-—it just replaces spaces by ~ characters.
-4. Repetition is expressed rep( ... ) instead of \{ ... \}. Analogously (though not shown in the
-example), option is expressed opt( ... ) instead of [ ... ].
-5. The period (.) at the end of each production is omitted—you can, however, write a semicolon (;)
-if you prefer.
-That's all there is to it. The resulting class Arith defines three parsers, expr, term and factor, which can
-be used to parse arithmetic expressions and their parts.
-33.2 RUNNING YOUR PARSER
-You can exercise your parser with the following small program:
+----
+Лістинг 33.1 - Парсер арифметичних виразів.
+
+Парсери для арифметичних виразів містяться в класі, що наслідує від трейту `JavaTokenParsers`. Цей трейт провадить базову механіку для написання парсера, і також провадить деякі примітивні парсери, що розпізнають деякі класи слів: ідентифікатори, рядокві літерали та числа. В прикладі на Лістингу 33.1 вам треба тільки парсер примітивів `floatingPointNumber`, що наслідується з цього трейту.
+
+Три визначення в класі `Arith` представляє продукування для арифметичних виразів. Як ви можете бачити, вони слідують дуже тісно контекст-вільній граматиці. Фактично, ви можете генерувати цю частину автоматично з контекстно-вільної граматики, через виконання декількох простих текстових замін:
+
+1. Кожна продукція стає методом, так що вам треба поставити перед ними префікс `def`.
+
+2. Тип результату кожного метода є `Parser[Any]`, так що вам треба змінити символ `::=` на `: Parser[Any] =`. Ви з'ясуєте пізніше в цій главі, що позначає `Parser[Any]`, а також як зробити його більш точним.
+
+3. В цій граматиці послідовна композиція була неявною, але в програмі вона виражена явним оператором: `~`. Так що вам треба вставити `~` між кожними двома послідовними символами продукції. В прикладі на Лістингу 33.1 ми обрали не писати жодних проміжків коло оператора `~`. Таким чином, код парсера близько притримується до візуального вигляду граматики — він тільки замінює проміжки на символи `~`.
+
+4. Повторення виражене як `rep( ... )` замість `{ ... }`. Аналогічно (хоча це не показано в прикладі), опції виражені як `opt( ... )` замість `[ ... ]`.
+
+5. Крапка (`.`) в кінці кожної продукції випущена - однак ви можете ставити крапки з комою (`;`), якщо бажаєте.
+
+Ось і все щодо цього. Результуючий клас `Arith` визначає три парсери, `expr`, `term` та `factor`, що можуть використовуватись для розбору арифметичних виразів та їх частин.
+
+33.2 Виконання вашого парсера
+-----------------------------
+Ви можете спробувати ваш парсер за допомогою такої невеликої програми:
+[source,scala]
+----
 object ParseExpr extends Arith {
-def main(args: Array[String]) = {
-println("input : " + args(0))
-println(parseAll(expr, args(0)))
+  def main(args: Array[String]) = {
+    println("input : " + args(0))
+    println(parseAll(expr, args(0)))
+  }
 }
-}
-The ParseExpr object defines a main method that parses the first command-line argument passed to it.
-It prints the original input argument, and then prints its parsed version. Parsing is done by the
-expression:
+----
+Об'єкт `ParseExpr` визначає головний метод, що розбирає перший аргумент командного рядка, переданий до нього. Він друкує оригінальний вхідний аргумент, та потім друкує його розібрану версію. Парсинг виконується виразом:
+[source,scala]
+----
 parseAll(expr, input)
-This expression applies the parser, expr, to the given input. It expects that all of the input matches, i.e.,
-that there are no characters trailing a parsed expression. There's also a methodparse, which allows you
-to parse an input prefix, leaving some remainder unread.
-You can run the arithmetic parser with the following command:
+----
+Цей вираз застосовує персер `expr` до отриманого вводу. Він очікує, що весь вхід співпадає, тобто немає символів, що ідуть за розбиваним виразом. Також існує метод `parse`, що дозволяє розбирати префікс вводу, залишаючи деякий залишок непрочитаним.
+
+Ви можете запустити арифметичний парсер за допомогою наступної команди:
+[source,scala]
+----
 $ scala ParseExpr "2 * (3 + 7)"
 input: 2 * (3 + 7)
 [1.12] parsed: ((2~List((*~(((~((3~List())~List((+
 ~(7~List())))))~)))))~List())
-The output tells you that the parser successfully analyzed the input string up to position [1.12]. That
-means the first line and the twelfth column—in other words, the whole input string—was parsed.
-Disregard for the moment the result after "parsed:". It is not very useful, and you will find out later how
-to get more specific parser results.You can also try to introduce some input string that is not a legal expression. For instance, you could
-write one closing parenthesis too many:
+----
+Вивід каже вам, що парсер успішно проаналізував вхідний рядок до позиції `[1.12]`. Це означає, що перший рядок та дванадцята колонка - іншими словами весь наш вхідний рядок — був прочитаний. Доки не зважайте на результат після `parsed:`. Він не дуже корисний, і пізніше ви зрозумієте, як отримати більш специфічні результати парсера.
+
+Ви також можете спробувати ввести деякі вхідні рядки, що не є легальними виразами. Наприклад, ви можете написати вираз з однією зайвою дужкою:
+[source,scala]
+----
 $ scala ParseExpr "2 * (3 + 7))"
 input: 2 * (3 + 7))
 [1.12] failure: `-' expected but `)' found
+
 2 * (3 + 7))
-^
-Here, the expr parser parsed everything until the final closing parenthesis, which does not form part of
-the arithmetic expression. The parseAll method then issued an error message, which said that it
-expected a - operator at the point of the closing parenthesis. You'll find out later in this chapter why it
-produced this particular error message, and how you can improve it.
-33.3 BASIC REGULAR EXPRESSION PARSERS
-The parser for arithmetic expressions made use of another parser, named floatingPointNumber. This
-parser, which was inherited from Arith's supertrait, JavaTokenParsers, recognizes a floating point
-number in the format of Java. But what do you do if you need to parse numbers in a format that's a bit
-different from Java's? In this situation, you can use a regular expression parser.
-The idea is that you can use any regular expression as a parser. The regular expression parses all strings
-that it can match. Its result is the parsed string. For instance, the regular expression parser shown
-in Listing 33.2 describes Java's identifiers:
+           ^
+----
+Тут парсер `expr` розбирає все до фінальних замикаючих дужок, що не формує частину арифметичного виразу. Метод `parseAll` при цьому видає повідомлення про помилку, що каже, що очікувався оператор `-` в тій точки, де стоїть замикаюча дужка. Пізніше в цій главі ви зрозумієте, чому продукується саме таке повідомлення про помилку, та як покращити його.
+
+33.3 Базовий парсер регулярних виразів
+--------------------------------------
+Парсер для арифметичних виразів використовує інший парсер на ім'я `floatingPointNumber`. Цей парсер, що був наслідуваний від супертрейта `Arith`, `JavaTokenParsers`, розпізнає числа з плаваючою крапкою в форматі Java. Але що ви робите, якщо вам треба розібрати числа в форматі, що трохі інші від Java? В цій ситуації ви можете використати парсер регулярних виразів.
+
+Ідея в тому, що ви можете використовувати любий регулярний вираз як парсер. Регулярний вираз розбирає всі рядки, що можуть співпасти. Його результат є розібраний рядок. Наприклад, регулярний вираз, показаний в Лістингу 33.2, описує Java ідентифікатори:
+[source,scala]
+----
 object MyParsers extends RegexParsers {
-val ident: Parser[String] = """[a-zA-Z_]\w*""".r
+  val ident: Parser[String] = """[a-zA-Z_]\w*""".r
 }
-Listing 33.2 - A regular expression parser for Java identifiers.
-The MyParsers object of Listing 33.2 inherits from trait RegexParsers, whereas Arith inherited
-from JavaTokenParsers. Scala's parsing combinators are arranged in a hierarchy of traits, which are all
-contained in package scala.util.parsing.combinator. The top-level trait is Parsers, which defines a very
-general parsing framework for all sorts of input. One level below is traitRegexParsers, which requires
-that the input is a sequence of characters and provides for regular expression parsing. Even more
-specialized is trait JavaTokenParsers, which implements parsers for basic classes of words (or tokens)
-as they are defined in Java.
-33.4 ANOTHER EXAMPLE: JSON
-JSON, the JavaScript Object Notation, is a popular data interchange format. In this section, we'll show
-you how to write a parser for it. Here's a grammar that describes the syntax of JSON:
-value
-::= obj | arr | stringLiteral |
-floatingPointNumber |
-"null" | "true" | "false".obj
-::= "{" [members] "}".
-arr
-::= "[" [values] "]".
-members ::= member \{"," member\}.
+----
+Лістинг 33.2 - Парсер регулярних виразів для Java ідентифікаторів.
+
+Об'єкт `MyParsers` з Лістинга 33.2 наслідує від трейта `RegexParsers`, тоді як `Arith` наслідується від `JavaTokenParsers`. Комбінатори парсінгу Scala вибудовані в ієрархію трейтів, які всі містяться в пакунку `scala.util.parsing.combinator`. Трейт вищого рівня є `Parsers`, що визначає дуже загальний фреймворк парсингу для всіх сортів вводу. На рівень нижче трейт `RegexParsers`, що потребує, щов ввод був послідовністю символів, та провадить парсинг по регулярним виразам. Навіть більш спеціалізований є трейт `JavaTokenParsers`, що реалізує парсери для базових класів слів (або токенів), як вини визначені в Java.
+
+33.4 Інший приклад: JSON
+------------------------
+JSON, JavaScript Object Notation, є популярним форматом обміну даними. В цьому розділі ми покажемо, як написати парсер для нього. Ось граматика, що описує синтаксис JSON:
+----
+value ::= obj | arr | stringLiteral |
+          floatingPointNumber |
+          "null" | "true" | "false".
+obj ::= "{" [members] "}".
+arr ::= "[" [values] "]".
+members ::= member {"," member}.
 member ::= stringLiteral ":" value.
-values
-::= value \{"," value\}.
-A JSON value is an object, array, string, number, or one of the three reserved words null, true, or false.
-A JSON object is a (possibly empty) sequence of members separated by commas and enclosed in
-braces. Each member is a string/value pair where the string and the value are separated by a colon.
-Finally, a JSON array is a sequence of values separated by commas and enclosed in square brackets. As
-an example, Listing 33.3 contains an address-book formatted as a JSON object.
+values ::= value {"," value}.
+----
+Значення JSON є об'єкт, масив, рядок, число або одне з трьох зарезервованих слів: `null`, `true`, `false`. Об'єкт JSON є (можливо порожньою) послідовністю членів, розділених комами, та оточених дужками. Кожний член є парою ключ/значення, де початковий рядок та значення розділені двома крапками. Нарешті, масив JSON є послідовністю значень, розділених комами, та оточених прямокутними дужками. Як приклад, Лістинг 33.3 містить адресну книгу, відформатовану як об'єкт JSON.
+[source,json]
+----
 {
-"address book": {
-"name": "John Smith",
-"address": {
-"street": "10 Market Street",
-"city" : "San Francisco, CA",
-"zip"
-: 94111
-},
-"phone numbers": [
-"408 338-4238",
-"408 111-6892"
-]
+  "address book": {
+    "name": "John Smith",
+    "address": {
+      "street": "10 Market Street",
+      "city" : "San Francisco, CA",
+      "zip" : 94111
+    },
+    "phone numbers": [
+      "408 338-4238",
+      "408 111-6892"
+    ]
+  }
 }
-}
-Listing 33.3 - Data in JSON format.
-Parsing such data is straightforward when using Scala's parser combinators. The complete parser is
-shown in Listing 33.4. This parser follows the same structure as the arithmetic expression parser. It is
-again a straightforward mapping of the productions of the JSON grammar. The productions use one
-shortcut that simplifies the grammar: The repsepcombinator parses a (possibly empty) sequence of
-terms that are separated by a given separator string. For instance, in the example in Listing
-33.4, repsep(member, ",") parses a comma-separated sequence of member terms. Otherwise, the
-productions in the parser correspond exactly to the productions in the grammar, as was the case for the
-arithmetic expression parsers.
+----
+Лістинг 33.3 - Дані в форматі JSON.
+
+Парсинг таких даних є промолінійним, коли використовується комбінатори парсерів Scala. Повний парсер показаний на Лістингу 33.4. Цей парсер слідує тій самій структурі, що і парсер арифметичних виразів. Він знову є прямолінійним відображенням продукцій граматики JSON. Продукції використовують одне скорочення, що спрощує граматику: комбінатор `repsep` розбирає (можливо порожню) послідовність термів, що розділені наданим рядком роздільника. Наприклад, в прикладі в Лістингу 33.4, `repsep(member, ",")` розбирає розділену комами послідовність термів-членів. Крім цього продукції в парсері точно співпадають продукціям в граматиці, як було в випадку парсера арифметичних виразів.
+[source,scala]
+----
 import scala.util.parsing.combinator._
+
 class JSON extends JavaTokenParsers {
-def value : Parser[Any] = obj | arr |
-stringLiteral |
-floatingPointNumber |
-"null" | "true" | "false"
+  def value : Parser[Any] = obj | arr |
+    stringLiteral |
+    floatingPointNumber |
+    "null" | "true" | "false"
+  def obj : Parser[Any] = "{"~repsep(member, ",")~"}"
+  def arr : Parser[Any] = "["~repsep(value, ",")~"]"
+  def member: Parser[Any] = stringLiteral~":"~value
 }
-def obj : Parser[Any] = "{"~repsep(member, ",")~"}"
-def arr : Parser[Any] = "["~repsep(value, ",")~"]"
-def member: Parser[Any] = stringLiteral~":"~valueListing 33.4 - A simple JSON parser.
-To try out the JSON parsers, we'll change the framework a bit, so that the parser operates on a file
-instead of on the command line:
+----
+Лістинг 33.4 - Простий парсер JSON.
+
+Щоб спробувати JSON парсери ми трохі змінимо фреймворк, так щоб парсер оперував файлом, замість командного рядка:
+[source,scala]
+----
 import java.io.FileReader
+
 object ParseJSON extends JSON {
-def main(args: Array[String]) = {
-val reader = new FileReader(args(0))
-println(parseAll(value, reader))
+  def main(args: Array[String]) = {
+    val reader = new FileReader(args(0))
+    println(parseAll(value, reader))
+  }
 }
-}
-The main method in this program first creates a FileReader object. It then parses the characters returned
-by that reader according to the value production of the JSON grammar. Note
-thatparseAll and parse exist in overloaded variants: both can take a character sequence or alternatively
-an input reader as second argument.
-If you store the "address book" object shown in Listing 33.3 into a file named address-book.jsonand
-run the ParseJSON program on it, you should get:
+----
+Метод `main` в цій програмі спочатку створює об'єкт `FileReader`. Потім він розбирає символи, що повертаються рідером, відповідно до продукції значень граматики JSON. Зауважте, що `parseAll` та `parse` існують в перевантажених варіантах: обоє можуть приймати послідовність символів, або альтернативно вхідний ридер як другий аргумент.
+
+Якщо `ParseJSON` впорається, ви повинні отримати:
+[source,bash]
+----
 $ scala ParseJSON address-book.json
 [13.4] parsed: (({~List((("address book"~:)~(({~List(((
 "name"~:)~"John Smith"), (("address"~:)~(({~List(((
 "street"~:)~"10 Market Street"), (("city"~:)~"San Francisco
 ,CA"), (("zip"~:)~94111)))~})), (("phone numbers"~:)~(([~
 List("408 338-4238", "408 111-6892"))~]))))~}))))~})
-33.5 PARSER OUTPUT
-The ParseJSON program successfully parsed the JSON address book. However, the parser output looks
-strange. It seems to be a sequence composed of bits and pieces of the input glued together with lists
-and ~ combinations. This output is not very useful. It is less readable for humans than the input, but it is
-also too disorganized to be easily analyzable by a computer. It's time to do something about this.
-To figure out what to do, you need to know first what the individual parsers in the combinator
-frameworks return as a result (provided they succeed in parsing the input). Here are the rules:
-1. Each parser written as a string (such as: "{" or ":" or "null") returns the parsed string itself.
-2. Regular expression parsers such as """[a-zA-Z_]\w*""".r also return the parsed string itself. The
-same holds for regular expression parsers such as stringLiteral or floatingPointNumber, which
-are inherited from trait JavaTokenParsers.
-3. A sequential composition P~Q returns the results of both P and of Q. These results are returned
-in an instance of a case class that is also written ~. So if P returns "true" and Qreturns "?", then
-the sequential composition P~Q returns ~("true", "?"), which prints as(true~?).
-4. An alternative composition P | Q returns the result of either P or Q, whichever one succeeds.
-5. A repetition rep(P) or repsep(P, separator) returns a list of the results of all runs of P.
-6. An option opt(P) returns an instance of Scala's Option type. It returns Some(R) if P succeeds
-with result R and None if P fails.With these rules you can now deduce why the parser output appeared as it did in the previous
-examples. However, the output is still not very convenient. It would be much better to map a JSON
-object into an internal Scala representation that represents the meaning of the JSON value. A more
-natural representation would be as follows:
-• A JSON object is represented as a Scala map of type Map[String, Any]. Every member is
-represented as a key/value binding in the map.
-• A JSON array is represented as a Scala list of type List[Any].
-• A JSON string is represented as a Scala String.
-• A JSON numeric literal is represented as a Scala Double.
-• The values true, false, and null are represented as the Scala values with the same names.
-To produce this representation, you need to make use of one more combination form for parsers: ^^.
-The ^^ operator transforms the result of a parser. Expressions using this operator have the
-form P ^^ f where P is a parser and f is a function. P ^^ f parses the same sentences as just P.
-Whenever P returns with some result R, the result of P ^^ f is f(R).
-As an example, here is a parser that parses a floating point number and converts it to a Scala value of
-type Double:
+----
+
+33.5 Вивід парсера
+------------------
+Програма `ParseJSON` успішно розібрала адресну книгу JSON. Однак вивід парсера виглядає странно. Це виглядає як послідовність, що складена зі шматків вводу, склеєні разом списками та комбінаціями `~`. Цей вивід не дуже корисний. Він менш читабельний для людей, ніж вхід, але він також дуже дезорганізований, щоб бути просто проаналізований комп'ютером. Прийшов час щось робити з цім.
+
+Щоб зрозуміти, що маємо робити, вам спочатку треба знати, що окремі парсери в фреймворці комбінатора повертають як результат (звичайно, якщо вони змогли розібрати вхідні дані). Ось правила:
+
+1. Кожний парсер, написаний як рядок (як в `"{"` або `":"` або `"null"`) повертає сам розібраний рядок.
+
+2. Парсери регулярних виразів, як `"""[a-zA-Z_]\w*""".r` також повертають самий розібраний рядок. Те саме дотримується для парсерів регулярних виразів, таких як `stringLiteral` або `floatingPointNumber`, що наслідуються від `JavaTokenParsers`.
+
+3. Послідовна композиція `P~Q` повертає результат від обох, `P` та `Q`. Ці результати повертаються в вигляді примірника кейс класа , що також записується `~`. Так що якщо `P` повертає `"true"` та `Q` повертає `"?"`, тоді послідовна композиція `P~Q` повертає `~("true", "?")`, що друкується як `(true~?)`.
+
+4. Альтернативна композиція `P | Q` повертає результат або `P` або `Q`, який буде успішний.
+
+5. Повторення `rep(P)` або `repsep(P, separator)` повертає список з результатів всіх викликів `P`.
+
+6. Опція `opt(P)` повертає примірник типу Scala `Option`. Віе повертає `Some(R)`, якщо `P` успішний з результатом `R`, та `None`, якщо `P` схибить.
+
+З ціма правилами ви тепер можете вивести, чому вивід парсера виглядає як виглядає в попередніх прикладах. Однак вивід все ще не дуже зручний. Може бути значно кращим відобразити JSON об'єкт на внутрішню репрезентацію Scala, що представлятиме значення  JSON об'єкту. Більш природна репрезентація може бути наступною:
+
+* JSON об'єкт представлений як мапа Scala типу `Map[String, Any]`. Кожний член представлений як прікріплення ключ/значення в мапі.
+
+* JSON масив представлений як Scala список типу `List[Any]`.
+
+* JSON рядок представлений як Scala `String`.
+
+* Числовий літерал JSON представлений як Scala `Double`.
+
+* Значення `true`, `false`, та `null` представлені як Scala значення з тими самими іменами.
+
+Щоб спродукувати цю репрезентацію, вам треба задіяти ще один комбінатор для парсерів: `^^`. Оператор `^^` трансформує результат парсера. Вирази, що використовують цей оператор, мають форму `P ^^ f`, де `P` є парсер, а `f` є функція. `P ^^ f` парсить ті самі фрази, що і просто `P`. Коли `P` повертає той самий результат `R`, результатом `P ^^ f` буде `f(R)`. Як приклад, ось парсер, що розбирає число з плаваючою крапкою, та перетворює його в Scala значення типу `Double`:
+[source,scala]
+----
 floatingPointNumber ^^ (_.toDouble)
-And here is a parser that parses the string "true" and returns Scala's boolean true value:
+----
+Та ось парсер, що розбирає рядок `"true"`, та повертає логічне значенн Scala `true`:
+[source,scala]
+----
 "true" ^^ (x => true)
-Now for more advanced transformations. Here's a new version of a parser for JSON objects that returns
-a Scala Map:
-def obj: Parser[Map[String, Any]] = // Can be improved
+----
+Тепер побачимо більш просунуті трансформації. Ось нова версія парсера для JSON об'єктів, що повертає Scala `Map`:
+[source,scala]
+----
+def obj: Parser[Map[String, Any]] = // Може бути покращене
 "{"~repsep(member, ",")~"}" ^^
 { case "{"~ms~"}" => Map() ++ ms }
-Remember that the ~ operator produces as its result an instance of a case class with the same name: ~.
-Here's a definition of that class—it's an inner class of trait Parsers:
+----
+Пам'ятайте, що оператор `~` продукує як результат примірник кейс класу з тим самим ім'ям: `~`. Ось визначення цього класу — це внутрішній клас трейту `Parsers`:
+[source,scala]
+----
 case class ~[+A, +B](x: A, y: B) {
-override def toString = "(" + x + "~" + y + ")"
+  override def toString = "(" + x + "~" + y + ")"
 }
-The name of the class is intentionally the same as the name of the sequence combinator method, ~.
-That way, you can match parser results with patterns that follow the same structure as the parsers
-themselves. For instance, the pattern "{"~ms~"}" matches a result string "{" followed by a result
-variable ms, which is followed in turn by a result string "}". This pattern corresponds exactly to what is
-returned by the parser on the left of the ^^. In its desugared versions where the ~ operator comes first,
-the same pattern reads ~(~("{", ms), "}"), but this is much less legible.The purpose of the "{"~ms~"}" pattern is to strip off the braces so that you can get at the list of
-members resulting from the repsep(member, ",") parser. In cases like these there is also an alternative
-that avoids producing unnecessary parser results that are immediately discarded by the pattern match.
-The alternative makes use of the ~> and <~ parser combinators. Both express sequential composition
-like ~, but ~> keeps only the result of its right operand, whereas <~ keeps only the result of its left
-operand. Using these combinators, the JSON object parser can be expressed more succinctly:
+----
+Ім'я класу навмисно таке саме, що і ім'я метода комбінатора послідовності, `~`. Таким чином, ви можете порівнювати результати парсера з шаблонами, що слідують тій самій структурі , що і самі парсери. Наприклад, шаблон `"{"~ms~"}"` співпадає з рядком результату `"{"`, що яким слідує змінна результату `ms`, за яким в свою чергу іде рядок результата `"}"`. Цей шаблон відповідає в точності до того, що повертає парсер зліва від  `'^^'`. В своїй знецукреній версії, де оператор `~` іде першим, той самий шаблон читається як `~(~("{", ms), "}")`, але це значно менш приємно.
+
+Призначення шаблона `"{"~ms~"}"` є очистити дужки, так щоб ми могли отримати список членів, отриманих від парсера `repsep(member, ",")`. В випадках, як це, також є альтернатива, що цникає створення непотрібного результату парсера, що зразу відкидається порівнянням шаблонів. Альтернативи використовує комбінатори `~>` та `<~`. Обоє виражають послідовні композиції, як `~`, але `~>` зберігає тільки результат правого операнду, тоді як `<~` зберігає тільки результат свого лівого операнду. Використовуючи ці комбінатори парсер об'єктів JSON може бути використаний більш послідовно:
+[source,scala]
+----
 def obj: Parser[Map[String, Any]] =
-"{"~> repsep(member, ",") <~"}" ^^ (Map() ++ _)
-Listing 33.5 shows a full JSON parser that returns meaningful results. If you run this parser on
-the address-book.json file, you will get the following result (after adding some newlines and
-indentation):
+  "{"~> repsep(member, ",") <~"}" ^^ (Map() ++ _)
+----
+Лістинг 33.5 показує повний парсер JSON, що повертає осмислений результат. Якщо ви виконаєте цей парсер на файлі `address-book.json`, ви отримаєте наступний результат (після додавання деяких нових рядків та відступів):
+[source,scala]
+----
 $ scala JSON1Test address-book.json
 [14.1] parsed: Map(
 address book -> Map(
@@ -288,498 +265,483 @@ zip -> 94111),
 phone numbers -> List(408 338-4238, 408 111-6892)
 )
 )
-This is all you need to know in order to get started writing your own parsers. As an aide to
-memory, Table 33.1 lists the parser combinators that were discussed so far.
+----
+Це те що вам повинно знати для початку написання ваших власних парсерів. Як допомога в запам'ятовуванні, Таблиця 33.1 перелічує комбінатори парсерів, які ми нещодавно обговорювали.
+[source,scala]
+----
 import scala.util.parsing.combinator._
+
 class JSON1 extends JavaTokenParsers {
-def obj: Parser[Map[String, Any]] =
-"{"~> repsep(member, ",") <~"}" ^^ (Map() ++ _)
-def arr: Parser[List[Any]] =
-"["~> repsep(value, ",") <~"]"
-def member: Parser[(String, Any)] =
-stringLiteral~":"~value ^^
-{ case name~":"~value => (name, value) }
+
+  def obj: Parser[Map[String, Any]] =
+    "{"~> repsep(member, ",") <~"}" ^^ (Map() ++ _)
+
+  def arr: Parser[List[Any]] =
+    "["~> repsep(value, ",") <~"]"
+
+  def member: Parser[(String, Any)] =
+    stringLiteral~":"~value ^^
+      { case name~":"~value => (name, value) }
+
+  def value: Parser[Any] = (
+    obj
+  | arr
+  | stringLiteral
+  | floatingPointNumber ^^ (_.toDouble)
+  | "null" ^^ (x => null)
+  | "true" ^^ (x => true)
+  | "false" ^^ (x => false)
+  )
 }
-def value: Parser[Any] = (
-obj
-| arr
-| stringLiteral
-| floatingPointNumber ^^ (_.toDouble)
-| "null" ^^ (x => null)
-| "true" ^^ (x => true)
-| "false" ^^ (x => false)
-)Listing 33.5 - A full JSON parser that returns meaningful results.
-Table 33.1 - Summary of parser combinators
-"..."
-"...".r
-P~Q
-P <~ Q, P ~> Q
-P | Q
-opt(P)
-rep(P)
-repsep(P, Q)
-P ^^ f
-literal
-regular expression
-sequential composition
-sequential composition; keep left/right only
-alternative
-option
-repetition
-interleaved repetition
-result conversion
-TURNING OFF SEMICOLON INFERENCE
-Note that the body of the value parser in Listing 33.5 is enclosed in parentheses. This is a little trick to
-disable semicolon inference in parser expressions. You saw in Section 4.2 that Scala assumes there's a
-semicolon between any two lines that can be separate statements syntactically, unless the first line ends
-in an infix operator, or the two lines are enclosed in parentheses or square brackets. Now, you could
-have written the |operator at the end of the each alternative instead of at the beginning of the following
-one, like this:
+----
+Лістинг 33.5 - Повний парсер JSON, що повертає осмислені результати.
+
+Таблиця 33.1 - Підсумок по парсерним комбінаторам
+|===
+|"..."|літерал
+|"...".r|регулярний вираз
+|P~Q|послідовна композиція
+|P <~ Q, P ~> Q|послідовна композиція, тільки вліво/вправо
+|P \| Q|альтернатива
+|opt(P)|опція
+|rep(P)|повторення
+|repsep(P, Q)|переміжене повторення
+|P ^^ f|перетворення результату
+|===
+
+Вимкнення виводу крапки з комою
+-------------------------------
+Зауважте, що тіло парсера значень в Лістингу 33.5 оточений в дужки. Це невеликий трюк, щоб дозволити вивід крапки з комою в виразах парсера. Ви бачили в Розділі 4.2, що Scala вважає присутність крапки з комою між любими двома рядками, що синтаксично можуть бути окремими твердженнями, за винятком коли перший рядок завершується на інфіксний оператор, або два рядка оточені в звичайні або прямокутні дужки. Тепер ви можете писати оператор `|` в кінці кожної альтернативи, замість початку наступного рядка, як тут:
+[source,scala]
+----
 def value: Parser[Any] =
-obj |
-arr |
-stringLiteral |
+  obj |
+  arr |
+  stringLiteral |
 ...
-In that case, no parentheses around the body of the value parser would have been required. However,
-some people prefer to see the | operator at the beginning of the second alternative rather than at the end
-of the first. Normally, this would lead to an unwanted semicolon between the two lines, like this:
-obj;
+----
+В цьому випадку немає жодних дужок навколо тіла парсера значень, що могли бути потрібні. Однак деякі люди бажають бачити оператор `|` на початку другої альтернативи, ніж в кінці першої. Звичайно це призведе до небажаної крапки з комою між двома рядками, як тут:
+[source,scala]
+----
+obj;  // крапка з комою вставлені явно
 | arr
-// semicolon implicitly inserted
-The semicolon changes the structure of the code, causing it to fail compilation. Putting the whole
-expression in parentheses avoids the semicolon and makes the code compile correctly.
-Symbolic versus alphanumeric names
-Many of the parser combinators in Table 33.1 use symbolic names. This has both advantages and
-disadvantages. On the minus side, symbolic names take time to learn. Users who are unfamiliar with
-Scala's combinator parsing libraries are probably mystified what ~, ~>, or ^^mean. On the plus side,
-symbolic names are short, and can be chosen to have the "right" precedences and associativities. For
-instance, the parser combinators ~, ^^, and | are chosen intentionally in decreasing order of precedence.
-A typical grammar production is composed of alternatives that have a parsing part and a transformation
-part. The parsing part usually contains several sequential items separated by ~ operators. With thechosen precedences of~, ^^, and | you can write such a grammar production without needing any
-parentheses.
-Furthermore, symbolic operators take less visual real estate than alphabetic ones. That's important for a
-parser because it lets you concentrate on the grammar at hand, instead of the combinators themselves.
-To see the difference, imagine for a moment that sequential composition (~) was called andThen and
-alternative (|) was called orElse. The arithmetic expression parsers in Listing 33.1 here would look as
-follows:
+
+----
+Крапка з комою змінили структуру коду, що призвело до збою компіляції. Покладаючи цілий вираз в дужки уникає крапок з комою, та робить компіляцію коду коректною.
+
+Символічні імена проти літено-цифрових
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Багато з парсерних комбінатороів в Таблиці 33.1 використовують символічні імена. Це має одночасно переваги та недоліки. Один з мінусів є те, що символічні імена потребують час для вивчення. Користувачі, що незнайомі з бібліотекою парсерних комбінаторів Scala, можливо будуть містифіковані значенням `~`, `~>` або `^^`. На боці плюсів - символічні імена короткі, та можуть бути обрані, щоб мати "правильні" преоритети та асоціативність. Наприклад, парсерні комбінатори `~`, `^^` та `|` обрані навмисне в зростаючому порядку преоритетів. Типова граматична продукція скомпонована з альтернатив, що мають частину парсингу, та частину трансформації. Частина парсингу типово містить декілька послідовних елементів, розділених операторами `~`. З обраними преоритетами для `~`, `^^` та `|` ви можете написати таку граматичну продукцію без потреби в дужках.
+
+Більше того, символічні оператори займають меньше візуальної нерухомості, ніж літерні. Це важливо для парсерів, оскільки це дозволяє вам концентруватись на граматиці, замість самих комбінаторів. Щоб побачити різницю, уявімо на момент, що послідовна композиція (`~`) мала б назву `andThen`, та альтернатива (`|`) мала б назву `orElse`. Парсери арифметичних виразів в Лістингу 33.1 виглядали б наступним чином:
+[source,scala]
+----
 class ArithHypothetical extends JavaTokenParsers {
-def expr: Parser[Any]
-=
-term andThen rep(("+" andThen term) orElse
-("-" andThen term))
-def term: Parser[Any]
-=
-factor andThen rep(("*" andThen factor) orElse
-("/" andThen factor))
-def factor: Parser[Any] =
-floatingPointNumber orElse
-("(" andThen expr andThen ")")
+  def expr: Parser[Any]  =
+    term andThen rep(("+" andThen term) orElse
+                     ("-" andThen term))
+
+  def term: Parser[Any] =
+    factor andThen rep(("*" andThen factor) orElse
+                       ("/" andThen factor))
+
+  def factor: Parser[Any] =
+    floatingPointNumber orElse
+      ("(" andThen expr andThen ")")
 }
-You notice that the code becomes much longer, and that it's hard to "see" the grammar among all those
-operators and parentheses. On the other hand, somebody new to combinator parsing could probably
-figure out better what the code is supposed to do.
-CHOOSING BETWEEN SYMBOLIC AND ALPHABETIC NAMES
-As guidelines for choosing between symbolic and alphabetic names we recommend the following:
-• Use symbolic names in cases where they already have a universally established meaning. For
-instance, nobody would recommend writing add instead of + for numeric addition.
-• Otherwise, give preference to alphabetic names if you want your code to be understandable to
-casual readers.
-• You can still choose symbolic names for domain-specific libraries, if this gives clear advantages
-in legibility and you do not expect anyway that a casual reader without a firm grounding in the
-domain would be able to understand the code immediately.
-In the case of parser combinators we are looking at a highly domain-specific language, which casual
-readers may have trouble understanding even with alphabetic names. Furthermore, symbolic names
-give clear advantages in legibility for the expert. So we believe their use is warranted in this
-application.
-33.6 IMPLEMENTING COMBINATOR PARSERS
-The previous sections have shown that Scala's combinator parsers provide a convenient means for
-constructing your own parsers. Since they are nothing more than a Scala library, they fit seamlessly into
-your Scala programs. So it's very easy to combine a parser with some code that processes the results itdelivers, or to rig a parser so that it takes its input from some specific source (say, a file, a string, or a
-character array).
-How is this achieved? In the rest of this chapter you'll take a look "under the hood" of the combinator
-parser library. You'll see what a parser is, and how the primitive parsers and parser combinators
-encountered in previous sections are implemented. You can safely skip these parts if all you want to do
-is write some simple combinator parsers. On the other hand, reading the rest of this chapter should give
-you a deeper understanding of combinator parsers in particular, and of the design principles of a
-combinator domain-specific language in general.
-The core of Scala's combinator parsing framework is contained in the
-traitscala.util.parsing.combinator.Parsers. This trait defines the Parser type as well as all fundamental
-combinators. Except where stated explicitly otherwise, the definitions explained in the following two
-subsections all reside in this trait. That is, they are assumed to be contained in a trait definition that
-starts as follows:
+----
+Ви помітили, що цей код став значно більш довшим, і що стало складно "побачити" граматику між всіма ціма операторами та дужками. З іншого боку, дехто новий до комбінаторного парсингу можливо зможе краще зрозуміти, яке призначення має цей код.
+
+Вибір між символічними та літерно-цифровими іменами
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Як настанова для вибору між символічними та літерними іменами ми рекомендуємо наступне:
+
+* Використовуйте символічні імена в випадках, коли воні вже мають універсально встановлене значення. Наприклад, ніхто не буде рекомендувати писати `add` замість `+` для числового додавання.
+
+* В іншому випадку надайте перевагу літерним іменам, якщо ви бажаєте зробити ваш код розумілим для випадкових читачів.
+
+* Ви все ще можете обрати символічні імена для домен-специфічних бібліотек, якщо це дає ясні переваги в розумінні, та ви в жодному разі не очікуєте випадкових читачів без надійного підгрунтя в предметі, щоб вони безпосередньо розуміли код.
+
+В випадку парсерних комбінаторів ми дивимось на дуже високо-домен-специфічну мову, що випадкові читачі можуть мати проблеми з розумінням, навіть для літерних імен. Більше того, символічні імена дають ясну перевагу в виразності для експерта. Так що ми віримо, що їх застосування обгрунтоване в цьому застосуванні.
+
+33.6 Реалізація парсерів комбінаторів
+-------------------------------------
+Попередні розділи показали, що комбінаторні парсери Scala провадять зручні способи для конструювання ваших власних парсерів. Оскільки вони ніщо інше, ніж Scala бібліотека, вони без проблем пасують до ваших Scala програм. Так що це дуже просто скомбінувати парсер з деяким кодом, що обробляє отримані результати, або зачепити парсер так, щоб він отримував свій вхід з певного джерела (скажімо, файла, рядка або масива символів).
+
+Як це досягається? В решті цієї глави ви поглянете "за лаштунки" бібліотеки комбінаторного парсера. Ви побачите що таке є парсер, та як примітивні парсери та як реалізовані парсерні комбінатори, перелічені в попередніх розділах. Ви можете безпечно пропустити ці частини, якщо все, що ви хочете, це написати деякі прості комбінаторні парсери. З іншого боку, читання решти цієї глави може дати вам глибше розуміння комбінаторних парсерів зокрема, та принципів розробки комбінаторної домен-специфічної мови загалом.
+
+Ядро фреймворку комбінаторних парсерів міститься в трейті `scala.util.parsing.combinator.Parsers`. Цей трейт визначає тип `Parser`, так само, як всі фундаментальні комбінатори. Окрім випадків, коли явно вказано інше, визначення, пояснені в настурних двох розділах, містяться в цьому трейті. Тобто  очікується, що вони містяться в визначенні трейта, що починається таким чином:
+[source,scala]
+----
 package scala.util.parsing.combinator
+
 trait Parsers {
-... // code goes here unless otherwise stated
+... // код іде тут, якщо не вказане інше
 }
-A Parser is in essence just a function from some input type to a parse result. As a first approximation,
-the type could be written as follows:
+----
+`Parser` в основі є лише функцією від якогось типу до результату розбору. Як перше наближення тип може бути записаний таким чином:
+[source,scala]
+----
 type Parser[T] = Input => ParseResult[T]
-Parser input
-Sometimes, a parser reads a stream of tokens instead of a raw sequence of characters. A separate lexical
-analyzer is then used to convert a stream of raw characters into a stream of tokens. The type of parser
-inputs is defined as follows:
+----
+
+Вхід парсера
+~~~~~~~~~~~~
+Іноді парсер читає потік токенів замість сирої послідовності символів. Потім використовується окремий лексичний аналізатор для перетворення потоку символів на потік токенів. Тип парсерних входів визначається таким чином:
+[source,scala]
+----
 type Input = Reader[Elem]
-The class Reader comes from the package scala.util.parsing.input. It is similar to a Stream, but also
-keeps track of the positions of all the elements it reads. The type Elem represents individual input
-elements. It is an abstract type member of the Parsers trait:
+----
+Клас `Reader` походить з пакунка `scala.util.parsing.input`. Це подібно до `Stream`, але також відстежує позицію всіх елементів, що читає. Тип `Elem` представляє індивідуальні вхідні елементи. Це абстрактний член `type` трейта `Parsers`:
+[source,scala]
+----
 type Elem
-This means that subclasses and subtraits of Parsers need to instantiate class Elem to the type of input
-elements that are being parsed. For instance, RegexParsers and JavaTokenParsers fix Elem to be equal
-to Char. But it would also be possible to set Elem to some other type, such as the type of tokens
-returned from a separate lexer.Parser results
-A parser might either succeed or fail on some given input. Consequently class ParseResult has two
-subclasses for representing success and failure:
+----
+Це означає, що субкласи та субтрейти `Parsers` мають створити примірник класу `Elem` як тип вхідних елементів, що будуть розбиратись. Наприклад, `RegexParsers` та `JavaTokenParsers` фіксують `Elem` еквівалентним до `Char`. Але також можливо встановити `Elem` в якійсь інший тип, такий як тип токена, що повертається з окремого лексера.
+
+Результати парсера
+~~~~~~~~~~~~~~~~~~
+Парсер може або завершитись успішно, або схибити для деякого даного вхідного потоку. Відповідно клас `ParseResult` має два субкласа для представлення успіху та неуспіху:
+[source,scala]
+----
 sealed abstract class ParseResult[+T]
 case class Success[T](result: T, in: Input)
-extends ParseResult[T]
+  extends ParseResult[T]
 case class Failure(msg: String, in: Input)
-extends ParseResult[Nothing]
-The Success case carries the result returned from the parser in its result parameter. The type of parser
-results is arbitrary; that's why ParseResult, Success, and Parser are all parameterized with a type
-parameter T. The type parameter represents the kinds of results returned by a given parser. Success also
-takes a second parameter, in, which refers to the input immediately following the part that the parser
-consumed. This field is needed for chaining parsers, so that one parser can operate after another. Note
-that this is a purely functional approach to parsing. Input is not read as a side effect, but it is kept in a
-stream. A parser analyzes some part of the input stream, and then returns the remaining part in its
-result.
-The other subclass of ParseResult is Failure. This class takes as a parameter a message that describes
-why the parser failed. Like Success, Failure also takes the remaining input stream as a second
-parameter. This is needed not for chaining (the parser won't continue after a failure), but to position the
-error message at the correct place in the input stream.
-Note that parse results are defined to be covariant in the type parameter T. That is, a parser
-returning Strings as result, say, is compatible with a parser returning AnyRefs.
-The Parser class
-The previous characterization of parsers as functions from inputs to parse results was a bit
-oversimplified. The previous examples showed that parsers also implement methods such as~ for
-sequential composition of two parsers and | for their alternative composition. So Parseris in reality a
-class that inherits from the function type Input => ParseResult[T] and additionally defines these
-methods:
+  extends ParseResult[Nothing]
+----
+Випадок `Success` несе результат, повернутий з парсера в своєму параметрі `result`. Тип результату парсера довільний; ось чому `ParseResult`, `Success` та `Parser` всі параметризовані параметром типу `T`. Параметр типу представляє різновид результатів, що повертається даним парсером. `Success` також приймає другий параметр, `in`, що посилається на вхід безпосередньо за частиною, що була спожита парсером. Це поле потрібне для зціплених парсерів, так що один парсер може оперувати після іншого. Зауважте, що це чисто функціональний підхід до парсингу. Вхід не читається як побічний ефект, але зберігається як потік. Парсер аналізує деяку частину вхідного потоку, та потім повертає залишкову частину в своєму результаті.
+
+Інший субклас `ParseResult` є `Failure`. Цей клас приймає як параметр повідомлення, що описує, чому парсер схибив. Як і `Success`, `Failure` також приймає залишок вхідного потоку як другий параметр. Це потрібно не для зціплення (парсер не може продовжуватись після збою), але для вказання повідомленню про помилку коректне місце у вхідному потоці.
+
+Зауважте, що результати парсера визначені коваріантними по параметру типа `T`. Тобто, скажімо, парсер, що повертає `String` як результат, сумісний з парсером, що повертає `AnyRef`.
+
+Клас `Parser`
+~~~~~~~~~~~~~
+Попередня характеристика парсерів як функцій від вхідного потоку до результатів розбору була надспрощена. Попередні приклади показали, що парсери також реалізують методи, такі як `~`, для послідовної композиції двох парсерів, та `|` для їх альтернативної композиції. Та що в реальності `Parseris` є клас, що наслідує від функціонального типу `Input => ParseResult[T]`, та додатково  визначає ці методи:
+[source,scala]
+----
 abstract class Parser[+T] extends (Input => ParseResult[T])
 { p =>
-// An unspecified method that defines
-// the behavior of this parser.
-def apply(in: Input): ParseResult[T]
-def ~ ...
-def | ...
-...
+  // Невказаний метод, що визначає поведінку парсера.
+  def apply(in: Input): ParseResult[T]
+  def ~ ...
+  def | ...
+  ...
 }
-Since parsers are (i.e., inherit from) functions, they need to define an apply method. You see an
-abstract apply method in class Parser, but this is just for documentation, as the same method is in any
-case inherited from the parent type Input => ParseResult[T] (recall that this type is an abbreviationfor scala.Function1[Input, ParseResult[T]]). The apply method still needs to be implemented in the
-individual parsers that inherit from the abstract Parser class. These parsers will be discussed after the
-following section on this aliasing.
-Aliasing this
-The body of the Parser class starts with a curious expression:
+----
+Оскільки парсери є (тобто наслідують від) функціями, вони мають визначати метод `apply`. Ви бачите абстрактний метод `apply` в класі `Parser`, але це тільки для документації, бо  такий самий метод в кожному випадку наслідується від батьківського типу `Input => ParseResult[T]` (згадайте, що цей тип є скороченням для `scala.Function1[Input, ParseResult[T]]`). Метод `apply` все ще має бути реалізований в індивідуальних парсерах, що наслідують від абстрактного класу `Parser`. Ці парсери будуть обговорюватись після наступного розділу, де розглядатимуться псевдоніми `this`.
+
+Псевдоним для `this`
+~~~~~~~~~~~~~~~~~~~~
+Тіло класу `Parser` починається з цікавого виразу:
+[source,scala]
+----
 abstract class Parser[+T] extends ... { p =>
-A clause such as "id =>" immediately after the opening brace of a class template defines the
-identifier id as an alias for this in the class. It's as if you had written:
+----
+Таке твердження як `id =>` безпосередньо після відкриваючої дужки шаблону класа  визначає ідентифікатор `id` як псевдонім для `this` в класі. Це те саме, якщо б ви написали:
+[source,scala]
+----
 val id = this
-in the class body, except that the Scala compiler knows that id is an alias for this. For instance, you
-could access an object-private member m of the class using either id.m or this.m; the two are
-completely equivalent. The first expression would not compile if id were just defined as
-a val with this as its right hand side, because in that case the Scala compiler would treat id as a normal
-identifier.
-You saw syntax like this in Section 29.4, where it was used to give a self type to a trait. Aliasing can
-also be a good abbreviation when you need to access the this of an outer class. Here's an example:
+----
+в тілі класу, за тим винятком, що компілятор Scala знає, що `id` є псевдонім для `this`. Наприклад, ви можете отримати доступ до об'єкт-приватного члена `m` класу з використанням або `id.m` або `this.m`; ці два вирази повністю еквівалентні. Перший вираз не буде компілюватись, якщо `id` був просто визначений як `val` з `this` в якості правої сторони, оскільки в уьому випадку компілятор Scala буде трактувати `id` як звичайний ідентифікатор.
+
+Ви бачили синтаксис, як цей, в Розділі 29.4, де він використовувся для отримання типу `self` для трейту. Псевдоніми можуть бути також гарним скороченням, коли вам треба отримати доступ до `this` зовнішнього класу. Ось приклад:
+[source,scala]
+----
 class Outer { outer =>
-class Inner {
-println(Outer.this eq outer) // prints: true
+  class Inner {
+    println(Outer.this eq outer) // друкує: true
+  }
 }
-}
-The example defines two nested classes, Outer and Inner. Inside Inner the this value of the Outerclass is
-referred to twice, using different expressions. The first expression shows the Java way of doing things:
-You can prefix the reserved word this with the name of an outer class and a period; such an expression
-then refers to the this of the outer class. The second expression shows the alternative that Scala gives
-you. By introducing an alias named outer for this in class Outer, you can refer to this alias directly also
-in inner classes. The Scala way is more concise, and can also improve clarity, if you choose the name
-of the alias well. You'll see examples of this here and here.
-Single-token parsers
-Trait Parsers defines a generic parser elem that can be used to parse any single token:
+----
+Приклад визначає два вкладені класи, `Outer` та `Inner`. Всередині `Inner` на значення `this` класу `Outer` посилаються два рази, використовуючи різні вирази. Перший вираз показує Java спосіб робити речі: ви можете поставити префікс перез зарезервованим словом  `this` з ім'ям зовнішнього класу через крапку; такий вираз потім посилається на `this` зовнішнього класу. Другий вираз показує альтернативу, яку вам дає Scala. Через введення псевдоніма на ім'я `outer` для `this` в класі `Outer`, ви можете посилатись на псевдоним `this` напряму, також і у внутрішньому класі. Спосіб Scala більш стислий, та також може покращити ясність, якщо ви оберете гарне ім'я для псевдоніма. Ви побачите приклади цього там і тут.
+
+Одно-токенові парсери
+~~~~~~~~~~~~~~~~~~~~~
+Трейт `Parsers` визначає загальний `elem` парсера, що може бути використаний для розбору любого окремого токену:
+[source,scala]
+----
 def elem(kind: String, p: Elem => Boolean) =
-new Parser[Elem] {
-def apply(in: Input) =
-if (p(in.first)) Success(in.first, in.rest)
-else Failure(kind + " expected", in)
-}This parser takes two parameters: a kind string describing what kind of token should be parsed and a
-predicate p on Elems, which indicates whether an element fits the class of tokens to be parsed.
-When applying the parser elem(kind, p) to some input in, the first element of the input stream is tested
-with predicate p. If p returns true, the parser succeeds. Its result is the element itself, and its remaining
-input is the input stream starting just after the element that was parsed. On the other hand,
-if p returns false, the parser fails with an error message that indicates what kind of token was expected.
-Sequential composition
-The elem parser only consumes a single element. To parse more interesting phrases, you can string
-parsers together with the sequential composition operator ~. As you have seen before,P~Q is a parser
-that applies first the P parser to a given input string. Then, if P succeeds, the Qparser is applied to the
-input that's left after P has done its job.
-The ~ combinator is implemented as a method in class Parser. Its definition is shown inListing 33.6.
-The method is a member of the Parser class. Inside this class, p is specified by the "p =>" part as an
-alias of this, so p designates the left operand (or: receiver) of ~. Its right operand is represented by
-parameter q. Now, if p~q is run on some input in, first p is run on inand the result is analyzed in a
-pattern match. If p succeeds, q is run on the remaining inputin1. If q also succeeds, the parser as a
-whole succeeds. Its result is a ~ object containing both the result of p (i.e., x) and the result
-of q (i.e., y). On the other hand, if either p or q fails the result of p~q is the Failure object returned
-by p or q.
+  new Parser[Elem] {
+    def apply(in: Input) =
+      if (p(in.first)) Success(in.first, in.rest)
+      else Failure(kind + " expected", in)
+}
+----
+Цей парсер приймає два елементи: рядок `kind`, що описує різновид токена, що має бути розібраний, та предикат `p` на `Elem`, що вказує, чи елемент пасує до класу токенів, що розбираються.
+
+Коли застосовується парсер `elem(kind, p)` до деякого входу `in`, перший елемент вхідного потоку перевіряється предикатом `p`. Якщо він `true`, парсер успішний. Його результат є сам елемент, та його залишковий вхід є вхідний потік, що починається зразу за елементом, що був розібраний. З іншого боку, якщо `p` повертає `false`, парсер схибить з повідомленням про помилку, що буде вказувати, на який тип токена він очікував.
+
+Послідовна композиція
+~~~~~~~~~~~~~~~~~~~~~
+Парсер `elem` споживає тільки один елемент. Щоб розібрати більш цікаві фрази, ви можете сціпити парсери разом з допомогою оператора послідовної композиції, `~`. Як ви бачили до цього, `P~Q` є парсер, що спочатку застосовує парсера `P` до даного вхідного рядка. Потім, якщо `P` успішний, застосовується парсер `Q` до входу, що залишився коли парсер `P` зробив свою роботу.
+
+Комбінатор `~` реалізований як метод класу `Parser`. Його визначення показано на Лістингу 33.6. Метод є членом класу `Parser`. Всередині цього класу `p` вказане через `p =>` як псевдонім до `this`, так що `p` позначає лівий операнд (або отримувач) `~`. Його правий операнд представлений як параметр `q`. Тепер, якщо виконати `p~q` на деякому вході `in`, перший `p` виконається на `in`, і результат буде проаналізований в порівнянні шаблоінв. Якщо `p` успішний, `q` виконується на залишку входу `in1`. Якщо `q` також успішний, парсер повністю успішний. Його результатом є об'єкт `~`, що містить обоє результата, результат `p` (тобто, `x`), та результат `q` (тобто, `y`). З іншого боку, якщо або `p` або `q` схибить, результатом `p~q` буде об'єкт `Failure`, що пертає `p` або `q`.
+[source,scala]
+----
 abstract class Parser[+T] ... { p =>
-...
-def ~ [U](q: => Parser[U]) = new Parser[T~U] {
-def apply(in: Input) = p(in) match {
-case Success(x, in1) =>
-q(in1) match {
-case Success(y, in2) => Success(new ~(x, y), in2)
-case failure => failure
+  ...
+  def ~ [U](q: => Parser[U]) = new Parser[T~U] {
+  def apply(in: Input) = p(in) match {
+    case Success(x, in1) =>
+      q(in1) match {
+        case Success(y, in2) => Success(new ~(x, y), in2)
+        case failure => failure
+      }
+    case failure => failure
+  }
 }
-case failure => failure
-}
-}
-Listing 33.6 - The ~ combinator method.
-The result type of ~ is a parser that returns an instance of the case class ~ with elements of
-types T and U. The type expression T~U is just a more legible shorthand for the parameterized
-type ~[T, U]. Generally, Scala always interprets a binary type operation such as A op B, as the
-parameterized type op[A, B]. This is analogous to the situation for patterns, where a binary
-pattern P op Q is also interpreted as an application, i.e., op(P, Q).
-The other two sequential composition operators, <~ and ~>, could be defined just like ~, only with
-some small adjustment in how the result is computed. A more elegant technique, though, is to define
-them in terms of ~ as follows:def <~ [U](q: => Parser[U]): Parser[T] =
-(p~q) ^^ { case x~y => x }
+----
+Лістинг 33.6 - Метод комбінатор `~`.
+
+Результуючий тип `~` є парсер, що повертає примірник клейс класу `~` з елементами типів `T` та `U`. Тип виразу `T~U` є просто більш виразне скорочення для параметризованого типу `~[T, U]`. Загалом, Scala завжди інтерпретує двомісні операції типів, `A op B`, як параметризований тип `op[A, B]`. Це аналогічно до ситуації для шаблонів, коли двомісний шаблон `P op Q` також інтерпретується як застосування, тобто `op(P, Q)`.
+
+Інші два оператора послідовної композиції, `<~` та `~>`, можуть бути визначені як `~`, тільки з невеликим уточненням того, як обчислюється результат. Більш елегантний прийом, однак, є визначити їх в термінах `~`, наступним чином:
+[source,scala]
+----
+def <~ [U](q: => Parser[U]): Parser[T] =
+  (p~q) ^^ { case x~y => x }
+
 def ~> [U](q: => Parser[U]): Parser[U] =
-(p~q) ^^ { case x~y => y }
-Alternative composition
-An alternative composition P | Q applies either P or Q to a given input. It first tries P. If Psucceeds, the
-whole parser succeeds with the result of P. Otherwise, if P fails, then Q is tried on the same input as P.
-The result of Q is then the result of the whole parser.
-Here is a definition of | as a method of class Parser:
+  (p~q) ^^ { case x~y => y }
+----
+
+Композиція альтернативи
+~~~~~~~~~~~~~~~~~~~~~~~
+Альернативна композиція `P | Q` стосується або `P` або `Q` для наданого входу. Першим перевіряється `P`. Якщо `P` успішний, весь парсер успішний з результатом `P`. Інакше, якщо `P` схибив, тоді спробується `Q` на тому самому вході, що і `P`. Результат `Q` буде результатом всього парсера. Ось визначення `|` як методу класа `Parser`:
+[source,scala]
+----
 def | (q: => Parser[T]) = new Parser[T] {
-def apply(in: Input) = p(in) match {
-case s1 @ Success(_, _) => s1
-case failure => q(in)
+  def apply(in: Input) = p(in) match {
+    case s1 @ Success(_, _) => s1
+    case failure => q(in)
+  }
 }
-}
-Note that if P and Q both fail, then the failure message is determined by Q. This subtle choice is
-discussed later, in Section 33.9.
-Dealing with recursion
-Note that the q parameter in methods ~ and | is by-name—its type is preceded by =>. This means that
-the actual parser argument will be evaluated only when q is needed, which should only be the case
-after p has run. This makes it possible to write recursive parsers like the following one which parses a
-number enclosed by arbitrarily many parentheses:
+----
+Зауважте, що якщо `P` та `Q` обоє невдалі, тоді повідомлення про невдачу визначається `Q`. Цей тонкий вибір обговорюється пізніше, в Розділі 33.9.
+
+Справи з рекурсією
+~~~~~~~~~~~~~~~~~~
+Зауважте, що параметр `q` в методах `~` та `|` ідуть за ім'ям — перед їх типом стоїть `=>`. Це означає, що справжній аргумент парсера буде обчислено тільки поли `q` буде потрібний, що буде лише в випадку після виконання `p`. Це робить можливим написання рекурсивних парсерів, як наступний, що розбирає число, оточене довільною кількістю дужок:
+[source,scala]
+----
 def parens = floatingPointNumber | "("~parens~")"
-If | and ~ took by-value parameters, this definition would immediately cause a stack overflow without
-reading anything, because the value of parens occurs in the middle of its right-hand side.
-Result conversion
-The last method of class Parser converts a parser's result. The parser P ^^ f succeeds exactly
-when P succeeds. In that case it returns P's result converted using the function f. Here is the
-implementation of this method:
+----
+Якщо б `|` та `~` сприймали параметри за значенням, це визначення безпосередньо би спричинило переповнення стеку без читання будь-чого, оскільки значення `parens` з'являється посередині правої сторони.
+
+Перетворення результату
+~~~~~~~~~~~~~~~~~~~~~~~
+Останній метод класу `Parser` конвертує результат парсера. Парсер `P ^^ f` успішний саме тоді, коли успішний P. В цьому випадку він повертає результат `P`, конвертований з використанням функції `f`. Ось реалізація цього метода:
+[source,scala]
+----
 def ^^ [U](f: T => U): Parser[U] = new Parser[U] {
-def apply(in: Input) = p(in) match {
-case Success(x, in1) => Success(f(x), in1)
-case failure => failure
+  def apply(in: Input) = p(in) match {
+    case Success(x, in1) => Success(f(x), in1)
+    case failure => failure
+  }
 }
-}
-} // end ParserParsers that don't read any input
-There are also two parsers that do not consume any input: success and failure. The
-parsersuccess(result) always succeeds with the given result. The parser failure(msg) always fails with
-error message msg. Both are implemented as methods in trait Parsers, the outer trait that also contains
-class Parser:
-def success[T](v: T) = new Parser[T] {
-def apply(in: Input) = Success(v, in)
-}
-def failure(msg: String) = new Parser[Nothing] {
-def apply(in: Input) = Failure(msg, in)
-}
-Option and repetition
-Also defined in trait Parsers are the option and repetition combinators opt, rep, and repsep.They are all
-implemented in terms of sequential composition, alternative, and result conversion:
+} // кінець ParserParsers, що не читає жодного входу
+----
+Також є два парсери, що не споживають вхідний потік: `success` та `failure`. Парсер `success(result)` завжди успішний з наданим результатом. Парсер `failure(msg)` завжди невдалий з повідомленням про помилку `msg`. Обоє реалізовані як методи трейта `Parsers`, зовнішнього трейта, що також містить клас `Parser`:
+[source,scala]
+----
+  def success[T](v: T) = new Parser[T] {
+    def apply(in: Input) = Success(v, in)
+  }
+
+  def failure(msg: String) = new Parser[Nothing] {
+    def apply(in: Input) = Failure(msg, in)
+  }
+----
+
+Опція та повтор
+~~~~~~~~~~~~~~~
+Так само визначені в трейті `Parsers` є комбінатори опції та повтору: `opt`, `rep` та `repsep`. Вони всі реалізовані в термінах послідовної композиції, альтернативи та перетворення результату:
+[source,scala]
+----
 def opt[T](p: => Parser[T]): Parser[Option[T]] = (
-p ^^ Some(_)
-| success(None)
+  p ^^ Some(_)
+  | success(None)
 )
+
 def rep[T](p: => Parser[T]): Parser[List[T]] = (
-p~rep(p) ^^ { case x~xs => x :: xs }
-| success(List())
+  p~rep(p) ^^ { case x~xs => x :: xs }
+  | success(List())
 )
+
 def repsep[T](p: => Parser[T],
-q: => Parser[Any]): Parser[List[T]] = (
-p~rep(q~> p) ^^ { case r~rs => r :: rs }
-| success(List())
+    q: => Parser[Any]): Parser[List[T]] = (
+  p~rep(q~> p) ^^ { case r~rs => r :: rs }
+  | success(List())
 )
-} // end Parsers
-33.7 STRING LITERALS AND REGULAR EXPRESSIONS
-The parsers you saw so far made use of string literals and regular expressions to parse single words.
-The support for these comes from RegexParsers, a subtrait of Parsers:
+
+} // кінець Parsers
+----
+
+33.7 Рядкові літерали та регулярні вирази
+-----------------------------------------
+Парсери, що ви бачили до цього, використовують рядкові літерали та регулярні вирази щоб розбирати окремі слова. Підтримка для цього надходить від `RegexParsers`, субтрейта `Parsers`:
+[source,scala]
+----
 trait RegexParsers extends Parsers {
-This trait is more specialized than trait Parsers in that it only works for inputs that are sequences of
-characters:
+----
+Цей трейт більш спеціалізований, ніж трейт `Parsers` в тому, що він робить тільки з входом, що є послідовністю символів:
+[source,scala]
+----
 type Elem = Char
-It defines two methods, literal and regex, with the following signatures:
+----
+Він визначає два методи, `literal` та `regex`, з наступними сигнатурами:
+[source,scala]
+----
 implicit def literal(s: String): Parser[String] = ...
-implicit def regex(r: Regex): Parser[String] = ...Note that both methods have an implicit modifier, so they are automatically applied whenever
-a String or Regex is given but a Parser is expected. That's why you can write string literals and regular
-expressions directly in a grammar, without having to wrap them with one of these methods. For
-instance, the parser "("~expr~")" will be automatically expanded toliteral("(")~expr~literal(")").
-The RegexParsers trait also takes care of handling white space between symbols. To do this, it calls a
-method named handleWhiteSpace before running a literal or regex parser.
-ThehandleWhiteSpace method skips the longest input sequence that conforms to the whiteSpaceregular
-expression, which is defined by default as follows:
-protected val whiteSpace = """\s+""".r
-} // end RegexParsers
-If you prefer a different treatment of white space, you can override the whiteSpace val. For instance, if
-you want white space not to be skipped at all, you can override whiteSpace with the empty regular
-expression:
+implicit def regex(r: Regex): Parser[String] = ...
+----
+Зауважте, що обоє методи мають модифікатор `implicit`, так що вони автоматично застосовуються кожного разу, коли надається `String` або `Regex`, але очікується `Parser`. Ось чому ви можете писати рядкові літерали та регулярні вирази прямо в граматиці, без потреби огортати їх в один з ціх методів. Наприклад, парсер `"("~expr~")"` буде автоматично розширений до літерала `literal("(")~expr~literal(")")`.
+
+Трейт `RegexParsers` також приймає обробку проміжків між символами. Щоб зробити це, він викликає метод на ім'я `handleWhiteSpace` перед виконанням парсера `literal` або `regex`. Метод `handleWhiteSpace`  про пропускає найбільшу вхідну послідовність, що відповідає до регулярному виразу `whiteSpace`, що визначений по замовчанню таким чином:
+[source,scala]
+----
+  protected val whiteSpace = """\s+""".r
+} // кінець RegexParsers
+----
+Якщо ви бажаєте іншу трактовку проміжків, ви можете перевизначити `val whiteSpace`. Наприклад, якщо ви бажаєте, щоб проміжки взагалі не пропускались, ви можете перекрити `whiteSpace` порожнім регулярним виразом:
+[source,scala]
+----
 object MyParsers extends RegexParsers {
-override val whiteSpace = "".r
+  override val whiteSpace = "".r
 ...
 }
-33.8 LEXING AND PARSING
-The task of syntax analysis is often split into two phases. The lexer phase recognizes individual words
-in the input and classifies them into some token classes. This phase is also called lexical analysis. This
-is followed by a syntactical analysis phase that analyzes sequences of tokens. Syntactical analysis is
-also sometimes just called parsing, even though this is slightly imprecise, as lexical analysis can also be
-regarded as a parsing problem.
-The Parsers trait as described in the previous section can be used for either phase, because its input
-elements are of the abstract type Elem. For lexical analysis, Elem would be instantiated toChar,
-meaning the individual characters that make up a word are being parsed. The syntactical analyzer
-would in turn instantiate Elem to the type of token returned by the lexer.
-Scala's parsing combinators provide several utility classes for lexical and syntactic analysis. These are
-contained in two sub-packages, one for each kind of analysis:
+----
+
+33.8 Лексінг та парсинг
+-----------------------
+Завдання синтаксичного аналізу часто розділяється на дві фази. Фаза лексера розпізнає окремі слова на вході, та класифікує їх в деякі класи токенів. Ця фаза також називається лексичним аналізом. За цім слідує фаза синтаксичного аналізу, що аналізує послідовності токенів. Синтаксичний аналіз також індоі називають парсингом, навіть хоча це не дуже точно, оскільки лексичний аналіз також можна віднести до проблеми розбору.
+
+Трейт `Parsers`, описаний в попередньому розділі, може бути задіяний на любій фазі, оскільки його вхідні елементи мають абстрактний тип `Elem`. Для лексичних аналізаторів `Elem` може бути втілений як `Char`, що означає, що будуть розібрані окремі символи, що складають слово. Синтаксичний аналізатор, в свою чергу, втілює `Elem` як тип токена, що повертає лексер.
+
+Парсерні комбінатори Scala провадять декілька допоміжних класів для лексичного та синтаксичного аналізу. Вони містяться в двох субпакунках, по одному для кожного різновиду аналізу:
+[source,scala]
+----
 scala.util.parsing.combinator.lexical
 scala.util.parsing.combinator.syntactical
-If you want to split your parser into a separate lexer and syntactical analyzer, you should consult the
-Scaladoc documentation for these packages. But for simple parsers, the regular expression based
-approach shown previously in this chapter is usually sufficient.33.9 ERROR REPORTING
-There's one final topic that was not covered yet: how does the parser issue an error message? Error
-reporting for parsers is somewhat of a black art. One problem is that when a parser rejects some input,
-it generally has encountered many different failures. Each alternative parse must have failed, and
-recursively so at each choice point. Which of the usually numerous failures should be emitted as error
-message to the user?
-Scala's parsing library implements a simple heuristic: among all failures, the one that occurred at the
-latest position in the input is chosen. In other words, the parser picks the longest prefix that is still valid
-and issues an error message that describes why parsing the prefix could not be continued further. If
-there are several failure points at that latest position, the one that was visited last is chosen.
-For instance, consider running the JSON parser on a faulty address book which starts with the line:
+----
+Якщо ви бажаєте розділити ваш парсер на окремі лексер та синтаксичний аналізатор, ви повинні подивитись Scaladoc документацію щодо ціх пакунків. Але для простих парсерів підхід на основі регулярних виразів, показаний перед цім в цій главі, зазвичай є достатнім.
+
+33.9 Повідомлення про помилки
+-----------------------------
+Існує одна фінальна тема, що досі не розкрита: як парсер видає повідомлення про помилки? Повідомлення помилок для парсерів є дещо темним мистецтвом. Одна проблема в тому, що коли парсер відхиляє деякий вхід, він загалом має налічувати декільки багато різних помилок. Кожний альтернативний `parse` має схибити, і все це рекурсивно в кожній точці вибору. Який, зі звичайно численних збоїв, повинен бути виданий як повідомлення помилки користувачеві?
+
+Бібліотека парсингу Scala реалізує просту евристику: серед всіх невдач обирається та, що трапилась в останній позиції вводу. Іншими словами, парсер обирає найдовший префікс, що все ще валідний, та видає повідомлення помилки, що описує, чому розбір префіксу не може бути продовжений далі. Якщо декілька точок відмови вказують на ту саму позицію, обирається та, що була оброблена останньою. Наприклад, розглянемо виконання JSON парсера на помилковій адресній книзі, що починається з рядка:
+[source,json]
+----
 { "name": John,
-The longest legal prefix of this phrase is "{ "name": ". So the JSON parser will flag the word Johnas an
-error. The JSON parser expects a value at this point, but John is an identifier, which does not count as a
-value (presumably, the author of the document had forgotten to enclose the name in quotation marks).
-The error message issued by the parser for this document is:
+----
+Найдовший легальний префікс для цієї фрази є `{ "name": `. Так що JSON буде відмічати слово `John` як помилку. Парсер JSON очікує значення в цій точці, але `John` є ідентифікатором, що не вважається за значення (скоріше всього автор документу забув оточити ім'я в лапки). Повідомлення про помилку, що видає парсер для цього документу буде:
+[source,json]
+----
 [1.13] failure: "false" expected but identifier John found
 { "name": John,
-^
-The part that "false" was expected comes from the fact that "false" is the last alternative of the
-production for value in the JSON grammar. So this was the last failure at this point. Users who know
-the JSON grammar in detail can reconstruct the error message, but for non-experts this error message is
-probably surprising and can also be quite misleading.
-A better error message can be engineered by adding a "catch-all" failure point as last alternative of
-a value production:
+          ^
+----
+Частина про те, що очіаувалось `false` походить від факту, що `false` є останньою альтернативою продукції для значення в JSON граматиці. Так що це була остання невдача в цій точці. Користувачі, що знають JSON граматику в деталях, можуть реконструювати повідомлення помилки, але для неекспертів ця помилка, можливо, дивна, і також може бути оманливою. Краще повідомлення про помилку може бути сконструйоване через додавання точки збою "на всі випадки", як останньої альтернативи продукції значення:
+[source,scala]
+----
 def value: Parser[Any] =
-obj | arr | stringLit | floatingPointNumber | "null" |
-"true" | "false" | failure("illegal start of value")
-This addition does not change the set of inputs that are accepted as valid documents. What it does is
-improve the error messages, because now it will be the explicitly added failure that comes as last
-alternative and therefore gets reported:
+  obj | arr | stringLit | floatingPointNumber | "null" |
+  "true" | "false" | failure("illegal start of value")
+----
+Це додавання не змінює набір входів, що приймаються як валідні документи. Що це робить, це покращує повідомлення про помилку, оскільки тепер явно доданий збій, що іде як остання альтернатива, і таким чином буде повідомлення від нього:
+[source,json]
+----
 [1.13] failure: illegal start of value
 { "name": John,
-^
-The implementation of the "latest possible" scheme of error reporting uses a field namedlastFailure in
-trait Parsers to mark the failure that occurred at the latest position in the input:var lastFailure: Option[Failure] = None
-The field is initialized to None. It is updated in the constructor of the Failure class:
+          ^
+----          
+Реалізація схеми "останньої можливої" помилки використовує поле на ім'я `lastFailure` в трейті `Parsers`, щоб відмічати збій, що трапився в останній позиції входу:
+[source,scala]
+----
+var lastFailure: Option[Failure] = None 
+----
+Поле ініціалізоване як `None`. Воно оновлюється в конструкторі класу `Failure`:
+[source,scala]
+----
 case class Failure(msg: String, in: Input)
-extends ParseResult[Nothing] {
+    extends ParseResult[Nothing] {
+  if (lastFailure.isDefined &&
+        lastFailure.get.in.pos <= in.pos)
+    lastFailure = Some(this)
 }
-if (lastFailure.isDefined &&
-lastFailure.get.in.pos <= in.pos)
-lastFailure = Some(this)
-The field is read by the phrase method, which emits the final error message if the parser failed. Here is
-the implementation of phrase in trait Parsers:
+----
+Поле читається методом `phrase`, що видає фінальну помилку, якщо парсер схибить. Ось реалізація `phrase` в трейті `Parsers`:
+[source,scala]
+----
 def phrase[T](p: Parser[T]) = new Parser[T] {
-lastFailure = None
-def apply(in: Input) = p(in) match {
-case s @ Success(out, in1) =>
-if (in1.atEnd) s
-else Failure("end of input expected", in1)
-case f : Failure =>
-lastFailure
+  lastFailure = None
+  def apply(in: Input) = p(in) match {
+    case s @ Success(out, in1) =>
+      if (in1.atEnd) s
+      else Failure("end of input expected", in1)
+    case f : Failure =>
+      lastFailure
+  }
 }
-}
-The phrase method runs its argument parser p. If p succeeds with a completely consumed input, the
-success result of p is returned. If p succeeds but the input is not read completely, a failure with message
-"end of input expected" is returned. If p fails, the failure or error stored in lastFailure is returned. Note
-that the treatment of lastFailure is non-functional; it is updated as a side effect by the constructor
-of Failure and by the phrase method itself. A functional version of the same scheme would be possible,
-but it would require threading thelastFailure value through every parser result, no matter whether this
-result is a Success or aFailure.
-33.10 BACKTRACKING VERSUS LL(1)
-The parser combinators employ backtracking to choose between different parsers in an alternative. In
-an expression P | Q, if P fails, then Q is run on the same input as P. This happens even if P has parsed
-some tokens before failing. In this case the same tokens will be parsed again by Q.
-Backtracking imposes only a few restrictions on how to formulate a grammar so that it can be parsed.
-Essentially, you just need to avoid left-recursive productions. A production such as:
+----
+Метод `phrase` виконує свій аргумент, парсер `p`. Якщо `p` успішний з повністю спожитим вводом, повертається успішний результат `p`. Якщо `p` успішний, але вхід не прочитаний повністю, повертається збій з повідомленням "end of input expected". Якщо `p` схибить, повертається збій або помилка, що зберігається в `lastFailure`. Зауважте, що трактування `lastFailure` нефункціональне; воно оновлюється як побічний ефект конструктором `Failure` та самим методом `phrase`. Функціональна версія в тій самій схемі можлива, але це потребуватиме трактування значення `lastFailure` через кожний результат парсера, неважливо, був це `Success` або `Failure`.
+
+33.10 Бектрекінг проти LL(1)
+----------------------------
+Парсерні комбінатори задіють бектрекінг для вибору між різними парсерами в альтернативі. В виразі `P | Q`, якщо `P` схибить, буде виконуватись `Q` на тому ж вводі, що і `P`. Це трапляється навіть якщо `P` розібрав деякі токени перед тим як схибити. В цьому випадку деякі токени були розібрані знову `Q`. Бектрекінг накладає тільки декілька обмежень на те, як фурмулювати граматику, так що це може бути розібрано. В основному вам просто треба уникати ліво-рекурсивних продукцій. Продукція, така як:
+----
 expr ::= expr "+" term | term.
-will always fail because expr immediately calls itself and thus never progresses any further.footnote:[There are ways to avoid stack overflows even in the presence of left-recursion, but this requires a more refined parsing combinator framework, which to date has not been implemented.]On the
-other hand, backtracking is potentially costly because the same input can be parsed several times.
-Consider for instance the production:
-expr ::= term "+" expr | term.What happens if the expr parser is applied to an input such as (1 + 2) * 3 which constitutes a legal
-term? The first alternative would be tried, and would fail when matching the + sign. Then the second
-alternative would be tried on the same term and this would succeed. In the end the term ended up being
-parsed twice.
-It is often possible to modify the grammar so that backtracking can be avoided. For instance, in the case
-of arithmetic expressions, either one of the following productions would work:
+----
+буде завжди хибити, оскільки `expr` безпосередньо викликає себе, і таким чином ніколи не просувається далі.footnote:[Існують способи уникнути переповнення стеку, навіть за наявності лівої рекурсії, але це потребує більш чистого фреймворку парсерних комбінаторів, який наразі не був реалізований.] З іншого боку, бектрекінг потенційно коштовний, оскільки той самий ввод може бути розібраний декілька раз. Розглянемо примірник продукції:
+----
+expr ::= term "+" expr | term.
+----
+What happens if the expr parser is applied to an input such as (1 + 2) * 3 which constitutes a legal term? The first alternative would be tried, and would fail when matching the + sign. Then the second alternative would be tried on the same term and this would succeed. In the end the term ended up being parsed twice.
+
+It is often possible to modify the grammar so that backtracking can be avoided. For instance, in the case of arithmetic expressions, either one of the following productions would work:
+----
 expr ::= term ["+" expr].
 expr ::= term \{"+" term\}.
-Many languages admit so-called "LL(1)" grammars.footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] When a combinator parser is formed from such
-a grammar, it will never backtrack, i.e., the input position will never be reset to an earlier value. For
-instance, the grammars for arithmetic expressions and JSON terms earlier in this chapter are both
-LL(1), so the backtracking capabilities of the parser combinator framework are never exercised for
-inputs from these languages.
-The combinator parsing framework allows you to express the expectation that a grammar is LL(1)
-explicitly, using a new operator ~!. This operator is like sequential composition ~ but it will never
-backtrack to "un-read" input elements that have already been parsed. Using this operator, the
-productions in the arithmetic expression parser could alternatively be written as follows:
+----
+Many languages admit so-called "LL(1)" grammars.footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] When a combinator parser is formed from such a grammar, it will never backtrack, i.e., the input position will never be reset to an earlier value. For instance, the grammars for arithmetic expressions and JSON terms earlier in this chapter are both LL(1), so the backtracking capabilities of the parser combinator framework are never exercised for inputs from these languages.
+
+The combinator parsing framework allows you to express the expectation that a grammar is LL(1) explicitly, using a new operator ~!. This operator is like sequential composition ~ but it will never backtrack to "un-read" input elements that have already been parsed. Using this operator, the productions in the arithmetic expression parser could alternatively be written as follows:
+[source,scala]
+----
 def expr : Parser[Any] =
-term ~! rep("+" ~! term | "-" ~! term)
+  term ~! rep("+" ~! term | "-" ~! term)
+
 def term : Parser[Any] =
-factor ~! rep("*" ~! factor | "/" ~! factor)
+  factor ~! rep("*" ~! factor | "/" ~! factor)
+
 def factor: Parser[Any] =
-"(" ~! expr ~! ")" | floatingPointNumber
-One advantage of an LL(1) parser is that it can use a simpler input technique. Input can be read
-sequentially, and input elements can be discarded once they are read. That's another reason why LL(1)
-parsers are usually more efficient than backtracking parsers.
-33.11 CONCLUSION
-You have now seen all the essential elements of Scala's combinator parsing framework. It's surprisingly
-little code for something that's genuinely useful. With the framework you can construct parsers for a
-large class of context-free grammars. The framework lets you get started quickly, but it is also
-customizable to new kinds of grammars and input methods. Being a Scala library, it integrates
-seamlessly with the rest of the language. So it's easy to integrate a combinator parser in a larger Scala
-program.
-One downside of combinator parsers is that they are not very efficient, at least not when compared with
-parsers generated from special purpose tools such as Yacc or Bison. There are two reasons for this.
-First, the backtracking method used by combinator parsing is itself not very efficient. Depending on the
-grammar and the parse input, it might yield an exponential slow-down due to repeated backtracking.This can be fixed by making the grammar LL(1) and by using the committed sequential composition
-operator, ~!.
-The second problem affecting the performance of combinator parsers is that they mix parser
-construction and input analysis in the same set of operations. In effect, a parser is generated anew for
-each input that's parsed.
-This problem can be overcome, but it requires a different implementation of the parser combinator
-framework. In an optimizing framework, a parser would no longer be represented as a function from
-inputs to parse results. Instead, it would be represented as a tree, where every construction step was
-represented as a case class. For instance, sequential composition could be represented by a case
-class Seq, alternative by Alt, and so on. The "outermost" parser method, phrase, could then take this
-symbolic representation of a parser and convert it to highly efficient parsing tables, using standard
-parser generator algorithms.
-What's nice about all this is that from a user perspective nothing changes compared to plain combinator
-parsers. Users still write parsers in terms of ident, floatingPointNumber, ~, |, and so on. They need not
-be aware that these methods generate a symbolic representation of a parser instead of a parser function.
-Since the phrase combinator converts these representations into real parsers, everything works as
-before.
-The advantage of this scheme with respect to performance is two-fold. First, you can now factor out
-parser construction from input analysis. If you were to write:
+  "(" ~! expr ~! ")" | floatingPointNumber
+----
+One advantage of an LL(1) parser is that it can use a simpler input technique. Input can be read sequentially, and input elements can be discarded once they are read. That's another reason why LL(1) parsers are usually more efficient than backtracking parsers.
+
+33.11 Висновок
+--------------
+You have now seen all the essential elements of Scala's combinator parsing framework. It's surprisingly little code for something that's genuinely useful. With the framework you can construct parsers for a large class of context-free grammars. The framework lets you get started quickly, but it is also customizable to new kinds of grammars and input methods. Being a Scala library, it integrates seamlessly with the rest of the language. So it's easy to integrate a combinator parser in a larger Scala program.
+
+One downside of combinator parsers is that they are not very efficient, at least not when compared with parsers generated from special purpose tools such as Yacc or Bison. There are two reasons for this. First, the backtracking method used by combinator parsing is itself not very efficient. Depending on the grammar and the parse input, it might yield an exponential slow-down due to repeated backtracking.This can be fixed by making the grammar LL(1) and by using the committed sequential composition operator, ~!.
+
+The second problem affecting the performance of combinator parsers is that they mix parser construction and input analysis in the same set of operations. In effect, a parser is generated anew for each input that's parsed.
+
+This problem can be overcome, but it requires a different implementation of the parser combinator framework. In an optimizing framework, a parser would no longer be represented as a function from inputs to parse results. Instead, it would be represented as a tree, where every construction step was represented as a case class. For instance, sequential composition could be represented by a case class Seq, alternative by Alt, and so on. The "outermost" parser method, phrase, could then take this symbolic representation of a parser and convert it to highly efficient parsing tables, using standard parser generator algorithms.
+
+What's nice about all this is that from a user perspective nothing changes compared to plain combinator parsers. Users still write parsers in terms of ident, floatingPointNumber, ~, |, and so on. They need not be aware that these methods generate a symbolic representation of a parser instead of a parser function. Since the phrase combinator converts these representations into real parsers, everything works as before.
+
+The advantage of this scheme with respect to performance is two-fold. First, you can now factor out parser construction from input analysis. If you were to write:
+[source,scala]
+----
 val jsonParser = phrase(value)
-and then apply jsonParser to several different inputs, the jsonParser would be constructed only once,
-not every time an input is read.
-Second, the parser generation can use efficient parsing algorithms such as LALR(1).footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] These
-algorithms usually lead to much faster parsers than parsers that operate with backtracking.
-At present, such an optimizing parser generator has not yet been written for Scala. But it would be
-perfectly possible to do so. If someone contributes such a generator, it will be easy to integrate into the
-standard Scala library. Even postulating that such a generator will exist at some point in the future,
-however, there are reasons for keeping the current parser combinator framework around. It is much
-easier to understand and to adapt than a parser generator, and the difference in speed would often not
-matter in practice, unless you want to parse very large inputs.
+----
+and then apply jsonParser to several different inputs, the jsonParser would be constructed only once, not every time an input is read.
+
+Second, the parser generation can use efficient parsing algorithms such as LALR(1).footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] These algorithms usually lead to much faster parsers than parsers that operate with backtracking.
+
+At present, such an optimizing parser generator has not yet been written for Scala. But it would be perfectly possible to do so. If someone contributes such a generator, it will be easy to integrate into the standard Scala library. Even postulating that such a generator will exist at some point in the future, however, there are reasons for keeping the current parser combinator framework around. It is much easier to understand and to adapt than a parser generator, and the difference in speed would often not matter in practice, unless you want to parse very large inputs.
  

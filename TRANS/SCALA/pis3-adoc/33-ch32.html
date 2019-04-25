@@ -804,591 +804,653 @@ asciidoc.install();
 </div>
 </div>
 <h1 id="____">Ф'ючерси та конкурентність</h1>
-<div class="paragraph"><p>One consequence of the proliferation of multicore processors has been an increased interest in
-concurrency. Java provides concurrency support built around shared memory and locking. Although
-this support is sufficient, this approach turns out to be quite difficult to get right in practice. Scala&#8217;s
-standard library offers an alternative that avoids these difficulties by focusing on asynchronous
-transformations of immutable state: the Future.
-Although Java also offers a Future, it is very different from Scala&#8217;s. Both represent the result of an
-asynchronous computation, but Java&#8217;s Future requires that you access the result via a
-blocking get method. Although you can call isDone to find out if a Java Future has completed before
-calling get, thereby avoiding any blocking, you must wait until the Java Future has completed before
-proceeding with any computation that uses the result.
-By contrast, you can specify transformations on a Scala Future whether it has completed or not. Each
-transformation results in a new Future representing the asynchronous result of the
-original Future transformed by the function. The thread that performs the computation is determined by
-an implicitly provided execution context. This allows you to describe asynchronous computations as a
-series of transformations of immutable values, with no need to reason about shared memory and locks.
-32.1 TROUBLE IN PARADISE
-On the Java platform, each object is associated with a logical monitor, which can be used to control
-multi-threaded access to data. To use this model, you decide what data will be shared by multiple
-threads and mark as "synchronized" sections of the code that access, or control access to, the shared
-data. The Java runtime employs a locking mechanism to ensure that only one thread at a time enters
-synchronized sections guarded by the same lock, thereby enabling you to orchestrate multi-threaded
-access to the shared data.
-For compatibility&#8217;s sake, Scala provides access to Java&#8217;s concurrency primitives. The wait,notify,
-and notifyAll methods can be called in Scala, and they have the same meaning as in Java. Scala doesn&#8217;t
-technically have a synchronized keyword, but it includes a predefinedsynchronized method that can be
-called as follows:
-var counter = 0
-synchronized {
+<div class="paragraph"><p>Один з наслідків розповсюдження багатоядерних процесорів був збільшена зацікавленість до конкуренції. Java провадить підтримку конкуренції, побудовану коло розділеної пам'яті та блокування. Хоча ця підтримка є достатньою, цей підхід виявився досить складним, щоб зрозуміти його на практиці. Стандартна бібліотека Scala пропонує альтернативу, що уникає ціх складностей, через фокусування на асинхронних трансофрмаціях незмінного стану: <code>Future</code>.</p></div>
+<div class="paragraph"><p>Хоча Java також пропонує <code>Future</code>, воно дуже різне від Scala. Обоє представляють результат асинхронного обчислення, але Java <code>Future</code> потребує, щоб ви отримували доступ до результату через блокуючий метод <code>get</code>. Хоча ви можете викликати <code>isDone</code> для визначення, чи Java <code>Future</code> завершилось, перед викликом <code>get</code>, і так уникнути блокування, ви маєте чекати, доки Java <code>Future</code> буде завершене, перед продовженням любих обчислень, що використовують цей результат.</p></div>
+<div class="paragraph"><p>Для конрасту, ви можете вказати трансформації на Scala <code>Future</code>, чи воно завершилось, чи ні. Кожна трансформація має результатом новий <code>Future</code>, що представляє асинхронний результат оригінального <code>Future</code>, трансформованого функцією. Потік, що виконує обчислення, визначається неявно запровадженим контекстом виконання. Це дозволяє вам описати асинхронні обчислення як серії трансформацій незмінних значень, без потреби розмірковувати про розділену пам'ять та блокування.</p></div>
+<div class="sect1">
+<h2 id="_32_1___">32.1 Проблеми в раю</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>На Java платформі кожний об'єкт асоційований з логічним монітором, що може бути використаний для контролю багато поточного доступу до даних. Щоб використовувати цю модель, ви вирішуєте, які дані будуть розділені між декількома потоками, та відмічаєте як <code>synchronized</code> розділи коду, що мають доступ, або контролюють доступ до розділених даних. Рантайм Java задіє механізм для переконання, що тільки один потік в момент часу заходить в синхронізовані розділи, захищені тим самим блокуванням, і таким чином дозволяючи вам оркеструвати багато поточним доступом до розділених даних.</p></div>
+<div class="paragraph"><p>З причин сумісності Scala провадить доступ до примітивів конкурентності Java. Методи <code>wait</code>, <code>notify</code> та <code>notifyAll</code> можуть бути викликані в Scala, і вони мають те саме значення, що і в Java. Scala технічно не має ключового слова <code>synchronized</code>, але вона включає передвизначений метод <code>synchronized</code>, що може бути викликаний таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">counter</span> <span class="k">=</span> <span class="mi">0</span>
+<span class="n">synchronized</span> <span class="o">{</span>
+  <span class="c1">// один потік в кожний момент часу</span>
+  <span class="n">counter</span> <span class="k">=</span> <span class="n">counter</span> <span class="o">+</span> <span class="mi">1</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Нажаль, програмісти визнали дуже складним побудувати надійні багато-поточні застосування з використанням розділених даних та моделі блокування, особливо як застовування зростають в розмірі та складності. Проблема в тому, що в кожній точці в програмі ви маєте продумувати щодо того, які дані змінені або мають доступ, що можуть бути модифіковані або мати доступ з інших потоків, та які блокування утримуються. На кожному виклику метода, ви маєте продумувати щодо того, які блокування була спроба захопити, та переконувати себе, що не виникає глухого блокування під час отримати їх. Ускладнюючи проблему, блокування, про які ви розмірковуєте, не зафіксовані під час компіляції, оскільки програма вільна створювати нові блокування під час виконання, по мірі просування.</p></div>
+<div class="paragraph"><p>Що робить речі гуршими, тестування ненадійне з багато-поточним кодом. Оскільки потоки недетерміновані, ви можете успішно тестувати програму тисячу раз, та програма може все ще бути помилковою перший раз, коли вона використовується на машині клієнта. З розділеними даними та блокуваннями ви маєте зробити програму коректною через самі міркування.</p></div>
+<div class="paragraph"><p>Більше того, ви не можете рішити проблему через пере-синхронізацію, також. Це буде так само проблематично синхронізувати геть усе, як взагалі не синхронізувати нічого. Хоча нові операції блокуваня можуть видалити можливості стану гонок, вони одночасно додають можливості глихого блокування. Коректна програма, що використовує блокування, повинна не мати одночасно ні станів гонки, ані глухих блокувань, так що ви не можете грати безпечно через надміру в жодному напрямку.</p></div>
+<div class="paragraph"><p>Бібліотека <code>java.util.concurrent</code> провадить вищий рівень абстракції для конкурентного програмування. Використовуючи конкуренті утілити можна зробити багато-поточне програмування значно менш схильним до помилок, ніж розвертаючи ваші власні абстракції з низькорівневими примітивами синхронізації Java. Тим не менш, конкурентні утіліти також базовані на розділених даних та моделі блокувань, та як результат не вирішують фундаментальні складності використання цієї моделі.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_32_2____try">32.2 Асинхронне використання та Try</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Хоча це і не срібна куля, Scala <code>Future</code> пропонує один спосіб мати справу з конкурентністю, що може зменьшити, а часто і видалити потребу думати про розділені дані та блокування. Коли це включає Scala метод, він виконує обчислення "доки ви очікуєте", та повертає результат. Якщо результат є <code>Future</code>, цей <code>Future</code> представляє інше обчислення, що має бути виконане асинхронно, часто в зовсім іншому потоці. Як результат, багато операцій на <code>Future</code> потребують неявного контексту виконання, що провадить стратегію для виконання функцій асинхронно. Наприклад, якщо ви спробуєте створити ф'ючерс через метод фабрики <code>Future.apply</code> без надання неявного контексту виконання, примірника <code>scala.concurrent.ExecutionContext</code>, ви отримаєте помилку компілятора:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.concurrent.Future</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.Future</span>
 
-counter = counter + 1
-}
-Unfortunately, programmers have found it very difficult to reliably build robust multi-threaded
-applications using the shared data and locks model, especially as applications grow in size and
-complexity. The problem is that at each point in the program, you must reason about what data you aremodifying or accessing that might be modified or accessed by other threads, and what locks are being
-held. At each method call, you must reason about what locks it will try to hold and convince yourself
-that it will not deadlock while trying to obtain them. Compounding the problem, the locks you reason
-about are not fixed at compile time, because the program is free to create new locks at run time as it
-progresses.
-Making things worse, testing is not reliable with multi-threaded code. Since threads are non-
-deterministic, you might successfully test a program one thousand times—and the program could still
-go wrong the first time it runs on a customer&#8217;s machine. With shared data and locks, you must get the
-program correct through reason alone.
-Moreover, you can&#8217;t solve the problem by over-synchronizing either. It can be just as problematic to
-synchronize everything as it is to synchronize nothing. Although new lock operations may remove
-possibilities for race conditions, they simultaneously add possibilities for deadlocks. A correct lock-
-using program must have neither race conditions nor deadlocks, so you cannot play it safe by
-overdoing it in either direction.
-The java.util.concurrent library provides higher level abstractions for concurrent programming. Using
-the concurrency utilities makes multi-threaded programming far less error prone than rolling your own
-abstractions with Java&#8217;s low-level synchronization primitives. Nevertheless, the concurrent utilities are
-also based on the shared data and locks model, and as a result, do not solve the fundamental difficulties
-of using that model.
-32.2 ASYNCHRONOUS EXECUTION AND TRYS
-Although not a silver bullet, Scala&#8217;s Future offers one way to deal with concurrency that can reduce,
-and often eliminate, the need to reason about shared data and locks. When you invoke a Scala method,
-it performs a computation "while you wait" and returns a result. If that result is a Future,
-the Future represents another computation to be performed asynchronously, often by a completely
-different thread. As a result, many operations on Futurerequire an implicit execution context that
-provides a strategy for executing functions asynchronously. For example, if you try to create a future
-via the Future.apply factory methodwithout providing an implicit execution context, an instance
-ofscala.concurrent.ExecutionContext, you&#8217;ll get a compiler error:
-scala&gt; import scala.concurrent.Future
-import scala.concurrent.Future
-scala&gt; val fut = Future { Thread.sleep(10000); 21 + 21 }
-&lt;console&gt;:11: error: Cannot find an implicit ExecutionContext.
-You might pass an (implicit ec: ExecutionContext)
-parameter to your method or import
-scala.concurrent.ExecutionContext.Implicits.global.
-val fut = Future { Thread.sleep(10000); 21 + 21 }
-^The error message gives you one way to solve the problem: importing a global execution context
-provided by Scala itself. On the JVM, the global execution context uses a thread pool.<span class="footnote"><br />[On Scala.js, the global execution context places tasks on the JavaScript event queue.]<br /></span> Once you
-bring an implicit execution context into scope, you can create a future:
-scala&gt; import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.ExecutionContext.Implicits.global
-scala&gt; val fut = Future { Thread.sleep(10000); 21 + 21 }
-fut: scala.concurrent.Future[Int] = &#8230;
-The future created in the previous example asynchronously executes the block of code, using
-the global execution context, then completes with the value 42. Once it starts execution, that thread will
-sleep for ten seconds. Thus this future will take at least ten seconds to complete.
-Two methods on Future allow you to poll: isCompleted and value. When invoked on a future that has
-not yet completed, isCompleted will return false and value will return None.
-scala&gt; fut.isCompleted
-res0: Boolean = false
-scala&gt; fut.value
-res1: Option[scala.util.Try[Int]] = None
-Once the future completes (in this case, after at least ten seconds has gone by), isCompleted will
-return true and value will return a Some:
-scala&gt; fut.isCompleted
-res2: Boolean = true
-scala&gt; fut.value
-res3: Option[scala.util.Try[Int]] = Some(Success(42))
-The option returned by value contains a Try. As shown in Figure 32.1, a Try is either a Success, which
-contains a value of type T, or a Failure, which contains an exception (an instance
-ofjava.lang.Throwable). The purpose of Try is to provide for asynchronous computations what
-thetry expression provides for synchronous computations: It allows you to deal with the possibility that
-the computation will complete abruptly with an exception rather than return a result.footnotes:[Note that the Java Future also has a way to deal with the potential of an exception being thrown by the asynchronous computation: its get method will throw that exception wrapped in an ExecutionException.]</p></div>
-<div class="paragraph"><p>Figure 32.1 - Class hierarchy for Try.</p></div>
-<div class="paragraph"><p>For synchronous computations you can use try/catch to ensure that a thread that invokes a method
-catches and handles exceptions thrown by the method. For asynchronous computations, however, the
-thread that initiates the computation often moves on to other tasks. Later if that asynchronous
-computation fails with an exception, the original thread is no longer able to handle the exception in
-a catch clause. Thus when working with a Futurerepresenting an asynchronous activity, you use Try to
-deal with the possibility that the activity fails to yield a value and instead completes abruptly an
-exception. Here&#8217;s an example that shows what happens when an asynchronous activity fails:
-scala&gt; val fut = Future { Thread.sleep(10000); 21 / 0 }
-fut: scala.concurrent.Future[Int] = &#8230;
-scala&gt; fut.value
-res4: Option[scala.util.Try[Int]] = None
-Then, after ten seconds:
-scala&gt; fut.value
-res5: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-32.3 WORKING WITH FUTURES
-Scala&#8217;s Future allows you to specify transformations on Future results and obtain a new futurethat
-represents the composition of the two asynchronous computations: the original and the transformation.
-Transforming Futures with map
-The most fundamental such operation is map. Instead of blocking then continuing with another
-computation, you can just map the next computation onto the future. The result will be a new future
-that represents the original asynchronously computed result transformed asynchronously by the
-function passed to map.
-For example, the following future will complete after ten seconds:
-scala&gt; val fut = Future { Thread.sleep(10000); 21 + 21 }
-fut: scala.concurrent.Future[Int] = &#8230;
-Mapping this future with a function that increments by one will yield another future. This new future
-will represent a computation consisting of the original addition followed by the subsequent increment:
-scala&gt; val result = fut.map(x &#8658; x + 1)
-result: scala.concurrent.Future[Int] = &#8230;
-scala&gt; result.value
-res5: Option[scala.util.Try[Int]] = None
-Once the original future completes and the function has been applied to its result, the future returned
-by map will complete:
-scala&gt; result.valueres6: Option[scala.util.Try[Int]] = Some(Success(43))
-Note that the operations performed in this example—the future creation, the 21 + 21 sum calculation,
-and the 42 + 1 increment—may be performed by three different threads.
-Transforming Futures with for expressions
-Because Scala&#8217;s future also declares a flatMap method, you can transform futures using
-a forexpression. For example, consider the following two futures that will, after ten seconds, produce
-42 and 46:
-scala&gt; val fut1 = Future { Thread.sleep(10000); 21 + 21 }
-fut1: scala.concurrent.Future[Int] = &#8230;
-scala&gt; val fut2 = Future { Thread.sleep(10000); 23 + 23 }
-fut2: scala.concurrent.Future[Int] = &#8230;
-Given these two futures, you can obtain a new future representing the asynchronous sum of their results
-like this:
-scala&gt; for {
-x &#8592; fut1
-y &#8592; fut2
-} yield x + y
-res7: scala.concurrent.Future[Int] = &#8230;
-Once the original futures have completed, and the subsequent sum completes, you&#8217;ll be able to see the
-result:
-scala&gt; res7.value
-res8: Option[scala.util.Try[Int]] = Some(Success(88))
-Because for expressions serialize their transformations,footnotes:[The for expression shown in this example will be rewritten as a call to fut1.flatMap passing in a function that calls fut2.map: fut1.flatMap(x &#8658; fut2.map(y &#8658; x + y)).] if you don&#8217;t create the futures before
-the for expression, they won&#8217;t run in parallel. For example, although the previous forexpression requires
-around ten seconds to complete, the following for expression requires at least twenty seconds:
-scala&gt; for {
-x &#8592; Future { Thread.sleep(10000); 21 + 21 }
-y &#8592; Future { Thread.sleep(10000); 23 + 23 }
-} yield x + y
-res9: scala.concurrent.Future[Int] = &#8230;
-scala&gt; res9.value
-res27: Option[scala.util.Try[Int]] = None
-scala&gt; // Will need at least 20 seconds to complete
-scala&gt; res9.value
-res28: Option[scala.util.Try[Int]] = Some(Success(88))Creating the Future: Future.failed, Future.successful, Future.fromTry, and Promises
-Besides the apply method, used in earlier examples to create futures, the Future companion object also
-includes three factory methods for creating already-completed futures: successful,failed, and fromTry.
-These factory methods do not require an ExecutionContext.
-The successful factory method creates a future that has already succeeded:
-scala&gt; Future.successful { 21 + 21 }
-res2: scala.concurrent.Future[Int] = &#8230;
-The failed method creates a future that has already failed:
-scala&gt; Future.failed(new Exception("bummer!"))
-res3: scala.concurrent.Future[Nothing] = &#8230;
-The fromTry method creates an already completed future from a Try:
-scala&gt; import scala.util.{Success,Failure}
-import scala.util.{Success, Failure}
-scala&gt; Future.fromTry(Success { 21 + 21 })
-res4: scala.concurrent.Future[Int] = &#8230;
-scala&gt; Future.fromTry(Failure(new Exception("bummer!")))
-res5: scala.concurrent.Future[Nothing] = &#8230;
-The most general way to create a future is to use a Promise. Given a promise you can obtain a future
-that is controlled by the promise. The future will complete when you complete the promise. Here&#8217;s an
-example:
-scala&gt; val pro = Promise[Int]
-pro: scala.concurrent.Promise[Int] = &#8230;
-scala&gt; val fut = pro.future
-fut: scala.concurrent.Future[Int] = &#8230;
-scala&gt; fut.value
-res8: Option[scala.util.Try[Int]] = None
-You can complete the promise with methods named success, failure, and complete. These methods
-on Promise are similar to those described previously for constructing already completed futures. For
-example, the success method will complete the future successfully:
-scala&gt; pro.success(42)
-res9: pro.type = &#8230;
-scala&gt; fut.value
-res10: Option[scala.util.Try[Int]] = Some(Success(42))
-The failure method takes an exception that will cause the future to fail with that exception.
-The complete method takes a Try. A completeWith method, which takes a future, also exists; the
-promise&#8217;s future will thereafter mirror the completion status of the future you passed tocompleteWith.Filtering: filter and collect
-Scala&#8217;s future offers two methods, filter and collect, that allow you to ensure a property holds true about
-a future value. The filter method validates the future result, leaving it the same if it is valid. Here&#8217;s an
-example that ensures an Int is positive:
-scala&gt; val fut = Future { 42 }
-fut: scala.concurrent.Future[Int] = &#8230;
-scala&gt; val valid = fut.filter(res &#8658; res &gt; 0)
-valid: scala.concurrent.Future[Int] = &#8230;
-scala&gt; valid.value
-res0: Option[scala.util.Try[Int]] = Some(Success(42))
-If the future value is not valid, the future returned by filter will fail with aNoSuchElementException:
-scala&gt; val invalid = fut.filter(res &#8658; res &lt; 0)
-invalid: scala.concurrent.Future[Int] = &#8230;
-scala&gt; invalid.value
-res1: Option[scala.util.Try[Int]] =
-Some(Failure(java.util.NoSuchElementException:
-Future.filter predicate is not satisfied))
-Because Future also offers a withFilter method, you can perform the same operation with forexpression
-filters:
-scala&gt; val valid = for (res &#8592; fut if res &gt; 0) yield res
-valid: scala.concurrent.Future[Int] = &#8230;
-scala&gt; valid.value
-res2: Option[scala.util.Try[Int]] = Some(Success(42))
-scala&gt; val invalid = for (res &#8592; fut if res &lt; 0) yield res
-invalid: scala.concurrent.Future[Int] = &#8230;
-scala&gt; invalid.value
-res3: Option[scala.util.Try[Int]] =
-Some(Failure(java.util.NoSuchElementException:
-Future.filter predicate is not satisfied))
-Future&#8217;s collect method allows you to validate the future value and transform it in one operation. If the
-partial function passed to collect is defined at the future result, the future returned by collect will
-succeed with that value transformed by the function:
-scala&gt; val valid =
-fut collect { case res if res &gt; 0 &#8658; res + 46 }
-valid: scala.concurrent.Future[Int] = &#8230;
-scala&gt; valid.value
-res17: Option[scala.util.Try[Int]] = Some(Success(88))
-Otherwise, the future will fail with NoSuchElementException:
-scala&gt; val invalid =fut collect { case res if res &lt; 0 &#8658; res + 46 }
-invalid: scala.concurrent.Future[Int] = &#8230;
-scala&gt; invalid.value
-res18: Option[scala.util.Try[Int]] =
-Some(Failure(java.util.NoSuchElementException:
-Future.collect partial function is not defined at: 42))
-Dealing with failure: failed, fallBackTo, recover, and recoverWith
-Scala&#8217;s future provides ways to work with futures that fail, including failed, fallBackTo, recover,
-and recoverWith. The failed method will transform a failed future of any type into a
-successfulFuture[Throwable] that holds onto the exception that caused the failure. Here&#8217;s an example:
-scala&gt; val failure = Future { 42 / 0 }
-failure: scala.concurrent.Future[Int] = &#8230;
-scala&gt; failure.value
-res23: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-scala&gt; val expectedFailure = failure.failed
-expectedFailure: scala.concurrent.Future[Throwable] = &#8230;
-scala&gt; expectedFailure.value
-res25: Option[scala.util.Try[Throwable]] =
-Some(Success(java.lang.ArithmeticException: / by zero))
-If the future on which the failed method is called ultimately succeeds, the future returned byfailed will
-itself fail with a NoSuchElementException. The failed method is appropriate, therefore, only when you
-expect that the future will fail. Here&#8217;s an example:
-scala&gt; val success = Future { 42 / 1 }
-success: scala.concurrent.Future[Int] = &#8230;
-scala&gt; success.value
-res21: Option[scala.util.Try[Int]] = Some(Success(42))
-scala&gt; val unexpectedSuccess = success.failed
-unexpectedSuccess: scala.concurrent.Future[Throwable] = &#8230;
-scala&gt; unexpectedSuccess.value
-res26: Option[scala.util.Try[Throwable]] =
-Some(Failure(java.util.NoSuchElementException:
-Future.failed not completed with a throwable.))
-The fallbackTo method allows you to provide an alternate future to use in case the future on which you
-invoke fallbackTo fails. Here&#8217;s an example in which a failed future falls back to a successful future:
-scala&gt; val fallback = failure.fallbackTo(success)
-fallback: scala.concurrent.Future[Int] = &#8230;
-scala&gt; fallback.value
-res27: Option[scala.util.Try[Int]] = Some(Success(42))If the original future on which fallbackTo is invoked fails, a failure of the future passed tofallbackTo is
-essentially ignored. The future returned by fallbackTo will fail with the initial exception. Here&#8217;s an
-example:
-scala&gt; val failedFallback = failure.fallbackTo(
-Future { val res = 42; require(res &lt; 0); res }
-)
-failedFallback: scala.concurrent.Future[Int] = &#8230;
-scala&gt; failedFallback.value
-res28: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-The recover method allows you to transform a failed future into a successful one, allowing a successful
-future&#8217;s result to pass through unchanged. For example, on a future that fails withArithmeticException,
-you can use the recover method to transform the failure into a success, like this:
-scala&gt; val recovered = failedFallback recover {
-case ex: ArithmeticException &#8658; -1
-}
-recovered: scala.concurrent.Future[Int] = &#8230;
-scala&gt; recovered.value
-res32: Option[scala.util.Try[Int]] = Some(Success(-1))
-If the original future doesn&#8217;t fail, the future returned by recover will complete with the same value:
-scala&gt; val unrecovered = fallback recover {
-case ex: ArithmeticException &#8658; -1
-}
-unrecovered: scala.concurrent.Future[Int] = &#8230;
-scala&gt; unrecovered.value
-res33: Option[scala.util.Try[Int]] = Some(Success(42))
-Similarly, if the partial function passed to recover isn&#8217;t defined at the exception with which the original
-future ultimately fails, that original failure will pass through:
-scala&gt; val alsoUnrecovered = failedFallback recover {
-case ex: IllegalArgumentException &#8658; -2
-}
-alsoUnrecovered: scala.concurrent.Future[Int] = &#8230;
-scala&gt; alsoUnrecovered.value
-res34: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-The recoverWith method is similar to recover, except instead of recovering to a value like recover,
-the recoverWith method allows you to recover to a future value. Here&#8217;s an example:
-scala&gt; val alsoRecovered = failedFallback recoverWith {
-case ex: ArithmeticException &#8658; Future { 42 + 46 }
-}
-alsoRecovered: scala.concurrent.Future[Int] = &#8230;scala&gt; alsoRecovered.value
-res35: Option[scala.util.Try[Int]] = Some(Success(88))
-As with recover, if either the original future doesn&#8217;t fail, or the partial function passed
-torecoverWith isn&#8217;t defined at the exception the original future ultimately fails with, the original success
-(or failure) will pass through to the future returned by recoverWith.
-Mapping both possibilities: transform
-Future&#8217;s transform method accepts two functions with which to transform a future: one to use in case of
-success and the other in case of failure:
-scala&gt; val first = success.transform(
-res &#8658; res * -1,
-ex &#8658; new Exception("see cause", ex)
-)
-first: scala.concurrent.Future[Int] = &#8230;
-If the future succeeds, the first function is used:
-scala&gt; first.value
-res42: Option[scala.util.Try[Int]] = Some(Success(-42))
-If the future fails, the second function is used:
-scala&gt; val second = failure.transform(
-res &#8658; res * -1,
-ex &#8658; new Exception("see cause", ex)
-)
-second: scala.concurrent.Future[Int] = &#8230;
-scala&gt; second.value
-res43: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.Exception: see cause))
-Note that with the transform method shown in the previous examples, you can&#8217;t change a successful
-future into a failed one, nor can you change a failed future into a successful one. To make this kind of
-transformation easier, Scala 2.12 introduced an alternate overloaded form of transform that takes a
-function from Try to Try. Here are some examples:
-scala&gt; val firstCase = success.transform { // Scala 2.12
-case Success(res) &#8658; Success(res * -1)
-case Failure(ex) &#8658;
-Failure(new Exception("see cause", ex))
-}
-first: scala.concurrent.Future[Int] = &#8230;
-scala&gt; firstCase.value
-res6: Option[scala.util.Try[Int]] = Some(Success(-42))
-scala&gt; val secondCase = failure.transform {
-case Success(res) &#8658; Success(res * -1)
-case Failure(ex) &#8658;
-Failure(new Exception("see cause", ex))
-}secondCase: scala.concurrent.Future[Int] = &#8230;
-scala&gt; secondCase.value
-res8: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.Exception: see cause))
-Here&#8217;s an example of using the new transform method to transform a failure into a success:
-scala&gt; val nonNegative = failure.transform { // Scala 2.12
-case Success(res) &#8658; Success(res.abs + 1)
-case Failure(<em>) &#8658; Success(0)
-}
-nonNegative: scala.concurrent.Future[Int] = &#8230;
-scala&gt; nonNegative.value
-res11: Option[scala.util.Try[Int]] = Some(Success(0))
-Combining futures: zip, Future.fold, Future.reduce, Future.sequence, and Future.traverse
-Future and its companion object offer methods that allow you to combine multiple futures.
-The zip method will transform two successful futures into a future tuple of both values. Here&#8217;s an
-example:
-scala&gt; val zippedSuccess = success zip recovered
-zippedSuccess: scala.concurrent.Future[(Int, Int)] = &#8230;
-scala&gt; zippedSuccess.value
-res46: Option[scala.util.Try[(Int, Int)]] =
-Some(Success42
-If either of the futures fail, however, the future returned by zip will also fail with the same exception:
-scala&gt; val zippedFailure = success zip failure
-zippedFailure: scala.concurrent.Future[(Int, Int)] = &#8230;
-scala&gt; zippedFailure.value
-res48: Option[scala.util.Try[(Int, Int)]] =
-Some(Failure(java.lang.ArithmeticException: / by zero))
-If both futures fail, the failed future that results will contain the exception stored in the initial future, the
-one on which zip was invoked.
-Future&#8217;s companion object offers a fold method that allows you to accumulate a result across
-aTraversableOnce collection of futures, yielding a future result. If all futures in the collection succeed,
-the resulting future will succeed with the accumulated result. If any future in the collection fails, the
-resulting future will fail. If multiple futures fail, the result will fail with the same exception with which
-the first future (earliest in the TraversableOnce collection) fails. Here&#8217;s an example:
-scala&gt; val fortyTwo = Future { 21 + 21 }
-fortyTwo: scala.concurrent.Future[Int] = &#8230;
-scala&gt; val fortySix = Future { 23 + 23 }
-fortySix: scala.concurrent.Future[Int] = &#8230;scala&gt; val futureNums = List(fortyTwo, fortySix)
-futureNums: List[scala.concurrent.Future[Int]] = &#8230;
-scala&gt; val folded =
-Future.fold(futureNums)(0) { (acc, num) &#8658;
-acc + num
-}
-folded: scala.concurrent.Future[Int] = &#8230;
-scala&gt; folded.value
-res53: Option[scala.util.Try[Int]] = Some(Success(88))
-The Future.reduce method performs a fold without a zero, using the initial future result as the start
-value. Here&#8217;s an example:
-scala&gt; val reduced =
-Future.reduce(futureNums) { (acc, num) &#8658;
-acc + num
-}
-reduced: scala.concurrent.Future[Int] = &#8230;
-scala&gt; reduced.value
-res54: Option[scala.util.Try[Int]] = Some(Success(88))
-If you pass an empty collection to reduce, the resulting future will fail with aNoSuchElementException.
-The Future.sequence method transforms a TraversableOnce collection of futures into a
-futureTraversableOnce of values. For instance, in the following example, sequence is used to transform
-a List[Future[Int]] to a Future[List[Int]]:
-scala&gt; val futureList = Future.sequence(futureNums)
-futureList: scala.concurrent.Future[List[Int]] = &#8230;
-scala&gt; futureList.value
-res55: Option[scala.util.Try[List[Int]]] =
-Some(Success(List(42, 46)))
-The Future.traverse method will change a TraversableOnce of any element type into
-aTraversableOnce of futures and "sequence" that into a future TraversableOnce of values. For example,
-here a List[Int] is transformed into a Future[List[Int]] by Future.traverse:
-scala&gt; val traversed =
-Future.traverse(List(1, 2, 3)) { i &#8658; Future(i) }
-traversed: scala.concurrent.Future[List[Int]] = &#8230;
-scala&gt; traversed.value
-res58: Option[scala.util.Try[List[Int]]] =
-Some(Success(List(1, 2, 3)))
-Performing side-effects: foreach, onComplete, and andThen
-Sometimes you may need to perform a side effect after a future completes. Future provides several
-methods for this purpose. The most basic method is foreach, which will perform a side effect if a futurecompletes successfully. For instance, in the following example a println is not executed in the case of a
-failed future, just a successful future:
-scala&gt; failure.foreach(ex &#8658; println(ex))
-scala&gt; success.foreach(res &#8658; println(res))
-42
-Since for without yield will rewrite to an invocation of foreach, you can also accomplish the same
-effect using for expressions:
-scala&gt; for (res &#8592; failure) println(res)
-scala&gt; for (res &#8592; success) println(res)
-42
-Future also offers two methods for registering "callback" functions. The onComplete method will be
-executed whether the future ultimately succeeds or fails. The function will be passed a Try—
-a Success holding the result if the future succeeded, else a Failure holding the exception that caused the
-future to fail. Here&#8217;s an example:
-scala&gt; import scala.util.{Success, Failure}
-import scala.util.{Success, Failure}
-scala&gt; success onComplete {
-case Success(res) &#8658; println(res)
-case Failure(ex) &#8658; println(ex)
-}
-42
-scala&gt; failure onComplete {
-case Success(res) &#8658; println(res)
-case Failure(ex) &#8658; println(ex)
-}
-java.lang.ArithmeticException: / by zero
-Future does not guarantee any order of execution for callback functions registered withonComplete. If
-you want to enforce an order for callback functions, you must
-use andThen instead.The andThen method returns a new future that mirrors (succeeds or fails in the
-same way as) the original future on which you invoke andThen, but it does not complete until the
-callback function has been fully executed:
-scala&gt; val newFuture = success andThen {
-case Success(res) &#8658; println(res)
-case Failure(ex) &#8658; println(ex)
-}
-42
-newFuture: scala.concurrent.Future[Int] = &#8230;
-scala&gt; newFuture.value
-res76: Option[scala.util.Try[Int]] = Some(Success(42))Note that if a callback function passed to andThen throws an exception when executed, that exception
-will not be propagated to subsequent callbacks or reported via the resulting future.
-Other methods added in 2.12: flatten, zipWith, and transformWith
-The flatten method, added in 2.12, transforms a Future nested inside another Future into aFuture of the
-nested type. For example, flatten can transform a Future[Future[Int]] into aFuture[Int]:
-scala&gt; val nestedFuture = Future { Future { 42 } }
-nestedFuture: Future[Future[Int]] = &#8230;
-scala&gt; val flattened = nestedFuture.flatten // Scala 2.12
-flattened: scala.concurrent.Future[Int] = Future(Success(42))
-The zipWith method, added in 2.12, essentially zips two Futures together, then performs a mapon the
-resulting tuple. Here&#8217;s an example of the two-step process, a zip followed by a map:
-scala&gt; val futNum = Future { 21 + 21 }
-futNum: scala.concurrent.Future[Int] = &#8230;
-scala&gt; val futStr = Future { "ans" + "wer" }
-futStr: scala.concurrent.Future[String] = &#8230;
-scala&gt; val zipped = futNum zip futStr
-zipped: scala.concurrent.Future[(Int, String)] = &#8230;
-scala&gt; val mapped = zipped map {
-case (num, str) &#8658; s"$num is the $str"
-}
-mapped: scala.concurrent.Future[String] = &#8230;
-scala&gt; mapped.value
-res2: Option[scala.util.Try[String]] =
-Some(Success(42 is the answer))
-The zipWith method allows you to perform the same operation in one step:
-scala&gt; val fut = futNum.zipWith(futStr) { // Scala 2.12
-case (num, str) &#8658; s"$num is the $str"
-}
-zipWithed: scala.concurrent.Future[String] = &#8230;
-scala&gt; fut.value
-res3: Option[scala.util.Try[String]] =
-Some(Success(42 is the answer))
-Future also gained a transformWith method in Scala 2.12, which allows you to transform a future using
-a function from Try to Future. Here&#8217;s an example:
-scala&gt; val flipped = success.transformWith { // Scala 2.12
-case Success(res) &#8658;
-Future { throw new Exception(res.toString) }
-case Failure(ex) &#8658; Future { 21 + 21 }
-}
-flipped: scala.concurrent.Future[Int] = &#8230;scala&gt; flipped.value
-res5: Option[scala.util.Try[Int]] =
-Some(Failure(java.lang.Exception: 42))
-The transformWith method is similar to the new, overloaded transform method added in Scala 2.12,
-except instead of yielding a Try in your passed function as in transform, transformWithallows you to
-yield a future.
-32.4 TESTING WITH FUTURES
-One advantage of Scala&#8217;s futures is that they help you avoid blocking. On most JVM implementations,
-after creating just a few thousand threads, the cost of context switching between threads will degrade
-performance to an unnacceptable level. By avoiding blocking, you can keep the finite number of
-threads you decide to work with busy. Nevertheless, Scala does allow you to block on a future result
-when you need to. Scala&#8217;s Await object facilitates blocking to wait for future results. Here&#8217;s an example:
-scala&gt; import scala.concurrent.Await
-import scala.concurrent.Await
-scala&gt; import scala.concurrent.duration.</em>
-import scala.concurrent.duration._
-scala&gt; val fut = Future { Thread.sleep(10000); 21 + 21 }
-fut: scala.concurrent.Future[Int] = &#8230;
-scala&gt; val x = Await.result(fut, 15.seconds) // blocks
-x: Int = 42
-Await.result takes a Future and a Duration. The Duration indicates how long Await.result should wait
-for a Future to complete before timing out. In this example, fifteen seconds was specified for
-the Duration. Thus the Await.result method should not time out before the future completes with its
-eventual value, 42.
-One place where blocking has been generally accepted is in tests of asynchronous code. Now that
-the Await.result has returned, you can perform a computation using that result, such as an assertion in a
-test:
-scala&gt; import org.scalatest.Matchers._
-import org.scalatest.Matchers._
-scala&gt; x should be (42)
-res0: org.scalatest.Assertion = Succeeded
-Alternatively, you can use blocking constructs provided by ScalaTest&#8217;s trait ScalaFutures. For example,
-the futureValue method, implicitly added to Future by ScalaFutures, will block until the future
-completes. If the future fails, futureValue will throw a TestFailedException describing the problem. If
-the future succeeds, futureValue will return the successful result of the future so you can perform
-asssertions on that value:
-scala&gt; import org.scalatest.concurrent.ScalaFutures._
-import org.scalatest.concurrent.ScalaFutures._scala&gt; val fut = Future { Thread.sleep(10000); 21 + 21 }
-fut: scala.concurrent.Future[Int] = &#8230;
-scala&gt; fut.futureValue should be (42) // futureValue blocks
-res1: org.scalatest.Assertion = Succeeded
-While blocking in tests is often fine, ScalaTest 3.0 adds "async" testing styles that allow you to test
-futures without blocking. Given a future, instead of blocking and performing assertions on the result,
-you can map assertions directly onto that future and return the resultingFuture[Assertion] to ScalaTest.
-An example is shown in Listing 32.1. When the future assertion completes, ScalaTest will fire events
-(test succeeded, test failed, etc.) to the test reporter asynchronously.
-import org.scalatest.AsyncFunSpec
-import scala.concurrent.Future
-class AddSpec extends AsyncFunSpec {
-def addSoon(addends: Int*): Future[Int] =
-Future { addends.sum }
-describe("addSoon") {
-it("will eventually compute a sum of passed Ints") {
-val futureSum: Future[Int] = addSoon(1, 2)
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">11</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">Cannot</span> <span class="kt">find</span> <span class="kt">an</span> <span class="kt">implicit</span> <span class="kt">ExecutionContext.</span>
+    <span class="kt">You</span> <span class="kt">might</span> <span class="kt">pass</span> <span class="kt">an</span> <span class="o">(</span><span class="kt">implicit</span> <span class="kt">ec:</span> <span class="kt">ExecutionContext</span><span class="o">)</span>
+    <span class="kt">parameter</span> <span class="kt">to</span> <span class="kt">your</span> <span class="kt">method</span> <span class="kt">or</span> <span class="kt">import</span>
+    <span class="n">scala</span><span class="o">.</span><span class="n">concurrent</span><span class="o">.</span><span class="nc">ExecutionContext</span><span class="o">.</span><span class="nc">Implicits</span><span class="o">.</span><span class="n">global</span><span class="o">.</span>
+        <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+                         <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Повідомлення про помилку дає вам один шлях вирішити цю проблему: імпортування глобального контексту виконання, що провадить сама Scala. На JVM глобальний контекст використовує пул потоків.<span class="footnote"><br />[На Scala.js глобальний контекст виконання покладає завдання на чергу подій JavaScript.]<br /></span> Коли ви занесли неявний контекст виконання в поле зору, ви можете створири ф'ючерс:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.concurrent.ExecutionContext.Implicits.global</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.ExecutionContext.Implicits.global</span>
 
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ф'ючерс, створений в попередньому прикладі, асинхронно виконує блок коду, використовуючи глобальний контекст виконання, що завершується зі значенням 42. Як тільки він розпочинає виконання, цей потік буде спати протягом десяти секунд. Таким чином, ф'ючерс буде забирати щонайменьше десять секунд на завершення.</p></div>
+<div class="paragraph"><p>Два методи на <code>Future</code> дозволяють вам опитання: <code>isCompleted</code> та <code>value</code>. Коли виконується на ф'ючерсі, що ще не завершений, <code>isCompleted</code> буде повертати <code>false</code>, та <code>value</code> буде повертати <code>None</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">isCompleted</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">false</span>
 
-futureSum map { sum &#8658; assert(sum == 3) }
-}
-}
-}
-Listing 32.1 - Returning a future assertion to ScalaTest.
-The async testing use case illustrates a general principle for working with futures: Once in "future
-space," try to stay in future space. Don&#8217;t block on a future then continue the computation with the
-result. Stay asynchronous by performing a series of transformations, each of which returns a new future
-to transform. To get results out of future space, register side effects to be performed asynchronously
-once futures complete. This approach will help you make maximum use of your threads.</p></div>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">None</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Коли ф'ючерс завершиться (в цьому випадку коли пройде щонайменш десять секунд), <code>isCompleted</code> буде повертати <code>true</code>, та значення буде повертати <code>Some</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">isCompleted</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="kc">true</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Опція, що повертається <code>value</code>, містить <code>Try</code>. Як показано на Малюнку 32.1, <code>Try</code> є або <code>Success</code>, що містить значення типу <code>T</code>, або <code>Failure</code>, що містить виключення ( примірник <code>java.lang.Throwable</code>). Призначення <code>Try</code> є провадити асинхронні обчислення, що вираз <code>try</code> провадить для синхронних обчислень: він дозволяє вам мати справу з можливістю, що обчислення буде закінчено неспродівано з виключенням, скоріше ніж поверне результат.footnotes:[Зауважте, що Java <code>Future</code> також має спосіб мати справу з потенційними виключеннями, що були закинуті асинхронними виключеннями: його метод <code>get</code> буде закидати це виключення, огорнуте в <code>ExecutionException</code>.]</p></div>
+<div class="paragraph"><p>Малюнок 32.1 - Ієрархія класів для <code>Try</code>.</p></div>
+<div class="paragraph"><p>Для синхронних обчислень ви можете використати <code>try</code>/<code>catch</code> для переконання, що потік, який викликає метод, перехоплює та обробляє виключення, закинуті методом. Однак для асинхронних обчислень потік, що ініціює обчислення, часто переходить до інших завдань. Пізніше, якшо це асинхронно обчислення схибить з виключенням,оригінальний потік буде більше не в змозі обробити виключення в твердженні <code>catch</code>. Таким чином, коли робите з <code>Future</code> що представляє асинхронну активність, ви використовуєте <code>Try</code> щоб мати справу з можливістю, що активність схибить видати значення, та замість цього завершиться несподівано як виключення. Ось приклад, що показує, що відбувається, коли асинхронна активність схибить:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">/</span> <span class="mi">0</span> <span class="o">}</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">None</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Поітм, через десять секунд:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span><span class="o">))</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_32_3____">32.3 Робота з ф'ючерсами</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Scala <code>Future</code> дозволяє вам вказати трансформації на результаті <code>Future</code>, та отримати новий ф'ючерс, що представляє композицію двох асинхронних обчислень: оригінального та трансформації.</p></div>
+<div class="sect2">
+<h3 id="__code_futures_code___code_map_code">Трансформація <code>Futures</code> за допомогою <code>map</code></h3>
+<div class="paragraph"><p>Сама фундаментальна така операція є <code>map</code>. Замість блокування, та потім продовження з іншим обчисленням, ви можете просто відобразити наступне обчислення на ф'ючерс. Результатом буде новий ф'ючерс, що представляє оригінальний, асинхронно обчислений результат, асинхронно трансформований функцією, переданою до <code>map</code>.</p></div>
+<div class="paragraph"><p>Наприклад, наступний ф'ючерс буде завершений через десять секунд:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Відображення цього ф'ючерса функцією, що збільшує на одиницю, буде давати інший ф'ючерс. Цей новий ф'ючерс буде представляти обчислення, що складається з оригінального додавання, за яким слідує наступне збільшення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="n">fut</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">x</span> <span class="k">=&gt;</span> <span class="n">x</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+<span class="n">result</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">None</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як тільки оригінальний ф'ючерс завершується, та функція буде застосована до його результату, ф'ючерс, що повертається з <code>map</code>, буде завершено:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">43</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що операція, виконана в цьому прикладі, створення ф'ючерса, обчислення суми <code>21 + 21</code>, та інкремент <code>42 + 1</code>, може бути виконана в трьох різних потоках.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__code_future_code____code_for_code">Трансформування <code>Future</code> за допомогою виразів <code>for</code></h3>
+<div class="paragraph"><p>Оскільки ф'ючерс Scala також декларує метод <code>flatMap</code>, ви можете трансформувати ф'ючерси з використанням виразу <code>for</code>. Наприклад, розглянемо наступні два ф'ючерса, що будуть через десять секунд виробляти <code>42</code> та <code>46</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut1</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">fut1</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut2</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">23</span> <span class="o">+</span> <span class="mi">23</span> <span class="o">}</span>
+<span class="n">fut2</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Маючи ці два ф'ючерси, ви можете отримати новий ф'ючерс, що представляє асинхронну суму їх результатів, як це:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+          <span class="n">x</span> <span class="k">&lt;-</span> <span class="n">fut1</span>
+          <span class="n">y</span> <span class="k">&lt;-</span> <span class="n">fut2</span>
+       <span class="o">}</span> <span class="k">yield</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<span class="n">res7</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як тільки оригінальні ф'ючерси будуть завершені, та завершиться наступна сума, ви будете в змозі побачити результат:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">res7</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">88</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки <code>for</code> вирази серіалізують їх перетворення,footnotes:[Вираз <code>for</code>, показаний в цьому прикладі, буде переписаний як виклик до <code>fut1.flatMap</code>, переданий до функції, що викликає <code>fut2.map</code>: <code>fut1.flatMap(x =&gt; fut2.map(y =&gt; x + y))</code>.] якщо ви не створите ф'ючерси пере виразом, вони не будуть робити паралельно. Наприклад, хоча попередній <code>for</code> вираз потребує близько десяти секунд для завершення, наступний вираз <code>for</code> потребує щонайменьше двадцять секунд:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+        <span class="n">x</span> <span class="k">&lt;-</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+        <span class="n">y</span> <span class="k">&lt;-</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">23</span> <span class="o">+</span> <span class="mi">23</span> <span class="o">}</span>
+       <span class="o">}</span> <span class="k">yield</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">res9</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res27</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">None</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="c1">// буде потребувати щонайменьше 20 секунд для завершення</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">res9</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res28</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">88</span><span class="o">))</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="__code_future_code_code_future_failed_code_future_successful_code_future_fromtry_code__promise">Створення <code>Future</code>: <code>Future.failed</code>,` Future.successful`, <code>Future.fromTry</code>, та Promise</h3>
+<div class="paragraph"><p>Окрім метода <code>apply</code>, використаного в попередніх прикладах для створення ф'ючерсів, об'єкт компанйон <code>Future</code> також включає три метода фабрики для створення вже завершених ф'ючерсів: <code>successful</code>, <code>failed</code> та <code>fromTry</code>. Ці методи фабрики не потребують <code>ExecutionContext</code>.</p></div>
+<div class="paragraph"><p>Метод фабрика <code>successful</code> створює ф'ючерс, що вже успішний:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">successful</span> <span class="o">{</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>failed</code> створює ф'ючерс, що вже схибив:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">failed</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;bummer!&quot;</span><span class="o">))</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Nothing</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>fromTry</code> створює вже завершений ф'ючерс на основі <code>Try</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.util.</span><span class="o">{</span><span class="nc">Success</span><span class="o">,</span><span class="nc">Failure</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">scala.util.</span><span class="o">{</span><span class="nc">Success</span><span class="o">,</span> <span class="nc">Failure</span><span class="o">}</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">fromTry</span><span class="o">(</span><span class="nc">Success</span> <span class="o">{</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">})</span>
+<span class="n">res4</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">fromTry</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;bummer!&quot;</span><span class="o">)))</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Nothing</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Найбільш загальний спосіб створити ф'ючерс це використати <code>Promise</code>. Маючи проміс ви можете отримати ф'ючерс, що контрольований цім промісом. Ф'ючерс буде завершено, коли ви завершите проміс. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">pro</span> <span class="k">=</span> <span class="nc">Promise</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+<span class="n">pro</span><span class="k">:</span> <span class="kt">scala.concurrent.Promise</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="n">pro</span><span class="o">.</span><span class="n">future</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">None</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете завершити проміс за допомогою методів на ім'я <code>success</code>, <code>failure</code> та <code>complete</code>. Ці методи на <code>Promise</code> подібні до таких, описаних до цього для конструювання вже завершеного ф'ючерса. Наприклад, метод <code>success</code> буде завершувати ф'ючерс успішно:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">pro</span><span class="o">.</span><span class="n">success</span><span class="o">(</span><span class="mi">42</span><span class="o">)</span>
+<span class="n">res9</span><span class="k">:</span> <span class="kt">pro.</span><span class="k">type</span> <span class="o">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res10</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>failure</code> приймає виключення, що змусить ф'ючерс схибити з цім виключенням. Метод <code>complete</code> приймає <code>Try</code>. Метод <code>completeWith</code>, що приймає ф'ючерс, також існує; ф'ючерс промісу буде таким чином відображувати статус ф'ючерса, що ви передали до <code>completeWith</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__code_filter_code__code_collect_code">Фільтрування: <code>filter</code> та <code>collect</code></h3>
+<div class="paragraph"><p>Ф'ючерси Scala пропонують два методи, <code>filter</code> та <code>collect</code>, що дозволяють вам переконатись, що властивість дотримується <code>true</code> щодо значень ф'ючерса. Метод <code>filter</code> валідує результат ф'ючерса, залишаючи його тим самим, якщо він валідний. Ось приклад, що переконується, що <code>Int</code> є додатним:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">42</span> <span class="o">}</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">valid</span> <span class="k">=</span> <span class="n">fut</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="n">res</span> <span class="k">=&gt;</span> <span class="n">res</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">valid</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">valid</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо значення ф'ючерса невалідне, ф'ючерс буде хибити з <code>NoSuchElementException</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">invalid</span> <span class="k">=</span> <span class="n">fut</span><span class="o">.</span><span class="n">filter</span><span class="o">(</span><span class="n">res</span> <span class="k">=&gt;</span> <span class="n">res</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span>
+<span class="n">invalid</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">invalid</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">NoSuchElementException</span><span class="k">:</span>
+  <span class="kt">Future.filter</span> <span class="kt">predicate</span> <span class="kt">is</span> <span class="kt">not</span> <span class="kt">satisfied</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки <code>Future</code> також пропонує метод <code>withFilter</code>, ви можете виконати таку саму операцію з фільтрами <code>for</code> виразів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">valid</span> <span class="k">=</span> <span class="k">for</span> <span class="o">(</span><span class="n">res</span> <span class="k">&lt;-</span> <span class="n">fut</span> <span class="k">if</span> <span class="n">res</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="k">yield</span> <span class="n">res</span>
+<span class="n">valid</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">valid</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">invalid</span> <span class="k">=</span> <span class="k">for</span> <span class="o">(</span><span class="n">res</span> <span class="k">&lt;-</span> <span class="n">fut</span> <span class="k">if</span> <span class="n">res</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">)</span> <span class="k">yield</span> <span class="n">res</span>
+<span class="n">invalid</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">invalid</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">NoSuchElementException</span><span class="k">:</span>
+  <span class="kt">Future.filter</span> <span class="kt">predicate</span> <span class="kt">is</span> <span class="kt">not</span> <span class="kt">satisfied</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>Future</code> дозволяє вам валідувати ф'ючерс, та трансформувати це в одну операцію. Якщо часткова функція, передана до <code>collect</code>, визначена на результаті ф'ючерса, ф'ючерс, що повертає <code>collect</code>, буде успішним зі значенням, що трансформований функцією:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">valid</span> <span class="k">=</span>
+         <span class="n">fut</span> <span class="n">collect</span> <span class="o">{</span> <span class="k">case</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="k">=&gt;</span> <span class="n">res</span> <span class="o">+</span> <span class="mi">46</span> <span class="o">}</span>
+<span class="n">valid</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">valid</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res17</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">88</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Інакше ф'ючерс буде хибити з <code>NoSuchElementException</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">invalid</span> <span class="k">=</span><span class="n">fut</span> <span class="n">collect</span> <span class="o">{</span> <span class="k">case</span> <span class="n">res</span> <span class="k">if</span> <span class="n">res</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="k">=&gt;</span> <span class="n">res</span> <span class="o">+</span> <span class="mi">46</span> <span class="o">}</span>
+<span class="n">invalid</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">invalid</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res18</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+<span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">NoSuchElementException</span><span class="k">:</span>
+<span class="kt">Future.collect</span> <span class="kt">partial</span> <span class="kt">function</span> <span class="kt">is</span> <span class="kt">not</span> <span class="kt">defined</span> <span class="kt">at:</span> <span class="err">42</span><span class="o">))</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="____code_failed_code_code_fallbackto_code_code_recover_code__code_recoverwith_code">Робота з збоями: <code>failed</code>, <code>fallBackTo</code>, <code>recover</code> та <code>recoverWith</code></h3>
+<div class="paragraph"><p>Ф'ючерси Scala провадять спосіб робити з ф'ючерсами, що схибили, включаючи <code>failed</code>, <code>fallBackTo</code>, <code>recover</code>,та <code>recoverWith</code>. Метод <code>failed</code> буде трансформувати невдалий ф'ючерс любого типу в <code>successfulFuture[Throwable]</code>, що містить вираз, що спричинив сбій. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">failure</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">42</span> <span class="o">/</span> <span class="mi">0</span> <span class="o">}</span>
+<span class="n">failure</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">failure</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res23</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">expectedFailure</span> <span class="k">=</span> <span class="n">failure</span><span class="o">.</span><span class="n">failed</span>
+<span class="n">expectedFailure</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Throwable</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">expectedFailure</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res25</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Throwable</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ф'ючерс, на якому викликаний метод <code>failed</code>, кінець кінцем буде успішним, ф'ючерс, повернутий <code>failed</code> сам буде хибити з <code>NoSuchElementException</code>. Метод <code>failed</code>, таким чином, доречний тільки коли ви очікуєте, що ф'ючерс схибить. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">success</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">42</span> <span class="o">/</span> <span class="mi">1</span> <span class="o">}</span>
+<span class="n">success</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">success</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res21</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">unexpectedSuccess</span> <span class="k">=</span> <span class="n">success</span><span class="o">.</span><span class="n">failed</span>
+<span class="n">unexpectedSuccess</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Throwable</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">unexpectedSuccess</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res26</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Throwable</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">util</span><span class="o">.</span><span class="nc">NoSuchElementException</span><span class="k">:</span>
+<span class="kt">Future.failed</span> <span class="kt">not</span> <span class="kt">completed</span> <span class="kt">with</span> <span class="kt">a</span> <span class="kt">throwable.</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>fallbackTo</code> дозволяє вам провадити альтернативний ф'ючерс, для використання в випадку, коли ф'ючерс, на якому ви викликаєте <code>fallbackTo</code>, схибить. Ось приклад, в якому збійний ф'ючерс відкочується до вдалого ф'ючерса:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fallback</span> <span class="k">=</span> <span class="n">failure</span><span class="o">.</span><span class="n">fallbackTo</span><span class="o">(</span><span class="n">success</span><span class="o">)</span>
+<span class="n">fallback</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fallback</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res27</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо оригінальний ф'ючерс, на якому викликається <code>fallbackTo</code>, схибить, збій ф'ючерса, переданого до <code>fallbackTo</code>, просто ігнорується. Ф'ючерс, повернутий <code>fallbackTo</code>, буде хибити з початковим виключенням. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">failedFallback</span> <span class="k">=</span> <span class="n">failure</span><span class="o">.</span><span class="n">fallbackTo</span><span class="o">(</span>
+        <span class="nc">Future</span> <span class="o">{</span> <span class="k">val</span> <span class="n">res</span> <span class="k">=</span> <span class="mi">42</span><span class="o">;</span> <span class="n">require</span><span class="o">(</span><span class="n">res</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="o">);</span> <span class="n">res</span> <span class="o">}</span>
+       <span class="o">)</span>
+<span class="n">failedFallback</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">failedFallback</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res28</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+<span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>recover</code> дозволяє вам трансформувати вам невдалий ф'ючерс в успішний, дозволяючи результату вдалого ф'ючерса проходити без змін. Наприклад, на ф'ючерсі, що схибив з <code>ArithmeticException</code>, ви можете використати метод <code>recover</code>, щоб трансформувати збій в успіх, ось так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">recovered</span> <span class="k">=</span> <span class="n">failedFallback</span> <span class="n">recover</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="n">ex</span><span class="k">:</span> <span class="kt">ArithmeticException</span> <span class="o">=&gt;</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="o">}</span>
+<span class="n">recovered</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">recovered</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res32</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(-</span><span class="mi">1</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо оригінальний ф'ючерс не схибить, ф'ючерс, що повертається з <code>recover</code>, буде завершений з тим самим значенням:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">unrecovered</span> <span class="k">=</span> <span class="n">fallback</span> <span class="n">recover</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="n">ex</span><span class="k">:</span> <span class="kt">ArithmeticException</span> <span class="o">=&gt;</span> <span class="o">-</span><span class="mi">1</span>
+        <span class="o">}</span>
+<span class="n">unrecovered</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">unrecovered</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res33</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Подібним чином, якщо часткова функція, передана до <code>recover</code>, не визначена на виключенні, з яким оригінальний ф'ючерс кінець кінцем схибив, цей оригінальний збій буде передано без змін:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">alsoUnrecovered</span> <span class="k">=</span> <span class="n">failedFallback</span> <span class="n">recover</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="n">ex</span><span class="k">:</span> <span class="kt">IllegalArgumentException</span> <span class="o">=&gt;</span> <span class="o">-</span><span class="mi">2</span>
+        <span class="o">}</span>
+<span class="n">alsoUnrecovered</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">alsoUnrecovered</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res34</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>recoverWith</code> подібний до <code>recover</code>, за винятком того, що замість відновлення до значення, як в <code>recover</code>, метод <code>recoverWith</code> дозволяє вам відновити до значення ф'ючерса. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">alsoRecovered</span> <span class="k">=</span> <span class="n">failedFallback</span> <span class="n">recoverWith</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="n">ex</span><span class="k">:</span> <span class="kt">ArithmeticException</span> <span class="o">=&gt;</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">42</span> <span class="o">+</span> <span class="mi">46</span> <span class="o">}</span>
+        <span class="o">}</span>
+<span class="n">alsoRecovered</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">alsoRecovered</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res35</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">88</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як і з <code>recover</code>, якщо оригінальний ф'ючерс не схибив, або часткова функція, передана до <code>recoverWith</code> не визначена на виключенні, з яким схибив оригінальний ф'ючерс, оригінальний успіх (або збій) будуть передані наскрізь до ф'ючерса, що повертається <code>recoverWith</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____code_transform_code">Відображення обох можливостей: <code>transform</code></h3>
+<div class="paragraph"><p>Метод <code>Future</code> <code>transform</code> приймає дві функції, якими він трансформує ф'ючерс: одну для використання в разі вдачі, та іншу для випадку невдачі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">first</span> <span class="k">=</span> <span class="n">success</span><span class="o">.</span><span class="n">transform</span><span class="o">(</span>
+          <span class="n">res</span> <span class="k">=&gt;</span> <span class="n">res</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="o">,</span>
+          <span class="n">ex</span> <span class="k">=&gt;</span> <span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;see cause&quot;</span><span class="o">,</span> <span class="n">ex</span><span class="o">)</span>
+        <span class="o">)</span>
+<span class="n">first</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ф'ючерс успішний використовується перша функція:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">first</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res42</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(-</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ф'ючерс зазнає невдачі використовується друга функція:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">second</span> <span class="k">=</span> <span class="n">failure</span><span class="o">.</span><span class="n">transform</span><span class="o">(</span>
+          <span class="n">res</span> <span class="k">=&gt;</span> <span class="n">res</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="o">,</span>
+          <span class="n">ex</span> <span class="k">=&gt;</span> <span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;see cause&quot;</span><span class="o">,</span> <span class="n">ex</span><span class="o">)</span>
+        <span class="o">)</span>
+<span class="n">second</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">second</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res43</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Exception</span><span class="k">:</span> <span class="kt">see</span> <span class="kt">cause</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що за допомогою метода <code>transform</code>, показаного в попередніх прикладах, ви не можете змінити успішний ф'ючерс на невдалий, так само як неможете перетворити невдалий на успішний. Щоб зробити цей різновид трансформації простішим, Scala 2.12 вводить альтернативну перевантажену форму <code>transform</code>, що приймає функцію з <code>Try</code> до <code>Try</code>. Ось декілька прикладів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">firstCase</span> <span class="k">=</span> <span class="n">success</span><span class="o">.</span><span class="n">transform</span> <span class="o">{</span> <span class="c1">// Scala 2.12</span>
+          <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span>
+          <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="nc">Failure</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;see cause&quot;</span><span class="o">,</span> <span class="n">ex</span><span class="o">))</span>
+        <span class="o">}</span>
+<span class="n">first</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">firstCase</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res6</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(-</span><span class="mi">42</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">secondCase</span> <span class="k">=</span> <span class="n">failure</span><span class="o">.</span><span class="n">transform</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span> <span class="o">*</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span>
+          <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="nc">Failure</span><span class="o">(</span><span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="s">&quot;see cause&quot;</span><span class="o">,</span> <span class="n">ex</span><span class="o">))</span>
+        <span class="o">}</span>
+<span class="n">secondCase</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">secondCase</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res8</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Exception</span><span class="k">:</span> <span class="kt">see</span> <span class="kt">cause</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось приклад використання нового метода <code>transform</code> для трансформації невдачі до успіху:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">nonNegative</span> <span class="k">=</span> <span class="n">failure</span><span class="o">.</span><span class="n">transform</span> <span class="o">{</span> <span class="c1">// Scala 2.12</span>
+          <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">.</span><span class="n">abs</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+          <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Success</span><span class="o">(</span><span class="mi">0</span><span class="o">)</span>
+        <span class="o">}</span>
+<span class="n">nonNegative</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">nonNegative</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res11</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">0</span><span class="o">))</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="____code_zip_code_code_future_fold_code_code_future_reduce_code_code_future_sequence_code__code_future_traverse_code">Комбінування ф'ючерсів: <code>zip</code>, <code>Future.fold</code>, <code>Future.reduce</code>, <code>Future.sequence</code> та <code>Future.traverse</code></h3>
+<div class="paragraph"><p><code>Future</code> та його об'єкт компанйон пропонує методи, що дозволяють вам комбінувати декілька ф'ючерсів. Метод <code>zip</code> буде трансформувати два успішні ф'ючерса в тапл ф'ючерсів з обох значень. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">zippedSuccess</span> <span class="k">=</span> <span class="n">success</span> <span class="n">zip</span> <span class="n">recovered</span>
+<span class="n">zippedSuccess</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[(</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">zippedSuccess</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res46</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[(</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">)]]</span> <span class="k">=</span>
+    <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">((</span><span class="mi">42</span><span class="o">,-</span><span class="mi">1</span><span class="o">)))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак якщо любий з ф'ючерсів схибить, ф'ючерс, що повертається з <code>zip</code> також бути хибним з тим самим виключенням:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">zippedFailure</span> <span class="k">=</span> <span class="n">success</span> <span class="n">zip</span> <span class="n">failure</span>
+<span class="n">zippedFailure</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[(</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">)]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">zippedFailure</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res48</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[(</span><span class="kt">Int</span>, <span class="kt">Int</span><span class="o">)]]</span> <span class="k">=</span>
+    <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо обоє з ф'ючерсів невдалі, невдалий ф'ючерс буде містити виключення, що зберігається в початковому ф'ючерсі, тому, на якому був викликаний <code>zip</code>.</p></div>
+<div class="paragraph"><p>Об'єкт компанйон пропонує метод <code>fold</code>, що  дозволяє вам акумулювати результати по <code>TraversableOnce</code> колекції ф'ючерсів, отримуючи результуючий ф'ючерс. Якщо всі ф'ючерси в колекції успішні, результуючий ф'ючерс буде успішний з акумульованим результатом. Якщо любий ф'ючерс в колекції схибить, результуючий ф'ючерс буде невдалим. Якщо схиблять декілька ф'ючерсів, результат буде мати невдачу з тим самим виключенням, з яким схибив перший ф'ючерс (більш ранішній в колекції <code>TraversableOnce</code>). Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fortyTwo</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">fortyTwo</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fortySix</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">23</span> <span class="o">+</span> <span class="mi">23</span> <span class="o">}</span>
+<span class="n">fortySix</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">futureNums</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="n">fortyTwo</span><span class="o">,</span> <span class="n">fortySix</span><span class="o">)</span>
+<span class="n">futureNums</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">folded</span> <span class="k">=</span>
+      <span class="nc">Future</span><span class="o">.</span><span class="n">fold</span><span class="o">(</span><span class="n">futureNums</span><span class="o">)(</span><span class="mi">0</span><span class="o">)</span> <span class="o">{</span> <span class="o">(</span><span class="n">acc</span><span class="o">,</span> <span class="n">num</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="n">acc</span> <span class="o">+</span> <span class="n">num</span>
+      <span class="o">}</span>
+<span class="n">folded</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">folded</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res53</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">88</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>Future.reduce</code> виконує <code>fold</code> без нуля, використовуючи початковий результат ф'ючерса як стартове значення. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">reduced</span> <span class="k">=</span>
+        <span class="nc">Future</span><span class="o">.</span><span class="n">reduce</span><span class="o">(</span><span class="n">futureNums</span><span class="o">)</span> <span class="o">{</span> <span class="o">(</span><span class="n">acc</span><span class="o">,</span> <span class="n">num</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">acc</span> <span class="o">+</span> <span class="n">num</span>
+        <span class="o">}</span>
+<span class="n">reduced</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">reduced</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res54</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">88</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ви передасте порожню колекцію до <code>reduce</code>, отриманий ф'ючерс буде хибити з <code>NoSuchElementException</code>.</p></div>
+<div class="paragraph"><p>Метод <code>Future.sequence</code> трансформує колекцію <code>TraversableOnce</code> ф'ючерсів в ф'ючерс <code>TraversableOnce</code> зі значень. Наприклад, в неступному прикладі послідовність використовується до трансформації <code>List[Future[Int]]</code> до <code>Future[List[Int]]</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">futureList</span> <span class="k">=</span> <span class="nc">Future</span><span class="o">.</span><span class="n">sequence</span><span class="o">(</span><span class="n">futureNums</span><span class="o">)</span>
+<span class="n">futureList</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">futureList</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res55</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">42</span><span class="o">,</span> <span class="mi">46</span><span class="o">)))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>Future.traverse</code> буде змінювати <code>TraversableOnce</code> з любим типом елементів до <code>TraversableOnce</code> ф'ючерсів, та "послідовність" в ф'ючерс <code>TraversableOnce</code> зі значень. Наприклад, ось <code>List[Int]</code>, що трансформований до <code>Future[List[Int]]</code> через <code>Future.traverse</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">traversed</span> <span class="k">=</span>
+        <span class="nc">Future</span><span class="o">.</span><span class="n">traverse</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">))</span> <span class="o">{</span> <span class="n">i</span> <span class="k">=&gt;</span> <span class="nc">Future</span><span class="o">(</span><span class="n">i</span><span class="o">)</span> <span class="o">}</span>
+<span class="n">traversed</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">traversed</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res58</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="nc">List</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)))</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="____code_foreach_code_code_oncomplete_code__code_andthen_code">Виконання побічних ефектів: <code>foreach</code>, <code>onComplete</code> та <code>andThen</code></h3>
+<div class="paragraph"><p>Іноді вам буває потрібно виконати побічних ефект після закунчення ф'ючерса. <code>Future</code> провадить декілька методів для ціх цілей. Найбільш базовий метод є <code>foreach</code>, що буде виконувати побічний ефект, якщо ф'ючерс закінчився успішно. Наприклад, в наступному прикладі <code>println</code> не виконується в випадку невдалого ф'ючерса, тільки в випадку вдалого:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">failure</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">ex</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">ex</span><span class="o">))</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">success</span><span class="o">.</span><span class="n">foreach</span><span class="o">(</span><span class="n">res</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">res</span><span class="o">))</span>
+<span class="mi">42</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Оскільки <code>for</code> без <code>yield</code> буде переписане до виклика <code>foreach</code>, ви також можете досягти того самого ефекту з використанням <code>for</code> виразу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="n">res</span> <span class="k">&lt;-</span> <span class="n">failure</span><span class="o">)</span> <span class="n">println</span><span class="o">(</span><span class="n">res</span><span class="o">)</span>
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">(</span><span class="n">res</span> <span class="k">&lt;-</span> <span class="n">success</span><span class="o">)</span> <span class="n">println</span><span class="o">(</span><span class="n">res</span><span class="o">)</span>
+<span class="mi">42</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Future</code> також пропонує два методи для реєстрації функцій "зворотнього виклику". Метод <code>onComplete</code> буде виконаний кожного разу, коли ф'ючерс нарешті завершується, вдало або невдало. Функції буде переданий <code>Try</code> — <code>Success</code>, що буде містити результат, якщо ф'ючерс успішний, інакше <code>Failure</code>, що міститиме виключення, що призвело до збою ф'ючерса. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.util.</span><span class="o">{</span><span class="nc">Success</span><span class="o">,</span> <span class="nc">Failure</span><span class="o">}</span>
+<span class="k">import</span> <span class="nn">scala.util.</span><span class="o">{</span><span class="nc">Success</span><span class="o">,</span> <span class="nc">Failure</span><span class="o">}</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">success</span> <span class="n">onComplete</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">res</span><span class="o">)</span>
+        <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span>
+      <span class="o">}</span>
+<span class="mi">42</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">failure</span> <span class="n">onComplete</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">res</span><span class="o">)</span>
+          <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span>
+        <span class="o">}</span>
+<span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">ArithmeticException</span><span class="k">:</span> <span class="kt">/</span> <span class="kt">by</span> <span class="kt">zero</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Future</code> не гарантує жодний порядок виконання для функцій зворотнього виклику, зареєстрованих за допомогою <code>onComplete</code>. Якщо ви бажаєте примусити порядок для функцій зворотнього виклику, замість цього ви маєте використовувати <code>andThen</code>. Метод <code>andThen</code> повертає новий ф'ючерс, що відображує (успіхом або невдачею в той же спосіб) оригінальний ф'ючерс на те що ви викликаєте <code>andThen</code>, але він не завершується, доки функція зворотнього виклику не буде повністю виконаний:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">newFuture</span> <span class="k">=</span> <span class="n">success</span> <span class="n">andThen</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">res</span><span class="o">)</span>
+          <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span>
+        <span class="o">}</span>
+<span class="mi">42</span>
+<span class="n">newFuture</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">newFuture</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res76</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що якщо функція зворотнього виклику, передана до <code>andThen</code>, при виконанні закидає виключення, це виключення не буде просуватись до наступних зворотніх викликів, або повідомлятись через отриманий ф'ючерс.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_____2_12_code_flatten_code_code_zipwith_code__code_transformwith_code">Інші методи, додані в 2.12: <code>flatten</code>, <code>zipWith</code> та <code>transformWith</code></h3>
+<div class="paragraph"><p>Метод <code>flatten</code>, доданий в 2.12, трансформує <code>Future</code>, вкладене до іншого <code>Future</code> на <code>Future</code> вкладеного типу. Наприклад, <code>flatten</code> може трансформувати <code>Future[Future[Int]]</code> на <code>Future[Int]</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">nestedFuture</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">42</span> <span class="o">}</span> <span class="o">}</span>
+<span class="n">nestedFuture</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">flattened</span> <span class="k">=</span> <span class="n">nestedFuture</span><span class="o">.</span><span class="n">flatten</span> <span class="c1">// Scala 2.12</span>
+<span class="n">flattened</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Future</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>zipWith</code>, доданий в 2.12, в основному поєднує два <code>Future</code> разом, потім виконує <code>map</code> на результуючому таплі. Ось приклад двокрокового процесу, <code>zip</code>, за яким іде <code>map</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">futNum</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">futNum</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">futStr</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="s">&quot;ans&quot;</span> <span class="o">+</span> <span class="s">&quot;wer&quot;</span> <span class="o">}</span>
+<span class="n">futStr</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">zipped</span> <span class="k">=</span> <span class="n">futNum</span> <span class="n">zip</span> <span class="n">futStr</span>
+<span class="n">zipped</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[(</span><span class="kt">Int</span>, <span class="kt">String</span><span class="o">)]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">mapped</span> <span class="k">=</span> <span class="n">zipped</span> <span class="n">map</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="o">(</span><span class="n">num</span><span class="o">,</span> <span class="n">str</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">s&quot;</span><span class="si">$num</span><span class="s"> is the </span><span class="si">$str</span><span class="s">&quot;</span>
+        <span class="o">}</span>
+<span class="n">mapped</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">mapped</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span> <span class="n">is</span> <span class="n">the</span> <span class="n">answer</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>zipWith</code> дозволяє вам виконати ту ж операцію в один крок:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="n">futNum</span><span class="o">.</span><span class="n">zipWith</span><span class="o">(</span><span class="n">futStr</span><span class="o">)</span> <span class="o">{</span> <span class="c1">// Scala 2.12</span>
+          <span class="k">case</span> <span class="o">(</span><span class="n">num</span><span class="o">,</span> <span class="n">str</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="s">s&quot;</span><span class="si">$num</span><span class="s"> is the </span><span class="si">$str</span><span class="s">&quot;</span>
+        <span class="o">}</span>
+<span class="n">zipWithed</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res3</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Success</span><span class="o">(</span><span class="mi">42</span> <span class="n">is</span> <span class="n">the</span> <span class="n">answer</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Future</code> також отримав метод <code>transformWith</code> в Scala 2.12, що дозволяє вам трансформувати ф'ючерс, використовуючи функцію від <code>Try</code> до <code>Future</code>. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">flipped</span> <span class="k">=</span> <span class="n">success</span><span class="o">.</span><span class="n">transformWith</span> <span class="o">{</span> <span class="c1">// Scala 2.12</span>
+          <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="n">res</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="nc">Future</span> <span class="o">{</span> <span class="k">throw</span> <span class="k">new</span> <span class="nc">Exception</span><span class="o">(</span><span class="n">res</span><span class="o">.</span><span class="n">toString</span><span class="o">)</span> <span class="o">}</span>
+          <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Future</span> <span class="o">{</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+        <span class="o">}</span>
+<span class="n">flipped</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span><span class="n">scala</span><span class="o">&gt;</span> <span class="n">flipped</span><span class="o">.</span><span class="n">value</span>
+<span class="n">res5</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">scala.util.Try</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="nc">Some</span><span class="o">(</span><span class="nc">Failure</span><span class="o">(</span><span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Exception</span><span class="k">:</span> <span class="err">42</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Метод <code>transformWith</code> подібний до нового, перевантаженого метода <code>transform</code>, доданого в Scala 2.12, за винятком, що замість видачі <code>Try</code> в вашу передану функцію як в <code>transform</code>, <code>transformWith</code> дозволяє вам видати функцію.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_32_4___">32.4 Тестування ф'ючерсів</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Одна перевага ф'ючерсів Scala в тому, що вони допомагають уникати блокування. На більшості JVM реалізацій після створення тільки декількох тисяч потоків, вартість перемикання між потоками буде деградувати продкутивність до неприйнятного рівня. Через уникнення блокування ви можете підтримувати скінчене число потоків, які ви вважаєте необхідними для напруженої роботи. Тим не менш Scala дозволяє вам блокувати на результаті ф'ючерса, якщо вам потрібно. Об'єкт Scala <code>Await</code> спрощує блокування для очікування результату ф'ючерса. Ось приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.concurrent.Await</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.Await</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">x</span> <span class="k">=</span> <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">fut</span><span class="o">,</span> <span class="mf">15.</span><span class="n">seconds</span><span class="o">)</span> <span class="c1">// blocks</span>
+<span class="n">x</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">42</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Await.result</code> приймає <code>Future</code> та <code>Duration</code>. <code>Duration</code> вказує, як довго <code>Await.result</code> має чекати завершення <code>Future</code> перед таймаутом. В цьому прикладі для <code>Duration</code> було вказано 15 секунд. Таким чином, метод <code>Await.result</code> не повинен вийти в таймаут перед завершенням функції, що обчислює значення <code>42</code>.</p></div>
+<div class="paragraph"><p>Одне місце, де блокування загалом прийнятне, це в тестах асинхронного коду. Коли цей <code>Await.result</code> повертається, ви можете виконувати обчислення з використанням результату, як твердження в тесті:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">org.scalatest.Matchers._</span>
+<span class="k">import</span> <span class="nn">org.scalatest.Matchers._</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">x</span> <span class="n">should</span> <span class="n">be</span> <span class="o">(</span><span class="mi">42</span><span class="o">)</span>
+<span class="n">res0</span><span class="k">:</span> <span class="kt">org.scalatest.Assertion</span> <span class="o">=</span> <span class="nc">Succeeded</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Альтернативно, ви можете використовувати блокуючі конструкції, що провадить ScalaTest трейт <code>ScalaFutures</code>. Наприклад, метод <code>futureValue</code>, неявно доданий до <code>Future</code> через <code>ScalaFutures</code>, буде блокувати, доки ф'ючерс не завершиться. Якщо ф'ючерс схибить, <code>futureValue</code> буде закидати <code>TestFailedException</code>, що описує проблему. Якщо ф'ючерс успішний, <code>futureValue</code> буде повертати успішний результат ф'ючерса, так що ви можете виконати твердження для значення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">org.scalatest.concurrent.ScalaFutures._</span>
+<span class="k">import</span> <span class="nn">org.scalatest.concurrent.ScalaFutures._</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">fut</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">10000</span><span class="o">);</span> <span class="mi">21</span> <span class="o">+</span> <span class="mi">21</span> <span class="o">}</span>
+<span class="n">fut</span><span class="k">:</span> <span class="kt">scala.concurrent.Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="n">fut</span><span class="o">.</span><span class="n">futureValue</span> <span class="n">should</span> <span class="n">be</span> <span class="o">(</span><span class="mi">42</span><span class="o">)</span> <span class="c1">// futureValue блокується</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">org.scalatest.Assertion</span> <span class="o">=</span> <span class="nc">Succeeded</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Хоча блокування в тестах часто гарне, ScalaTest 3.0 додає "асинхронні" стилі тестування, що дозволяють вам тестувати ф'ючерсси без блокування. Маючи ф'ючерс, замість блокування і виконання тверджень на результаті, ви можете відображити твердження напряму на цей ф'ючерс, та повернути результуючий <code>Future[Assertion]</code> до ScalaTest.</p></div>
+<div class="paragraph"><p>Приклад показаний на Лістингу 32.1. Коли твердження ф'ючерса завершиться, ScalaTest запустить події (тест успішний, тест схибив, тощо) то доповідача тестів асинхронно.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">org.scalatest.AsyncFunSpec</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.Future</span>
+
+<span class="k">class</span> <span class="nc">AddSpec</span> <span class="k">extends</span> <span class="nc">AsyncFunSpec</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">addSoon</span><span class="o">(</span><span class="n">addends</span><span class="k">:</span> <span class="kt">Int*</span><span class="o">)</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Future</span> <span class="o">{</span> <span class="n">addends</span><span class="o">.</span><span class="n">sum</span> <span class="o">}</span>
+
+  <span class="n">describe</span><span class="o">(</span><span class="s">&quot;addSoon&quot;</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">it</span><span class="o">(</span><span class="s">&quot;will eventually compute a sum of passed Ints&quot;</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">futureSum</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="n">addSoon</span><span class="o">(</span><span class="mi">1</span><span class="o">,</span> <span class="mi">2</span><span class="o">)</span>
+      <span class="c1">// Ви можете відобразити твердежння на Future, потім</span>
+      <span class="c1">// повернути отриманий Future[Assertion] до ScalaTest:</span>
+      <span class="n">futureSum</span> <span class="n">map</span> <span class="o">{</span> <span class="n">sum</span> <span class="k">=&gt;</span> <span class="n">assert</span><span class="o">(</span><span class="n">sum</span> <span class="o">==</span> <span class="mi">3</span><span class="o">)</span> <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Лістинг 32.1 - Повернення ф'ючерного твердження до <code>ScalaTest</code>.</p></div>
+<div class="paragraph"><p>Випадок використання асинхронного тестування ілюструє загальний принцип для роботи з ф'ючерсами: опинившись у "ф'ючерному космосі", намагайтесь залишатись у ф'ючерному космосі. Не блокуйте на ф'ючерсі, та потім не продовжуйте обчислення з результатом. Залишайтесь асинхронним через виконання серій трансформацій, кожна з яких повертає новий ф'ючерс до <code>transform</code>. Щоб отримати результати з ф'ючерного космосу, реєструйте побічні ефекти, що будуть виконуватись асинхронно, коли ф'ючерс завершиться. Цей підхід допоможе вам максимально задіяти ваші потоки.</p></div>
+</div>
+</div>
 <div class="sect1">
 <h2 id="_32_5_">32.5 Висновок</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>Concurrent programming gives you great power. It lets you simplify your code and take advantage of
-multiple processors. It&#8217;s unfortunate that the most widely used concurrency primitives, threads, locks,
-and monitors, are such a minefield of deadlocks and race conditions. Futures provide a way out of that
-minefield, letting you write concurrent programs without as great a risk of deadlocks and race
-conditions. This chapter has introduced several fundamental constructs for working with futures in
-Scala, including how to create futures, how to transform them, and how to test them, among other nuts
-and bolts. It then showed you how to use these constructs as part of a general futures style.</p></div>
+<div class="paragraph"><p>Конкуренте програмування надає вам велику силу. Воно дозволяє вам отримати перевагу від декількох процесорів. На невдачу, що найбільш широко застосовувані конкурентні примітиви, потоки, блокування та монітори, є таким мінним полем з глухих блокувань та станів гонок. Ф'ючерси провадять спосіб виходу з цього мінного поля, дозволяючи вам писати конкурентні програми без великого ризику глухих блокувань та станів гонок. Ця глава ввела декіклька фундаментальних конструкцій для роботи зі ф'ючерсами в Scala, включаючи як створити ф'ючерси, як трансормувати їх, та як їх протестувати, крім інших дрібниць. Вона також показала вам, як використовувати ці конструкції, як частину загального стилю ф'ючерсів.</p></div>
 </div>
 </div>
 </div>
@@ -1396,7 +1458,7 @@ and bolts. It then showed you how to use these constructs as part of a general f
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-04-18 04:52:18 EEST
+ 2019-04-22 04:48:42 EEST
 </div>
 </div>
 </body>
