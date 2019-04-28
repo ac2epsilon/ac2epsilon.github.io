@@ -730,18 +730,18 @@ def factor: Parser[Any] =
 
 Друга проблема, що впливає на продуктивність комбінаторних парсерів є те, що вони міксують парсерні конструкції та аналіз входу в тій самій множині операцій. Фактично, парсер гененується поновому для кожного входа, що розбирається.
 
-Цю проблему можливо подолати, але вона потребує іншої реалізації фреймворка парсерного комбінатора. В оптимізованоому фреймворку парсер більше не буде представлений як фунукція від входу на розібраний результат. Замість цього він буде представлений як дерево, де кожний крок конструкції був представлений як кейс клас. Наприклад, послідовна композиція може бути представлена як кейс клас `Seq`, альтернативу як `Alt`, і так далі. "Самий зовнішній" метод персера, `phrase`, could then take this symbolic representation of a parser and convert it to highly efficient parsing tables, using standard parser generator algorithms.
+Цю проблему можливо подолати, але вона потребує іншої реалізації фреймворка парсерного комбінатора. В оптимізованоому фреймворку парсер більше не буде представлений як фунукція від входу на розібраний результат. Замість цього він буде представлений як дерево, де кожний крок конструкції був представлений як кейс клас. Наприклад, послідовна композиція може бути представлена як кейс клас `Seq`, альтернативу як `Alt`, і так далі. "Самий зовнішній" метод персера, `phrase`, зможе потім брати цю символічну репрезентацію, та перетворювати її на дуже ефективні таблиці парсингу, використовуючи стандартні алгоритми парсерних генераторів.
 
-What's nice about all this is that from a user perspective nothing changes compared to plain combinator parsers. Users still write parsers in terms of ident, floatingPointNumber, ~, |, and so on. They need not be aware that these methods generate a symbolic representation of a parser instead of a parser function. Since the phrase combinator converts these representations into real parsers, everything works as before.
+Що гарне щодо всього цього, це те, що з перспективи користувача нічого не зміниться, порівняно з простими комбінаторними парсерами. Користувачі все ще пишуть парсери в термінах `ident`, `floatingPointNumber`, `~`, `|`, і так далі. Їм не треба турбуватись, що ці методи генерують символічну репрезентацію парсера замість парсерної функції. Оскільки комбінатор `phrase` конвертує ці репрезентації в реальні парсери, все робить як раніше.
 
-The advantage of this scheme with respect to performance is two-fold. First, you can now factor out parser construction from input analysis. If you were to write:
+Перевага цієї схеми з точки зору продуктивності подвійна. Перше, ви можете тепер виділити парсерну конструкцію від аналізатора входу. Якщо ви напишете:
 [source,scala]
 ----
 val jsonParser = phrase(value)
 ----
-and then apply jsonParser to several different inputs, the jsonParser would be constructed only once, not every time an input is read.
+та потім застосуєте `jsonParser` до декількох різних входів,  `jsonParser` буде сконструйований тільки один раз, не кожний раз, коли читається вхід.
 
-Second, the parser generation can use efficient parsing algorithms such as LALR(1).footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] These algorithms usually lead to much faster parsers than parsers that operate with backtracking.
+Друге, генерація парсера може використовувати ефективні алгоритми парсингу, такі як LALR(1).footnote:[Aho, et. al., Compilers: Principles, Techniques, and Tools. [Aho86\]] Ці алгоритми зазвичай призводять до значно швидших парсерів, ніж парсери, що оперують з бектрекінгом.
 
-At present, such an optimizing parser generator has not yet been written for Scala. But it would be perfectly possible to do so. If someone contributes such a generator, it will be easy to integrate into the standard Scala library. Even postulating that such a generator will exist at some point in the future, however, there are reasons for keeping the current parser combinator framework around. It is much easier to understand and to adapt than a parser generator, and the difference in speed would often not matter in practice, unless you want to parse very large inputs.
+На даний момент такий оптимізований генератор парсерів ще не написаний для Scala. Але досить можливо зробити це. Якщо хтось зробить такий генератор, буде простим інтегрувати його в стандартну бібліотеку Scala. Однак навіть постулюючи, що такий генератор буде існувати в якійсь точці майбутнього, є причини залишити поточний фреймворк парсерних комбінаторів поряд. Його значно простіше зрозуміти та адаптувати, ніж парсерний генератор, та різниця в швидкості часто не буде мати значення на практиці, якщо ви не матимете дуже великих вхідних даних.
  
