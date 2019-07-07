@@ -1,0 +1,939 @@
+include::header.adoc[]
+
+4. Дані та функціональність
+===========================
+
+В OOP ми звикли думати про дані та функціональність разом: ієрархії класів несуть методи, і трейти можуть вимагати, щоб існували поля даних. Поліморфізм часу виконання об'єкту є терміном відношення “є різновидом”, що вимагає, щоб класи наслідували від загальних інтерфейсів. Це може викликати плутанину при зростанні обсягу коду. Прості типи даних стають прихованими за сотнями рядків методів, міксіни трейтів потерпають від помилок порядку ініціалізації, та тестування / мокінг дуже пов'язаних компонент стає жахом.
+
+FP приймає інший підхід, визначаючи дані та функціональність окремо. В цій главі ми розглянемо основи типів даних, та переваги обмеження себе до підмножини мови Scala. Ми також дослідимо типокласи як спосіб досягти поліморфізм часу компіляції: думати про функціональність структури даних в термінах відношення “має”, скоріше, ніж “є різновидом”.
+
+4.1 Дані
+--------
+Фундаментальні будівельні блоки типів даних є:
+
+* `final case class`, також відомі як продукти
+* `sealed abstract class`, також відомі як ко-продукти
+* `case object` та значення `Int`, `Double`, `String` (тощо) без методів або полів, крім параметрів конструктора. Ми обираємо абстрактні класи замість трейтів, щоб отримати кращу бінарну сумісність, та щоб перешкоджати міксуванню трейтів.
+
+Колективна назва для продуктів, ко-продуктів та значень є _Алгебраїчні типи даних_ (Algebraic Data Type, ADT).
+
+Ми компонуємо типи даних з логічної алгебри `AND` та `XOR` (виключне `OR`): продукт містить кожний тип, з яких він складається, але ко-продукт може бути тільки один. For example
+[source,scala]
+----
+product: ABC = a AND b AND c
+coproduct: XYZ = x XOR y XOR z
+----
+записане в Scala
+[source,scala]
+----
+  // значення
+  case object A
+  type B = String
+  type C = Int
+  
+  // продукт
+  final case class ABC(a: A.type, b: B, c: C)
+  
+  // ко-продукт
+  sealed abstract class XYZ
+  case object X extends XYZ
+  case object Y extends XYZ
+  final case class Z(b: B) extends XYZ
+----
+4.1.1 Рекурсівні ADT
+~~~~~~~~~~~~~~~~~~~~
+Коли ADT посилається на себе, ми називаємо це Рекурсивним алгебраїчним типом даних (Recursive Algebraic Data Type).
+
+`scalaz.IList`, безпечна альтернатива до `stdlib` `List`, є рекурсивною, оскікльи `ICons` містить посилання на `IList.`:
+[source,scala]
+----
+  sealed abstract class IList[A]
+  final case class INil[A]() extends IList[A]
+  final case class ICons[A](head: A, tail: IList[A]) extends IList[A]
+----
+4.1.2 Функції на ADT
+~~~~~~~~~~~~~~~~~~~~
+ADT може містити чисті функції:
+[source,scala]
+----
+  final case class UserConfiguration(accepts: Int => Boolean)
+----
+Але ADT, що мають функції, ідуть з деякими особистостями, бо вони не ідеально транслюються на JVM. Наприклад, старий `Serializable`, `hashCode`, `equals` та `toString` не поводяться так, як дехто може логічно очікувати.
+
+Нажаль, `Serializable` використовується в популярних фреймворках, не зважаючи на значно кращі альтернативи. Загальна пастка є забути, що  `Serializable` може спробувати селіалізувати ціле замикання функції, що може зламати промисловий сервер. Подібна специфіка стосується старих Java класів, таких як `Throwable`, що може нести посилання на довільні об'єкти.
+
+Ми будемо досліджувати альтернативи до старих методів, коли ми дискутуватимемо бібліотеку `Scalaz` в наступній главі, ціною втрати взаємодії з деяким старим кодом Java та Scala.
+
+4.1.3 Вичерпність
+~~~~~~~~~~~~~~~~~
+Важливо, що ми використовуємо закоркований абстрактний клас, не просто абстрактний клас, коли визначаємо тип даних. Закоркування класу означає, що всі підтипи мають бути визначені в тому ж файлі, дозволяючи компілятору знати щодо них в вичерпному співпадінні шаблонів, та в макросах, що запобігають шаблонному коду. Тобто:
+[source,scala]
+----
+  scala> sealed abstract class Foo
+         final case class Bar(flag: Boolean) extends Foo
+         final case object Baz extends Foo
+  
+  scala> def thing(foo: Foo) = foo match {
+           case Bar(_) => true
+         }
+  <console>:14: error: match may not be exhaustive.
+  It would fail on the following input: Baz
+         def thing(foo: Foo) = foo match {
+                               ^
+----
+Це показує розробнику, що вони зламають речі, якщо вони додають новий продукт до коду. Ми використовуємо `-Xfatal-warnings`, інакше це тільки попередження.
+
+Однак компілятор не буде виконувати перевірку вичерпності, якщо клас не закоркований, або якщо стоять захисники, тобто:
+[source,scala]
+----
+  scala> def thing(foo: Foo) = foo match {
+           case Bar(flag) if flag => true
+         }
+  
+  scala> thing(Baz)
+  scala.MatchError: Baz (of class Baz$)
+    at .thing(<console>:15)
+----
+Щоб залишатись в безпеці не використовуйте захисників на закоркованих типах.
+
+Флаг `-Xstrict-patmat-analysis` був запропонований як покращення мови для виконання додаткових перевірок співпадіння шаблонів.
+
+4.1.4 Альтернативні продукти та ко-продукти
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Іншою формою продукта є тапл, що як непомічений фінальний кейс клас.
+
+`(A.type, B, C)` еквівалентне до `ABC` в прикладі вище, але краще використовувати фінальний кейс клас як частини ADT, оскільки брак імен ускладнює справи, і кейс клас має значно кращу продуктивність для примітивних значень.
+
+Інша форма ко-продукта утворюється, коли ми вкладаємо типи `Either`. Тобто:
+[source,scala]
+----
+  Either[X.type, Either[Y.type, Z]]
+----
+еквівалентне до закоркованого абстрактного класу `XYZ`. Ясніший синтаксис для визначення вкладених типів `Either` є створення псевдониму типу, що завершується на двокрапку, дозволяючи інфіксну нотацію з правою асоціацією:
+[source,scala]
+----
+  type |:[L,R] = Either[L, R]
+  
+  X.type |: Y.type |: Z
+----
+Це корисно для створення анонімних ко-продуктів, коли ми не можемо покласти всі реалізації в той самий джерельний файл.
+[source,scala]
+----
+  type Accepted = String |: Long |: Boolean
+----
+І ще один альтернативний ко-продукт є створення власного закоркованого абстрактного класу з фінальним кейс класом, що просто огортає бажаний тип:
+[source,scala]
+----
+  sealed abstract class Accepted
+  final case class AcceptedString(value: String) extends Accepted
+  final case class AcceptedLong(value: Long) extends Accepted
+  final case class AcceptedBoolean(value: Boolean) extends Accepted
+----
+Порівняння шаблонів на ціх формах ко-продуктів може бути тендітним, ось чому були досліджені _Union Types_ в `Dotty`, компіляторі Scala наступного покоління. Макроси, такі як `totalitarian` та `iotaz` існують як альтернативні шляхи кодування анонімних ко-продуктів.
+
+4.1.5 Подача інформації
+~~~~~~~~~~~~~~~~~~~~~~~
+Besides being a container for necessary business information, data types can be used to encode constraints. For example,
+
+  final case class NonEmptyList[A](head: A, tail: IList[A])
+can never be empty. This makes scalaz.NonEmptyList a useful data type despite containing the same information as IList.
+
+Product types often contain types that are far more general than is allowed. In traditional OOP this would be handled with input validation through assertions:
+
+  final case class Person(name: String, age: Int) {
+    require(name.nonEmpty && age > 0) // breaks Totality, don't do this!
+  }
+Instead, we can use the Either data type to provide Right[Person] for valid instances and protect invalid instances from propagating. Note that the constructor is private:
+
+  final case class Person private(name: String, age: Int)
+  object Person {
+    def apply(name: String, age: Int): Either[String, Person] = {
+      if (name.nonEmpty && age > 0) Right(new Person(name, age))
+      else Left(s"bad input: $name, $age")
+    }
+  }
+  
+  def welcome(person: Person): String =
+    s"${person.name} you look wonderful at ${person.age}!"
+  
+  for {
+    person <- Person("", -1)
+  } yield welcome(person)
+4.1.5.1 Refined Data Types
+A clean way to restrict the values of a general type is with the refined library, providing a suite of restrictions to the contents of data. To install refined, add the following to build.sbt
+
+  libraryDependencies += "eu.timepit" %% "refined-scalaz" % "0.9.2"
+and the following imports
+
+  import eu.timepit.refined
+  import refined.api.Refined
+Refined allows us to define Person using adhoc refined types to capture requirements exactly, written A Refined B.
+
+All types with two parameters can be written infix in Scala. For example, Either[String, Int] is the same as String Either Int. It is conventional for Refined to be written infix since A Refined B can be read as “an A that meets the requirements defined in B”.
+
+  import refined.numeric.Positive
+  import refined.collection.NonEmpty
+  
+  final case class Person(
+    name: String Refined NonEmpty,
+    age: Int Refined Positive
+  )
+The underlying value can be obtained with .value. We can construct a value at runtime using .refineV, returning an Either
+
+  scala> import refined.refineV
+  scala> refineV[NonEmpty]("")
+  Left(Predicate isEmpty() did not fail.)
+  
+  scala> refineV[NonEmpty]("Sam")
+  Right(Sam)
+If we add the following import
+
+  import refined.auto._
+we can construct valid values at compiletime and get an error if the provided value does not meet the requirements
+
+  scala> val sam: String Refined NonEmpty = "Sam"
+  Sam
+  
+  scala> val empty: String Refined NonEmpty = ""
+  <console>:21: error: Predicate isEmpty() did not fail.
+More complex requirements can be captured, for example we can use the built-in rule MaxSize with the following imports
+
+  import refined.W
+  import refined.boolean.And
+  import refined.collection.MaxSize
+capturing the requirement that the String must be both non-empty and have a maximum size of 10 characters:
+
+  type Name = NonEmpty And MaxSize[W.`10`.T]
+  
+  final case class Person(
+    name: String Refined Name,
+    age: Int Refined Positive
+  )
+The W notation is short for “witness”. This syntax will be much simpler in Scala 2.13, which has support for literal types:
+
+  type Name = NonEmpty And MaxSize[10]
+It is easy to define custom requirements that are not covered by the refined library. For example in drone-dynamaic-agents we will need a way of ensuring that a String contains application/x-www-form-urlencoded content. We can create a Refined rule using the Java regular expression library:
+
+  sealed abstract class UrlEncoded
+  object UrlEncoded {
+    private[this] val valid: Pattern =
+      Pattern.compile("\\A(\\p{Alnum}++|[-.*_+=&]++|%\\p{XDigit}{2})*\\z")
+  
+    implicit def urlValidate: Validate.Plain[String, UrlEncoded] =
+      Validate.fromPredicate(
+        s => valid.matcher(s).find(),
+        identity,
+        new UrlEncoded {}
+      )
+  }
+4.1.6 Simple to Share
+By not providing any functionality, ADTs can have a minimal set of dependencies. This makes them easy to publish and share with other developers. By using a simple data modelling language, it makes it possible to interact with cross-discipline teams, such as DBAs, UI developers and business analysts, using the actual code instead of a hand written document as the source of truth.
+
+Furthermore, tooling can be more easily written to produce or consume schemas from other programming languages and wire protocols.
+
+4.1.7 Counting Complexity
+The complexity of a data type is the count of values that can exist. A good data type has the least amount of complexity it needs to hold the information it conveys, and no more.
+
+Values have a built-in complexity:
+
+Unit has one value (why it is called “unit”)
+Boolean has two values
+Int has 4,294,967,295 values
+String has effectively infinite values
+To find the complexity of a product, we multiply the complexity of each part.
+
+(Boolean, Boolean) has 4 values (2*2)
+(Boolean, Boolean, Boolean) has 8 values (2*2*2)
+To find the complexity of a coproduct, we add the complexity of each part.
+
+(Boolean |: Boolean) has 4 values (2+2)
+(Boolean |: Boolean |: Boolean) has 6 values (2+2+2)
+To find the complexity of a ADT with a type parameter, multiply each part by the complexity of the type parameter:
+
+Option[Boolean] has 3 values, Some[Boolean] and None (2+1)
+In FP, functions are total and must return an value for every input, no Exception. Minimising the complexity of inputs and outputs is the best way to achieve totality. As a rule of thumb, it is a sign of a badly designed function when the complexity of a function’s return value is larger than the product of its inputs: it is a source of entropy.
+
+The complexity of a total function is the number of possible functions that can satisfy the type signature: the output to the power of the input.
+
+Unit => Boolean has complexity 2
+Boolean => Boolean has complexity 4
+Option[Boolean] => Option[Boolean] has complexity 27
+Boolean => Int is a mere quintillion going on a sextillion.
+Int => Boolean is so big that if all implementations were assigned a unique number, each would require 4 gigabytes to represent.
+In reality, Int => Boolean will be something simple like isOdd, isEven or a sparse BitSet. This function, when used in an ADT, could be better replaced with a coproduct labelling the limited set of functions that are relevant.
+
+When our complexity is “infinity in, infinity out” we should introduce restrictive data types and validation closer to the point of input with Refined from the previous section.
+
+The ability to count the complexity of a type signature has one other practical application: we can find simpler type signatures with High School algebra! To go from a type signature to its algebra of complexity, simply replace
+
+Either[A, B] with a + b
+(A, B) with a * b
+A => B with b ^ a
+do some rearranging, and convert back. For example, say we’ve designed a framework based on callbacks and we’ve managed to work ourselves into the situation where we have created this type signature:
+
+  (A => C) => ((B => C) => C)
+We can convert and rearrange
+
+  (c ^ (c ^ b)) ^ (c ^ a)
+  = c ^ ((c ^ b) * (c ^ a))
+  = c ^ (c ^ (a + b))
+then convert back to types and get
+
+  (Either[A, B] => C) => C
+which is much simpler: we only need to ask the users of our framework to provide a Either[A, B] => C.
+
+The same line of reasoning can be used to prove that
+
+  A => B => C
+is equivalent to
+
+  (A, B) => C
+also known as Currying.
+
+4.1.8 Prefer Coproduct over Product
+An archetypal modelling problem that comes up a lot is when there are mutually exclusive configuration parameters a, b and c. The product (a: Boolean, b: Boolean, c: Boolean) has complexity 8 whereas the coproduct
+
+  sealed abstract class Config
+  object Config {
+    case object A extends Config
+    case object B extends Config
+    case object C extends Config
+  }
+has a complexity of 3. It is better to model these configuration parameters as a coproduct rather than allowing 5 invalid states to exist.
+
+The complexity of a data type also has implications on testing. It is practically impossible to test every possible input to a function, but it is easy to test a sample of values with the Scalacheck property testing framework. If a random sample of a data type has a low probability of being valid, it is a sign that the data is modelled incorrectly.
+
+4.1.9 Optimisations
+A big advantage of using a simplified subset of the Scala language to represent data types is that tooling can optimise the JVM bytecode representation.
+
+For example, we could pack Boolean and Option fields into an Array[Byte], cache values, memoise hashCode, optimise equals, use @switch statements when pattern matching, and much more.
+
+These optimisations are not applicable to OOP class hierarchies that may be managing state, throwing exceptions, or providing adhoc method implementations.
+
+4.2 Functionality
+Pure functions are typically defined as methods on an object.
+
+  package object math {
+    def sin(x: Double): Double = java.lang.Math.sin(x)
+    ...
+  }
+  
+  math.sin(1.0)
+However, it can be clunky to use object methods since it reads inside-out, not left to right. In addition, a function on an object steals the namespace. If we were to define sin(t: T) somewhere else we get ambiguous reference errors. This is the same problem as Java’s static methods vs class methods.
+
+The sort of developer who puts methods on a trait, requiring users to mix it with the cake pattern, is going straight to hell. It leaks internal implementation detail to public APIs, bloats bytecode, makes binary compatibility basically impossible, and confuses IDE autocompleters.
+
+With the implicit class language feature (also known as extension methodology or syntax), and a little boilerplate, we can get the familiar style:
+
+  scala> implicit class DoubleOps(x: Double) {
+           def sin: Double = math.sin(x)
+         }
+  
+  scala> (1.0).sin
+  res: Double = 0.8414709848078965
+Often it is best to just skip the object definition and go straight for an implicit class, keeping boilerplate to a minimum:
+
+  implicit class DoubleOps(x: Double) {
+    def sin: Double = java.lang.Math.sin(x)
+  }
+implicit class is syntax sugar for an implicit conversion:
+
+  implicit def DoubleOps(x: Double): DoubleOps = new DoubleOps(x)
+  class DoubleOps(x: Double) {
+    def sin: Double = java.lang.Math.sin(x)
+  }
+Which unfortunately has a runtime cost: each time the extension method is called, an intermediate DoubleOps will be constructed and then thrown away. This can contribute to GC pressure in hotspots.
+
+There is a slightly more verbose form of implicit class that avoids the allocation and is therefore preferred:
+
+  implicit final class DoubleOps(private val x: Double) extends AnyVal {
+    def sin: Double = java.lang.Math.sin(x)
+  }
+4.2.1 Polymorphic Functions
+The more common kind of function is a polymorphic function, which lives in a typeclass. A typeclass is a trait that:
+
+holds no state
+has a type parameter
+has at least one abstract method (primitive combinators)
+may contain generalised methods (derived combinators)
+may extend other typeclasses
+There can only be one implementation of a typeclass for any given type parameter, a property known as typeclass coherence. Typeclasses look superficially similar to algebraic interfaces from the previous chapter, but algebras do not have to be coherent.
+
+Typeclass coherence is primarily about consistency, and the consistency gives us the confidence to use implicit parameters. It would be difficult to reason about code that performs differently depending on the implicit imports that are in scope. Typeclass coherence effectively says that imports should not impact the behaviour of the code.
+
+Additionally, typeclass coherence allows us to globally cache implicits at runtime and save memory allocations, gaining performance improvements from reduced pressure on the garbage collector.
+
+Typeclasses are used in the Scala stdlib. We will explore a simplified version of scala.math.Numeric to demonstrate the principle:
+
+  trait Ordering[T] {
+    def compare(x: T, y: T): Int
+  
+    def lt(x: T, y: T): Boolean = compare(x, y) < 0
+    def gt(x: T, y: T): Boolean = compare(x, y) > 0
+  }
+  
+  trait Numeric[T] extends Ordering[T] {
+    def plus(x: T, y: T): T
+    def times(x: T, y: T): T
+    def negate(x: T): T
+    def zero: T
+  
+    def abs(x: T): T = if (lt(x, zero)) negate(x) else x
+  }
+We can see all the key features of a typeclass in action:
+
+there is no state
+Ordering and Numeric have type parameter T
+Ordering has abstract compare and Numeric has abstract plus, times, negate and zero
+Ordering defines generalised lt and gt based on compare, Numeric defines abs in terms of lt, negate and zero.
+Numeric extends Ordering
+We can now write functions for types that “have a” Numeric typeclass:
+
+  def signOfTheTimes[T](t: T)(implicit N: Numeric[T]): T = {
+    import N._
+    times(negate(abs(t)), t)
+  }
+We are no longer dependent on the OOP hierarchy of our input types, i.e. we don’t demand that our input “is a” Numeric, which is vitally important if we want to support a third party class that we cannot redefine.
+
+Another advantage of typeclasses is that the association of functionality to data is at compiletime, as opposed to OOP runtime dynamic dispatch.
+
+For example, whereas the List class can only have one implementation of a method, a typeclass method allows us to have a different implementation depending on the List contents and therefore offload work to compiletime instead of leaving it to runtime.
+
+4.2.2 Syntax
+The syntax for writing signOfTheTimes is clunky, there are some things we can do to clean it up.
+
+Downstream users will prefer to see our method use context bounds, since the signature reads cleanly as “takes a T that has a Numeric”
+
+  def signOfTheTimes[T: Numeric](t: T): T = ...
+but now we have to use implicitly[Numeric[T]] everywhere. By defining boilerplate on the companion of the typeclass
+
+  object Numeric {
+    def apply[T](implicit numeric: Numeric[T]): Numeric[T] = numeric
+  }
+we can obtain the implicit with less noise
+
+  def signOfTheTimes[T: Numeric](t: T): T = {
+    val N = Numeric[T]
+    import N._
+    times(negate(abs(t)), t)
+  }
+But it is still worse for us as the implementors. We have the syntactic problem of inside-out static methods vs class methods. We deal with this by introducing ops on the typeclass companion:
+
+  object Numeric {
+    def apply[T](implicit numeric: Numeric[T]): Numeric[T] = numeric
+  
+    object ops {
+      implicit class NumericOps[T](t: T)(implicit N: Numeric[T]) {
+        def +(o: T): T = N.plus(t, o)
+        def *(o: T): T = N.times(t, o)
+        def unary_-: T = N.negate(t)
+        def abs: T = N.abs(t)
+  
+        // duplicated from Ordering.ops
+        def <(o: T): T = N.lt(t, o)
+        def >(o: T): T = N.gt(t, o)
+      }
+    }
+  }
+Note that -x is expanded into x.unary_- by the compiler’s syntax sugar, which is why we define unary_- as an extension method. We can now write the much cleaner:
+
+  import Numeric.ops._
+  def signOfTheTimes[T: Numeric](t: T): T = -(t.abs) * t
+The good news is that we never need to write this boilerplate because Simulacrum provides a @typeclass macro annotation that automatically generates the apply and ops. It even allows us to define alternative (usually symbolic) names for common methods. In full:
+
+  import simulacrum._
+  
+  @typeclass trait Ordering[T] {
+    def compare(x: T, y: T): Int
+    @op("<") def lt(x: T, y: T): Boolean = compare(x, y) < 0
+    @op(">") def gt(x: T, y: T): Boolean = compare(x, y) > 0
+  }
+  
+  @typeclass trait Numeric[T] extends Ordering[T] {
+    @op("+") def plus(x: T, y: T): T
+    @op("*") def times(x: T, y: T): T
+    @op("unary_-") def negate(x: T): T
+    def zero: T
+    def abs(x: T): T = if (lt(x, zero)) negate(x) else x
+  }
+  
+  import Numeric.ops._
+  def signOfTheTimes[T: Numeric](t: T): T = -(t.abs) * t
+When there is a custom symbolic @op, it can be pronounced like its method name. e.g. < is pronounced “less than”, not “left angle bracket”.
+
+4.2.3 Instances
+Instances of Numeric (which are also instances of Ordering) are defined as an implicit val that extends the typeclass, and can provide optimised implementations for the generalised methods:
+
+  implicit val NumericDouble: Numeric[Double] = new Numeric[Double] {
+    def plus(x: Double, y: Double): Double = x + y
+    def times(x: Double, y: Double): Double = x * y
+    def negate(x: Double): Double = -x
+    def zero: Double = 0.0
+    def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)
+  
+    // optimised
+    override def lt(x: Double, y: Double): Boolean = x < y
+    override def gt(x: Double, y: Double): Boolean = x > y
+    override def abs(x: Double): Double = java.lang.Math.abs(x)
+  }
+Although we are using +, *, unary_-, < and > here, which are the ops (and could be an infinite loop!), these methods exist already on Double. Class methods are always used in preference to extension methods. Indeed, the Scala compiler performs special handling of primitives and converts these method calls into raw dadd, dmul, dcmpl and dcmpg bytecode instructions, respectively.
+
+We can also implement Numeric for Java’s BigDecimal class (avoid scala.BigDecimal, it is fundamentally broken)
+
+  import java.math.{ BigDecimal => BD }
+  
+  implicit val NumericBD: Numeric[BD] = new Numeric[BD] {
+    def plus(x: BD, y: BD): BD = x.add(y)
+    def times(x: BD, y: BD): BD = x.multiply(y)
+    def negate(x: BD): BD = x.negate
+    def zero: BD = BD.ZERO
+    def compare(x: BD, y: BD): Int = x.compareTo(y)
+  }
+We could create our own data structure for complex numbers:
+
+  final case class Complex[T](r: T, i: T)
+And derive a Numeric[Complex[T]] if Numeric[T] exists. Since these instances depend on the type parameter, it is a def, not a val.
+
+  implicit def numericComplex[T: Numeric]: Numeric[Complex[T]] =
+    new Numeric[Complex[T]] {
+      type CT = Complex[T]
+      def plus(x: CT, y: CT): CT = Complex(x.r + y.r, x.i + y.i)
+      def times(x: CT, y: CT): CT =
+        Complex(x.r * y.r + (-x.i * y.i), x.r * y.i + x.i * y.r)
+      def negate(x: CT): CT = Complex(-x.r, -x.i)
+      def zero: CT = Complex(Numeric[T].zero, Numeric[T].zero)
+      def compare(x: CT, y: CT): Int = {
+        val real = (Numeric[T].compare(x.r, y.r))
+        if (real != 0) real
+        else Numeric[T].compare(x.i, y.i)
+      }
+    }
+The observant reader may notice that abs is not at all what a mathematician would expect. The correct return value for abs should be T, not Complex[T].
+
+scala.math.Numeric tries to do too much and does not generalise beyond real numbers. This is a good lesson that smaller, well defined, typeclasses are often better than a monolithic collection of overly specific features.
+
+4.2.4 Implicit Resolution
+We’ve discussed implicits a lot: this section is to clarify what implicits are and how they work.
+
+Implicit parameters are when a method requests that a unique instance of a particular type is in the implicit scope of the caller, with special syntax for typeclass instances. Implicit parameters are a clean way to thread configuration through an application.
+
+In this example, foo requires that typeclass instances of Numeric and Typeable are available for A, as well as an implicit Handler object that takes two type parameters
+
+  def foo[A: Numeric: Typeable](implicit A: Handler[String, A]) = ...
+Implicit conversion is when an implicit def exists. One such use of implicit conversions is to enable extension methodology. When the compiler is resolving a call to a method, it first checks if the method exists on the type, then its ancestors (Java-like rules). If it fails to find a match, it will search the implicit scope for conversions to other types, then search for methods on those types.
+
+Another use for implicit conversions is typeclass derivation. In the previous section we wrote an implicit def that derived a Numeric[Complex[T]] if a Numeric[T] is in the implicit scope. It is possible to chain together many implicit def (including recursively) which is the basis of typeful programming, allowing for computations to be performed at compiletime rather than runtime.
+
+The glue that combines implicit parameters (receivers) with implicit conversion (providers) is implicit resolution.
+
+First, the normal variable scope is searched for implicits, in order:
+
+local scope, including scoped imports (e.g. the block or method)
+outer scope, including scoped imports (e.g. members in the class)
+ancestors (e.g. members in the super class)
+the current package object
+ancestor package objects (when using nested packages)
+the file’s imports
+If that fails to find a match, the special scope is searched, which looks for implicit instances inside a type’s companion, its package object, outer objects (if nested), and then repeated for ancestors. This is performed, in order, for the:
+
+given parameter type
+expected parameter type
+type parameter (if there is one)
+If two matching implicits are found in the same phase of implicit resolution, an ambiguous implicit error is raised.
+
+Implicits are often defined on a trait, which is then extended by an object. This is to try and control the priority of an implicit relative to another more specific one, to avoid ambiguous implicits.
+
+The Scala Language Specification is rather vague for corner cases, and the compiler implementation is the de facto standard. There are some rules of thumb that we will use throughout this book, e.g. prefer implicit val over implicit object despite the temptation of less typing. It is a quirk of implicit resolution that implicit object on companion objects are not treated the same as implicit val.
+
+Implicit resolution falls short when there is a hierarchy of typeclasses, like Ordering and Numeric. If we write a function that takes an implicit Ordering, and we call it for a primitive type which has an instance of Numeric defined on the Numeric companion, the compiler will fail to find it.
+
+Implicit resolution is particularly hit-or-miss if type aliases are used where the shape of the implicit parameters are changed. For example an implicit parameter using an alias such as type Values[A] = List[Option[A]] will probably fail to find implicits defined as raw List[Option[A]] because the shape is changed from a thing of things of A to a thing of A.
+
+4.3 Modelling OAuth2
+We will finish this chapter with a practical example of data modelling and typeclass derivation, combined with algebra / module design from the previous chapter.
+
+In our drone-dynamic-agents application, we must communicate with Drone and Google Cloud using JSON over REST. Both services use OAuth2 for authentication. There are many ways to interpret OAuth2, but we will focus on the version that works for Google Cloud (the Drone version is even simpler).
+
+4.3.1 Description
+Every Google Cloud application needs to have an OAuth 2.0 Client Key set up at
+
+  https://console.developers.google.com/apis/credentials?project={PROJECT_ID}
+Obtaining a Client ID and a Client secret.
+
+The application can then obtain a one time code by making the user perform an Authorization Request in their browser (yes, really, in their browser). We need to make this page open in the browser:
+
+  https://accounts.google.com/o/oauth2/v2/auth?\
+    redirect_uri={CALLBACK_URI}&\
+    prompt=consent&\
+    response_type=code&\
+    scope={SCOPE}&\
+    access_type=offline&\
+    client_id={CLIENT_ID}
+The code is delivered to the {CALLBACK_URI} in a GET request. To capture it in our application, we need to have a web server listening on localhost.
+
+Once we have the code, we can perform an Access Token Request:
+
+  POST /oauth2/v4/token HTTP/1.1
+  Host: www.googleapis.com
+  Content-length: {CONTENT_LENGTH}
+  content-type: application/x-www-form-urlencoded
+  user-agent: google-oauth-playground
+  code={CODE}&\
+    redirect_uri={CALLBACK_URI}&\
+    client_id={CLIENT_ID}&\
+    client_secret={CLIENT_SECRET}&\
+    scope={SCOPE}&\
+    grant_type=authorization_code
+which gives a JSON response payload
+
+  {
+    "access_token": "BEARER_TOKEN",
+    "token_type": "Bearer",
+    "expires_in": 3600,
+    "refresh_token": "REFRESH_TOKEN"
+  }
+Bearer tokens typically expire after an hour, and can be refreshed by sending an HTTP request with any valid refresh token:
+
+  POST /oauth2/v4/token HTTP/1.1
+  Host: www.googleapis.com
+  Content-length: {CONTENT_LENGTH}
+  content-type: application/x-www-form-urlencoded
+  user-agent: google-oauth-playground
+  client_secret={CLIENT_SECRET}&
+    grant_type=refresh_token&
+    refresh_token={REFRESH_TOKEN}&
+    client_id={CLIENT_ID}
+responding with
+
+  {
+    "access_token": "BEARER_TOKEN",
+    "token_type": "Bearer",
+    "expires_in": 3600
+  }
+All userland requests to the server should include the header
+
+  Authorization: Bearer BEARER_TOKEN
+after substituting the actual BEARER_TOKEN.
+
+Google expires all but the most recent 50 bearer tokens, so the expiry times are just guidance. The refresh tokens persist between sessions and can be expired manually by the user. We can therefore have a one-time setup application to obtain the refresh token and then include the refresh token as configuration for the user’s install of the headless server.
+
+Drone doesn’t implement the /auth endpoint, or the refresh, and simply provides a BEARER_TOKEN through their user interface.
+
+4.3.2 Data
+The first step is to model the data needed for OAuth2. We create an ADT with fields having exactly the same name as required by the OAuth2 server. We will use String and Long for brevity, but we could use refined types if they leak into our business models.
+
+  import refined.api.Refined
+  import refined.string.Url
+  
+  final case class AuthRequest(
+    redirect_uri: String Refined Url,
+    scope: String,
+    client_id: String,
+    prompt: String = "consent",
+    response_type: String = "code",
+    access_type: String = "offline"
+  )
+  final case class AccessRequest(
+    code: String,
+    redirect_uri: String Refined Url,
+    client_id: String,
+    client_secret: String,
+    scope: String = "",
+    grant_type: String = "authorization_code"
+  )
+  final case class AccessResponse(
+    access_token: String,
+    token_type: String,
+    expires_in: Long,
+    refresh_token: String
+  )
+  final case class RefreshRequest(
+    client_secret: String,
+    refresh_token: String,
+    client_id: String,
+    grant_type: String = "refresh_token"
+  )
+  final case class RefreshResponse(
+    access_token: String,
+    token_type: String,
+    expires_in: Long
+  )
+Avoid using java.net.URL at all costs: it uses DNS to resolve the hostname part when performing toString, equals or hashCode.
+
+Apart from being insane, and very very slow, these methods can throw I/O exceptions (are not pure), and can change depending on the network configuration (are not deterministic).
+
+The refined type String Refined Url allows us to perform equality checks based on the String and we can safely construct a URL only if it is needed by a legacy API.
+
+That said, in high performance code we would prefer to skip java.net.URL entirely and use a third party URL parser such as jurl, because even the safe parts of java.net.* are extremely slow at scale.
+
+4.3.3 Functionality
+We need to marshal the data classes we defined in the previous section into JSON, URLs and POST-encoded forms. Since this requires polymorphism, we will need typeclasses.
+
+jsonformat is a simple JSON library that we will study in more detail in a later chapter, as it has been written with principled FP and ease of readability as its primary design objectives. It consists of a JSON AST and encoder / decoder typeclasses:
+
+  package jsonformat
+  
+  sealed abstract class JsValue
+  final case object JsNull                                    extends JsValue
+  final case class JsObject(fields: IList[(String, JsValue)]) extends JsValue
+  final case class JsArray(elements: IList[JsValue])          extends JsValue
+  final case class JsBoolean(value: Boolean)                  extends JsValue
+  final case class JsString(value: String)                    extends JsValue
+  final case class JsDouble(value: Double)                    extends JsValue
+  final case class JsInteger(value: Long)                     extends JsValue
+  
+  @typeclass trait JsEncoder[A] {
+    def toJson(obj: A): JsValue
+  }
+  
+  @typeclass trait JsDecoder[A] {
+    def fromJson(json: JsValue): String \/ A
+  }
+\/ is Scalaz’s Either and has a .flatMap. We can use it in for comprehensions, whereas stdlib Either does not support .flatMap prior to Scala 2.12. It is spoken as disjunction, or angry rabbit.
+
+scala.Either was contributed to the Scala standard library by the creator of Scalaz, Tony Morris, in 2007. \/ was created when unsafe methods were added to Either.
+
+We need instances of JsDecoder[AccessResponse] and JsDecoder[RefreshResponse]. We can do this by making use of a helper function:
+
+  implicit class JsValueOps(j: JsValue) {
+    def getAs[A: JsDecoder](key: String): String \/ A = ...
+  }
+We put the instances on the companions of our data types, so that they are always in the implicit scope:
+
+  import jsonformat._, JsDecoder.ops._
+  
+  object AccessResponse {
+    implicit val json: JsDecoder[AccessResponse] = j =>
+      for {
+        acc <- j.getAs[String]("access_token")
+        tpe <- j.getAs[String]("token_type")
+        exp <- j.getAs[Long]("expires_in")
+        ref <- j.getAs[String]("refresh_token")
+      } yield AccessResponse(acc, tpe, exp, ref)
+  }
+  
+  object RefreshResponse {
+    implicit val json: JsDecoder[RefreshResponse] = j =>
+      for {
+        acc <- j.getAs[String]("access_token")
+        tpe <- j.getAs[String]("token_type")
+        exp <- j.getAs[Long]("expires_in")
+      } yield RefreshResponse(acc, tpe, exp)
+  }
+We can then parse a string into an AccessResponse or a RefreshResponse
+
+  scala> import jsonformat._, JsDecoder.ops._
+  scala> val json = JsParser("""
+                       {
+                         "access_token": "BEARER_TOKEN",
+                         "token_type": "Bearer",
+                         "expires_in": 3600,
+                         "refresh_token": "REFRESH_TOKEN"
+                       }
+                       """)
+  
+  scala> json.map(_.as[AccessResponse])
+  AccessResponse(BEARER_TOKEN,Bearer,3600,REFRESH_TOKEN)
+We need to write our own typeclasses for URL and POST encoding. The following is a reasonable design:
+
+  // URL query key=value pairs, in un-encoded form.
+  final case class UrlQuery(params: List[(String, String)])
+  
+  @typeclass trait UrlQueryWriter[A] {
+    def toUrlQuery(a: A): UrlQuery
+  }
+  
+  @typeclass trait UrlEncodedWriter[A] {
+    def toUrlEncoded(a: A): String Refined UrlEncoded
+  }
+We need to provide typeclass instances for basic types:
+
+  import java.net.URLEncoder
+  
+  object UrlEncodedWriter {
+    implicit val encoded: UrlEncodedWriter[String Refined UrlEncoded] = identity
+  
+    implicit val string: UrlEncodedWriter[String] =
+      (s => Refined.unsafeApply(URLEncoder.encode(s, "UTF-8")))
+  
+    implicit val url: UrlEncodedWriter[String Refined Url] =
+      (s => s.value.toUrlEncoded)
+  
+    implicit val long: UrlEncodedWriter[Long] =
+      (s => Refined.unsafeApply(s.toString))
+  
+    implicit def ilist[K: UrlEncodedWriter, V: UrlEncodedWriter]
+      : UrlEncodedWriter[IList[(K, V)]] = { m =>
+      val raw = m.map {
+        case (k, v) => k.toUrlEncoded.value + "=" + v.toUrlEncoded.value
+      }.intercalate("&")
+      Refined.unsafeApply(raw) // by deduction
+    }
+  
+  }
+We use Refined.unsafeApply when we can logically deduce that the contents of the string are already url encoded, bypassing any further checks.
+
+ilist is an example of simple typeclass derivation, much as we derived Numeric[Complex] from the underlying numeric representation. The .intercalate method is like .mkString but more general.
+
+UrlEncodedWriter is making use of the Single Abstract Method (SAM types) Scala language feature. The full form of the above is
+
+  implicit val string: UrlEncodedWriter[String] =
+    new UrlEncodedWriter[String] {
+      override def toUrlEncoded(s: String): String = ...
+    }
+When the Scala compiler expects a class (which has a single abstract method) but receives a lambda, it fills in the boilerplate automatically.
+
+Prior to SAM types, a common pattern was to define a method named instance on the typeclass companion
+
+  def instance[T](f: T => String): UrlEncodedWriter[T] =
+    new UrlEncodedWriter[T] {
+      override def toUrlEncoded(t: T): String = f(t)
+    }
+allowing for
+
+  implicit val string: UrlEncodedWriter[String] = instance { s => ... }
+This pattern is still used in code that must support older versions of Scala, or for typeclasses instances that need to provide more than one method.
+
+Note that there are a lot of bugs around SAM types, as they do not interact with all the language features. Revert to the non-SAM variant if there are any strange compiler crashes.
+
+In a dedicated chapter on Typeclass Derivation we will calculate instances of UrlQueryWriter automatically, as well as clean up what we have already written, but for now we will write the boilerplate for the types we wish to convert:
+
+  import UrlEncodedWriter.ops._
+  object AuthRequest {
+    implicit val query: UrlQueryWriter[AuthRequest] = { a =>
+      UrlQuery(List(
+        ("redirect_uri"  -> a.redirect_uri.value),
+        ("scope"         -> a.scope),
+        ("client_id"     -> a.client_id),
+        ("prompt"        -> a.prompt),
+        ("response_type" -> a.response_type),
+        ("access_type"   -> a.access_type))
+    }
+  }
+  object AccessRequest {
+    implicit val encoded: UrlEncodedWriter[AccessRequest] = { a =>
+      IList(
+        "code"          -> a.code.toUrlEncoded,
+        "redirect_uri"  -> a.redirect_uri.toUrlEncoded,
+        "client_id"     -> a.client_id.toUrlEncoded,
+        "client_secret" -> a.client_secret.toUrlEncoded,
+        "scope"         -> a.scope.toUrlEncoded,
+        "grant_type"    -> a.grant_type.toUrlEncoded
+      ).toUrlEncoded
+    }
+  }
+  object RefreshRequest {
+    implicit val encoded: UrlEncodedWriter[RefreshRequest] = { r =>
+      IList(
+        "client_secret" -> r.client_secret.toUrlEncoded,
+        "refresh_token" -> r.refresh_token.toUrlEncoded,
+        "client_id"     -> r.client_id.toUrlEncoded,
+        "grant_type"    -> r.grant_type.toUrlEncoded
+      ).toUrlEncoded
+    }
+  }
+4.3.4 Module
+That concludes the data and functionality modelling required to implement OAuth2. Recall from the previous chapter that we define components that need to interact with the world as algebras, and we define business logic in a module, so it can be thoroughly tested.
+
+We define our dependency algebras, and use context bounds to show that our responses must have a JsDecoder and our POST payload must have a UrlEncodedWriter:
+
+  trait JsonClient[F[_]] {
+    def get[A: JsDecoder](
+      uri: String Refined Url,
+      headers: IList[(String, String)]
+    ): F[A]
+  
+    def post[P: UrlEncodedWriter, A: JsDecoder](
+      uri: String Refined Url,
+      payload: P,
+      headers: IList[(String, String] = IList.empty
+    ): F[A]
+  }
+Note that we only define the happy path in the JsonClient API. We will get around to error handling in a later chapter.
+
+Obtaining a CodeToken from the Google OAuth2 server involves
+
+starting an HTTP server on the local machine, and obtaining its port number.
+making the user open a web page in their browser, which allows them to log in with their Google credentials and authorise the application, with a redirect back to the local machine.
+capturing the code, informing the user of next steps, and closing the HTTP server.
+We can model this with three methods on a UserInteraction algebra.
+
+  final case class CodeToken(token: String, redirect_uri: String Refined Url)
+  
+  trait UserInteraction[F[_]] {
+    def start: F[String Refined Url]
+    def open(uri: String Refined Url): F[Unit]
+    def stop: F[CodeToken]
+  }
+It almost sounds easy when put like that.
+
+We also need an algebra to abstract over the local system time
+
+  trait LocalClock[F[_]] {
+    def now: F[Epoch]
+  }
+And introduce data types that we will use in the refresh logic
+
+  final case class ServerConfig(
+    auth: String Refined Url,
+    access: String Refined Url,
+    refresh: String Refined Url,
+    scope: String,
+    clientId: String,
+    clientSecret: String
+  )
+  final case class RefreshToken(token: String)
+  final case class BearerToken(token: String, expires: Epoch)
+Now we can write an OAuth2 client module:
+
+  import http.encoding.UrlQueryWriter.ops._
+  
+  class OAuth2Client[F[_]: Monad](
+    config: ServerConfig
+  )(
+    user: UserInteraction[F],
+    client: JsonClient[F],
+    clock: LocalClock[F]
+  ) {
+    def authenticate: F[CodeToken] =
+      for {
+        callback <- user.start
+        params   = AuthRequest(callback, config.scope, config.clientId)
+        _        <- user.open(params.toUrlQuery.forUrl(config.auth))
+        code     <- user.stop
+      } yield code
+  
+    def access(code: CodeToken): F[(RefreshToken, BearerToken)] =
+      for {
+        request <- AccessRequest(code.token,
+                                 code.redirect_uri,
+                                 config.clientId,
+                                 config.clientSecret).pure[F]
+        msg     <- client.post[AccessRequest, AccessResponse](
+                     config.access, request)
+        time    <- clock.now
+        expires = time + msg.expires_in.seconds
+        refresh = RefreshToken(msg.refresh_token)
+        bearer  = BearerToken(msg.access_token, expires)
+      } yield (refresh, bearer)
+  
+    def bearer(refresh: RefreshToken): F[BearerToken] =
+      for {
+        request <- RefreshRequest(config.clientSecret,
+                                  refresh.token,
+                                  config.clientId).pure[F]
+        msg     <- client.post[RefreshRequest, RefreshResponse](
+                     config.refresh, request)
+        time    <- clock.now
+        expires = time + msg.expires_in.seconds
+        bearer  = BearerToken(msg.access_token, expires)
+      } yield bearer
+  }
+4.4 Summary
+algebraic data types (ADTs) are defined as products (final case class) and coproducts (sealed abstract class).
+Refined types enforce constraints on values.
+concrete functions can be defined in an implicit class to maintain left-to-right flow.
+polymorphic functions are defined in typeclasses. Functionality is provided via “has a” context bounds, rather than “is a” class hierarchies.
+typeclass instances are implementations of a typeclass.
+@simulacrum.typeclass generates .ops on the companion, providing convenient syntax for typeclass functions.
+typeclass derivation is compiletime composition of typeclass instances.

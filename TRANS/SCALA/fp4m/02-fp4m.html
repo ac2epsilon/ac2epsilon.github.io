@@ -832,313 +832,295 @@ asciidoc.install();
       <span class="n">j</span> <span class="k">=&gt;</span> <span class="n">c</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span>
         <span class="n">k</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span> <span class="o">}}}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>The rule of thumb is that every &#8592; (called a generator) is a nested flatMap call, with the final generator a map containing the yield body.</p></div>
-<div class="paragraph"><p>2.1.1 Assignment
-We can assign values inline like ij = i + j (a val keyword is not needed).</p></div>
+<div class="paragraph"><p>Правило великого пальця: для кожного <code>&lt;-</code> (що називається генератором) є вкладеним викликом <code>flatMap</code>, з фінальним генератором <code>map</code>, що містить тіло <code>yield</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_2_1_1_">2.1.1 Присвоєння</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ми можемо присвоїти значення інлайн, як <code>ij = i + j</code> (ключове слово  <code>val</code> не потрібне).</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">reify</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span>
+           <span class="n">j</span> <span class="k">&lt;-</span> <span class="n">b</span>
+           <span class="n">ij</span> <span class="k">=</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span>
+           <span class="n">k</span> <span class="k">&lt;-</span> <span class="n">c</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">ij</span> <span class="o">+</span> <span class="n">k</span><span class="o">)</span>
+
+  <span class="n">a</span><span class="o">.</span><span class="n">flatMap</span> <span class="o">{</span>
+    <span class="n">i</span> <span class="k">=&gt;</span> <span class="n">b</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span> <span class="n">j</span> <span class="k">=&gt;</span> <span class="o">(</span><span class="n">j</span><span class="o">,</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="o">)</span> <span class="o">}.</span><span class="n">flatMap</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="o">(</span><span class="n">j</span><span class="o">,</span> <span class="n">ij</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">c</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span>
+        <span class="n">k</span> <span class="k">=&gt;</span> <span class="n">ij</span> <span class="o">+</span> <span class="n">k</span> <span class="o">}}}</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>map</code> по <code>b</code> вводить <code>ij</code>, що  <code>flat-mapped</code> разом з <code>j</code>, потім отримується фінальний <code>map</code> для коду в <code>yield</code>.</p></div>
+<div class="paragraph"><p>Нажаль, ми не можемо присвоювати перед жодним генератором. Існує запит на цю можливість мови, але вона не була реалізована: <a href="https://github.com/scala/bug/issues/907">https://github.com/scala/bug/issues/907</a></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">initial</span> <span class="k">=</span> <span class="n">getDefault</span>
+           <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">initial</span> <span class="o">+</span> <span class="n">i</span>
+  <span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">1</span><span class="k">:</span> <span class="kt">error:</span> <span class="err">&#39;</span><span class="kt">&lt;-</span><span class="err">&#39;</span> <span class="kt">expected</span> <span class="kt">but</span> <span class="err">&#39;</span><span class="o">=</span><span class="err">&#39;</span> <span class="n">found</span><span class="o">.</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ми можемо обійти це обмеження через визначення <code>val</code> зовні <code>for</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">initial</span> <span class="k">=</span> <span class="n">getDefault</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span> <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span> <span class="o">}</span> <span class="k">yield</span> <span class="n">initial</span> <span class="o">+</span> <span class="n">i</span>
+<span class="n">or</span> <span class="n">create</span> <span class="n">an</span> <span class="nc">Option</span> <span class="n">out</span> <span class="n">of</span> <span class="n">the</span> <span class="n">initial</span> <span class="n">assignment</span>
+
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">initial</span> <span class="k">&lt;-</span> <span class="nc">Option</span><span class="o">(</span><span class="n">getDefault</span><span class="o">)</span>
+           <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">initial</span> <span class="o">+</span> <span class="n">i</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>val</code> не має присвоювати одне значення, воно має бути будь-чим, що робить як <code>case</code> в співставленні шаблонів <code>match</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="o">(</span><span class="n">first</span><span class="o">,</span> <span class="n">second</span><span class="o">)</span> <span class="k">=</span> <span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="s">&quot;world&quot;</span><span class="o">)</span>
+  <span class="n">first</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">hello</span>
+  <span class="n">second</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">world</span>
+
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">list</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">head</span> <span class="o">::</span> <span class="n">tail</span> <span class="k">=</span> <span class="n">list</span>
+  <span class="n">head</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="mi">1</span>
+  <span class="n">tail</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">List</span><span class="o">(</span><span class="mi">2</span><span class="o">,</span> <span class="mi">3</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Те саме вірне в узагальнених <code>for</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">maybe</span> <span class="k">=</span> <span class="nc">Option</span><span class="o">((</span><span class="s">&quot;hello&quot;</span><span class="o">,</span> <span class="s">&quot;world&quot;</span><span class="o">))</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">entry</span> <span class="k">&lt;-</span> <span class="n">maybe</span>
+           <span class="o">(</span><span class="n">first</span><span class="o">,</span> <span class="k">_</span><span class="o">)</span> <span class="k">=</span> <span class="n">entry</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">first</span>
+  <span class="n">res</span><span class="k">:</span> <span class="kt">Some</span><span class="o">(</span><span class="kt">hello</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але будьте пильними, не втратьте жодного випадку, або буде виключення часу виконання (збій повноти).</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">a</span> <span class="o">::</span> <span class="n">tail</span> <span class="k">=</span> <span class="n">list</span>
+  <span class="n">caught</span> <span class="n">scala</span><span class="o">.</span><span class="nc">MatchError</span><span class="k">:</span> <span class="kt">List</span><span class="o">()</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_2_1_2_">2.1.2 Фільтр</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Можливо покласти твердження <code>if</code> після генератора, щоб фільтрувати значення по предикату:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">reify</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">i</span>  <span class="k">&lt;-</span> <span class="n">a</span>
+           <span class="n">j</span>  <span class="k">&lt;-</span> <span class="n">b</span>
+           <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="n">j</span>
+           <span class="n">k</span>  <span class="k">&lt;-</span> <span class="n">c</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span><span class="o">)</span>
+
+  <span class="n">a</span><span class="o">.</span><span class="n">flatMap</span> <span class="o">{</span>
+    <span class="n">i</span> <span class="k">=&gt;</span> <span class="n">b</span><span class="o">.</span><span class="n">withFilter</span> <span class="o">{</span>
+      <span class="n">j</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="n">j</span> <span class="o">}.</span><span class="n">flatMap</span> <span class="o">{</span>
+        <span class="n">j</span> <span class="k">=&gt;</span> <span class="n">c</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span>
+          <span class="n">k</span> <span class="k">=&gt;</span> <span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span> <span class="o">}}}</span>
+</pre></div></div></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>reify&gt; for {
-         i &lt;- a
-         j &lt;- b
-         ij = i + j
-         k &lt;- c
-       } yield (ij + k)</code></pre>
+<pre><code>Старіші версії Scala використовували `filter`, але `Traversable.filter` створює нові колекції для кожного предиката, так що була введена більш продуктивна альтернатива, `withFilter`. Ми можемо випадково вімкнути `withFilter`, надавши інформацію типу, що інтерпретується як порівняння шаблону.</code></pre>
 </div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  a.flatMap {
-    i =&gt; b.map { j =&gt; (j, i + j) }.flatMap {
-      case (j, ij) =&gt; c.map {
-        k =&gt; ij + k }}}
-A map over the b introduces the ij which is flat-mapped along with the j, then the final map for the code in the yield.</code></pre>
-</div></div>
-<div class="paragraph"><p>Unfortunately we cannot assign before any generators. It has been requested as a language feature but has not been implemented: <a href="https://github.com/scala/bug/issues/907">https://github.com/scala/bug/issues/907</a></p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; for {
-           initial = getDefault
-           i &lt;- a
-         } yield initial + i
-  &lt;console&gt;:1: error: '&lt;-' expected but '=' found.
-We can workaround the limitation by defining a val outside the for</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; val initial = getDefault
-  scala&gt; for { i &lt;- a } yield initial + i
-or create an Option out of the initial assignment</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; for {
-           initial &lt;- Option(getDefault)
-           i &lt;- a
-         } yield initial + i
-val doesn’t have to assign to a single value, it can be anything that works as a case in a pattern match.</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>scala&gt; val (first, second) = ("hello", "world")
-first: String = hello
-second: String = world</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; val list: List[Int] = ...
-  scala&gt; val head :: tail = list
-  head: Int = 1
-  tail: List[Int] = List(2, 3)
-The same is true for assignment in for comprehensions</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; val maybe = Option(("hello", "world"))
-  scala&gt; for {
-           entry &lt;- maybe
-           (first, _) = entry
-         } yield first
-  res: Some(hello)
-But be careful not to miss any cases or there will be a runtime exception (a totality failure).</code></pre>
-</div></div>
-<div class="dlist"><dl>
-<dt class="hdlist1">
-scala&gt; val a 
-</dt>
-<dd>
-<p>
-tail = list
-  caught scala.MatchError: List()
-2.1.2 Filter
-It is possible to put if statements after a generator to filter values by a predicate
-</p>
-<div class="literalblock">
-<div class="content">
-<pre><code>reify&gt; for {
-         i  &lt;- a
-         j  &lt;- b
-         if i &gt; j
-         k  &lt;- c
-       } yield (i + j + k)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  a.flatMap {
-    i =&gt; b.withFilter {
-      j =&gt; i &gt; j }.flatMap {
-        j =&gt; c.map {
-          k =&gt; i + j + k }}}
-Older versions of Scala used filter, but Traversable.filter creates new collections for every predicate, so withFilter was introduced as the more performant alternative. We can accidentally trigger a withFilter by providing type information, interpreted as a pattern match.</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>reify&gt; for { i: Int &lt;- a } yield i</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  a.withFilter {
-    case i: Int =&gt; true
-    case _      =&gt; false
-  }.map { case i: Int =&gt; i }
-Like assignment, a generator can use a pattern match on the left hand side. But unlike assignment (which throws MatchError on failure), generators are filtered and will not fail at runtime. However, there is an inefficient double application of the pattern.</code></pre>
-</div></div>
-</dd>
-</dl></div>
-<div class="paragraph"><p>The compiler plugin better-monadic-for produces alternative, better, desugarings than the Scala compiler. This example is interpreted as:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>reify&gt; for { i: Int &lt;- a } yield i</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  a.map { (i: Int) =&gt; i}
-instead of inefficient double matching (in the best case) and silent filtering at runtime (in the worst case). Highly recommended.</code></pre>
-</div></div>
-<div class="paragraph"><p>2.1.3 For Each
-Finally, if there is no yield, the compiler will use foreach instead of flatMap, which is only useful for side-effects.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>reify&gt; for { i &lt;- a ; j &lt;- b } println(s"$i $j")</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  a.foreach { i =&gt; b.foreach { j =&gt; println(s"$i $j") } }
-2.1.4 Summary
-The full set of methods supported by for comprehensions do not share a common super type; each generated snippet is independently compiled. If there were a trait, it would roughly look like:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  trait ForComprehensible[C[_]] {
-    def map[A, B](f: A =&gt; B): C[B]
-    def flatMap[A, B](f: A =&gt; C[B]): C[B]
-    def withFilter[A](p: A =&gt; Boolean): C[A]
-    def foreach[A](f: A =&gt; Unit): Unit
-  }
-If the context (C[_]) of a for comprehension doesn’t provide its own map and flatMap, all is not lost. If an implicit scalaz.Bind[T] is available for T, it will provide map and flatMap.</code></pre>
-</div></div>
-<div class="paragraph"><p>It often surprises developers when inline Future calculations in a for comprehension do not run in parallel:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>import scala.concurrent._
-import ExecutionContext.Implicits.global</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    i &lt;- Future { expensiveCalc() }
-    j &lt;- Future { anotherExpensiveCalc() }
-  } yield (i + j)
-This is because the flatMap spawning anotherExpensiveCalc is strictly after expensiveCalc. To ensure that two Future calculations begin in parallel, start them outside the for comprehension.</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  val a = Future { expensiveCalc() }
-  val b = Future { anotherExpensiveCalc() }
-  for { i &lt;- a ; j &lt;- b } yield (i + j)
-for comprehensions are fundamentally for defining sequential programs. We will show a far superior way of defining parallel computations in a later chapter. Spoiler: don’t use Future.</code></pre>
-</div></div>
-<div class="paragraph"><p>2.2 Unhappy path
-So far we’ve only looked at the rewrite rules, not what is happening in map and flatMap. Consider what happens when the for context decides that it cannot proceed any further.</p></div>
-<div class="paragraph"><p>In the Option example, the yield is only called when i,j,k are all defined.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    i &lt;- a
-    j &lt;- b
-    k &lt;- c
-  } yield (i + j + k)
-If any of a,b,c are None, the comprehension short-circuits with None but it doesn’t tell us what went wrong.</code></pre>
-</div></div>
-<div class="paragraph"><p>There are many functions in the wild that take Option parameters but actually require all parameters to exist. An alternative to throwing a runtime exception is to use a for comprehension, giving us totality (a return value for every input):</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def namedThings(
-    someName  : Option[String],
-    someNumber: Option[Int]
-  ): Option[String] = for {
-    name   &lt;- someName
-    number &lt;- someNumber
-  } yield s"$number ${name}s"
-but this is verbose, clunky and bad style. If a function requires every input then it should make its requirement explicit, pushing the responsibility of dealing with optional parameters to its caller.</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def namedThings(name: String, num: Int) = s"$num ${name}s"
-If we use Either, then a Left will cause the for comprehension to short circuit with extra information, much better than Option for error reporting:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>scala&gt; val a = Right(1)
-scala&gt; val b = Right(2)
-scala&gt; val c: Either[String, Int] = Left("sorry, no c")
-scala&gt; for { i &lt;- a ; j &lt;- b ; k &lt;- c } yield (i + j + k)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  Left(sorry, no c)
-And lastly, let’s see what happens with a Future that fails:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; import scala.concurrent._
-  scala&gt; import ExecutionContext.Implicits.global
-  scala&gt; for {
-           i &lt;- Future.failed[Int](new Throwable)
-           j &lt;- Future { println("hello") ; 1 }
-         } yield (i + j)
-  scala&gt; Await.result(f, duration.Duration.Inf)
-  caught java.lang.Throwable
-The Future that prints to the terminal is never called because, like Option and Either, the for comprehension short circuits.</code></pre>
-</div></div>
-<div class="paragraph"><p>Short circuiting for the unhappy path is a common and important theme. for comprehensions cannot express resource cleanup: there is no way to try / finally. This is good, in FP it puts a clear ownership of responsibility for unexpected error recovery and resource cleanup onto the context (which is usually a Monad as we will see later), not the business logic.</p></div>
-<div class="paragraph"><p>2.3 Gymnastics
-Although it is easy to rewrite simple sequential code as a for comprehension, sometimes we will want to do something that appears to require mental summersaults. This section collects some practical examples and how to deal with them.</p></div>
-<div class="paragraph"><p>2.3.1 Fallback Logic
-Say we are calling out to a method that returns an Option. If it is not successful we want to fallback to another method (and so on and so on), like when we’re using a cache:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def getFromRedis(s: String): Option[String]
-def getFromSql(s: String): Option[String]</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  getFromRedis(key) orElse getFromSql(key)
-If we have to do this for an asynchronous version of the same API</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def getFromRedis(s: String): Future[Option[String]]
-  def getFromSql(s: String): Future[Option[String]]
-then we have to be careful not to do extra work because</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    cache &lt;- getFromRedis(key)
-    sql   &lt;- getFromSql(key)
-  } yield cache orElse sql
-will run both queries. We can pattern match on the first result but the type is wrong</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    cache &lt;- getFromRedis(key)
-    res   &lt;- cache match {
-               case Some(_) =&gt; cache !!! wrong type !!!
-               case None    =&gt; getFromSql(key)
-             }
-  } yield res
-We need to create a Future from the cache</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    cache &lt;- getFromRedis(key)
-    res   &lt;- cache match {
-               case Some(_) =&gt; Future.successful(cache)
-               case None    =&gt; getFromSql(key)
-             }
-  } yield res
-Future.successful creates a new Future, much like an Option or List constructor.</code></pre>
-</div></div>
-<div class="paragraph"><p>2.3.2 Early Exit
-Say we have some condition that should exit early with a successful value.</p></div>
-<div class="paragraph"><p>If we want to exit early with an error, it is standard practice in OOP to throw an exception</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def getA: Int = ...</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  val a = getA
-  require(a &gt; 0, s"$a must be positive")
-  a * 10
-which can be rewritten async</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def getA: Future[Int] = ...
-def error(msg: String): Future[Nothing] =
-  Future.failed(new RuntimeException(msg))</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    a &lt;- getA
-    b &lt;- if (a &lt;= 0) error(s"$a must be positive")
-         else Future.successful(a)
-  } yield b * 10
-But if we want to exit early with a successful return value, the simple synchronous code:</code></pre>
-</div></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">reify</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="kt">&lt;-</span> <span class="kt">a</span> <span class="o">}</span> <span class="k">yield</span> <span class="n">i</span>
+
+  <span class="n">a</span><span class="o">.</span><span class="n">withFilter</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="kc">true</span>
+    <span class="k">case</span> <span class="k">_</span>      <span class="k">=&gt;</span> <span class="kc">false</span>
+  <span class="o">}.</span><span class="n">map</span> <span class="o">{</span> <span class="k">case</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=&gt;</span> <span class="n">i</span> <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як і присвоювання, генератор може використовувати порівняння шаблонів в лівій частині. Але не відміну від присвоєння (або закидається  <code>MatchError</code> по збою), генератори фільтровані, та не схиблять під час виконання. Однак існує неефективне подвійне порівняння шаблону.</p></div>
+<div class="paragraph"><p>Плагін компілятора <code>better-monadic-for</code> продукує альтернативне, краще децукрування, ніж компілятор Scala. Цей приклад інтерпретується так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">reify</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span> <span class="n">i</span><span class="k">:</span> <span class="kt">Int</span> <span class="kt">&lt;-</span> <span class="kt">a</span> <span class="o">}</span> <span class="k">yield</span> <span class="n">i</span>
+
+  <span class="n">a</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span> <span class="o">(</span><span class="n">i</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">i</span><span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>замість неефективного подвійного співпадіння (в кращому випадку) та тихої фільтрації під час виконання (в гіршому випадку). Дуже рекомендуємо.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_2_1_3_foreach">2.1.3 Foreach</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Нарешті, якщо немає <code>yield</code>, компілятор буде використовувати <code>foreach</code> замість <code>flatMap</code>, що корисне тільки для побічних ефектів.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">reify</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span> <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span> <span class="o">;</span> <span class="n">j</span> <span class="k">&lt;-</span> <span class="n">b</span> <span class="o">}</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;</span><span class="si">$i</span><span class="s"> </span><span class="si">$j</span><span class="s">&quot;</span><span class="o">)</span>
+
+  <span class="n">a</span><span class="o">.</span><span class="n">foreach</span> <span class="o">{</span> <span class="n">i</span> <span class="k">=&gt;</span> <span class="n">b</span><span class="o">.</span><span class="n">foreach</span> <span class="o">{</span> <span class="n">j</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;</span><span class="si">$i</span><span class="s"> </span><span class="si">$j</span><span class="s">&quot;</span><span class="o">)</span> <span class="o">}</span> <span class="o">}</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_2_1_4_">2.1.4 Підсумок</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Повний набір методів, підтримуваний розширеним <code>for</code>, не поділяють загальний супер тип; кожний згенерований фрагмент компілюється окремо. Якщо це був би трейт, він мав би виглядати так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">trait</span> <span class="nc">ForComprehensible</span><span class="o">[</span><span class="kt">C</span><span class="o">[</span><span class="k">_</span><span class="o">]]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">map</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">B</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="n">B</span><span class="o">)</span><span class="k">:</span> <span class="kt">C</span><span class="o">[</span><span class="kt">B</span><span class="o">]</span>
+    <span class="k">def</span> <span class="n">flatMap</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">B</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="n">C</span><span class="o">[</span><span class="kt">B</span><span class="o">])</span><span class="k">:</span> <span class="kt">C</span><span class="o">[</span><span class="kt">B</span><span class="o">]</span>
+    <span class="k">def</span> <span class="n">withFilter</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">p</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="nc">Boolean</span><span class="o">)</span><span class="k">:</span> <span class="kt">C</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span>
+    <span class="k">def</span> <span class="n">foreach</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=&gt;</span> <span class="nc">Unit</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо контекст (<code>C[_]</code>) розширеного <code>for</code> не провадить свої власні  <code>map</code> та <code>flatMap</code>, не все втрачено. Якщо для <code>T</code> доступний неявний <code>scalaz.Bind[T]</code>, він буде провадити <code>map</code> та <code>flatMap</code>.</p></div>
+<div class="paragraph"><p>Це часто дивує розробників, коли інлан обчислення <code>Future</code> в розширеному <code>for</code> не виконуються паралельно:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">scala.concurrent._</span>
+  <span class="k">import</span> <span class="nn">ExecutionContext.Implicits.global</span>
+
+  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">i</span> <span class="k">&lt;-</span> <span class="nc">Future</span> <span class="o">{</span> <span class="n">expensiveCalc</span><span class="o">()</span> <span class="o">}</span>
+    <span class="n">j</span> <span class="k">&lt;-</span> <span class="nc">Future</span> <span class="o">{</span> <span class="n">anotherExpensiveCalc</span><span class="o">()</span> <span class="o">}</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це тому, що <code>flatMap</code> відгалужує <code>anotherExpensiveCalc</code> прямо після <code>expensiveCalc</code>. Щоб переконатись, що два обчислення розпочались паралельно, почніть їх за межами розширеного for.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="n">expensiveCalc</span><span class="o">()</span> <span class="o">}</span>
+  <span class="k">val</span> <span class="n">b</span> <span class="k">=</span> <span class="nc">Future</span> <span class="o">{</span> <span class="n">anotherExpensiveCalc</span><span class="o">()</span> <span class="o">}</span>
+  <span class="k">for</span> <span class="o">{</span> <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span> <span class="o">;</span> <span class="n">j</span> <span class="k">&lt;-</span> <span class="n">b</span> <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>for</code> розширення фундаментально для визначення послідовних програм. Ми покажемо далеко кращий спосіб визначення паралельних обчислень в наступній главі. Підсумок: не використовуйте <code>Future</code>.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_2_2__">2.2 Нещасливий шлях</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Дотепер ми дивились тільки на правила переписування, не на те, що відбувається в <code>map</code> та <code>flatMap</code>. Розглянемо, що трапляється, коли контекст вирішує, що він не може продовжувати далі.</p></div>
+<div class="paragraph"><p>В прикладі <code>Option</code> <code>yield</code> викликається тільки коли всі <code>i</code>,<code>j</code>,<code>k</code> є визначеними.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span>
+    <span class="n">j</span> <span class="k">&lt;-</span> <span class="n">b</span>
+    <span class="n">k</span> <span class="k">&lt;-</span> <span class="n">c</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо любий з <code>a</code>,<code>b</code>,<code>c</code> є <code>None</code>, розширення скоротить шлях з <code>None</code>, але він не скаже нам, що пішло не так.</p></div>
+<div class="paragraph"><p>Існує багато функцій в природі, що приймають параметри <code>Option</code>, але насправді потребують всі параметри для існування. Альтернативою до закидання виключення часу виконання є використання розширеного <code>for</code>, що дає нам повноту (значення повернення для кожного вводу):</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">namedThings</span><span class="o">(</span>
+    <span class="n">someName</span>  <span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span>
+    <span class="n">someNumber</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+  <span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+    <span class="n">name</span>   <span class="k">&lt;-</span> <span class="n">someName</span>
+    <span class="n">number</span> <span class="k">&lt;-</span> <span class="n">someNumber</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="s">s&quot;</span><span class="si">$number</span><span class="s"> </span><span class="si">${</span><span class="n">name</span><span class="si">}</span><span class="s">s&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>але це балакуче, відволікаюче та поганий стиль. Якщо функція потребує кожного вводу, то вона має зробити це явним, покладаючи відповідальність мати справу з опціональними параметрами на викликаючу сторону.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">namedThings</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">num</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">=</span> <span class="s">s&quot;</span><span class="si">$num</span><span class="s"> </span><span class="si">${</span><span class="n">name</span><span class="si">}</span><span class="s">s&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ми використовуємо <code>Either</code>, тоді <code>Left</code> призведе розширене <code>for</code> на короткий шлях з додатковою інформацією, значно краще, ніж <code>Option</code> для повідомлення про помилку:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="nc">Right</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">b</span> <span class="k">=</span> <span class="nc">Right</span><span class="o">(</span><span class="mi">2</span><span class="o">)</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">c</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">Left</span><span class="o">(</span><span class="s">&quot;sorry, no c&quot;</span><span class="o">)</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span> <span class="n">i</span> <span class="k">&lt;-</span> <span class="n">a</span> <span class="o">;</span> <span class="n">j</span> <span class="k">&lt;-</span> <span class="n">b</span> <span class="o">;</span> <span class="n">k</span> <span class="k">&lt;-</span> <span class="n">c</span> <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span> <span class="o">+</span> <span class="n">k</span><span class="o">)</span>
+
+  <span class="nc">Left</span><span class="o">(</span><span class="n">sorry</span><span class="o">,</span> <span class="n">no</span> <span class="n">c</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>І нарешті давайте подивимось, що станеться з <code>Future</code> що схибила:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">scala.concurrent._</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">ExecutionContext.Implicits.global</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">i</span> <span class="k">&lt;-</span> <span class="nc">Future</span><span class="o">.</span><span class="n">failed</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="k">new</span> <span class="nc">Throwable</span><span class="o">)</span>
+           <span class="n">j</span> <span class="k">&lt;-</span> <span class="nc">Future</span> <span class="o">{</span> <span class="n">println</span><span class="o">(</span><span class="s">&quot;hello&quot;</span><span class="o">)</span> <span class="o">;</span> <span class="mi">1</span> <span class="o">}</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">i</span> <span class="o">+</span> <span class="n">j</span><span class="o">)</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">f</span><span class="o">,</span> <span class="n">duration</span><span class="o">.</span><span class="nc">Duration</span><span class="o">.</span><span class="nc">Inf</span><span class="o">)</span>
+  <span class="n">caught</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Throwable</span>
+<span class="o">[</span><span class="kt">source</span>,<span class="kt">scala</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Future</code>, що друкує на терміналі, ніколи не викликається, оскільки, як <code>Option</code> та <code>Either</code>, розширений <code>for</code> обчислює скорочено.</p></div>
+<div class="paragraph"><p>Коротке обчислення для нещасливих шляхів є загальною та важливою темою. Розширений <code>for</code> не може виразити очищення ресурсів: немає способу зробити <code>try / finally</code>. Це добре, в FP це покладає ясну власність відповідальності для відновлення після несподіваних помилок та очистку ресурсів на контекст (що загалом є <code>Monad</code>, як ми побачимо пізніше), а не бізнес логіка.</p></div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_2_3_">2.3 Гімнастика</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Хоча це просто переписати простий послідовний код як розширений <code>for</code>, іноді ми бажаємо зробити дещо, що вимагає розумових вправ. Цей розділ збирає деякі практичні приклади, та як мати з ними справу.</p></div>
+<div class="sect2">
+<h3 id="_2_3_1__">2.3.1 Логіка відкату</h3>
+<div class="paragraph"><p>Скажімо, ми викликаємо метод, що повертає <code>Option</code>. Якщо він неуспішний, ми бажаємо відкатитись до іншого методу (і так далі і далі), як при використанні кешу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">getFromRedis</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">getFromSql</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+
+  <span class="n">getFromRedis</span><span class="o">(</span><span class="n">key</span><span class="o">)</span> <span class="n">orElse</span> <span class="n">getFromSql</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ми робимо це для асинхронної версії того самого API:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">getFromRedis</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span>
+  <span class="k">def</span> <span class="n">getFromSql</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]]</span>
+<span class="o">[</span><span class="kt">source</span>,<span class="kt">scala</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>тоді ми маємо бути уважними, щоб не зробити ту додаткову роботу, оскільки</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">cache</span> <span class="k">&lt;-</span> <span class="n">getFromRedis</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+    <span class="n">sql</span>   <span class="k">&lt;-</span> <span class="n">getFromSql</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">cache</span> <span class="n">orElse</span> <span class="n">sql</span>
+</pre></div></div></div>
+<div class="paragraph"><p>виконає обидва запити. Ми можемо зробити порівняння на першому результаті, але тип невірний:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">cache</span> <span class="k">&lt;-</span> <span class="n">getFromRedis</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+    <span class="n">res</span>   <span class="k">&lt;-</span> <span class="n">cache</span> <span class="k">match</span> <span class="o">{</span>
+               <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">cache</span> <span class="o">!!!</span> <span class="n">невірний</span> <span class="n">тип</span> <span class="o">!!!</span>
+               <span class="k">case</span> <span class="nc">None</span>    <span class="k">=&gt;</span> <span class="n">getFromSql</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+             <span class="o">}</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">res</span>
+<span class="o">[</span><span class="kt">source</span>,<span class="kt">scala</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ми маємо створити <code>Future</code> з <code>cache</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">cache</span> <span class="k">&lt;-</span> <span class="n">getFromRedis</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+    <span class="n">res</span>   <span class="k">&lt;-</span> <span class="n">cache</span> <span class="k">match</span> <span class="o">{</span>
+               <span class="k">case</span> <span class="nc">Some</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">successful</span><span class="o">(</span><span class="n">cache</span><span class="o">)</span>
+               <span class="k">case</span> <span class="nc">None</span>    <span class="k">=&gt;</span> <span class="n">getFromSql</span><span class="o">(</span><span class="n">key</span><span class="o">)</span>
+             <span class="o">}</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">res</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Future.successful</code> створює новий <code>Future</code>, майже так само, як конструктор <code>Option</code> або <code>List</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_2_3_2__">2.3.2 Ранішній вихід</h3>
+<div class="paragraph"><p>Скажімо, ми маємо деяку умову, що повинна рано виходити з успішним значенням.</p></div>
+<div class="paragraph"><p>Якщо ви бажаєте вийти рано з помилкою, це стандартна практика в OOP закинути виключення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">getA</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">...</span>
+
+  <span class="k">val</span> <span class="n">a</span> <span class="k">=</span> <span class="n">getA</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">a</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">,</span> <span class="s">s&quot;</span><span class="si">$a</span><span class="s"> must be positive&quot;</span><span class="o">)</span>
+  <span class="n">a</span> <span class="o">*</span> <span class="mi">10</span>
+</pre></div></div></div>
+<div class="paragraph"><p>що може бути переписане асинхронно:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">getA</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="k">def</span> <span class="n">error</span><span class="o">(</span><span class="n">msg</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Nothing</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Future</span><span class="o">.</span><span class="n">failed</span><span class="o">(</span><span class="k">new</span> <span class="nc">RuntimeException</span><span class="o">(</span><span class="n">msg</span><span class="o">))</span>
+
+  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">a</span> <span class="k">&lt;-</span> <span class="n">getA</span>
+    <span class="n">b</span> <span class="k">&lt;-</span> <span class="k">if</span> <span class="o">(</span><span class="n">a</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="o">)</span> <span class="n">error</span><span class="o">(</span><span class="s">s&quot;</span><span class="si">$a</span><span class="s"> must be positive&quot;</span><span class="o">)</span>
+         <span class="k">else</span> <span class="nc">Future</span><span class="o">.</span><span class="n">successful</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">b</span> <span class="o">*</span> <span class="mi">10</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але якщо ми бажаємо вийти рано з успішним значенням, простий синхронний код:</p></div>
 <div class="literalblock">
 <div class="content">
 <pre><code>def getB: Int = ...</code></pre>
 </div></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>  val a = getA
-  if (a &lt;= 0) 0
-  else a * getB
-translates into a nested for comprehension when our dependencies are asynchronous:</code></pre>
+<pre><code>val a = getA
+if (a &lt;= 0) 0
+else a * getB</code></pre>
+</div></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>транслюється у вкладений розширений `for`, коли наші залежності є асинхронними:
+[source,scala]</code></pre>
 </div></div>
 <div class="literalblock">
 <div class="content">
@@ -1146,113 +1128,114 @@ translates into a nested for comprehension when our dependencies are asynchronou
 </div></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>  for {
-    a &lt;- getA
-    c &lt;- if (a &lt;= 0) Future.successful(0)
-         else for { b &lt;- getB } yield a * b
-  } yield c
-If there is an implicit Monad[T] for T[_] (i.e. T is monadic) then Scalaz lets us create a T[A] from a value a: A by calling a.pure[T].</code></pre>
+<pre><code>for {
+  a &lt;- getA
+  c &lt;- if (a &lt;= 0) Future.successful(0)
+       else for { b &lt;- getB } yield a * b
+} yield c</code></pre>
 </div></div>
-<div class="paragraph"><p>Scalaz provides Monad[Future], and .pure[Future] calls Future.successful. Besides pure being slightly shorter to type, it is a general concept that works beyond Future, and is therefore recommended.</p></div>
-<div class="literalblock">
+<div class="listingblock">
 <div class="content">
-<pre><code>  for {
-    a &lt;- getA
-    c &lt;- if (a &lt;= 0) 0.pure[Future]
-         else for { b &lt;- getB } yield a * b
-  } yield c
-2.4 Incomprehensible
-The context we’re comprehending over must stay the same: we cannot mix contexts.</code></pre>
+<pre><code>Якщо існує неявний `Monad[T]` для `T[_]` (тобто `T` є монадичний), тоді `Scalaz` дозволяє нам створити `T[A]` зі значення `a: A` через виклик `a.pure[T]`.
+
+`Scalaz` провадить `Monad[Future]`, та `.pure[Future]` викликає  `Future.successful`. Крім того, що `pure` трохи коротший для друку, це загальна концепція, що робить за межами `Future`, і таким чином є рекомендованою.
+[source,scala]</code></pre>
 </div></div>
 <div class="literalblock">
 <div class="content">
-<pre><code>  scala&gt; def option: Option[Int] = ...
-  scala&gt; def future: Future[Int] = ...
-  scala&gt; for {
-           a &lt;- option
-           b &lt;- future
-         } yield a * b
-  &lt;console&gt;:23: error: type mismatch;
-   found   : Future[Int]
-   required: Option[?]
-           b &lt;- future
-                ^
-Nothing can help us mix arbitrary contexts in a for comprehension because the meaning is not well defined.</code></pre>
+<pre><code>for {
+  a &lt;- getA
+  c &lt;- if (a &lt;= 0) 0.pure[Future]
+       else for { b &lt;- getB } yield a * b
+} yield c</code></pre>
 </div></div>
-<div class="paragraph"><p>But when we have nested contexts the intention is usually obvious yet the compiler still doesn’t accept our code.</p></div>
-<div class="literalblock">
+<div class="listingblock">
 <div class="content">
-<pre><code>  scala&gt; def getA: Future[Option[Int]] = ...
-  scala&gt; def getB: Future[Option[Int]] = ...
-  scala&gt; for {
-           a &lt;- getA
-           b &lt;- getB
-         } yield a * b
-                   ^
-  &lt;console&gt;:30: error: value * is not a member of Option[Int]
-Here we want for to take care of the outer context and let us write our code on the inner Option. Hiding the outer context is exactly what a monad transformer does, and Scalaz provides implementations for Option and Either named OptionT and EitherT respectively.</code></pre>
+<pre><code>2.4 Незрозумілість</code></pre>
 </div></div>
-<div class="paragraph"><p>The outer context can be anything that normally works in a for comprehension, but it needs to stay the same throughout.</p></div>
-<div class="paragraph"><p>We create an OptionT from each method call. This changes the context of the for from Future[Option[_]] to OptionT[Future, _].</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; val result = for {
-           a &lt;- OptionT(getA)
-           b &lt;- OptionT(getB)
-         } yield a * b
-  result: OptionT[Future, Int] = OptionT(Future(&lt;not completed&gt;))
-.run returns us to the original context</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; result.run
-  res: Future[Option[Int]] = Future(&lt;not completed&gt;)
-The monad transformer also allows us to mix Future[Option[_]] calls with methods that just return plain Future via .liftM[OptionT] (provided by scalaz):</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; def getC: Future[Int] = ...
-  scala&gt; val result = for {
-           a &lt;- OptionT(getA)
-           b &lt;- OptionT(getB)
-           c &lt;- getC.liftM[OptionT]
-         } yield a * b / c
-  result: OptionT[Future, Int] = OptionT(Future(&lt;not completed&gt;))
-and we can mix with methods that return plain Option by wrapping them in Future.successful (.pure[Future]) followed by OptionT</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; def getD: Option[Int] = ...
-  scala&gt; val result = for {
-           a &lt;- OptionT(getA)
-           b &lt;- OptionT(getB)
-           c &lt;- getC.liftM[OptionT]
-           d &lt;- OptionT(getD.pure[Future])
-         } yield (a * b) / (c * d)
-  result: OptionT[Future, Int] = OptionT(Future(&lt;not completed&gt;))
-It is messy again, but it is better than writing nested flatMap and map by hand. We can clean it up with a DSL that handles all the required conversions into OptionT[Future, _]</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def liftFutureOption[A](f: Future[Option[A]]) = OptionT(f)
-  def liftFuture[A](f: Future[A]) = f.liftM[OptionT]
-  def liftOption[A](o: Option[A]) = OptionT(o.pure[Future])
-  def lift[A](a: A)               = liftOption(Option(a))
-combined with the |&gt; operator, which applies the function on the right to the value on the left, to visually separate the logic from the transformers</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; val result = for {
-           a &lt;- getA       |&gt; liftFutureOption
-           b &lt;- getB       |&gt; liftFutureOption
-           c &lt;- getC       |&gt; liftFuture
-           d &lt;- getD       |&gt; liftOption
-           e &lt;- 10         |&gt; lift
-         } yield e * (a * b) / (c * d)
-  result: OptionT[Future, Int] = OptionT(Future(&lt;not completed&gt;))
-|&gt; is often called the thrush operator because of its uncanny resemblance to the cute bird. Those who do not like symbolic operators can use the alias .into.</code></pre>
-</div></div>
-<div class="paragraph"><p>This approach also works for Either (and others) as the inner context, but their lifting methods are more complex and require parameters. Scalaz provides monad transformers for a lot of its own types, so it is worth checking if one is available.</p></div>
+<div class="paragraph"><p>Контекст, де ми розширюємо <code>for</code>, має залишатись тим самим: ми не можемо змішувати контексти.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">option</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">future</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">a</span> <span class="k">&lt;-</span> <span class="n">option</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="n">future</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+  <span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">23</span><span class="k">:</span> <span class="kt">error:</span> <span class="k">type</span> <span class="kt">mismatch</span><span class="o">;</span>
+   <span class="n">found</span>   <span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+   <span class="n">required</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">?</span><span class="o">]</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="n">future</span>
+                <span class="o">^</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ніщо не допоможе нам змішати довільні контексти в розширенні <code>for</code>, оскількі значення цього не дуже визначене.</p></div>
+<div class="paragraph"><p>Але якщо ми маємо вкладені контексти, і наміри звичайно очевидні, компілятор все ще не може прийняти наш код.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">getA</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">getB</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">a</span> <span class="k">&lt;-</span> <span class="n">getA</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="n">getB</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+                   <span class="o">^</span>
+  <span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">30</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">value</span> <span class="kt">*</span> <span class="kt">is</span> <span class="kt">not</span> <span class="kt">a</span> <span class="kt">member</span> <span class="kt">of</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут ми бажаємо, щоб <code>for</code> потурбувався про зовнішній контекст, та дав нам написати наш код на внутрішньому <code>Option</code>. Приховування зовнішнього контексту є саме те, що робить трансформер монад, та <code>Scalaz</code> провадить реалізації для <code>Option</code> та <code>Either</code> на ім'я <code>OptionT</code> та <code>EitherT</code>, відповідно.</p></div>
+<div class="paragraph"><p>Зовнішній контекст може бути будь-чим, що нормально робить в <code>for</code> розширеннях, але воно має залишатись на всьому протязі.</p></div>
+<div class="paragraph"><p>Ми створили <code>OptionT</code> для кожного виклику метода. Це змінює контекст <code>for</code> з <code>Future[Option[_]]</code> до <code>OptionT[Future, _]</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">a</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getA</span><span class="o">)</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getB</span><span class="o">)</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+  <span class="n">result</span><span class="k">:</span> <span class="kt">OptionT</span><span class="o">[</span><span class="kt">Future</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">OptionT</span><span class="o">(</span><span class="nc">Future</span><span class="o">(&lt;</span><span class="n">not</span> <span class="n">completed</span><span class="o">&gt;))</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>.run</code> повертає нам оригінальний контекст:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="n">result</span><span class="o">.</span><span class="n">run</span>
+  <span class="n">res</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]]</span> <span class="k">=</span> <span class="nc">Future</span><span class="o">(&lt;</span><span class="n">not</span> <span class="n">completed</span><span class="o">&gt;)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Трансформатор монад також дозволяє нам міксувати виклики <code>Future[Option[_]]</code> за допомогою методів, що просто повертають звичайний  <code>Future</code> через <code>.liftM[OptionT]</code> (провадиться <code>scalaz</code>):</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">getC</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">a</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getA</span><span class="o">)</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getB</span><span class="o">)</span>
+           <span class="n">c</span> <span class="k">&lt;-</span> <span class="n">getC</span><span class="o">.</span><span class="n">liftM</span><span class="o">[</span><span class="kt">OptionT</span><span class="o">]</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span> <span class="o">/</span> <span class="n">c</span>
+  <span class="n">result</span><span class="k">:</span> <span class="kt">OptionT</span><span class="o">[</span><span class="kt">Future</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">OptionT</span><span class="o">(</span><span class="nc">Future</span><span class="o">(&lt;</span><span class="n">not</span> <span class="n">completed</span><span class="o">&gt;))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>та ми міксуємо з методами, що повертають звичайні <code>Option</code>, огортаючи їх в <code>Future.successful</code> (<code>.pure[Future]</code>), за яким слідує <code>OptionT</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">def</span> <span class="n">getD</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="o">...</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">a</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getA</span><span class="o">)</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getB</span><span class="o">)</span>
+           <span class="n">c</span> <span class="k">&lt;-</span> <span class="n">getC</span><span class="o">.</span><span class="n">liftM</span><span class="o">[</span><span class="kt">OptionT</span><span class="o">]</span>
+           <span class="n">d</span> <span class="k">&lt;-</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">getD</span><span class="o">.</span><span class="n">pure</span><span class="o">[</span><span class="kt">Future</span><span class="o">])</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="o">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="o">)</span> <span class="o">/</span> <span class="o">(</span><span class="n">c</span> <span class="o">*</span> <span class="n">d</span><span class="o">)</span>
+  <span class="n">result</span><span class="k">:</span> <span class="kt">OptionT</span><span class="o">[</span><span class="kt">Future</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">OptionT</span><span class="o">(</span><span class="nc">Future</span><span class="o">(&lt;</span><span class="n">not</span> <span class="n">completed</span><span class="o">&gt;))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це знову безлад, але це краще, ніж вручну вкладений <code>flatMap</code> та <code>map</code>. Ми можемо очистити його за допомогою DSL, що обробить всі потрібні перетворення в <code>OptionT[Future, _]</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">liftFutureOption</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Option</span><span class="o">[</span><span class="kt">A</span><span class="o">]])</span> <span class="k">=</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">f</span><span class="o">)</span>
+  <span class="k">def</span> <span class="n">liftFuture</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">f</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span> <span class="k">=</span> <span class="n">f</span><span class="o">.</span><span class="n">liftM</span><span class="o">[</span><span class="kt">OptionT</span><span class="o">]</span>
+  <span class="k">def</span> <span class="n">liftOption</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">o</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span> <span class="k">=</span> <span class="nc">OptionT</span><span class="o">(</span><span class="n">o</span><span class="o">.</span><span class="n">pure</span><span class="o">[</span><span class="kt">Future</span><span class="o">])</span>
+  <span class="k">def</span> <span class="n">lift</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">a</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span>               <span class="k">=</span> <span class="n">liftOption</span><span class="o">(</span><span class="nc">Option</span><span class="o">(</span><span class="n">a</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>в комбінації з оператором <code>|&gt;</code>, що застосовує функцію зправа до значення зліва, щоб візуально відділити логіку від трансформацій:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="k">for</span> <span class="o">{</span>
+           <span class="n">a</span> <span class="k">&lt;-</span> <span class="n">getA</span>       <span class="o">|&gt;</span> <span class="n">liftFutureOption</span>
+           <span class="n">b</span> <span class="k">&lt;-</span> <span class="n">getB</span>       <span class="o">|&gt;</span> <span class="n">liftFutureOption</span>
+           <span class="n">c</span> <span class="k">&lt;-</span> <span class="n">getC</span>       <span class="o">|&gt;</span> <span class="n">liftFuture</span>
+           <span class="n">d</span> <span class="k">&lt;-</span> <span class="n">getD</span>       <span class="o">|&gt;</span> <span class="n">liftOption</span>
+           <span class="n">e</span> <span class="k">&lt;-</span> <span class="mi">10</span>         <span class="o">|&gt;</span> <span class="n">lift</span>
+         <span class="o">}</span> <span class="k">yield</span> <span class="n">e</span> <span class="o">*</span> <span class="o">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="o">)</span> <span class="o">/</span> <span class="o">(</span><span class="n">c</span> <span class="o">*</span> <span class="n">d</span><span class="o">)</span>
+  <span class="n">result</span><span class="k">:</span> <span class="kt">OptionT</span><span class="o">[</span><span class="kt">Future</span>, <span class="kt">Int</span><span class="o">]</span> <span class="k">=</span> <span class="nc">OptionT</span><span class="o">(</span><span class="nc">Future</span><span class="o">(&lt;</span><span class="n">not</span> <span class="n">completed</span><span class="o">&gt;))</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>|&gt;</code> часто називають оператором дрозда, завдяки його несподіваної подоби до цікавої пташки. Ті, кому не до вподоби символічні оператори, може використовувати псевдоним <code>.into</code>.</p></div>
+<div class="paragraph"><p>Цей підхід також робить для <code>Either</code> (та інших) в якості внутрішнього контексту, але їх методи ліфтингу більш складні, і потребують параметрів. <code>Scalaz</code> провадить монадні трансформери для більшості своїх власних типів, так що має сенс перевірити, чи достіпний один з них.</p></div>
+</div>
 </div>
 </div>
 </div>
@@ -1260,7 +1243,7 @@ combined with the |&gt; operator, which applies the function on the right to the
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-07-06 02:02:10 EEST
+ 2019-07-06 15:15:27 EEST
 </div>
 </div>
 </body>

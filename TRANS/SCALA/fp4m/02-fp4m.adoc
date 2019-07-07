@@ -36,11 +36,13 @@ include::header.adoc[]
       j => c.map {
         k => i + j + k }}}
 ----
-The rule of thumb is that every <- (called a generator) is a nested flatMap call, with the final generator a map containing the yield body.
+Правило великого пальця: для кожного `<-` (що називається генератором) є вкладеним викликом `flatMap`, з фінальним генератором `map`, що містить тіло `yield`.
 
-2.1.1 Assignment
-We can assign values inline like ij = i + j (a val keyword is not needed).
-
+2.1.1 Присвоєння
+----------------
+Ми можемо присвоїти значення інлайн, як `ij = i + j` (ключове слово  `val` не потрібне).
+[source,scala]
+----
   reify> for {
            i <- a
            j <- b
@@ -52,17 +54,21 @@ We can assign values inline like ij = i + j (a val keyword is not needed).
     i => b.map { j => (j, i + j) }.flatMap {
       case (j, ij) => c.map {
         k => ij + k }}}
-A map over the b introduces the ij which is flat-mapped along with the j, then the final map for the code in the yield.
+----
+`map` по `b` вводить `ij`, що  `flat-mapped` разом з `j`, потім отримується фінальний `map` для коду в `yield`.
 
-Unfortunately we cannot assign before any generators. It has been requested as a language feature but has not been implemented: https://github.com/scala/bug/issues/907
-
+Нажаль, ми не можемо присвоювати перед жодним генератором. Існує запит на цю можливість мови, але вона не була реалізована: https://github.com/scala/bug/issues/907
+[source,scala]
+----
   scala> for {
            initial = getDefault
            i <- a
          } yield initial + i
   <console>:1: error: '<-' expected but '=' found.
-We can workaround the limitation by defining a val outside the for
-
+----
+Ми можемо обійти це обмеження через визначення `val` зовні `for`:
+[source,scala]
+----
   scala> val initial = getDefault
   scala> for { i <- a } yield initial + i
 or create an Option out of the initial assignment
@@ -71,8 +77,10 @@ or create an Option out of the initial assignment
            initial <- Option(getDefault)
            i <- a
          } yield initial + i
-val doesn’t have to assign to a single value, it can be anything that works as a case in a pattern match.
-
+----
+`val` не має присвоювати одне значення, воно має бути будь-чим, що робить як `case` в співставленні шаблонів `match`.
+[source,scala]
+----
   scala> val (first, second) = ("hello", "world")
   first: String = hello
   second: String = world
@@ -81,21 +89,28 @@ val doesn’t have to assign to a single value, it can be anything that works as
   scala> val head :: tail = list
   head: Int = 1
   tail: List[Int] = List(2, 3)
-The same is true for assignment in for comprehensions
-
+----
+Те саме вірне в узагальнених `for`:
+[source,scala]
+----
   scala> val maybe = Option(("hello", "world"))
   scala> for {
            entry <- maybe
            (first, _) = entry
          } yield first
   res: Some(hello)
-But be careful not to miss any cases or there will be a runtime exception (a totality failure).
-
+----
+Але будьте пильними, не втратьте жодного випадку, або буде виключення часу виконання (збій повноти).
+[source,scala]
+----
   scala> val a :: tail = list
   caught scala.MatchError: List()
-2.1.2 Filter
-It is possible to put if statements after a generator to filter values by a predicate
-
+----
+2.1.2 Фільтр
+------------
+Можливо покласти твердження `if` після генератора, щоб фільтрувати значення по предикату:
+[source,scala]
+----
   reify> for {
            i  <- a
            j  <- b
@@ -108,42 +123,54 @@ It is possible to put if statements after a generator to filter values by a pred
       j => i > j }.flatMap {
         j => c.map {
           k => i + j + k }}}
-Older versions of Scala used filter, but Traversable.filter creates new collections for every predicate, so withFilter was introduced as the more performant alternative. We can accidentally trigger a withFilter by providing type information, interpreted as a pattern match.
-
+----
+ Старіші версії Scala використовували `filter`, але `Traversable.filter` створює нові колекції для кожного предиката, так що була введена більш продуктивна альтернатива, `withFilter`. Ми можемо випадково вімкнути `withFilter`, надавши інформацію типу, що інтерпретується як порівняння шаблону.
+[source,scala]
+----
   reify> for { i: Int <- a } yield i
   
   a.withFilter {
     case i: Int => true
     case _      => false
   }.map { case i: Int => i }
-Like assignment, a generator can use a pattern match on the left hand side. But unlike assignment (which throws MatchError on failure), generators are filtered and will not fail at runtime. However, there is an inefficient double application of the pattern.
+----
+Як і присвоювання, генератор може використовувати порівняння шаблонів в лівій частині. Але не відміну від присвоєння (або закидається  `MatchError` по збою), генератори фільтровані, та не схиблять під час виконання. Однак існує неефективне подвійне порівняння шаблону.
 
-The compiler plugin better-monadic-for produces alternative, better, desugarings than the Scala compiler. This example is interpreted as:
-
+Плагін компілятора `better-monadic-for` продукує альтернативне, краще децукрування, ніж компілятор Scala. Цей приклад інтерпретується так:
+[source,scala]
+----
   reify> for { i: Int <- a } yield i
   
   a.map { (i: Int) => i}
-instead of inefficient double matching (in the best case) and silent filtering at runtime (in the worst case). Highly recommended.
+----
+замість неефективного подвійного співпадіння (в кращому випадку) та тихої фільтрації під час виконання (в гіршому випадку). Дуже рекомендуємо.
 
-2.1.3 For Each
-Finally, if there is no yield, the compiler will use foreach instead of flatMap, which is only useful for side-effects.
-
+2.1.3 Foreach
+-------------
+Нарешті, якщо немає `yield`, компілятор буде використовувати `foreach` замість `flatMap`, що корисне тільки для побічних ефектів.
+[source,scala]
+----
   reify> for { i <- a ; j <- b } println(s"$i $j")
   
   a.foreach { i => b.foreach { j => println(s"$i $j") } }
-2.1.4 Summary
-The full set of methods supported by for comprehensions do not share a common super type; each generated snippet is independently compiled. If there were a trait, it would roughly look like:
-
+----
+2.1.4 Підсумок
+--------------
+Повний набір методів, підтримуваний розширеним `for`, не поділяють загальний супер тип; кожний згенерований фрагмент компілюється окремо. Якщо це був би трейт, він мав би виглядати так:
+[source,scala]
+----
   trait ForComprehensible[C[_]] {
     def map[A, B](f: A => B): C[B]
     def flatMap[A, B](f: A => C[B]): C[B]
     def withFilter[A](p: A => Boolean): C[A]
     def foreach[A](f: A => Unit): Unit
   }
-If the context (C[_]) of a for comprehension doesn’t provide its own map and flatMap, all is not lost. If an implicit scalaz.Bind[T] is available for T, it will provide map and flatMap.
+----
+Якщо контекст (`C[_]`) розширеного `for` не провадить свої власні  `map` та `flatMap`, не все втрачено. Якщо для `T` доступний неявний `scalaz.Bind[T]`, він буде провадити `map` та `flatMap`.
 
-It often surprises developers when inline Future calculations in a for comprehension do not run in parallel:
-
+Це часто дивує розробників, коли інлан обчислення `Future` в розширеному `for` не виконуються паралельно:
+[source,scala]
+----
   import scala.concurrent._
   import ExecutionContext.Implicits.global
   
@@ -151,27 +178,34 @@ It often surprises developers when inline Future calculations in a for comprehen
     i <- Future { expensiveCalc() }
     j <- Future { anotherExpensiveCalc() }
   } yield (i + j)
-This is because the flatMap spawning anotherExpensiveCalc is strictly after expensiveCalc. To ensure that two Future calculations begin in parallel, start them outside the for comprehension.
-
+----
+Це тому, що `flatMap` відгалужує `anotherExpensiveCalc` прямо після `expensiveCalc`. Щоб переконатись, що два обчислення розпочались паралельно, почніть їх за межами розширеного for.
+[source,scala]
+----
   val a = Future { expensiveCalc() }
   val b = Future { anotherExpensiveCalc() }
   for { i <- a ; j <- b } yield (i + j)
-for comprehensions are fundamentally for defining sequential programs. We will show a far superior way of defining parallel computations in a later chapter. Spoiler: don’t use Future.
+----
+`for` розширення фундаментально для визначення послідовних програм. Ми покажемо далеко кращий спосіб визначення паралельних обчислень в наступній главі. Підсумок: не використовуйте `Future`.
 
-2.2 Unhappy path
-So far we’ve only looked at the rewrite rules, not what is happening in map and flatMap. Consider what happens when the for context decides that it cannot proceed any further.
+2.2 Нещасливий шлях
+-------------------
+Дотепер ми дивились тільки на правила переписування, не на те, що відбувається в `map` та `flatMap`. Розглянемо, що трапляється, коли контекст вирішує, що він не може продовжувати далі.
 
-In the Option example, the yield is only called when i,j,k are all defined.
-
+В прикладі `Option` `yield` викликається тільки коли всі `i`,`j`,`k` є визначеними.
+[source,scala]
+----
   for {
     i <- a
     j <- b
     k <- c
   } yield (i + j + k)
-If any of a,b,c are None, the comprehension short-circuits with None but it doesn’t tell us what went wrong.
+----
+Якщо любий з `a`,`b`,`c` є `None`, розширення скоротить шлях з `None`, але він не скаже нам, що пішло не так.
 
-There are many functions in the wild that take Option parameters but actually require all parameters to exist. An alternative to throwing a runtime exception is to use a for comprehension, giving us totality (a return value for every input):
-
+Існує багато функцій в природі, що приймають параметри `Option`, але насправді потребують всі параметри для існування. Альтернативою до закидання виключення часу виконання є використання розширеного `for`, що дає нам повноту (значення повернення для кожного вводу):
+[source,scala]
+----
   def namedThings(
     someName  : Option[String],
     someNumber: Option[Int]
@@ -179,19 +213,25 @@ There are many functions in the wild that take Option parameters but actually re
     name   <- someName
     number <- someNumber
   } yield s"$number ${name}s"
-but this is verbose, clunky and bad style. If a function requires every input then it should make its requirement explicit, pushing the responsibility of dealing with optional parameters to its caller.
-
+----
+але це балакуче, відволікаюче та поганий стиль. Якщо функція потребує кожного вводу, то вона має зробити це явним, покладаючи відповідальність мати справу з опціональними параметрами на викликаючу сторону.
+[source,scala]
+----
   def namedThings(name: String, num: Int) = s"$num ${name}s"
-If we use Either, then a Left will cause the for comprehension to short circuit with extra information, much better than Option for error reporting:
-
+----
+Якщо ми використовуємо `Either`, тоді `Left` призведе розширене `for` на короткий шлях з додатковою інформацією, значно краще, ніж `Option` для повідомлення про помилку:
+[source,scala]
+----
   scala> val a = Right(1)
   scala> val b = Right(2)
   scala> val c: Either[String, Int] = Left("sorry, no c")
   scala> for { i <- a ; j <- b ; k <- c } yield (i + j + k)
   
   Left(sorry, no c)
-And lastly, let’s see what happens with a Future that fails:
-
+----
+І нарешті давайте подивимось, що станеться з `Future` що схибила:
+[source,scala]
+----
   scala> import scala.concurrent._
   scala> import ExecutionContext.Implicits.global
   scala> for {
@@ -200,41 +240,56 @@ And lastly, let’s see what happens with a Future that fails:
          } yield (i + j)
   scala> Await.result(f, duration.Duration.Inf)
   caught java.lang.Throwable
-The Future that prints to the terminal is never called because, like Option and Either, the for comprehension short circuits.
+[source,scala]
+----
+`Future`, що друкує на терміналі, ніколи не викликається, оскільки, як `Option` та `Either`, розширений `for` обчислює скорочено.
 
-Short circuiting for the unhappy path is a common and important theme. for comprehensions cannot express resource cleanup: there is no way to try / finally. This is good, in FP it puts a clear ownership of responsibility for unexpected error recovery and resource cleanup onto the context (which is usually a Monad as we will see later), not the business logic.
+Коротке обчислення для нещасливих шляхів є загальною та важливою темою. Розширений `for` не може виразити очищення ресурсів: немає способу зробити `try / finally`. Це добре, в FP це покладає ясну власність відповідальності для відновлення після несподіваних помилок та очистку ресурсів на контекст (що загалом є `Monad`, як ми побачимо пізніше), а не бізнес логіка.
 
-2.3 Gymnastics
-Although it is easy to rewrite simple sequential code as a for comprehension, sometimes we will want to do something that appears to require mental summersaults. This section collects some practical examples and how to deal with them.
+2.3 Гімнастика
+--------------
+Хоча це просто переписати простий послідовний код як розширений `for`, іноді ми бажаємо зробити дещо, що вимагає розумових вправ. Цей розділ збирає деякі практичні приклади, та як мати з ними справу.
 
-2.3.1 Fallback Logic
-Say we are calling out to a method that returns an Option. If it is not successful we want to fallback to another method (and so on and so on), like when we’re using a cache:
-
+2.3.1 Логіка відкату
+~~~~~~~~~~~~~~~~~~~~
+Скажімо, ми викликаємо метод, що повертає `Option`. Якщо він неуспішний, ми бажаємо відкатитись до іншого методу (і так далі і далі), як при використанні кешу:
+[source,scala]
+----
   def getFromRedis(s: String): Option[String]
   def getFromSql(s: String): Option[String]
   
   getFromRedis(key) orElse getFromSql(key)
-If we have to do this for an asynchronous version of the same API
-
+----
+Якщо ми робимо це для асинхронної версії того самого API:
+[source,scala]
+----
   def getFromRedis(s: String): Future[Option[String]]
   def getFromSql(s: String): Future[Option[String]]
-then we have to be careful not to do extra work because
-
+[source,scala]
+----
+тоді ми маємо бути уважними, щоб не зробити ту додаткову роботу, оскільки
+[source,scala]
+----
   for {
     cache <- getFromRedis(key)
     sql   <- getFromSql(key)
   } yield cache orElse sql
-will run both queries. We can pattern match on the first result but the type is wrong
-
+----
+виконає обидва запити. Ми можемо зробити порівняння на першому результаті, але тип невірний:
+[source,scala]
+----
   for {
     cache <- getFromRedis(key)
     res   <- cache match {
-               case Some(_) => cache !!! wrong type !!!
+               case Some(_) => cache !!! невірний тип !!!
                case None    => getFromSql(key)
              }
   } yield res
-We need to create a Future from the cache
-
+[source,scala]
+----
+Ми маємо створити `Future` з `cache`:
+[source,scala]
+----
   for {
     cache <- getFromRedis(key)
     res   <- cache match {
@@ -242,20 +297,25 @@ We need to create a Future from the cache
                case None    => getFromSql(key)
              }
   } yield res
-Future.successful creates a new Future, much like an Option or List constructor.
+----
+`Future.successful` створює новий `Future`, майже так само, як конструктор `Option` або `List`.
 
-2.3.2 Early Exit
-Say we have some condition that should exit early with a successful value.
+2.3.2 Ранішній вихід
+~~~~~~~~~~~~~~~~~~~~
+Скажімо, ми маємо деяку умову, що повинна рано виходити з успішним значенням.
 
-If we want to exit early with an error, it is standard practice in OOP to throw an exception
-
+Якщо ви бажаєте вийти рано з помилкою, це стандартна практика в OOP закинути виключення:
+[source,scala]
+----
   def getA: Int = ...
   
   val a = getA
   require(a > 0, s"$a must be positive")
   a * 10
-which can be rewritten async
-
+----
+що може бути переписане асинхронно:
+[source,scala]
+----
   def getA: Future[Int] = ...
   def error(msg: String): Future[Nothing] =
     Future.failed(new RuntimeException(msg))
@@ -265,15 +325,18 @@ which can be rewritten async
     b <- if (a <= 0) error(s"$a must be positive")
          else Future.successful(a)
   } yield b * 10
-But if we want to exit early with a successful return value, the simple synchronous code:
+----
+Але якщо ми бажаємо вийти рано з успішним значенням, простий синхронний код:
 
   def getB: Int = ...
   
   val a = getA
   if (a <= 0) 0
   else a * getB
-translates into a nested for comprehension when our dependencies are asynchronous:
-
+----
+транслюється у вкладений розширений `for`, коли наші залежності є асинхронними:
+[source,scala]
+----
   def getB: Future[Int] = ...
   
   for {
@@ -281,18 +344,23 @@ translates into a nested for comprehension when our dependencies are asynchronou
     c <- if (a <= 0) Future.successful(0)
          else for { b <- getB } yield a * b
   } yield c
-If there is an implicit Monad[T] for T[_] (i.e. T is monadic) then Scalaz lets us create a T[A] from a value a: A by calling a.pure[T].
+----
+Якщо існує неявний `Monad[T]` для `T[_]` (тобто `T` є монадичний), тоді `Scalaz` дозволяє нам створити `T[A]` зі значення `a: A` через виклик `a.pure[T]`.
 
-Scalaz provides Monad[Future], and .pure[Future] calls Future.successful. Besides pure being slightly shorter to type, it is a general concept that works beyond Future, and is therefore recommended.
-
+`Scalaz` провадить `Monad[Future]`, та `.pure[Future]` викликає  `Future.successful`. Крім того, що `pure` трохи коротший для друку, це загальна концепція, що робить за межами `Future`, і таким чином є рекомендованою.
+[source,scala]
+----
   for {
     a <- getA
     c <- if (a <= 0) 0.pure[Future]
          else for { b <- getB } yield a * b
   } yield c
-2.4 Incomprehensible
-The context we’re comprehending over must stay the same: we cannot mix contexts.
-
+----
+2.4 Незрозумілість
+------------------
+Контекст, де ми розширюємо `for`, має залишатись тим самим: ми не можемо змішувати контексти.
+[source,scala]
+----
   scala> def option: Option[Int] = ...
   scala> def future: Future[Int] = ...
   scala> for {
@@ -304,10 +372,12 @@ The context we’re comprehending over must stay the same: we cannot mix context
    required: Option[?]
            b <- future
                 ^
-Nothing can help us mix arbitrary contexts in a for comprehension because the meaning is not well defined.
+----
+Ніщо не допоможе нам змішати довільні контексти в розширенні `for`, оскількі значення цього не дуже визначене.
 
-But when we have nested contexts the intention is usually obvious yet the compiler still doesn’t accept our code.
-
+Але якщо ми маємо вкладені контексти, і наміри звичайно очевидні, компілятор все ще не може прийняти наш код.
+[source,scala]
+----
   scala> def getA: Future[Option[Int]] = ...
   scala> def getB: Future[Option[Int]] = ...
   scala> for {
@@ -316,23 +386,29 @@ But when we have nested contexts the intention is usually obvious yet the compil
          } yield a * b
                    ^
   <console>:30: error: value * is not a member of Option[Int]
-Here we want for to take care of the outer context and let us write our code on the inner Option. Hiding the outer context is exactly what a monad transformer does, and Scalaz provides implementations for Option and Either named OptionT and EitherT respectively.
+----
+Тут ми бажаємо, щоб `for` потурбувався про зовнішній контекст, та дав нам написати наш код на внутрішньому `Option`. Приховування зовнішнього контексту є саме те, що робить трансформер монад, та `Scalaz` провадить реалізації для `Option` та `Either` на ім'я `OptionT` та `EitherT`, відповідно.
 
-The outer context can be anything that normally works in a for comprehension, but it needs to stay the same throughout.
+Зовнішній контекст може бути будь-чим, що нормально робить в `for` розширеннях, але воно має залишатись на всьому протязі.
 
-We create an OptionT from each method call. This changes the context of the for from Future[Option[_]] to OptionT[Future, _].
-
+Ми створили `OptionT` для кожного виклику метода. Це змінює контекст `for` з `Future[Option[_]]` до `OptionT[Future, _]`.
+[source,scala]
+----
   scala> val result = for {
            a <- OptionT(getA)
            b <- OptionT(getB)
          } yield a * b
   result: OptionT[Future, Int] = OptionT(Future(<not completed>))
-.run returns us to the original context
-
+----
+`.run` повертає нам оригінальний контекст:
+[source,scala]
+----
   scala> result.run
   res: Future[Option[Int]] = Future(<not completed>)
-The monad transformer also allows us to mix Future[Option[_]] calls with methods that just return plain Future via .liftM[OptionT] (provided by scalaz):
-
+----
+Трансформатор монад також дозволяє нам міксувати виклики `Future[Option[_]]` за допомогою методів, що просто повертають звичайний  `Future` через `.liftM[OptionT]` (провадиться `scalaz`):
+[source,scala]
+----
   scala> def getC: Future[Int] = ...
   scala> val result = for {
            a <- OptionT(getA)
@@ -340,8 +416,10 @@ The monad transformer also allows us to mix Future[Option[_]] calls with methods
            c <- getC.liftM[OptionT]
          } yield a * b / c
   result: OptionT[Future, Int] = OptionT(Future(<not completed>))
-and we can mix with methods that return plain Option by wrapping them in Future.successful (.pure[Future]) followed by OptionT
-
+----
+та ми міксуємо з методами, що повертають звичайні `Option`, огортаючи їх в `Future.successful` (`.pure[Future]`), за яким слідує `OptionT`:
+[source,scala]
+----
   scala> def getD: Option[Int] = ...
   scala> val result = for {
            a <- OptionT(getA)
@@ -350,14 +428,18 @@ and we can mix with methods that return plain Option by wrapping them in Future.
            d <- OptionT(getD.pure[Future])
          } yield (a * b) / (c * d)
   result: OptionT[Future, Int] = OptionT(Future(<not completed>))
-It is messy again, but it is better than writing nested flatMap and map by hand. We can clean it up with a DSL that handles all the required conversions into OptionT[Future, _]
-
+----
+Це знову безлад, але це краще, ніж вручну вкладений `flatMap` та `map`. Ми можемо очистити його за допомогою DSL, що обробить всі потрібні перетворення в `OptionT[Future, _]`:
+[source,scala]
+----
   def liftFutureOption[A](f: Future[Option[A]]) = OptionT(f)
   def liftFuture[A](f: Future[A]) = f.liftM[OptionT]
   def liftOption[A](o: Option[A]) = OptionT(o.pure[Future])
   def lift[A](a: A)               = liftOption(Option(a))
-combined with the |> operator, which applies the function on the right to the value on the left, to visually separate the logic from the transformers
-
+----
+в комбінації з оператором `|>`, що застосовує функцію зправа до значення зліва, щоб візуально відділити логіку від трансформацій:
+[source,scala]
+----
   scala> val result = for {
            a <- getA       |> liftFutureOption
            b <- getB       |> liftFutureOption
@@ -366,7 +448,7 @@ combined with the |> operator, which applies the function on the right to the va
            e <- 10         |> lift
          } yield e * (a * b) / (c * d)
   result: OptionT[Future, Int] = OptionT(Future(<not completed>))
-|> is often called the thrush operator because of its uncanny resemblance to the cute bird. Those who do not like symbolic operators can use the alias .into.
+----
+`|>` часто називають оператором дрозда, завдяки його несподіваної подоби до цікавої пташки. Ті, кому не до вподоби символічні оператори, може використовувати псевдоним `.into`.
 
-This approach also works for Either (and others) as the inner context, but their lifting methods are more complex and require parameters. Scalaz provides monad transformers for a lot of its own types, so it is worth checking if one is available.
-
+Цей підхід також робить для `Either` (та інших) в якості внутрішнього контексту, але їх методи ліфтингу більш складні, і потребують параметрів. `Scalaz` провадить монадні трансформери для більшості своїх власних типів, так що має сенс перевірити, чи достіпний один з них.
