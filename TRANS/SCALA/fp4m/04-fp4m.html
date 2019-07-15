@@ -927,481 +927,514 @@ asciidoc.install();
 </div>
 <div class="sect2">
 <h3 id="_4_1_5__">4.1.5 Подача інформації</h3>
-<div class="paragraph"><p>Besides being a container for necessary business information, data types can be used to encode constraints. For example,</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  final case class NonEmptyList[A](head: A, tail: IList[A])
-can never be empty. This makes scalaz.NonEmptyList a useful data type despite containing the same information as IList.</code></pre>
-</div></div>
-<div class="paragraph"><p>Product types often contain types that are far more general than is allowed. In traditional OOP this would be handled with input validation through assertions:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  final case class Person(name: String, age: Int) {
-    require(name.nonEmpty &amp;&amp; age &gt; 0) // breaks Totality, don't do this!
-  }
-Instead, we can use the Either data type to provide Right[Person] for valid instances and protect invalid instances from propagating. Note that the constructor is private:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>final case class Person private(name: String, age: Int)
-object Person {
-  def apply(name: String, age: Int): Either[String, Person] = {
-    if (name.nonEmpty &amp;&amp; age &gt; 0) Right(new Person(name, age))
-    else Left(s"bad input: $name, $age")
-  }
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def welcome(person: Person): String =
-  s"${person.name} you look wonderful at ${person.age}!"</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  for {
-    person &lt;- Person("", -1)
-  } yield welcome(person)
-4.1.5.1 Refined Data Types
-A clean way to restrict the values of a general type is with the refined library, providing a suite of restrictions to the contents of data. To install refined, add the following to build.sbt</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  libraryDependencies += "eu.timepit" %% "refined-scalaz" % "0.9.2"
-and the following imports</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  import eu.timepit.refined
-  import refined.api.Refined
-Refined allows us to define Person using adhoc refined types to capture requirements exactly, written A Refined B.</code></pre>
-</div></div>
-<div class="paragraph"><p>All types with two parameters can be written infix in Scala. For example, Either[String, Int] is the same as String Either Int. It is conventional for Refined to be written infix since A Refined B can be read as “an A that meets the requirements defined in B”.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>import refined.numeric.Positive
-import refined.collection.NonEmpty</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  final case class Person(
-    name: String Refined NonEmpty,
-    age: Int Refined Positive
-  )
-The underlying value can be obtained with .value. We can construct a value at runtime using .refineV, returning an Either</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>scala&gt; import refined.refineV
-scala&gt; refineV[NonEmpty]("")
-Left(Predicate isEmpty() did not fail.)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; refineV[NonEmpty]("Sam")
-  Right(Sam)
-If we add the following import</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  import refined.auto._
-we can construct valid values at compiletime and get an error if the provided value does not meet the requirements</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>scala&gt; val sam: String Refined NonEmpty = "Sam"
-Sam</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; val empty: String Refined NonEmpty = ""
-  &lt;console&gt;:21: error: Predicate isEmpty() did not fail.
-More complex requirements can be captured, for example we can use the built-in rule MaxSize with the following imports</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  import refined.W
-  import refined.boolean.And
-  import refined.collection.MaxSize
-capturing the requirement that the String must be both non-empty and have a maximum size of 10 characters:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>type Name = NonEmpty And MaxSize[W.`10`.T]</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  final case class Person(
-    name: String Refined Name,
-    age: Int Refined Positive
-  )
-The W notation is short for “witness”. This syntax will be much simpler in Scala 2.13, which has support for literal types:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  type Name = NonEmpty And MaxSize[10]
-It is easy to define custom requirements that are not covered by the refined library. For example in drone-dynamaic-agents we will need a way of ensuring that a String contains application/x-www-form-urlencoded content. We can create a Refined rule using the Java regular expression library:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sealed abstract class UrlEncoded
-object UrlEncoded {
-  private[this] val valid: Pattern =
-    Pattern.compile("\\A(\\p{Alnum}++|[-.*_+=&amp;]++|%\\p{XDigit}{2})*\\z")</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    implicit def urlValidate: Validate.Plain[String, UrlEncoded] =
-      Validate.fromPredicate(
-        s =&gt; valid.matcher(s).find(),
-        identity,
-        new UrlEncoded {}
-      )
-  }
-4.1.6 Simple to Share
-By not providing any functionality, ADTs can have a minimal set of dependencies. This makes them easy to publish and share with other developers. By using a simple data modelling language, it makes it possible to interact with cross-discipline teams, such as DBAs, UI developers and business analysts, using the actual code instead of a hand written document as the source of truth.</code></pre>
-</div></div>
-<div class="paragraph"><p>Furthermore, tooling can be more easily written to produce or consume schemas from other programming languages and wire protocols.</p></div>
-<div class="paragraph"><p>4.1.7 Counting Complexity
-The complexity of a data type is the count of values that can exist. A good data type has the least amount of complexity it needs to hold the information it conveys, and no more.</p></div>
-<div class="paragraph"><p>Values have a built-in complexity:</p></div>
-<div class="paragraph"><p>Unit has one value (why it is called “unit”)
-Boolean has two values
-Int has 4,294,967,295 values
-String has effectively infinite values
-To find the complexity of a product, we multiply the complexity of each part.</p></div>
-<div class="paragraph"><p>(Boolean, Boolean) has 4 values (2*2)
-(Boolean, Boolean, Boolean) has 8 values (2*2*2)
-To find the complexity of a coproduct, we add the complexity of each part.</p></div>
-<div class="paragraph"><p>(Boolean |: Boolean) has 4 values (2+2)
-(Boolean |: Boolean |: Boolean) has 6 values (2+2+2)
-To find the complexity of a ADT with a type parameter, multiply each part by the complexity of the type parameter:</p></div>
-<div class="paragraph"><p>Option[Boolean] has 3 values, Some[Boolean] and None (2+1)
-In FP, functions are total and must return an value for every input, no Exception. Minimising the complexity of inputs and outputs is the best way to achieve totality. As a rule of thumb, it is a sign of a badly designed function when the complexity of a function’s return value is larger than the product of its inputs: it is a source of entropy.</p></div>
-<div class="paragraph"><p>The complexity of a total function is the number of possible functions that can satisfy the type signature: the output to the power of the input.</p></div>
-<div class="paragraph"><p>Unit &#8658; Boolean has complexity 2
-Boolean &#8658; Boolean has complexity 4
-Option[Boolean] &#8658; Option[Boolean] has complexity 27
-Boolean &#8658; Int is a mere quintillion going on a sextillion.
-Int &#8658; Boolean is so big that if all implementations were assigned a unique number, each would require 4 gigabytes to represent.
-In reality, Int &#8658; Boolean will be something simple like isOdd, isEven or a sparse BitSet. This function, when used in an ADT, could be better replaced with a coproduct labelling the limited set of functions that are relevant.</p></div>
-<div class="paragraph"><p>When our complexity is “infinity in, infinity out” we should introduce restrictive data types and validation closer to the point of input with Refined from the previous section.</p></div>
-<div class="paragraph"><p>The ability to count the complexity of a type signature has one other practical application: we can find simpler type signatures with High School algebra! To go from a type signature to its algebra of complexity, simply replace</p></div>
-<div class="paragraph"><p>Either[A, B] with a + b
-(A, B) with a * b
-A &#8658; B with b ^ a
-do some rearranging, and convert back. For example, say we’ve designed a framework based on callbacks and we’ve managed to work ourselves into the situation where we have created this type signature:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  (A =&gt; C) =&gt; ((B =&gt; C) =&gt; C)
-We can convert and rearrange</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  (c ^ (c ^ b)) ^ (c ^ a)
-  = c ^ ((c ^ b) * (c ^ a))
-  = c ^ (c ^ (a + b))
-then convert back to types and get</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  (Either[A, B] =&gt; C) =&gt; C
-which is much simpler: we only need to ask the users of our framework to provide a Either[A, B] =&gt; C.</code></pre>
-</div></div>
-<div class="paragraph"><p>The same line of reasoning can be used to prove that</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  A =&gt; B =&gt; C
-is equivalent to</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  (A, B) =&gt; C
-also known as Currying.</code></pre>
-</div></div>
-<div class="paragraph"><p>4.1.8 Prefer Coproduct over Product
-An archetypal modelling problem that comes up a lot is when there are mutually exclusive configuration parameters a, b and c. The product (a: Boolean, b: Boolean, c: Boolean) has complexity 8 whereas the coproduct</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  sealed abstract class Config
-  object Config {
-    case object A extends Config
-    case object B extends Config
-    case object C extends Config
-  }
-has a complexity of 3. It is better to model these configuration parameters as a coproduct rather than allowing 5 invalid states to exist.</code></pre>
-</div></div>
-<div class="paragraph"><p>The complexity of a data type also has implications on testing. It is practically impossible to test every possible input to a function, but it is easy to test a sample of values with the Scalacheck property testing framework. If a random sample of a data type has a low probability of being valid, it is a sign that the data is modelled incorrectly.</p></div>
-<div class="paragraph"><p>4.1.9 Optimisations
-A big advantage of using a simplified subset of the Scala language to represent data types is that tooling can optimise the JVM bytecode representation.</p></div>
-<div class="paragraph"><p>For example, we could pack Boolean and Option fields into an Array[Byte], cache values, memoise hashCode, optimise equals, use @switch statements when pattern matching, and much more.</p></div>
-<div class="paragraph"><p>These optimisations are not applicable to OOP class hierarchies that may be managing state, throwing exceptions, or providing adhoc method implementations.</p></div>
-<div class="paragraph"><p>4.2 Functionality
-Pure functions are typically defined as methods on an object.</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>package object math {
-  def sin(x: Double): Double = java.lang.Math.sin(x)
-  ...
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  math.sin(1.0)
-However, it can be clunky to use object methods since it reads inside-out, not left to right. In addition, a function on an object steals the namespace. If we were to define sin(t: T) somewhere else we get ambiguous reference errors. This is the same problem as Java’s static methods vs class methods.</code></pre>
-</div></div>
-<div class="paragraph"><p>The sort of developer who puts methods on a trait, requiring users to mix it with the cake pattern, is going straight to hell. It leaks internal implementation detail to public APIs, bloats bytecode, makes binary compatibility basically impossible, and confuses IDE autocompleters.</p></div>
-<div class="paragraph"><p>With the implicit class language feature (also known as extension methodology or syntax), and a little boilerplate, we can get the familiar style:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>scala&gt; implicit class DoubleOps(x: Double) {
-         def sin: Double = math.sin(x)
-       }</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  scala&gt; (1.0).sin
-  res: Double = 0.8414709848078965
-Often it is best to just skip the object definition and go straight for an implicit class, keeping boilerplate to a minimum:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  implicit class DoubleOps(x: Double) {
-    def sin: Double = java.lang.Math.sin(x)
-  }
-implicit class is syntax sugar for an implicit conversion:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  implicit def DoubleOps(x: Double): DoubleOps = new DoubleOps(x)
-  class DoubleOps(x: Double) {
-    def sin: Double = java.lang.Math.sin(x)
-  }
-Which unfortunately has a runtime cost: each time the extension method is called, an intermediate DoubleOps will be constructed and then thrown away. This can contribute to GC pressure in hotspots.</code></pre>
-</div></div>
-<div class="paragraph"><p>There is a slightly more verbose form of implicit class that avoids the allocation and is therefore preferred:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  implicit final class DoubleOps(private val x: Double) extends AnyVal {
-    def sin: Double = java.lang.Math.sin(x)
-  }
-4.2.1 Polymorphic Functions
-The more common kind of function is a polymorphic function, which lives in a typeclass. A typeclass is a trait that:</code></pre>
-</div></div>
-<div class="paragraph"><p>holds no state
-has a type parameter
-has at least one abstract method (primitive combinators)
-may contain generalised methods (derived combinators)
-may extend other typeclasses
-There can only be one implementation of a typeclass for any given type parameter, a property known as typeclass coherence. Typeclasses look superficially similar to algebraic interfaces from the previous chapter, but algebras do not have to be coherent.</p></div>
-<div class="paragraph"><p>Typeclass coherence is primarily about consistency, and the consistency gives us the confidence to use implicit parameters. It would be difficult to reason about code that performs differently depending on the implicit imports that are in scope. Typeclass coherence effectively says that imports should not impact the behaviour of the code.</p></div>
-<div class="paragraph"><p>Additionally, typeclass coherence allows us to globally cache implicits at runtime and save memory allocations, gaining performance improvements from reduced pressure on the garbage collector.</p></div>
-<div class="paragraph"><p>Typeclasses are used in the Scala stdlib. We will explore a simplified version of scala.math.Numeric to demonstrate the principle:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>trait Ordering[T] {
-  def compare(x: T, y: T): Int</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def lt(x: T, y: T): Boolean = compare(x, y) &lt; 0
-  def gt(x: T, y: T): Boolean = compare(x, y) &gt; 0
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>trait Numeric[T] extends Ordering[T] {
-  def plus(x: T, y: T): T
-  def times(x: T, y: T): T
-  def negate(x: T): T
-  def zero: T</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    def abs(x: T): T = if (lt(x, zero)) negate(x) else x
-  }
-We can see all the key features of a typeclass in action:</code></pre>
-</div></div>
-<div class="paragraph"><p>there is no state
-Ordering and Numeric have type parameter T
-Ordering has abstract compare and Numeric has abstract plus, times, negate and zero
-Ordering defines generalised lt and gt based on compare, Numeric defines abs in terms of lt, negate and zero.
-Numeric extends Ordering
-We can now write functions for types that “have a” Numeric typeclass:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def signOfTheTimes[T](t: T)(implicit N: Numeric[T]): T = {
-    import N._
-    times(negate(abs(t)), t)
-  }
-We are no longer dependent on the OOP hierarchy of our input types, i.e. we don’t demand that our input “is a” Numeric, which is vitally important if we want to support a third party class that we cannot redefine.</code></pre>
-</div></div>
-<div class="paragraph"><p>Another advantage of typeclasses is that the association of functionality to data is at compiletime, as opposed to OOP runtime dynamic dispatch.</p></div>
-<div class="paragraph"><p>For example, whereas the List class can only have one implementation of a method, a typeclass method allows us to have a different implementation depending on the List contents and therefore offload work to compiletime instead of leaving it to runtime.</p></div>
-<div class="paragraph"><p>4.2.2 Syntax
-The syntax for writing signOfTheTimes is clunky, there are some things we can do to clean it up.</p></div>
-<div class="paragraph"><p>Downstream users will prefer to see our method use context bounds, since the signature reads cleanly as “takes a T that has a Numeric”</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def signOfTheTimes[T: Numeric](t: T): T = ...
-but now we have to use implicitly[Numeric[T]] everywhere. By defining boilerplate on the companion of the typeclass</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  object Numeric {
-    def apply[T](implicit numeric: Numeric[T]): Numeric[T] = numeric
-  }
-we can obtain the implicit with less noise</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def signOfTheTimes[T: Numeric](t: T): T = {
-    val N = Numeric[T]
-    import N._
-    times(negate(abs(t)), t)
-  }
-But it is still worse for us as the implementors. We have the syntactic problem of inside-out static methods vs class methods. We deal with this by introducing ops on the typeclass companion:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>object Numeric {
-  def apply[T](implicit numeric: Numeric[T]): Numeric[T] = numeric</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>object ops {
-  implicit class NumericOps[T](t: T)(implicit N: Numeric[T]) {
-    def +(o: T): T = N.plus(t, o)
-    def *(o: T): T = N.times(t, o)
-    def unary_-: T = N.negate(t)
-    def abs: T = N.abs(t)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>        // duplicated from Ordering.ops
-        def &lt;(o: T): T = N.lt(t, o)
-        def &gt;(o: T): T = N.gt(t, o)
-      }
-    }
-  }
-Note that -x is expanded into x.unary_- by the compiler’s syntax sugar, which is why we define unary_- as an extension method. We can now write the much cleaner:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  import Numeric.ops._
-  def signOfTheTimes[T: Numeric](t: T): T = -(t.abs) * t
-The good news is that we never need to write this boilerplate because Simulacrum provides a @typeclass macro annotation that automatically generates the apply and ops. It even allows us to define alternative (usually symbolic) names for common methods. In full:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>import simulacrum._</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>@typeclass trait Ordering[T] {
-  def compare(x: T, y: T): Int
-  @op("&lt;") def lt(x: T, y: T): Boolean = compare(x, y) &lt; 0
-  @op("&gt;") def gt(x: T, y: T): Boolean = compare(x, y) &gt; 0
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>@typeclass trait Numeric[T] extends Ordering[T] {
-  @op("+") def plus(x: T, y: T): T
-  @op("*") def times(x: T, y: T): T
-  @op("unary_-") def negate(x: T): T
-  def zero: T
-  def abs(x: T): T = if (lt(x, zero)) negate(x) else x
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  import Numeric.ops._
-  def signOfTheTimes[T: Numeric](t: T): T = -(t.abs) * t
-When there is a custom symbolic @op, it can be pronounced like its method name. e.g. &lt; is pronounced “less than”, not “left angle bracket”.</code></pre>
-</div></div>
-<div class="paragraph"><p>4.2.3 Instances
-Instances of Numeric (which are also instances of Ordering) are defined as an implicit val that extends the typeclass, and can provide optimised implementations for the generalised methods:</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>implicit val NumericDouble: Numeric[Double] = new Numeric[Double] {
-  def plus(x: Double, y: Double): Double = x + y
-  def times(x: Double, y: Double): Double = x * y
-  def negate(x: Double): Double = -x
-  def zero: Double = 0.0
-  def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    // optimised
-    override def lt(x: Double, y: Double): Boolean = x &lt; y
-    override def gt(x: Double, y: Double): Boolean = x &gt; y
-    override def abs(x: Double): Double = java.lang.Math.abs(x)
-  }
-Although we are using +, *, unary_-, &lt; and &gt; here, which are the ops (and could be an infinite loop!), these methods exist already on Double. Class methods are always used in preference to extension methods. Indeed, the Scala compiler performs special handling of primitives and converts these method calls into raw dadd, dmul, dcmpl and dcmpg bytecode instructions, respectively.</code></pre>
-</div></div>
-<div class="paragraph"><p>We can also implement Numeric for Java’s BigDecimal class (avoid scala.BigDecimal, it is fundamentally broken)</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>import java.math.{ BigDecimal =&gt; BD }</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  implicit val NumericBD: Numeric[BD] = new Numeric[BD] {
-    def plus(x: BD, y: BD): BD = x.add(y)
-    def times(x: BD, y: BD): BD = x.multiply(y)
-    def negate(x: BD): BD = x.negate
-    def zero: BD = BD.ZERO
-    def compare(x: BD, y: BD): Int = x.compareTo(y)
-  }
-We could create our own data structure for complex numbers:</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  final case class Complex[T](r: T, i: T)
-And derive a Numeric[Complex[T]] if Numeric[T] exists. Since these instances depend on the type parameter, it is a def, not a val.</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  implicit def numericComplex[T: Numeric]: Numeric[Complex[T]] =
-    new Numeric[Complex[T]] {
-      type CT = Complex[T]
-      def plus(x: CT, y: CT): CT = Complex(x.r + y.r, x.i + y.i)
-      def times(x: CT, y: CT): CT =
-        Complex(x.r * y.r + (-x.i * y.i), x.r * y.i + x.i * y.r)
-      def negate(x: CT): CT = Complex(-x.r, -x.i)
-      def zero: CT = Complex(Numeric[T].zero, Numeric[T].zero)
-      def compare(x: CT, y: CT): Int = {
-        val real = (Numeric[T].compare(x.r, y.r))
-        if (real != 0) real
-        else Numeric[T].compare(x.i, y.i)
-      }
-    }
-The observant reader may notice that abs is not at all what a mathematician would expect. The correct return value for abs should be T, not Complex[T].</code></pre>
-</div></div>
-<div class="paragraph"><p>scala.math.Numeric tries to do too much and does not generalise beyond real numbers. This is a good lesson that smaller, well defined, typeclasses are often better than a monolithic collection of overly specific features.</p></div>
-<div class="paragraph"><p>4.2.4 Implicit Resolution
-We’ve discussed implicits a lot: this section is to clarify what implicits are and how they work.</p></div>
-<div class="paragraph"><p>Implicit parameters are when a method requests that a unique instance of a particular type is in the implicit scope of the caller, with special syntax for typeclass instances. Implicit parameters are a clean way to thread configuration through an application.</p></div>
-<div class="paragraph"><p>In this example, foo requires that typeclass instances of Numeric and Typeable are available for A, as well as an implicit Handler object that takes two type parameters</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def foo[A: Numeric: Typeable](implicit A: Handler[String, A]) = ...
-Implicit conversion is when an implicit def exists. One such use of implicit conversions is to enable extension methodology. When the compiler is resolving a call to a method, it first checks if the method exists on the type, then its ancestors (Java-like rules). If it fails to find a match, it will search the implicit scope for conversions to other types, then search for methods on those types.</code></pre>
-</div></div>
-<div class="paragraph"><p>Another use for implicit conversions is typeclass derivation. In the previous section we wrote an implicit def that derived a Numeric[Complex[T]] if a Numeric[T] is in the implicit scope. It is possible to chain together many implicit def (including recursively) which is the basis of typeful programming, allowing for computations to be performed at compiletime rather than runtime.</p></div>
-<div class="paragraph"><p>The glue that combines implicit parameters (receivers) with implicit conversion (providers) is implicit resolution.</p></div>
-<div class="paragraph"><p>First, the normal variable scope is searched for implicits, in order:</p></div>
-<div class="paragraph"><p>local scope, including scoped imports (e.g. the block or method)
-outer scope, including scoped imports (e.g. members in the class)
-ancestors (e.g. members in the super class)
-the current package object
-ancestor package objects (when using nested packages)
-the file’s imports
-If that fails to find a match, the special scope is searched, which looks for implicit instances inside a type’s companion, its package object, outer objects (if nested), and then repeated for ancestors. This is performed, in order, for the:</p></div>
-<div class="paragraph"><p>given parameter type
-expected parameter type
-type parameter (if there is one)
-If two matching implicits are found in the same phase of implicit resolution, an ambiguous implicit error is raised.</p></div>
+<div class="paragraph"><p>Окрім функції контейнера для потрібної бізнес інформації, типи даних можуть використовуватись для кодування обмежень. Наприклад,</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">NonEmptyList</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">head</span><span class="k">:</span> <span class="kt">A</span><span class="o">,</span> <span class="n">tail</span><span class="k">:</span> <span class="kt">IList</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ніколи не може бути порожнім. Це робить <code>scalaz.NonEmptyList</code> корисним типом даних, що містить ту саму інформацію, що і <code>IList</code>.</p></div>
+<div class="paragraph"><p>Продуктові типи часто містять типи, що значно більш загальні, ніж дозволено. В традиційному OOP це може бути оброблене за допомогою валідації вводу через припущення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Person</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">require</span><span class="o">(</span><span class="n">name</span><span class="o">.</span><span class="n">nonEmpty</span> <span class="o">&amp;&amp;</span> <span class="n">age</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="c1">// руйнує загальність, не робіть цього!</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Замість цього ми можемо використовувати тип даних <code>Either</code> щоб провадити <code>Right[Person]</code> для валідних примірників, та захиститись від просування навалідних примірників. Зауважте, що конструктор приватний:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Person</span> <span class="k">private</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span>
+  <span class="k">object</span> <span class="nc">Person</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">Person</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">name</span><span class="o">.</span><span class="n">nonEmpty</span> <span class="o">&amp;&amp;</span> <span class="n">age</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="o">)</span> <span class="nc">Right</span><span class="o">(</span><span class="k">new</span> <span class="nc">Person</span><span class="o">(</span><span class="n">name</span><span class="o">,</span> <span class="n">age</span><span class="o">))</span>
+      <span class="k">else</span> <span class="nc">Left</span><span class="o">(</span><span class="s">s&quot;bad input: </span><span class="si">$name</span><span class="s">, </span><span class="si">$age</span><span class="s">&quot;</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">welcome</span><span class="o">(</span><span class="n">person</span><span class="k">:</span> <span class="kt">Person</span><span class="o">)</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span>
+    <span class="s">s&quot;</span><span class="si">${</span><span class="n">person</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s"> you look wonderful at </span><span class="si">${</span><span class="n">person</span><span class="o">.</span><span class="n">age</span><span class="si">}</span><span class="s">!&quot;</span>
+
+  <span class="k">for</span> <span class="o">{</span>
+    <span class="n">person</span> <span class="k">&lt;-</span> <span class="nc">Person</span><span class="o">(</span><span class="s">&quot;&quot;</span><span class="o">,</span> <span class="o">-</span><span class="mi">1</span><span class="o">)</span>
+  <span class="o">}</span> <span class="k">yield</span> <span class="n">welcome</span><span class="o">(</span><span class="n">person</span><span class="o">)</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="_4_1_5_1___">4.1.5.1 Очищені типи даних</h3>
+<div class="paragraph"><p>Чіткий спосіб обмежити значення загального типу можливо за допомогою бібліотеки <code>refined</code>, провадячи сюїту обмежень до вмісту даних. Щоб встановити <code>refined</code>, додайте наступне до <code>build.sbt</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">libraryDependencies</span> <span class="o">+=</span> <span class="s">&quot;eu.timepit&quot;</span> <span class="o">%%</span> <span class="s">&quot;refined-scalaz&quot;</span> <span class="o">%</span> <span class="s">&quot;0.9.2&quot;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>та наступні імпорти:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">eu.timepit.refined</span>
+  <span class="k">import</span> <span class="nn">refined.api.Refined</span>
+</pre></div></div></div>
+<div class="paragraph"><p><code>Refined</code> дозволяє визначити <code>Person</code> використовуючи створені на льоту очищені типи, щоб захопити вимоги в точності, записуючи <code>A Refined B</code>.</p></div>
+<div class="paragraph"><p>Всі типи з двома параметрами можуть бути записані інфіксно в Scala. Наприклад, <code>Either[String, Int]</code> є те саме, що <code>String Either Int</code>. За домовленостю <code>Refined</code> записується інфіксно, оскільки <code>A Refined B</code> можна прочитати як “<code>A</code>, що відповідає вимогам, визначеним в `B`”.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">refined.numeric.Positive</span>
+  <span class="k">import</span> <span class="nn">refined.collection.NonEmpty</span>
+
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Person</span><span class="o">(</span>
+    <span class="n">name</span><span class="k">:</span> <span class="kt">String</span> <span class="kt">Refined</span> <span class="kt">NonEmpty</span><span class="o">,</span>
+    <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span> <span class="kt">Refined</span> <span class="kt">Positive</span>
+  <span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Підлегле значення можна отримати за допомогою <code>.value</code>. Ми можемо конструювати значення від час виконання з використанням <code>.refineV</code>, повертаючи <code>Either</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">import</span> <span class="nn">refined.refineV</span>
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="n">refineV</span><span class="o">[</span><span class="kt">NonEmpty</span><span class="o">](</span><span class="s">&quot;&quot;</span><span class="o">)</span>
+  <span class="nc">Left</span><span class="o">(</span><span class="nc">Predicate</span> <span class="n">isEmpty</span><span class="o">()</span> <span class="n">did</span> <span class="n">not</span> <span class="n">fail</span><span class="o">.)</span>
+
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="n">refineV</span><span class="o">[</span><span class="kt">NonEmpty</span><span class="o">](</span><span class="s">&quot;Sam&quot;</span><span class="o">)</span>
+  <span class="nc">Right</span><span class="o">(</span><span class="nc">Sam</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ми додамо наступний імпорт:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">refined.auto._</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ми можемо конструювати валідні значення під час компіляції, та отримати помилку, якщо надамо значення, що не відповідає вимогам:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">sam</span><span class="k">:</span> <span class="kt">String</span> <span class="kt">Refined</span> <span class="kt">NonEmpty</span> <span class="o">=</span> <span class="s">&quot;Sam&quot;</span>
+  <span class="nc">Sam</span>
+
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">val</span> <span class="n">empty</span><span class="k">:</span> <span class="kt">String</span> <span class="kt">Refined</span> <span class="kt">NonEmpty</span> <span class="o">=</span> <span class="s">&quot;&quot;</span>
+  <span class="o">&lt;</span><span class="n">console</span><span class="k">&gt;:</span><span class="mi">21</span><span class="k">:</span> <span class="kt">error:</span> <span class="kt">Predicate</span> <span class="kt">isEmpty</span><span class="o">()</span> <span class="kt">did</span> <span class="kt">not</span> <span class="kt">fail.</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Можливо захопити більш складні вимоги, наприклад, ми можемо використовувати вбудоване правило <code>MaxSize</code> з наступними імпортами:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">refined.W</span>
+  <span class="k">import</span> <span class="nn">refined.boolean.And</span>
+  <span class="k">import</span> <span class="nn">refined.collection.MaxSize</span>
+</pre></div></div></div>
+<div class="paragraph"><p>захоплюючі вимогу, що <code>String</code> має бути одночасно непорожнім та мати максимальний розмір 10 символів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">type</span> <span class="kt">Name</span> <span class="o">=</span> <span class="nc">NonEmpty</span> <span class="nc">And</span> <span class="nc">MaxSize</span><span class="o">[</span><span class="kt">W.`10`.T</span><span class="o">]</span>
+
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Person</span><span class="o">(</span>
+    <span class="n">name</span><span class="k">:</span> <span class="kt">String</span> <span class="kt">Refined</span> <span class="kt">Name</span><span class="o">,</span>
+    <span class="n">age</span><span class="k">:</span> <span class="kt">Int</span> <span class="kt">Refined</span> <span class="kt">Positive</span>
+  <span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Нотація <code>W</code> є скороченим для “witness” (<em>засвідчити</em>). Цей синтаксис буде значно простіший в Scala 2.13, що має підтримку для літеральних типів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">type</span> <span class="kt">Name</span> <span class="o">=</span> <span class="nc">NonEmpty</span> <span class="nc">And</span> <span class="nc">MaxSize</span><span class="o">[</span><span class="err">10</span><span class="o">]</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Просто визначити визначення власних вимог, що не охоплені бібліотекою  <code>refined</code>. Наприклад, в <code>drone-dynamaic-agents</code> нам знадобиться спосіб переконатись, що <code>String</code> містить <code>application/x-www-form-urlencoded</code>. Ми можемо створити правило <code>Refined</code>, використовуючи бібліотеку регулярних виразів Java:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">sealed</span> <span class="k">abstract</span> <span class="k">class</span> <span class="nc">UrlEncoded</span>
+  <span class="k">object</span> <span class="nc">UrlEncoded</span> <span class="o">{</span>
+    <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">val</span> <span class="n">valid</span><span class="k">:</span> <span class="kt">Pattern</span> <span class="o">=</span>
+      <span class="nc">Pattern</span><span class="o">.</span><span class="n">compile</span><span class="o">(</span><span class="s">&quot;\\A(\\p{Alnum}++|[-.*_+=&amp;]++|%\\p{XDigit}{2})*\\z&quot;</span><span class="o">)</span>
+
+    <span class="k">implicit</span> <span class="k">def</span> <span class="n">urlValidate</span><span class="k">:</span> <span class="kt">Validate.Plain</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">UrlEncoded</span><span class="o">]</span> <span class="k">=</span>
+      <span class="nc">Validate</span><span class="o">.</span><span class="n">fromPredicate</span><span class="o">(</span>
+        <span class="n">s</span> <span class="k">=&gt;</span> <span class="n">valid</span><span class="o">.</span><span class="n">matcher</span><span class="o">(</span><span class="n">s</span><span class="o">).</span><span class="n">find</span><span class="o">(),</span>
+        <span class="n">identity</span><span class="o">,</span>
+        <span class="k">new</span> <span class="nc">UrlEncoded</span> <span class="o">{}</span>
+      <span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="_4_1_6__">4.1.6 Поділяти просто</h3>
+<div class="paragraph"><p>Не провадячи жодної функціональності, ADT можуть мати мінімальний набір залежностей. Це робить простим їх публікацію та поділення з іншими розробниками. Через використання простої мови моделювання даних, стає можливим взаємодія з між-галужевими командами, такими як DBA, розробники UI та бізнес аналітики, використовуючи справжній код замість рукописного документу в якості джерела істини.</p></div>
+<div class="paragraph"><p>Більше того, інструментарій може бути написаний більш просто для продукування або споживання схем від інших мов програмування та дротових протоколів.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_4_1_7__">4.1.7 Підрахунок складності</h3>
+<div class="paragraph"><p>Складність типу даних є підрахунок значень, що можуть існувати. Гарний тип даних має найменьшу кількість складності, якій потрібен для утримання інформації, що має передаватись, і не більше.</p></div>
+<div class="paragraph"><p>Значення мають вбудовану складність:</p></div>
+<div class="paragraph"><p><code>Unit</code> має одне значення (чому він і називається “одиничний”)
+<code>Boolean</code> має два значення
+<code>Int</code> має 4,294,967,295 значень
+<code>String</code> ефективно має безліч значень</p></div>
+<div class="paragraph"><p>Щоб знайти складність продкуту ми перемножуємо складність кожної частини.</p></div>
+<div class="paragraph"><p>(<code>Boolean</code>, <code>Boolean</code>) має 4 значення (2*2)
+(<code>Boolean</code>, <code>Boolean</code>, <code>Boolean</code>) має 8 значень (2*2*2)</p></div>
+<div class="paragraph"><p>Щоб знайти складність ко-продукту, ми додаємо складність кожної частини.</p></div>
+<div class="paragraph"><p>(<code>Boolean</code> |: <code>Boolean</code>) має 4 значення (2+2)
+(<code>Boolean</code> |: <code>Boolean</code> |: <code>Boolean</code>) має 6 значень (2+2+2)</p></div>
+<div class="paragraph"><p>Щоб знайти складність ADT з параметром типу, помножте кожну частину на складність параметру типу:</p></div>
+<div class="paragraph"><p><code>Option[Boolean]</code> має 3 значення, <code>Some[Boolean]</code> та <code>None</code> (2+1)</p></div>
+<div class="paragraph"><p>В FP функції повні та мають повертати значення для кожного вводу, не <code>Exception</code>. Мінімізація складності входів та виходів є кращим способом досягти загальності. Як правило великого пальця, це знак поганої розробки функції, якщо складність поверненного значення функції більша, ніж складність продукту вхідних значень: це джерело ентропії.</p></div>
+<div class="paragraph"><p>Складність загальної функції є число можливих функцій, що можуть задовільнити сигнатурі типу: вихід в ступіні вводу.</p></div>
+<div class="paragraph"><p><code>Unit =&gt; Boolean</code> має складність 2
+<code>Boolean =&gt; Boolean</code> має складність 4
+<em>Option[Boolean] &#8658; Option[Boolean]</em> має складність 27
+<code>Boolean =&gt; Int</code> має складність квантіліон на секстіліон.
+<code>Int =&gt; Boolean</code> має таку складність, що якщо всі реалізації мали б порядковий номер, кожний мав би 4Гб в довжину.</p></div>
+<div class="paragraph"><p>В реальності <code>Int =&gt; Boolean</code> буде дечим простим, як <code>isOdd</code>, <code>isEven</code> або розріжений <code>BitSet</code>. Ця функція, коли використовується в ADT, краще може бути замінена на ко-продукт, який маркує обмежену множину функцій, що є релевантними.</p></div>
+<div class="paragraph"><p>Коли складність є “безкінечність на вході, безкінечність на виході”, нам треба ввести обмежувальні типи даних та валідацію ближче до точки входу за допомогою <code>Refined</code> з попереднього розділу.</p></div>
+<div class="paragraph"><p>Здантість порахувати складність сигнатури типу має одне інше практичне застосування: ми можемо знайти простіші сигнатури типів за допомогою алгебри вищої школи! Щоб перейти від сигнатури типу до її алгебри складності, просто замініть:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nc">Either</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">B</span><span class="o">]</span> <span class="n">на</span> <span class="n">a</span> <span class="o">+</span> <span class="n">b</span>
+<span class="o">(</span><span class="n">A</span><span class="o">,</span> <span class="n">B</span><span class="o">)</span> <span class="n">на</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span>
+<span class="n">A</span> <span class="k">=&gt;</span> <span class="n">B</span> <span class="n">на</span> <span class="n">b</span> <span class="o">^</span> <span class="n">a</span>
+</pre></div></div></div>
+<div class="paragraph"><p>зробіть деякі перестановки, та конвертуйте назад. Наприклад, скажімо, ми розробили фреймворк що базується на зворотніх викликах, і ми поставили себе в ситуацію, коли ми створили наступну сигнатуру типу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="o">(</span><span class="n">A</span> <span class="k">=&gt;</span> <span class="n">C</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">((</span><span class="n">B</span> <span class="k">=&gt;</span> <span class="n">C</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">C</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ми можемо конвертувати та переставити її так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="o">(</span><span class="n">c</span> <span class="o">^</span> <span class="o">(</span><span class="n">c</span> <span class="o">^</span> <span class="n">b</span><span class="o">))</span> <span class="o">^</span> <span class="o">(</span><span class="n">c</span> <span class="o">^</span> <span class="n">a</span><span class="o">)</span>
+  <span class="k">=</span> <span class="n">c</span> <span class="o">^</span> <span class="o">((</span><span class="n">c</span> <span class="o">^</span> <span class="n">b</span><span class="o">)</span> <span class="o">*</span> <span class="o">(</span><span class="n">c</span> <span class="o">^</span> <span class="n">a</span><span class="o">))</span>
+  <span class="k">=</span> <span class="n">c</span> <span class="o">^</span> <span class="o">(</span><span class="n">c</span> <span class="o">^</span> <span class="o">(</span><span class="n">a</span> <span class="o">+</span> <span class="n">b</span><span class="o">))</span>
+</pre></div></div></div>
+<div class="paragraph"><p>потім конвертувати назад до типів та отримати:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="o">(</span><span class="nc">Either</span><span class="o">[</span><span class="kt">A</span>, <span class="kt">B</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="n">C</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">C</span>
+</pre></div></div></div>
+<div class="paragraph"><p>що значно простіше: ми тільки просимо користувачів нашого фреймфорку провадити <code>Either[A, B] =&gt; C</code>.</p></div>
+<div class="paragraph"><p>Той самий хід думок може бути використаний для перевірки, що:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">A</span> <span class="k">=&gt;</span> <span class="n">B</span> <span class="k">=&gt;</span> <span class="n">C</span>
+</pre></div></div></div>
+<div class="paragraph"><p>еквівалентне до</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="o">(</span><span class="n">A</span><span class="o">,</span> <span class="n">B</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">C</span>
+</pre></div></div></div>
+<div class="paragraph"><p>що також відоме як <em>карування</em>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_4_1_8_____">4.1.8 Обирайте ко-продукти замість продуктів</h3>
+<div class="paragraph"><p>Архітепічне моделювання проблем, що постає здебільшо коли існують взаємно виключні параметри конфігурації <code>a</code>, <code>b</code> та <code>c</code>. Продукт <code>(a: Boolean, b: Boolean, c: Boolean)</code> має складність 8, тоді як ко-продукт</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">sealed</span> <span class="k">abstract</span> <span class="k">class</span> <span class="nc">Config</span>
+  <span class="k">object</span> <span class="nc">Config</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="k">object</span> <span class="nc">A</span> <span class="k">extends</span> <span class="nc">Config</span>
+    <span class="k">case</span> <span class="k">object</span> <span class="nc">B</span> <span class="k">extends</span> <span class="nc">Config</span>
+    <span class="k">case</span> <span class="k">object</span> <span class="nc">C</span> <span class="k">extends</span> <span class="nc">Config</span>
+  <span class="o">}</span>
+<span class="n">має</span> <span class="n">складність</span> <span class="mf">3.</span> <span class="n">Краще</span> <span class="n">моделювати</span> <span class="n">ці</span> <span class="n">параметри</span> <span class="n">конфігурації</span> <span class="n">як</span> <span class="n">ко</span><span class="o">-</span><span class="n">продукт</span><span class="o">,</span> <span class="n">ніж</span> <span class="n">дозволити</span> <span class="n">існування</span> <span class="n">п</span><span class=" -Symbol">&#39;яти</span> <span class="n">невалідних</span> <span class="n">станів</span><span class="o">.</span>
+
+<span class="n">Складність</span> <span class="n">типу</span> <span class="n">даних</span> <span class="n">також</span> <span class="n">має</span> <span class="n">вплив</span> <span class="n">на</span> <span class="n">тестування</span><span class="o">.</span> <span class="n">Практично</span> <span class="n">неможливо</span> <span class="n">тестувати</span> <span class="n">кожний</span> <span class="n">можливий</span> <span class="n">вхід</span> <span class="n">до</span> <span class="n">функції</span><span class="o">,</span> <span class="n">але</span> <span class="n">просто</span> <span class="n">тестувати</span> <span class="n">примірник</span> <span class="n">значень</span> <span class="n">за</span> <span class="n">допомогою</span> <span class="n">фреймворка</span> <span class="n">тестування</span> <span class="n">властивостей</span> <span class="n">`Scalacheck`</span><span class="o">.</span> <span class="n">Якщо</span> <span class="n">випадковий</span> <span class="n">примірник</span> <span class="n">типу</span> <span class="n">даних</span> <span class="n">має</span> <span class="n">низьку</span> <span class="n">вірорідність</span> <span class="n">бути</span> <span class="n">валідним</span><span class="o">,</span> <span class="n">це</span> <span class="n">знак</span><span class="o">,</span> <span class="n">що</span> <span class="n">дані</span> <span class="n">змодельовані</span> <span class="n">некоректно</span><span class="o">.</span>
+
+<span class="mf">4.1</span><span class="o">.</span><span class="mi">9</span> <span class="n">Оптимізації</span>
+<span class="o">~~~~~~~~~~~~~~~~~</span>
+<span class="n">Велика</span> <span class="n">перевага</span> <span class="n">від</span> <span class="n">використання</span> <span class="n">спрощеної</span> <span class="n">підмножини</span> <span class="n">мови</span> <span class="nc">Scala</span> <span class="n">для</span> <span class="n">представлення</span> <span class="n">типів</span> <span class="n">даних</span> <span class="n">в</span> <span class="n">тому</span><span class="o">,</span> <span class="n">що</span> <span class="n">інструментарій</span> <span class="n">може</span> <span class="n">оптимізувати</span> <span class="n">репрезентацію</span> <span class="n">байткоду</span> <span class="nc">JVM</span><span class="o">.</span>
+
+<span class="n">Наприклад</span><span class="o">,</span> <span class="n">ми</span> <span class="n">можемо</span> <span class="n">запакувати</span> <span class="n">поля</span> <span class="n">`Boolean`</span> <span class="n">та</span> <span class="n">`Option`</span> <span class="n">в</span> <span class="n">`Array[Byte]`</span><span class="o">,</span> <span class="n">кешувати</span> <span class="n">значення</span><span class="o">,</span> <span class="n">запам</span><span class=" -Symbol">&#39;ятати</span> <span class="n">`hashCode`</span><span class="o">,</span> <span class="n">оптимізувати</span> <span class="n">`equals`</span><span class="o">,</span> <span class="n">використовувати</span> <span class="n">твердження</span> <span class="n">`@switch`</span> <span class="n">при</span> <span class="n">порівнянні</span> <span class="n">шаблонів</span><span class="o">,</span> <span class="n">та</span> <span class="n">багато</span> <span class="n">іншого</span><span class="o">.</span>
+
+<span class="n">Ці</span> <span class="n">оптимізації</span> <span class="n">неможливо</span> <span class="n">застосувати</span> <span class="n">для</span> <span class="n">ієрархій</span> <span class="n">класів</span> <span class="nc">OOP</span><span class="o">,</span> <span class="n">що</span> <span class="n">можуть</span> <span class="n">керувати</span> <span class="n">станом</span><span class="o">,</span> <span class="n">закидати</span> <span class="n">виключення</span> <span class="n">або</span> <span class="n">провадити</span> <span class="n">adhoc</span> <span class="n">реалізції</span> <span class="n">методів</span><span class="o">.</span>
+
+<span class="mf">4.2</span> <span class="n">Функціональність</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Чисті функції типово визначаються як методи на об'єкті.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">package</span> <span class="nn">object</span> <span class="n">math</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">sin</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Math</span><span class="o">.</span><span class="n">sin</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+
+  <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="o">(</span><span class="mf">1.0</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Однак буде незручним використовувати методи об'єкта, оскільки це читається зсередини-назовні, не зліва направо. На додаток функція на об'єкті краде простір імен. Якщо ми визначимо <code>sin(t: T)</code> будь-де ще, ми отримаємо помилку невизначенності посилання. Це та сама проблема, що і статичні методи в Java vs методів классу.</p></div>
+<div class="paragraph"><p>Різновид розробників, що складють методи в трейт, та вимагають від користувачів міксувати їх за допомогою шаблону кекса, прямують прямо до пекла. Це дає витік внутрішніх деталей реалізації до публічних API,заплутує байткод, робить двоїчну сумісність в основному неможливою, та засмучує  автодоповнювач IDE.</p></div>
+<div class="paragraph"><p>З можливістю мови щодо неявних класів (також відомою як методологія або синтаксис розширення), та невеликим шаблоном ми можемо отримати знайомий стиль:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="n">scala</span><span class="o">&gt;</span> <span class="k">implicit</span> <span class="k">class</span> <span class="nc">DoubleOps</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="o">{</span>
+           <span class="k">def</span> <span class="n">sin</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+         <span class="o">}</span>
+
+  <span class="n">scala</span><span class="o">&gt;</span> <span class="o">(</span><span class="mf">1.0</span><span class="o">).</span><span class="n">sin</span>
+  <span class="n">res</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="mf">0.8414709848078965</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Часто краще просто пропустити визначення об'єкта, та перейти прямо до неявного класу, утримуючи шаблонний код на мінімумі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">implicit</span> <span class="k">class</span> <span class="nc">DoubleOps</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">sin</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Math</span><span class="o">.</span><span class="n">sin</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>неявний клас є синтаксичним цукром до неявного перетворення:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">implicit</span> <span class="k">def</span> <span class="nc">DoubleOps</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">DoubleOps</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">DoubleOps</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+  <span class="k">class</span> <span class="nc">DoubleOps</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">sin</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Math</span><span class="o">.</span><span class="n">sin</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що, нажаль, має вартість під час виконання: кожний раз, коли викликається метод розширення, посередник <code>DoubleOps</code> буде конструюватись та потів відкидатись геть. Це може докластись до тиску на GC в гарячих точках.</p></div>
+<div class="paragraph"><p>Існує трохи більш балаклива форма неявних класів, що уникає розміщення, і, таким чином, більш бажана:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">implicit</span> <span class="k">final</span> <span class="k">class</span> <span class="nc">DoubleOps</span><span class="o">(</span><span class="k">private</span> <span class="k">val</span> <span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">AnyVal</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">sin</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Math</span><span class="o">.</span><span class="n">sin</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+</div>
+<div class="sect2">
+<h3 id="_4_2_1__">4.2.1 Поліморфні функції</h3>
+<div class="paragraph"><p>Більш загальний різновид функцій є поліморфні функції, що живуть в _типокласах_. Типоклас є трейт, що:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+не збурігає стан
+</p>
+</li>
+<li>
+<p>
+має параметр типу
+</p>
+</li>
+<li>
+<p>
+має щонайменьше один абстрактний метод (примітивні комбінатори)
+</p>
+</li>
+<li>
+<p>
+може містити узагальнені методи (похідні комбінатори)
+</p>
+</li>
+<li>
+<p>
+може розширювати інший типоклас
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Є тільки одна реалізація типокласу для любого даного параметру типу, властивість, відома під назвою когерентність типокласу. Типокласи  виглядають напрочуд подібно до алгебраїчних інтерфейсів, але алгебри не обов'язково мають бути когерентними.</p></div>
+<div class="paragraph"><p>Когенентність типокласів в основному відноситься до узгодженості, і узгодженість дає нам впевненість для використання неявних параметрів. Може бути складним продумувати код, що виконується по різному на неявних імпортах в полі зору. Когерентність типокласів насправді каже, що імпорти не повинні впливати на поведінку коду.</p></div>
+<div class="paragraph"><p>Додатково, когерентність типокласів дозволяє нам глобально кешувати неявні під час виконання, та зберігати розміщення пам'яті, отримуючи покращення продуктивності від зменшеного тиску на збирача сміття.</p></div>
+<div class="paragraph"><p>Типокласи використовуються в Scala <code>stdlib</code>. Ми дослідимо спрощену версію <code>scala.math.Numeric</code> для демонстрації принципу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">trait</span> <span class="nc">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span>
+
+    <span class="k">def</span> <span class="n">lt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">&lt;</span> <span class="mi">0</span>
+    <span class="k">def</span> <span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+  <span class="o">}</span>
+
+  <span class="k">trait</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="nc">extends</span> <span class="nc">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">plus</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="k">def</span> <span class="n">times</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="k">def</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="k">def</span> <span class="n">zero</span><span class="k">:</span> <span class="kt">T</span>
+
+    <span class="k">def</span> <span class="n">abs</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">lt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">zero</span><span class="o">))</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">else</span> <span class="n">x</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ми можмо бачити всі ключові властивості типокласу в дії:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+немає стану
+</p>
+</li>
+<li>
+<p>
+<code>Ordering</code> та <code>Numeric</code> мають параметр типу <code>T</code>
+</p>
+</li>
+<li>
+<p>
+<code>Ordering</code> має абстрактне <code>compare</code>, та <code>Numeric</code> має абстрактні <code>plus</code>, <code>times</code>, <code>negate</code> та <code>zero</code>
+</p>
+</li>
+<li>
+<p>
+<code>Ordering</code> визначає узагальнені <code>lt</code> та <code>gt</code> базовані на <code>compare</code>, <code>Numeric</code> визначає <code>abs</code> в термінах <code>lt</code>, <code>negate</code> та <code>zero</code>.
+</p>
+</li>
+<li>
+<p>
+<code>Numeric</code> розширює <code>Ordering</code>
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Тепер ми можемо писати функції для типів, що “має” типоклас <code>Numeric</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">signOfTheTimes</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)(</span><span class="k">implicit</span> <span class="n">N</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="k">import</span> <span class="nn">N._</span>
+    <span class="n">times</span><span class="o">(</span><span class="n">negate</span><span class="o">(</span><span class="n">abs</span><span class="o">(</span><span class="n">t</span><span class="o">)),</span> <span class="n">t</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ми більше не залежимо від ієрархії OOP від наших вхідних типів, тобто, ми не вимагаємо, щоб наш вхід “був” <code>Numeric</code>, що є критично важливим, якщо ми бажаємо підтримати клас третіх сторін, який ми не можемо перевизначити.</p></div>
+<div class="paragraph"><p>Інша перевага типокласів в тому, що асоціація функціональності до даних відбувається під час компіляції, на відміну від рантайм динамічної диспечерізації OOP.</p></div>
+<div class="paragraph"><p>Наприклад, хоча клас <code>List</code> може мати лише одну реалізацію метода, метод типокласу дозволяє нам мати різні реалізації в залежності від вмісту <code>List</code>, і, таким чином, перекласти навантаження на час компіляції, замість залишати його на рантайм.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_4_2_2_">4.2.2 Синтаксис</h3>
+<div class="paragraph"><p>Синтаксис для написання <code>signOfTheTimes</code> є заплутаним, існують деякі речі, які ми можемо зробити, щоб розчистити його.</p></div>
+<div class="paragraph"><p>Нижні користувачі будуть краще бачити наш метод, як використовуючий межі контексту, оскільки сигнатура ясно читається як “приймає <code>T</code>, що має `Numeric`”</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">signOfTheTimes</span><span class="o">[</span><span class="kt">T:</span> <span class="kt">Numeric</span><span class="o">](</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>але тепер ми маємо будь-де використовувати <code>implicitly[Numeric[T]]</code>. Через визначення шаблонного коду на компанйоні типокласу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">object</span> <span class="nc">Numeric</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">apply</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="k">implicit</span> <span class="n">numeric</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="n">numeric</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>ми можемо отримати неявне з меньшим шумом</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">signOfTheTimes</span><span class="o">[</span><span class="kt">T:</span> <span class="kt">Numeric</span><span class="o">](</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">N</span> <span class="k">=</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+    <span class="k">import</span> <span class="nn">N._</span>
+    <span class="n">times</span><span class="o">(</span><span class="n">negate</span><span class="o">(</span><span class="n">abs</span><span class="o">(</span><span class="n">t</span><span class="o">)),</span> <span class="n">t</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Але це все ще гірше для нас, як для реалізаторів. Ми маємо синтаксичну проблему статичних методів зсередини-назовні vs методів класів. Ми маємо справу з цім через введення <code>ops</code> на компанйоні типокласу:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">object</span> <span class="nc">Numeric</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">apply</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="k">implicit</span> <span class="n">numeric</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="k">=</span> <span class="n">numeric</span>
+
+    <span class="k">object</span> <span class="nc">ops</span> <span class="o">{</span>
+      <span class="k">implicit</span> <span class="k">class</span> <span class="nc">NumericOps</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)(</span><span class="k">implicit</span> <span class="n">N</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">])</span> <span class="o">{</span>
+        <span class="k">def</span> <span class="o">+(</span><span class="n">o</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">plus</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">o</span><span class="o">)</span>
+        <span class="k">def</span> <span class="o">*(</span><span class="n">o</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">times</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">o</span><span class="o">)</span>
+        <span class="k">def</span> <span class="n">unary_-:</span> <span class="n">T</span> <span class="k">=</span> <span class="n">N</span><span class="o">.</span><span class="n">negate</span><span class="o">(</span><span class="n">t</span><span class="o">)</span>
+        <span class="k">def</span> <span class="n">abs</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">abs</span><span class="o">(</span><span class="n">t</span><span class="o">)</span>
+
+        <span class="c1">// дублікація з Ordering.ops</span>
+        <span class="k">def</span> <span class="o">&lt;(</span><span class="n">o</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">lt</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">o</span><span class="o">)</span>
+        <span class="k">def</span> <span class="o">&gt;(</span><span class="n">o</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="n">N</span><span class="o">.</span><span class="n">gt</span><span class="o">(</span><span class="n">t</span><span class="o">,</span> <span class="n">o</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, <code>-x</code> розширюється до <code>x.unary_-</code> через компіляторний синтаксичний синтаксис, через що ми визначаємо <code>unary_-</code> як метод розширення. Тепер ми можемо записати значно ясніше:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">Numeric.ops._</span>
+  <span class="k">def</span> <span class="n">signOfTheTimes</span><span class="o">[</span><span class="kt">T:</span> <span class="kt">Numeric</span><span class="o">](</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="o">-(</span><span class="n">t</span><span class="o">.</span><span class="n">abs</span><span class="o">)</span> <span class="o">*</span> <span class="n">t</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Гарна новина в тому, що нам ніколи не треба писати цей код, оскільки <code>Simulacrum</code> провадить макро анотацію <code>@typeclass</code>, що автоматично генерує <code>apply</code> та <code>ops</code>. Він навіть дозволяє нам визначити альтернативні імена (звичайно символічні) для загальних методів. Загалом:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">simulacrum._</span>
+
+  <span class="nd">@typeclass</span> <span class="k">trait</span> <span class="nc">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span>
+    <span class="nd">@op</span><span class="o">(</span><span class="s">&quot;&lt;&quot;</span><span class="o">)</span> <span class="k">def</span> <span class="n">lt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">&lt;</span> <span class="mi">0</span>
+    <span class="nd">@op</span><span class="o">(</span><span class="s">&quot;&gt;&quot;</span><span class="o">)</span> <span class="k">def</span> <span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span> <span class="o">&gt;</span> <span class="mi">0</span>
+  <span class="o">}</span>
+
+  <span class="nd">@typeclass</span> <span class="k">trait</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="nc">extends</span> <span class="nc">Ordering</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span> <span class="o">{</span>
+    <span class="nd">@op</span><span class="o">(</span><span class="s">&quot;+&quot;</span><span class="o">)</span> <span class="k">def</span> <span class="n">plus</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="nd">@op</span><span class="o">(</span><span class="s">&quot;*&quot;</span><span class="o">)</span> <span class="k">def</span> <span class="n">times</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="nd">@op</span><span class="o">(</span><span class="s">&quot;unary_-&quot;</span><span class="o">)</span> <span class="k">def</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="k">def</span> <span class="n">zero</span><span class="k">:</span> <span class="kt">T</span>
+    <span class="k">def</span> <span class="n">abs</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="k">if</span> <span class="o">(</span><span class="n">lt</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">zero</span><span class="o">))</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="o">)</span> <span class="k">else</span> <span class="n">x</span>
+  <span class="o">}</span>
+
+  <span class="k">import</span> <span class="nn">Numeric.ops._</span>
+  <span class="k">def</span> <span class="n">signOfTheTimes</span><span class="o">[</span><span class="kt">T:</span> <span class="kt">Numeric</span><span class="o">](</span><span class="n">t</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span><span class="k">:</span> <span class="kt">T</span> <span class="o">=</span> <span class="o">-(</span><span class="n">t</span><span class="o">.</span><span class="n">abs</span><span class="o">)</span> <span class="o">*</span> <span class="n">t</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тепер коли є власний символічний <code>@op</code>, він має вимовлятись як ім'я метода. Тобто, <code>&lt;</code> вимовляється “меньше ніж”, не “ліва кутова дужка”.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_4_2_3_">4.2.3 Примірники</h3>
+<div class="paragraph"><p>Примірники <code>Numeric</code> (що також є примірниками <code>Ordering</code>) визначаються як <code>implicit val</code>, що розширює типоклас, та може провадити оптимізовану реалізації для узагальнених методів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">implicit</span> <span class="k">val</span> <span class="nc">NumericDouble</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">Double</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">Double</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">plus</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">x</span> <span class="o">+</span> <span class="n">y</span>
+    <span class="k">def</span> <span class="n">times</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="n">y</span>
+    <span class="k">def</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="o">-</span><span class="n">x</span>
+    <span class="k">def</span> <span class="n">zero</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="mf">0.0</span>
+    <span class="k">def</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Double</span><span class="o">.</span><span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">,</span> <span class="n">y</span><span class="o">)</span>
+
+    <span class="c1">// оптимізовано</span>
+    <span class="k">override</span> <span class="k">def</span> <span class="n">lt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">x</span> <span class="o">&lt;</span> <span class="n">y</span>
+    <span class="k">override</span> <span class="k">def</span> <span class="n">gt</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Boolean</span> <span class="o">=</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="n">y</span>
+    <span class="k">override</span> <span class="k">def</span> <span class="n">abs</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span><span class="k">:</span> <span class="kt">Double</span> <span class="o">=</span> <span class="n">java</span><span class="o">.</span><span class="n">lang</span><span class="o">.</span><span class="nc">Math</span><span class="o">.</span><span class="n">abs</span><span class="o">(</span><span class="n">x</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Хоча ми тут використовуємо <code>+</code>, <code>*</code>, <code>unary_-</code>, <code>&lt;</code> та <code>&gt;</code>, що є <code>ops</code> (і може бути безкінечний цикл!), ці методи вже існують на <code>Double</code>. Методи класів завжди використовуються з перевагою над методами розширення. Зрозуміло, що компілятор Scala виконує особливу обробку примітивів, та конвертує ці методи до сирих байткод інструкцій <code>dadd</code>, <code>dmul</code>, <code>dcmpl</code> та <code>dcmpg</code>, відповідно.</p></div>
+<div class="paragraph"><p>Ми також можемо реалізувати <code>Numeric</code> для Java класу <code>BigDecimal</code> (уникайте <code>scala.BigDecimal</code>, він фундаментально хибний)</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">java.math.</span><span class="o">{</span> <span class="nc">BigDecimal</span> <span class="k">=&gt;</span> <span class="nc">BD</span> <span class="o">}</span>
+
+  <span class="k">implicit</span> <span class="k">val</span> <span class="nc">NumericBD</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">BD</span><span class="o">]</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">BD</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">plus</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">BD</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">BD</span><span class="o">)</span><span class="k">:</span> <span class="kt">BD</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">add</span><span class="o">(</span><span class="n">y</span><span class="o">)</span>
+    <span class="k">def</span> <span class="n">times</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">BD</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">BD</span><span class="o">)</span><span class="k">:</span> <span class="kt">BD</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">multiply</span><span class="o">(</span><span class="n">y</span><span class="o">)</span>
+    <span class="k">def</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">BD</span><span class="o">)</span><span class="k">:</span> <span class="kt">BD</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">negate</span>
+    <span class="k">def</span> <span class="n">zero</span><span class="k">:</span> <span class="kt">BD</span> <span class="o">=</span> <span class="nc">BD</span><span class="o">.</span><span class="nc">ZERO</span>
+    <span class="k">def</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">BD</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">BD</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">compareTo</span><span class="o">(</span><span class="n">y</span><span class="o">)</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете створити нашу власну структуру даних для комплексних чисел:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Complex</span><span class="o">[</span><span class="kt">T</span><span class="o">](</span><span class="n">r</span><span class="k">:</span> <span class="kt">T</span><span class="o">,</span> <span class="n">i</span><span class="k">:</span> <span class="kt">T</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Та наслідувати <code>Numeric[Complex[T]]</code>, якщо існує <code>Numeric[T]</code>. Оскільки ці примірники залежать від параметру типа, це <code>def</code>, не <code>val</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">implicit</span> <span class="k">def</span> <span class="n">numericComplex</span><span class="o">[</span><span class="kt">T:</span> <span class="kt">Numeric</span><span class="o">]</span><span class="k">:</span> <span class="kt">Numeric</span><span class="o">[</span><span class="kt">Complex</span><span class="o">[</span><span class="kt">T</span><span class="o">]]</span> <span class="k">=</span>
+    <span class="k">new</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">Complex</span><span class="o">[</span><span class="kt">T</span><span class="o">]]</span> <span class="o">{</span>
+      <span class="k">type</span> <span class="kt">CT</span> <span class="o">=</span> <span class="nc">Complex</span><span class="o">[</span><span class="kt">T</span><span class="o">]</span>
+      <span class="k">def</span> <span class="n">plus</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">CT</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">CT</span><span class="o">)</span><span class="k">:</span> <span class="kt">CT</span> <span class="o">=</span> <span class="nc">Complex</span><span class="o">(</span><span class="n">x</span><span class="o">.</span><span class="n">r</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">r</span><span class="o">,</span> <span class="n">x</span><span class="o">.</span><span class="n">i</span> <span class="o">+</span> <span class="n">y</span><span class="o">.</span><span class="n">i</span><span class="o">)</span>
+      <span class="k">def</span> <span class="n">times</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">CT</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">CT</span><span class="o">)</span><span class="k">:</span> <span class="kt">CT</span> <span class="o">=</span>
+        <span class="nc">Complex</span><span class="o">(</span><span class="n">x</span><span class="o">.</span><span class="n">r</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">r</span> <span class="o">+</span> <span class="o">(-</span><span class="n">x</span><span class="o">.</span><span class="n">i</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">i</span><span class="o">),</span> <span class="n">x</span><span class="o">.</span><span class="n">r</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">i</span> <span class="o">+</span> <span class="n">x</span><span class="o">.</span><span class="n">i</span> <span class="o">*</span> <span class="n">y</span><span class="o">.</span><span class="n">r</span><span class="o">)</span>
+      <span class="k">def</span> <span class="n">negate</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">CT</span><span class="o">)</span><span class="k">:</span> <span class="kt">CT</span> <span class="o">=</span> <span class="nc">Complex</span><span class="o">(-</span><span class="n">x</span><span class="o">.</span><span class="n">r</span><span class="o">,</span> <span class="o">-</span><span class="n">x</span><span class="o">.</span><span class="n">i</span><span class="o">)</span>
+      <span class="k">def</span> <span class="n">zero</span><span class="k">:</span> <span class="kt">CT</span> <span class="o">=</span> <span class="nc">Complex</span><span class="o">(</span><span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">].</span><span class="n">zero</span><span class="o">,</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">].</span><span class="n">zero</span><span class="o">)</span>
+      <span class="k">def</span> <span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="k">:</span> <span class="kt">CT</span><span class="o">,</span> <span class="n">y</span><span class="k">:</span> <span class="kt">CT</span><span class="o">)</span><span class="k">:</span> <span class="kt">Int</span> <span class="o">=</span> <span class="o">{</span>
+        <span class="k">val</span> <span class="n">real</span> <span class="k">=</span> <span class="o">(</span><span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">].</span><span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">.</span><span class="n">r</span><span class="o">,</span> <span class="n">y</span><span class="o">.</span><span class="n">r</span><span class="o">))</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">real</span> <span class="o">!=</span> <span class="mi">0</span><span class="o">)</span> <span class="n">real</span>
+        <span class="k">else</span> <span class="nc">Numeric</span><span class="o">[</span><span class="kt">T</span><span class="o">].</span><span class="n">compare</span><span class="o">(</span><span class="n">x</span><span class="o">.</span><span class="n">i</span><span class="o">,</span> <span class="n">y</span><span class="o">.</span><span class="n">i</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Спостережливий читач може зауважити, що <code>abs</code> взагалі не те, що може очікувати математик. Коректне повернуте значення для <code>abs</code> має бути <code>T</code>, не <code>Complex[T]</code>.</p></div>
+<div class="paragraph"><p><code>scala.math.Numeric</code> намагається робити дуже багато, і не узагальнує за межами дійсних чисел. Це гарний урок того, що меньші, гарно визначені типокласи часто кращі, ніж монолітні колекції дуже специфічних можливостей.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_4_2_4__">4.2.4 Розрішення неявних</h3>
+<div class="paragraph"><p>Ми гарно обсудили неявні: цей розділ призначений для прояснення, що таке неявні, та як вони роблять.</p></div>
+<div class="paragraph"><p>Коли метод запитує, щоб в полі зору викликаючого знаходився унікальний примірник певного типу, неявні параметри є особливим синтаксисом для примірників типокласів. Неявні параметри є ясним шляхом конфігурації потоку через застосування.</p></div>
+<div class="paragraph"><p>В цьому прикладі <code>foo</code> потребує, щоб для <code>A</code> були доступні примірники типокласів <code>Numeric</code> та <code>Typeable</code>, так само, як неявний об'єкт <code>Handler</code>, що приймає два параметри типів</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>  <span class="k">def</span> <span class="n">foo</span><span class="o">[</span><span class="kt">A:</span> <span class="kt">Numeric:</span> <span class="kt">Typeable</span><span class="o">](</span><span class="k">implicit</span> <span class="n">A</span><span class="k">:</span> <span class="kt">Handler</span><span class="o">[</span><span class="kt">String</span>, <span class="kt">A</span><span class="o">])</span> <span class="k">=</span> <span class="o">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Неявне перетворення відбувається коли існує <code>implicit def</code>. Один такий випадок неявного перетворення є використання методології розширення. Коли компілятор розрішує виклик метода, він спочатку перевіряє, чи метод існує для типу, потім для предків (Java-подібні правила). Якщо він не зможе знайти співпадіння, він буде шукати неявне поле зору для перетворень до інших типів, потім шукає серед методів на ціх типах.</p></div>
+<div class="paragraph"><p>Інше використання для неявних перетворень є похідні типокласи. В попередньому розділі ми написали неявний <code>def</code>, що походить від <code>Numeric[Complex[T]]</code>, якщо <code>Numeric[T]</code> існує в неявному полі зору. Можливо зціпити разом декілька <code>implicit def</code> (включаючи рекурсію), що є базисом типованого програмування, дозволяючи виконання обчислень під час компіляціїї, замість рантайму.</p></div>
+<div class="paragraph"><p>Клей, що зліплює неявні параметри (отримувачі) з неявними перетвореннями (провайдерами) є розрішення неявних.</p></div>
+<div class="paragraph"><p>Зпочатку шукається звичане поле зору змінної, по порядку:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+локальне поле зору, включаючи локальні імпорти (тобто блок або метод)
+</p>
+</li>
+<li>
+<p>
+зовнішнє поле зору, включаючи імпорти в цій області (тобто члени в класі)
+</p>
+</li>
+<li>
+<p>
+предки (тобто члени в суер класі)
+</p>
+</li>
+<li>
+<p>
+поточний об'єкт пакаунку
+</p>
+</li>
+<li>
+<p>
+об'єкти батьківських пакунків (коли використовуються вкладені пакунки)
+</p>
+</li>
+<li>
+<p>
+імпорти файлу
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Якщо пошук співпадіння схибить, шукається особливе поле зору, що виглядає неявні примірники в компанйоні типу, його об'єкті пакунку, зовнішні об'єкти (якщо вкладені), та потім повторюється для предків. Це виконується в тому ж порядку для:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+даного типу параметра
+</p>
+</li>
+<li>
+<p>
+очікуваного параметру типу
+</p>
+</li>
+<li>
+<p>
+параметру типу (якщо такий існує)
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Якщо знайдено два співпадаючих неявних в тій самій фазі розрішення неявного, закидається помилка неявного.</p></div>
 <div class="paragraph"><p>Implicits are often defined on a trait, which is then extended by an object. This is to try and control the priority of an implicit relative to another more specific one, to avoid ambiguous implicits.</p></div>
 <div class="paragraph"><p>The Scala Language Specification is rather vague for corner cases, and the compiler implementation is the de facto standard. There are some rules of thumb that we will use throughout this book, e.g. prefer implicit val over implicit object despite the temptation of less typing. It is a quirk of implicit resolution that implicit object on companion objects are not treated the same as implicit val.</p></div>
 <div class="paragraph"><p>Implicit resolution falls short when there is a hierarchy of typeclasses, like Ordering and Numeric. If we write a function that takes an implicit Ordering, and we call it for a primitive type which has an instance of Numeric defined on the Numeric companion, the compiler will fail to find it.</p></div>
@@ -1865,7 +1898,7 @@ typeclass derivation is compiletime composition of typeclass instances.</code></
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-07-08 00:18:36 EEST
+ 2019-07-16 01:27:23 EEST
 </div>
 </div>
 </body>

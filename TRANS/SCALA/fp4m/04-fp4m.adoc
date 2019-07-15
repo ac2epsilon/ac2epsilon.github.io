@@ -133,18 +133,23 @@ ADT може містити чисті функції:
 
 4.1.5 Подача інформації
 ~~~~~~~~~~~~~~~~~~~~~~~
-Besides being a container for necessary business information, data types can be used to encode constraints. For example,
-
+Окрім функції контейнера для потрібної бізнес інформації, типи даних можуть використовуватись для кодування обмежень. Наприклад,
+[source,scala]
+----
   final case class NonEmptyList[A](head: A, tail: IList[A])
-can never be empty. This makes scalaz.NonEmptyList a useful data type despite containing the same information as IList.
+----
+ніколи не може бути порожнім. Це робить `scalaz.NonEmptyList` корисним типом даних, що містить ту саму інформацію, що і `IList`.
 
-Product types often contain types that are far more general than is allowed. In traditional OOP this would be handled with input validation through assertions:
-
+Продуктові типи часто містять типи, що значно більш загальні, ніж дозволено. В традиційному OOP це може бути оброблене за допомогою валідації вводу через припущення:
+[source,scala]
+----
   final case class Person(name: String, age: Int) {
-    require(name.nonEmpty && age > 0) // breaks Totality, don't do this!
+    require(name.nonEmpty && age > 0) // руйнує загальність, не робіть цього!
   }
-Instead, we can use the Either data type to provide Right[Person] for valid instances and protect invalid instances from propagating. Note that the constructor is private:
-
+----
+Замість цього ми можемо використовувати тип даних `Either` щоб провадити `Right[Person]` для валідних примірників, та захиститись від просування навалідних примірників. Зауважте, що конструктор приватний:
+[source,scala]
+----
   final case class Person private(name: String, age: Int)
   object Person {
     def apply(name: String, age: Int): Either[String, Person] = {
@@ -159,18 +164,25 @@ Instead, we can use the Either data type to provide Right[Person] for valid inst
   for {
     person <- Person("", -1)
   } yield welcome(person)
-4.1.5.1 Refined Data Types
-A clean way to restrict the values of a general type is with the refined library, providing a suite of restrictions to the contents of data. To install refined, add the following to build.sbt
-
+----
+4.1.5.1 Очищені типи даних
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+Чіткий спосіб обмежити значення загального типу можливо за допомогою бібліотеки `refined`, провадячи сюїту обмежень до вмісту даних. Щоб встановити `refined`, додайте наступне до `build.sbt`:
+[source,scala]
+----
   libraryDependencies += "eu.timepit" %% "refined-scalaz" % "0.9.2"
-and the following imports
-
+----
+та наступні імпорти:
+[source,scala]
+----
   import eu.timepit.refined
   import refined.api.Refined
-Refined allows us to define Person using adhoc refined types to capture requirements exactly, written A Refined B.
+----
+`Refined` дозволяє визначити `Person` використовуючи створені на льоту очищені типи, щоб захопити вимоги в точності, записуючи `A Refined B`.
 
-All types with two parameters can be written infix in Scala. For example, Either[String, Int] is the same as String Either Int. It is conventional for Refined to be written infix since A Refined B can be read as “an A that meets the requirements defined in B”.
-
+Всі типи з двома параметрами можуть бути записані інфіксно в Scala. Наприклад, `Either[String, Int]` є те саме, що `String Either Int`. За домовленостю `Refined` записується інфіксно, оскільки `A Refined B` можна прочитати як “`A`, що відповідає вимогам, визначеним в `B`”.
+[source,scala]
+----
   import refined.numeric.Positive
   import refined.collection.NonEmpty
   
@@ -178,42 +190,56 @@ All types with two parameters can be written infix in Scala. For example, Either
     name: String Refined NonEmpty,
     age: Int Refined Positive
   )
-The underlying value can be obtained with .value. We can construct a value at runtime using .refineV, returning an Either
-
+----
+Підлегле значення можна отримати за допомогою `.value`. Ми можемо конструювати значення від час виконання з використанням `.refineV`, повертаючи `Either`:
+[source,scala]
+----
   scala> import refined.refineV
   scala> refineV[NonEmpty]("")
   Left(Predicate isEmpty() did not fail.)
   
   scala> refineV[NonEmpty]("Sam")
   Right(Sam)
-If we add the following import
-
+----
+Якщо ми додамо наступний імпорт:
+[source,scala]
+----
   import refined.auto._
-we can construct valid values at compiletime and get an error if the provided value does not meet the requirements
-
+----
+ми можемо конструювати валідні значення під час компіляції, та отримати помилку, якщо надамо значення, що не відповідає вимогам:
+[source,scala]
+----
   scala> val sam: String Refined NonEmpty = "Sam"
   Sam
   
   scala> val empty: String Refined NonEmpty = ""
   <console>:21: error: Predicate isEmpty() did not fail.
-More complex requirements can be captured, for example we can use the built-in rule MaxSize with the following imports
-
+----
+Можливо захопити більш складні вимоги, наприклад, ми можемо використовувати вбудоване правило `MaxSize` з наступними імпортами:
+[source,scala]
+----
   import refined.W
   import refined.boolean.And
   import refined.collection.MaxSize
-capturing the requirement that the String must be both non-empty and have a maximum size of 10 characters:
-
+----
+захоплюючі вимогу, що `String` має бути одночасно непорожнім та мати максимальний розмір 10 символів:
+[source,scala]
+----
   type Name = NonEmpty And MaxSize[W.`10`.T]
   
   final case class Person(
     name: String Refined Name,
     age: Int Refined Positive
   )
-The W notation is short for “witness”. This syntax will be much simpler in Scala 2.13, which has support for literal types:
-
+----
+Нотація `W` є скороченим для “witness” (_засвідчити_). Цей синтаксис буде значно простіший в Scala 2.13, що має підтримку для літеральних типів:
+[source,scala]
+----
   type Name = NonEmpty And MaxSize[10]
-It is easy to define custom requirements that are not covered by the refined library. For example in drone-dynamaic-agents we will need a way of ensuring that a String contains application/x-www-form-urlencoded content. We can create a Refined rule using the Java regular expression library:
-
+----
+Просто визначити визначення власних вимог, що не охоплені бібліотекою  `refined`. Наприклад, в `drone-dynamaic-agents` нам знадобиться спосіб переконатись, що `String` містить `application/x-www-form-urlencoded`. Ми можемо створити правило `Refined`, використовуючи бібліотеку регулярних виразів Java:
+[source,scala]
+----
   sealed abstract class UrlEncoded
   object UrlEncoded {
     private[this] val valid: Pattern =
@@ -226,145 +252,182 @@ It is easy to define custom requirements that are not covered by the refined lib
         new UrlEncoded {}
       )
   }
-4.1.6 Simple to Share
-By not providing any functionality, ADTs can have a minimal set of dependencies. This makes them easy to publish and share with other developers. By using a simple data modelling language, it makes it possible to interact with cross-discipline teams, such as DBAs, UI developers and business analysts, using the actual code instead of a hand written document as the source of truth.
+----
+4.1.6 Поділяти просто
+~~~~~~~~~~~~~~~~~~~~~
+Не провадячи жодної функціональності, ADT можуть мати мінімальний набір залежностей. Це робить простим їх публікацію та поділення з іншими розробниками. Через використання простої мови моделювання даних, стає можливим взаємодія з між-галужевими командами, такими як DBA, розробники UI та бізнес аналітики, використовуючи справжній код замість рукописного документу в якості джерела істини.
 
-Furthermore, tooling can be more easily written to produce or consume schemas from other programming languages and wire protocols.
+Більше того, інструментарій може бути написаний більш просто для продукування або споживання схем від інших мов програмування та дротових протоколів.
 
-4.1.7 Counting Complexity
-The complexity of a data type is the count of values that can exist. A good data type has the least amount of complexity it needs to hold the information it conveys, and no more.
+4.1.7 Підрахунок складності
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Складність типу даних є підрахунок значень, що можуть існувати. Гарний тип даних має найменьшу кількість складності, якій потрібен для утримання інформації, що має передаватись, і не більше.
 
-Values have a built-in complexity:
+Значення мають вбудовану складність:
 
-Unit has one value (why it is called “unit”)
-Boolean has two values
-Int has 4,294,967,295 values
-String has effectively infinite values
-To find the complexity of a product, we multiply the complexity of each part.
+`Unit` має одне значення (чому він і називається “одиничний”)
+`Boolean` має два значення
+`Int` має 4,294,967,295 значень
+`String` ефективно має безліч значень
 
-(Boolean, Boolean) has 4 values (2*2)
-(Boolean, Boolean, Boolean) has 8 values (2*2*2)
-To find the complexity of a coproduct, we add the complexity of each part.
+Щоб знайти складність продкуту ми перемножуємо складність кожної частини.
 
-(Boolean |: Boolean) has 4 values (2+2)
-(Boolean |: Boolean |: Boolean) has 6 values (2+2+2)
-To find the complexity of a ADT with a type parameter, multiply each part by the complexity of the type parameter:
+(`Boolean`, `Boolean`) має 4 значення (2*2)
+(`Boolean`, `Boolean`, `Boolean`) має 8 значень (2*2*2)
 
-Option[Boolean] has 3 values, Some[Boolean] and None (2+1)
-In FP, functions are total and must return an value for every input, no Exception. Minimising the complexity of inputs and outputs is the best way to achieve totality. As a rule of thumb, it is a sign of a badly designed function when the complexity of a function’s return value is larger than the product of its inputs: it is a source of entropy.
+Щоб знайти складність ко-продукту, ми додаємо складність кожної частини.
 
-The complexity of a total function is the number of possible functions that can satisfy the type signature: the output to the power of the input.
+(`Boolean` |: `Boolean`) має 4 значення (2+2)
+(`Boolean` |: `Boolean` |: `Boolean`) має 6 значень (2+2+2)
 
-Unit => Boolean has complexity 2
-Boolean => Boolean has complexity 4
-Option[Boolean] => Option[Boolean] has complexity 27
-Boolean => Int is a mere quintillion going on a sextillion.
-Int => Boolean is so big that if all implementations were assigned a unique number, each would require 4 gigabytes to represent.
-In reality, Int => Boolean will be something simple like isOdd, isEven or a sparse BitSet. This function, when used in an ADT, could be better replaced with a coproduct labelling the limited set of functions that are relevant.
+Щоб знайти складність ADT з параметром типу, помножте кожну частину на складність параметру типу:
 
-When our complexity is “infinity in, infinity out” we should introduce restrictive data types and validation closer to the point of input with Refined from the previous section.
+`Option[Boolean]` має 3 значення, `Some[Boolean]` та `None` (2+1)
 
-The ability to count the complexity of a type signature has one other practical application: we can find simpler type signatures with High School algebra! To go from a type signature to its algebra of complexity, simply replace
+В FP функції повні та мають повертати значення для кожного вводу, не `Exception`. Мінімізація складності входів та виходів є кращим способом досягти загальності. Як правило великого пальця, це знак поганої розробки функції, якщо складність поверненного значення функції більша, ніж складність продукту вхідних значень: це джерело ентропії.
 
-Either[A, B] with a + b
-(A, B) with a * b
-A => B with b ^ a
-do some rearranging, and convert back. For example, say we’ve designed a framework based on callbacks and we’ve managed to work ourselves into the situation where we have created this type signature:
+Складність загальної функції є число можливих функцій, що можуть задовільнити сигнатурі типу: вихід в ступіні вводу.
 
+`Unit => Boolean` має складність 2
+`Boolean => Boolean` має складність 4
+'Option[Boolean] => Option[Boolean]' має складність 27
+`Boolean => Int` має складність квантіліон на секстіліон.
+`Int => Boolean` має таку складність, що якщо всі реалізації мали б порядковий номер, кожний мав би 4Гб в довжину.
+
+В реальності `Int => Boolean` буде дечим простим, як `isOdd`, `isEven` або розріжений `BitSet`. Ця функція, коли використовується в ADT, краще може бути замінена на ко-продукт, який маркує обмежену множину функцій, що є релевантними.
+
+Коли складність є “безкінечність на вході, безкінечність на виході”, нам треба ввести обмежувальні типи даних та валідацію ближче до точки входу за допомогою `Refined` з попереднього розділу.
+
+Здантість порахувати складність сигнатури типу має одне інше практичне застосування: ми можемо знайти простіші сигнатури типів за допомогою алгебри вищої школи! Щоб перейти від сигнатури типу до її алгебри складності, просто замініть:
+[source,scala]
+----
+Either[A, B] на a + b
+(A, B) на a * b
+A => B на b ^ a
+----
+зробіть деякі перестановки, та конвертуйте назад. Наприклад, скажімо, ми розробили фреймворк що базується на зворотніх викликах, і ми поставили себе в ситуацію, коли ми створили наступну сигнатуру типу:
+[source,scala]
+----
   (A => C) => ((B => C) => C)
-We can convert and rearrange
-
+----
+Ми можемо конвертувати та переставити її так:
+[source,scala]
+----
   (c ^ (c ^ b)) ^ (c ^ a)
   = c ^ ((c ^ b) * (c ^ a))
   = c ^ (c ^ (a + b))
-then convert back to types and get
-
+----
+потім конвертувати назад до типів та отримати:
+[source,scala]
+----
   (Either[A, B] => C) => C
-which is much simpler: we only need to ask the users of our framework to provide a Either[A, B] => C.
+----
+що значно простіше: ми тільки просимо користувачів нашого фреймфорку провадити `Either[A, B] => C`.
 
-The same line of reasoning can be used to prove that
-
+Той самий хід думок може бути використаний для перевірки, що:
+[source,scala]
+----
   A => B => C
-is equivalent to
-
+----
+еквівалентне до
+[source,scala]
+----
   (A, B) => C
-also known as Currying.
+----
+що також відоме як _карування_.
 
-4.1.8 Prefer Coproduct over Product
-An archetypal modelling problem that comes up a lot is when there are mutually exclusive configuration parameters a, b and c. The product (a: Boolean, b: Boolean, c: Boolean) has complexity 8 whereas the coproduct
-
+4.1.8 Обирайте ко-продукти замість продуктів
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Архітепічне моделювання проблем, що постає здебільшо коли існують взаємно виключні параметри конфігурації `a`, `b` та `c`. Продукт `(a: Boolean, b: Boolean, c: Boolean)` має складність 8, тоді як ко-продукт
+[source,scala]
+----
   sealed abstract class Config
   object Config {
     case object A extends Config
     case object B extends Config
     case object C extends Config
   }
-has a complexity of 3. It is better to model these configuration parameters as a coproduct rather than allowing 5 invalid states to exist.
+має складність 3. Краще моделювати ці параметри конфігурації як ко-продукт, ніж дозволити існування п'яти невалідних станів.
 
-The complexity of a data type also has implications on testing. It is practically impossible to test every possible input to a function, but it is easy to test a sample of values with the Scalacheck property testing framework. If a random sample of a data type has a low probability of being valid, it is a sign that the data is modelled incorrectly.
+Складність типу даних також має вплив на тестування. Практично неможливо тестувати кожний можливий вхід до функції, але просто тестувати примірник значень за допомогою фреймворка тестування властивостей `Scalacheck`. Якщо випадковий примірник типу даних має низьку вірорідність бути валідним, це знак, що дані змодельовані некоректно.
 
-4.1.9 Optimisations
-A big advantage of using a simplified subset of the Scala language to represent data types is that tooling can optimise the JVM bytecode representation.
+4.1.9 Оптимізації
+~~~~~~~~~~~~~~~~~
+Велика перевага від використання спрощеної підмножини мови Scala для представлення типів даних в тому, що інструментарій може оптимізувати репрезентацію байткоду JVM.
 
-For example, we could pack Boolean and Option fields into an Array[Byte], cache values, memoise hashCode, optimise equals, use @switch statements when pattern matching, and much more.
+Наприклад, ми можемо запакувати поля `Boolean` та `Option` в `Array[Byte]`, кешувати значення, запам'ятати `hashCode`, оптимізувати `equals`, використовувати твердження `@switch` при порівнянні шаблонів, та багато іншого.
 
-These optimisations are not applicable to OOP class hierarchies that may be managing state, throwing exceptions, or providing adhoc method implementations.
+Ці оптимізації неможливо застосувати для ієрархій класів OOP, що можуть керувати станом, закидати виключення або провадити adhoc реалізції методів.
 
-4.2 Functionality
-Pure functions are typically defined as methods on an object.
-
+4.2 Функціональність
+--------------------
+Чисті функції типово визначаються як методи на об'єкті.
+[source,scala]
+----
   package object math {
     def sin(x: Double): Double = java.lang.Math.sin(x)
     ...
   }
   
   math.sin(1.0)
-However, it can be clunky to use object methods since it reads inside-out, not left to right. In addition, a function on an object steals the namespace. If we were to define sin(t: T) somewhere else we get ambiguous reference errors. This is the same problem as Java’s static methods vs class methods.
+----
+Однак буде незручним використовувати методи об'єкта, оскільки це читається зсередини-назовні, не зліва направо. На додаток функція на об'єкті краде простір імен. Якщо ми визначимо `sin(t: T)` будь-де ще, ми отримаємо помилку невизначенності посилання. Це та сама проблема, що і статичні методи в Java vs методів классу.
 
-The sort of developer who puts methods on a trait, requiring users to mix it with the cake pattern, is going straight to hell. It leaks internal implementation detail to public APIs, bloats bytecode, makes binary compatibility basically impossible, and confuses IDE autocompleters.
+Різновид розробників, що складють методи в трейт, та вимагають від користувачів міксувати їх за допомогою шаблону кекса, прямують прямо до пекла. Це дає витік внутрішніх деталей реалізації до публічних API,заплутує байткод, робить двоїчну сумісність в основному неможливою, та засмучує  автодоповнювач IDE.
 
-With the implicit class language feature (also known as extension methodology or syntax), and a little boilerplate, we can get the familiar style:
-
+З можливістю мови щодо неявних класів (також відомою як методологія або синтаксис розширення), та невеликим шаблоном ми можемо отримати знайомий стиль:
+[source,scala]
+----
   scala> implicit class DoubleOps(x: Double) {
            def sin: Double = math.sin(x)
          }
   
   scala> (1.0).sin
   res: Double = 0.8414709848078965
-Often it is best to just skip the object definition and go straight for an implicit class, keeping boilerplate to a minimum:
-
+----
+Часто краще просто пропустити визначення об'єкта, та перейти прямо до неявного класу, утримуючи шаблонний код на мінімумі:
+[source,scala]
+----
   implicit class DoubleOps(x: Double) {
     def sin: Double = java.lang.Math.sin(x)
   }
-implicit class is syntax sugar for an implicit conversion:
-
+----
+неявний клас є синтаксичним цукром до неявного перетворення:
+[source,scala]
+----
   implicit def DoubleOps(x: Double): DoubleOps = new DoubleOps(x)
   class DoubleOps(x: Double) {
     def sin: Double = java.lang.Math.sin(x)
   }
-Which unfortunately has a runtime cost: each time the extension method is called, an intermediate DoubleOps will be constructed and then thrown away. This can contribute to GC pressure in hotspots.
+----
+Що, нажаль, має вартість під час виконання: кожний раз, коли викликається метод розширення, посередник `DoubleOps` буде конструюватись та потів відкидатись геть. Це може докластись до тиску на GC в гарячих точках.
 
-There is a slightly more verbose form of implicit class that avoids the allocation and is therefore preferred:
-
+Існує трохи більш балаклива форма неявних класів, що уникає розміщення, і, таким чином, більш бажана:
+[source,scala]
+----
   implicit final class DoubleOps(private val x: Double) extends AnyVal {
     def sin: Double = java.lang.Math.sin(x)
   }
-4.2.1 Polymorphic Functions
-The more common kind of function is a polymorphic function, which lives in a typeclass. A typeclass is a trait that:
+----
+4.2.1 Поліморфні функції
+~~~~~~~~~~~~~~~~~~~~~~~~
+Більш загальний різновид функцій є поліморфні функції, що живуть в _типокласах_. Типоклас є трейт, що:
 
-holds no state
-has a type parameter
-has at least one abstract method (primitive combinators)
-may contain generalised methods (derived combinators)
-may extend other typeclasses
-There can only be one implementation of a typeclass for any given type parameter, a property known as typeclass coherence. Typeclasses look superficially similar to algebraic interfaces from the previous chapter, but algebras do not have to be coherent.
+* не збурігає стан
+* має параметр типу
+* має щонайменьше один абстрактний метод (примітивні комбінатори)
+* може містити узагальнені методи (похідні комбінатори)
+* може розширювати інший типоклас
 
-Typeclass coherence is primarily about consistency, and the consistency gives us the confidence to use implicit parameters. It would be difficult to reason about code that performs differently depending on the implicit imports that are in scope. Typeclass coherence effectively says that imports should not impact the behaviour of the code.
+Є тільки одна реалізація типокласу для любого даного параметру типу, властивість, відома під назвою когерентність типокласу. Типокласи  виглядають напрочуд подібно до алгебраїчних інтерфейсів, але алгебри не обов'язково мають бути когерентними.
 
-Additionally, typeclass coherence allows us to globally cache implicits at runtime and save memory allocations, gaining performance improvements from reduced pressure on the garbage collector.
+Когенентність типокласів в основному відноситься до узгодженості, і узгодженість дає нам впевненість для використання неявних параметрів. Може бути складним продумувати код, що виконується по різному на неявних імпортах в полі зору. Когерентність типокласів насправді каже, що імпорти не повинні впливати на поведінку коду.
 
-Typeclasses are used in the Scala stdlib. We will explore a simplified version of scala.math.Numeric to demonstrate the principle:
+Додатково, когерентність типокласів дозволяє нам глобально кешувати неявні під час виконання, та зберігати розміщення пам'яті, отримуючи покращення продуктивності від зменшеного тиску на збирача сміття.
 
+Типокласи використовуються в Scala `stdlib`. Ми дослідимо спрощену версію `scala.math.Numeric` для демонстрації принципу:
+[source,scala]
+----
   trait Ordering[T] {
     def compare(x: T, y: T): Int
   
@@ -380,45 +443,57 @@ Typeclasses are used in the Scala stdlib. We will explore a simplified version o
   
     def abs(x: T): T = if (lt(x, zero)) negate(x) else x
   }
-We can see all the key features of a typeclass in action:
+----
+Ми можмо бачити всі ключові властивості типокласу в дії:
 
-there is no state
-Ordering and Numeric have type parameter T
-Ordering has abstract compare and Numeric has abstract plus, times, negate and zero
-Ordering defines generalised lt and gt based on compare, Numeric defines abs in terms of lt, negate and zero.
-Numeric extends Ordering
-We can now write functions for types that “have a” Numeric typeclass:
+* немає стану
+* `Ordering` та `Numeric` мають параметр типу `T`
+* `Ordering` має абстрактне `compare`, та `Numeric` має абстрактні `plus`, `times`, `negate` та `zero`
+* `Ordering` визначає узагальнені `lt` та `gt` базовані на `compare`, `Numeric` визначає `abs` в термінах `lt`, `negate` та `zero`.
+* `Numeric` розширює `Ordering`
 
+Тепер ми можемо писати функції для типів, що “має” типоклас `Numeric`:
+[source,scala]
+----
   def signOfTheTimes[T](t: T)(implicit N: Numeric[T]): T = {
     import N._
     times(negate(abs(t)), t)
   }
-We are no longer dependent on the OOP hierarchy of our input types, i.e. we don’t demand that our input “is a” Numeric, which is vitally important if we want to support a third party class that we cannot redefine.
+----
+Ми більше не залежимо від ієрархії OOP від наших вхідних типів, тобто, ми не вимагаємо, щоб наш вхід “був” `Numeric`, що є критично важливим, якщо ми бажаємо підтримати клас третіх сторін, який ми не можемо перевизначити.
 
-Another advantage of typeclasses is that the association of functionality to data is at compiletime, as opposed to OOP runtime dynamic dispatch.
+Інша перевага типокласів в тому, що асоціація функціональності до даних відбувається під час компіляції, на відміну від рантайм динамічної диспечерізації OOP.
 
-For example, whereas the List class can only have one implementation of a method, a typeclass method allows us to have a different implementation depending on the List contents and therefore offload work to compiletime instead of leaving it to runtime.
+Наприклад, хоча клас `List` може мати лише одну реалізацію метода, метод типокласу дозволяє нам мати різні реалізації в залежності від вмісту `List`, і, таким чином, перекласти навантаження на час компіляції, замість залишати його на рантайм.
 
-4.2.2 Syntax
-The syntax for writing signOfTheTimes is clunky, there are some things we can do to clean it up.
+4.2.2 Синтаксис
+~~~~~~~~~~~~~~~
+Синтаксис для написання `signOfTheTimes` є заплутаним, існують деякі речі, які ми можемо зробити, щоб розчистити його.
 
-Downstream users will prefer to see our method use context bounds, since the signature reads cleanly as “takes a T that has a Numeric”
-
+Нижні користувачі будуть краще бачити наш метод, як використовуючий межі контексту, оскільки сигнатура ясно читається як “приймає `T`, що має `Numeric`”
+[source,scala]
+----
   def signOfTheTimes[T: Numeric](t: T): T = ...
-but now we have to use implicitly[Numeric[T]] everywhere. By defining boilerplate on the companion of the typeclass
-
+----
+але тепер ми маємо будь-де використовувати `implicitly[Numeric[T]]`. Через визначення шаблонного коду на компанйоні типокласу:
+[source,scala]
+----
   object Numeric {
     def apply[T](implicit numeric: Numeric[T]): Numeric[T] = numeric
   }
-we can obtain the implicit with less noise
-
+----
+ми можемо отримати неявне з меньшим шумом
+[source,scala]
+----
   def signOfTheTimes[T: Numeric](t: T): T = {
     val N = Numeric[T]
     import N._
     times(negate(abs(t)), t)
   }
-But it is still worse for us as the implementors. We have the syntactic problem of inside-out static methods vs class methods. We deal with this by introducing ops on the typeclass companion:
-
+----
+Але це все ще гірше для нас, як для реалізаторів. Ми маємо синтаксичну проблему статичних методів зсередини-назовні vs методів класів. Ми маємо справу з цім через введення `ops` на компанйоні типокласу:
+[source,scala]
+----
   object Numeric {
     def apply[T](implicit numeric: Numeric[T]): Numeric[T] = numeric
   
@@ -429,18 +504,22 @@ But it is still worse for us as the implementors. We have the syntactic problem 
         def unary_-: T = N.negate(t)
         def abs: T = N.abs(t)
   
-        // duplicated from Ordering.ops
+        // дублікація з Ordering.ops
         def <(o: T): T = N.lt(t, o)
         def >(o: T): T = N.gt(t, o)
       }
     }
   }
-Note that -x is expanded into x.unary_- by the compiler’s syntax sugar, which is why we define unary_- as an extension method. We can now write the much cleaner:
-
+----
+Зауважте, `-x` розширюється до `x.unary_-` через компіляторний синтаксичний синтаксис, через що ми визначаємо `unary_-` як метод розширення. Тепер ми можемо записати значно ясніше:
+[source,scala]
+----
   import Numeric.ops._
   def signOfTheTimes[T: Numeric](t: T): T = -(t.abs) * t
-The good news is that we never need to write this boilerplate because Simulacrum provides a @typeclass macro annotation that automatically generates the apply and ops. It even allows us to define alternative (usually symbolic) names for common methods. In full:
-
+----
+Гарна новина в тому, що нам ніколи не треба писати цей код, оскільки `Simulacrum` провадить макро анотацію `@typeclass`, що автоматично генерує `apply` та `ops`. Він навіть дозволяє нам визначити альтернативні імена (звичайно символічні) для загальних методів. Загалом:
+[source,scala]
+----
   import simulacrum._
   
   @typeclass trait Ordering[T] {
@@ -459,11 +538,14 @@ The good news is that we never need to write this boilerplate because Simulacrum
   
   import Numeric.ops._
   def signOfTheTimes[T: Numeric](t: T): T = -(t.abs) * t
-When there is a custom symbolic @op, it can be pronounced like its method name. e.g. < is pronounced “less than”, not “left angle bracket”.
+----
+Тепер коли є власний символічний `@op`, він має вимовлятись як ім'я метода. Тобто, `<` вимовляється “меньше ніж”, не “ліва кутова дужка”.
 
-4.2.3 Instances
-Instances of Numeric (which are also instances of Ordering) are defined as an implicit val that extends the typeclass, and can provide optimised implementations for the generalised methods:
-
+4.2.3 Примірники
+~~~~~~~~~~~~~~~~
+Примірники `Numeric` (що також є примірниками `Ordering`) визначаються як `implicit val`, що розширює типоклас, та може провадити оптимізовану реалізації для узагальнених методів:
+[source,scala]
+----
   implicit val NumericDouble: Numeric[Double] = new Numeric[Double] {
     def plus(x: Double, y: Double): Double = x + y
     def times(x: Double, y: Double): Double = x * y
@@ -471,15 +553,17 @@ Instances of Numeric (which are also instances of Ordering) are defined as an im
     def zero: Double = 0.0
     def compare(x: Double, y: Double): Int = java.lang.Double.compare(x, y)
   
-    // optimised
+    // оптимізовано
     override def lt(x: Double, y: Double): Boolean = x < y
     override def gt(x: Double, y: Double): Boolean = x > y
     override def abs(x: Double): Double = java.lang.Math.abs(x)
   }
-Although we are using +, *, unary_-, < and > here, which are the ops (and could be an infinite loop!), these methods exist already on Double. Class methods are always used in preference to extension methods. Indeed, the Scala compiler performs special handling of primitives and converts these method calls into raw dadd, dmul, dcmpl and dcmpg bytecode instructions, respectively.
+----
+Хоча ми тут використовуємо `+`, `*`, `unary_-`, `<` та `>`, що є `ops` (і може бути безкінечний цикл!), ці методи вже існують на `Double`. Методи класів завжди використовуються з перевагою над методами розширення. Зрозуміло, що компілятор Scala виконує особливу обробку примітивів, та конвертує ці методи до сирих байткод інструкцій `dadd`, `dmul`, `dcmpl` та `dcmpg`, відповідно.
 
-We can also implement Numeric for Java’s BigDecimal class (avoid scala.BigDecimal, it is fundamentally broken)
-
+Ми також можемо реалізувати `Numeric` для Java класу `BigDecimal` (уникайте `scala.BigDecimal`, він фундаментально хибний)
+[source,scala]
+----
   import java.math.{ BigDecimal => BD }
   
   implicit val NumericBD: Numeric[BD] = new Numeric[BD] {
@@ -489,11 +573,15 @@ We can also implement Numeric for Java’s BigDecimal class (avoid scala.BigDeci
     def zero: BD = BD.ZERO
     def compare(x: BD, y: BD): Int = x.compareTo(y)
   }
-We could create our own data structure for complex numbers:
-
+----
+Ви можете створити нашу власну структуру даних для комплексних чисел:
+[source,scala]
+---- 
   final case class Complex[T](r: T, i: T)
-And derive a Numeric[Complex[T]] if Numeric[T] exists. Since these instances depend on the type parameter, it is a def, not a val.
-
+----
+Та наслідувати `Numeric[Complex[T]]`, якщо існує `Numeric[T]`. Оскільки ці примірники залежать від параметру типа, це `def`, не `val`.
+[source,scala]
+----
   implicit def numericComplex[T: Numeric]: Numeric[Complex[T]] =
     new Numeric[Complex[T]] {
       type CT = Complex[T]
@@ -508,38 +596,44 @@ And derive a Numeric[Complex[T]] if Numeric[T] exists. Since these instances dep
         else Numeric[T].compare(x.i, y.i)
       }
     }
-The observant reader may notice that abs is not at all what a mathematician would expect. The correct return value for abs should be T, not Complex[T].
+----
+Спостережливий читач може зауважити, що `abs` взагалі не те, що може очікувати математик. Коректне повернуте значення для `abs` має бути `T`, не `Complex[T]`.
 
-scala.math.Numeric tries to do too much and does not generalise beyond real numbers. This is a good lesson that smaller, well defined, typeclasses are often better than a monolithic collection of overly specific features.
+`scala.math.Numeric` намагається робити дуже багато, і не узагальнує за межами дійсних чисел. Це гарний урок того, що меньші, гарно визначені типокласи часто кращі, ніж монолітні колекції дуже специфічних можливостей.
 
-4.2.4 Implicit Resolution
-We’ve discussed implicits a lot: this section is to clarify what implicits are and how they work.
+4.2.4 Розрішення неявних
+~~~~~~~~~~~~~~~~~~~~~~~~
+Ми гарно обсудили неявні: цей розділ призначений для прояснення, що таке неявні, та як вони роблять.
 
-Implicit parameters are when a method requests that a unique instance of a particular type is in the implicit scope of the caller, with special syntax for typeclass instances. Implicit parameters are a clean way to thread configuration through an application.
+Коли метод запитує, щоб в полі зору викликаючого знаходився унікальний примірник певного типу, неявні параметри є особливим синтаксисом для примірників типокласів. Неявні параметри є ясним шляхом конфігурації потоку через застосування.
 
-In this example, foo requires that typeclass instances of Numeric and Typeable are available for A, as well as an implicit Handler object that takes two type parameters
-
+В цьому прикладі `foo` потребує, щоб для `A` були доступні примірники типокласів `Numeric` та `Typeable`, так само, як неявний об'єкт `Handler`, що приймає два параметри типів
+[source,scala]
+----
   def foo[A: Numeric: Typeable](implicit A: Handler[String, A]) = ...
-Implicit conversion is when an implicit def exists. One such use of implicit conversions is to enable extension methodology. When the compiler is resolving a call to a method, it first checks if the method exists on the type, then its ancestors (Java-like rules). If it fails to find a match, it will search the implicit scope for conversions to other types, then search for methods on those types.
+----
+Неявне перетворення відбувається коли існує `implicit def`. Один такий випадок неявного перетворення є використання методології розширення. Коли компілятор розрішує виклик метода, він спочатку перевіряє, чи метод існує для типу, потім для предків (Java-подібні правила). Якщо він не зможе знайти співпадіння, він буде шукати неявне поле зору для перетворень до інших типів, потім шукає серед методів на ціх типах.
 
-Another use for implicit conversions is typeclass derivation. In the previous section we wrote an implicit def that derived a Numeric[Complex[T]] if a Numeric[T] is in the implicit scope. It is possible to chain together many implicit def (including recursively) which is the basis of typeful programming, allowing for computations to be performed at compiletime rather than runtime.
+Інше використання для неявних перетворень є похідні типокласи. В попередньому розділі ми написали неявний `def`, що походить від `Numeric[Complex[T]]`, якщо `Numeric[T]` існує в неявному полі зору. Можливо зціпити разом декілька `implicit def` (включаючи рекурсію), що є базисом типованого програмування, дозволяючи виконання обчислень під час компіляціїї, замість рантайму.
 
-The glue that combines implicit parameters (receivers) with implicit conversion (providers) is implicit resolution.
+Клей, що зліплює неявні параметри (отримувачі) з неявними перетвореннями (провайдерами) є розрішення неявних.
 
-First, the normal variable scope is searched for implicits, in order:
+Зпочатку шукається звичане поле зору змінної, по порядку:
 
-local scope, including scoped imports (e.g. the block or method)
-outer scope, including scoped imports (e.g. members in the class)
-ancestors (e.g. members in the super class)
-the current package object
-ancestor package objects (when using nested packages)
-the file’s imports
-If that fails to find a match, the special scope is searched, which looks for implicit instances inside a type’s companion, its package object, outer objects (if nested), and then repeated for ancestors. This is performed, in order, for the:
+* локальне поле зору, включаючи локальні імпорти (тобто блок або метод)
+* зовнішнє поле зору, включаючи імпорти в цій області (тобто члени в класі)
+* предки (тобто члени в суер класі)
+* поточний об'єкт пакаунку
+* об'єкти батьківських пакунків (коли використовуються вкладені пакунки)
+* імпорти файлу
 
-given parameter type
-expected parameter type
-type parameter (if there is one)
-If two matching implicits are found in the same phase of implicit resolution, an ambiguous implicit error is raised.
+Якщо пошук співпадіння схибить, шукається особливе поле зору, що виглядає неявні примірники в компанйоні типу, його об'єкті пакунку, зовнішні об'єкти (якщо вкладені), та потім повторюється для предків. Це виконується в тому ж порядку для:
+
+* даного типу параметра
+* очікуваного параметру типу
+* параметру типу (якщо такий існує)
+
+Якщо знайдено два співпадаючих неявних в тій самій фазі розрішення неявного, закидається помилка неявного.
 
 Implicits are often defined on a trait, which is then extended by an object. This is to try and control the priority of an implicit relative to another more specific one, to avoid ambiguous implicits.
 
