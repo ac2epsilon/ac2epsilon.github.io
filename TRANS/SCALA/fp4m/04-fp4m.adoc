@@ -630,32 +630,35 @@ A => B на b ^ a
 Якщо пошук співпадіння схибить, шукається особливе поле зору, що виглядає неявні примірники в компанйоні типу, його об'єкті пакунку, зовнішні об'єкти (якщо вкладені), та потім повторюється для предків. Це виконується в тому ж порядку для:
 
 * даного типу параметра
-* очікуваного параметру типу
+* очікуваного типу параметра
 * параметру типу (якщо такий існує)
 
 Якщо знайдено два співпадаючих неявних в тій самій фазі розрішення неявного, закидається помилка неявного.
 
-Implicits are often defined on a trait, which is then extended by an object. This is to try and control the priority of an implicit relative to another more specific one, to avoid ambiguous implicits.
+Неявні часто визначаються на трейтах, що потім розширюються об'єктами. Це робиться для проби та контролю приоритетів неявного відносно іншого, більш специфічного, щоб уникнути невизначені неявні.
 
-The Scala Language Specification is rather vague for corner cases, and the compiler implementation is the de facto standard. There are some rules of thumb that we will use throughout this book, e.g. prefer implicit val over implicit object despite the temptation of less typing. It is a quirk of implicit resolution that implicit object on companion objects are not treated the same as implicit val.
+Специфікація Scala Language Specification досить невизначена щодо крайніх випадків, та реалізація компілятора є стандартом де факто. Існують деякі правила великого пальця, що ми будемо використовувати в цій книзі, тобто обирати `implicit val` замість `implicit object`, не зважаючи на спокусу меньшого друку. Є особливість розрішення неявних, що `implicit object` на об'єкті компанйоні не трактується так само, що і `implicit val`.
 
-Implicit resolution falls short when there is a hierarchy of typeclasses, like Ordering and Numeric. If we write a function that takes an implicit Ordering, and we call it for a primitive type which has an instance of Numeric defined on the Numeric companion, the compiler will fail to find it.
+Розрішення неявних не праціє, коли є ієрархія типокласів, як `Ordering` та `Numeric`. Якщо ми пишемо функцію, що приймає неявне `Ordering`, і ми викликаємо її для примітивного типа, що має примірник `Numeric`, визначене на компанйоні `Numeric`, компілятор не зможе знайти його.
 
-Implicit resolution is particularly hit-or-miss if type aliases are used where the shape of the implicit parameters are changed. For example an implicit parameter using an alias such as type Values[A] = List[Option[A]] will probably fail to find implicits defined as raw List[Option[A]] because the shape is changed from a thing of things of A to a thing of A.
+Розрішення неявних частково є процес пан-або-пропав, якщо використовуються псевдоними типів, де форма неявних параметрів змінюється. Наприклад, приклад неявного параметра з використанням псевдонима, як `type Values[A] = List[Option[A]]`, можливо схибить знайти неявні, визначені як сирі `List[Option[A]]`, оскільки форма змінюється з речі речей типу `A` на річ типу `A`.
 
-4.3 Modelling OAuth2
-We will finish this chapter with a practical example of data modelling and typeclass derivation, combined with algebra / module design from the previous chapter.
+4.3 Моделювання OAuth2
+----------------------
+Ми завершемо цю главу практичним прикладом моделювання даних та походження типокласів, в комбінації з розробкою алгебри / модуля з попередньої глави.
 
-In our drone-dynamic-agents application, we must communicate with Drone and Google Cloud using JSON over REST. Both services use OAuth2 for authentication. There are many ways to interpret OAuth2, but we will focus on the version that works for Google Cloud (the Drone version is even simpler).
+В нашому застосуванні дрон-динамічний-агент, ви маєте комунікувати з Drone та Google Cloud, використовуючи JSON над REST. Обоє сервіси використовують OAuth2 для аутентифікацією. Існує багато шляхів інтерпретувати OAuth2, але ми будемо фокусуватись на версії, що робить для Google Cloud (версія для Drone навіть простіша).
 
-4.3.1 Description
-Every Google Cloud application needs to have an OAuth 2.0 Client Key set up at
-
+4.3.1 Опис
+~~~~~~~~~~
+Кожне застосування Google Cloud потребує мати OAuth 2.0 Client Key, встановлений за адресою:
+----
   https://console.developers.google.com/apis/credentials?project={PROJECT_ID}
-Obtaining a Client ID and a Client secret.
-
-The application can then obtain a one time code by making the user perform an Authorization Request in their browser (yes, really, in their browser). We need to make this page open in the browser:
-
+----
+Отримання Client ID та Client secret.
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Після цього застосування може отримати одноразовий код, через виконання користувачем Authorization Request в їх браузері (так, насправді, в їх браузері). Нам треба відкрити цю сторінку в браузері:
+----
   https://accounts.google.com/o/oauth2/v2/auth?\
     redirect_uri={CALLBACK_URI}&\
     prompt=consent&\
@@ -663,10 +666,11 @@ The application can then obtain a one time code by making the user perform an Au
     scope={SCOPE}&\
     access_type=offline&\
     client_id={CLIENT_ID}
-The code is delivered to the {CALLBACK_URI} in a GET request. To capture it in our application, we need to have a web server listening on localhost.
+----
+Код доставляється до `{CALLBACK_URI}` в вигляді запиту `GET`. Якщо захопити його в нашому застосуванні, нам треба мати веб сервер, що слухатиме на `localhost`.
 
-Once we have the code, we can perform an Access Token Request:
-
+Коли ми маємо код, ми можемо виконати Access Token Request:
+----
   POST /oauth2/v4/token HTTP/1.1
   Host: www.googleapis.com
   Content-length: {CONTENT_LENGTH}
@@ -678,16 +682,18 @@ Once we have the code, we can perform an Access Token Request:
     client_secret={CLIENT_SECRET}&\
     scope={SCOPE}&\
     grant_type=authorization_code
-which gives a JSON response payload
-
+----
+що дає відповідь з корисним навантаженням JSON
+----
   {
     "access_token": "BEARER_TOKEN",
     "token_type": "Bearer",
     "expires_in": 3600,
     "refresh_token": "REFRESH_TOKEN"
   }
-Bearer tokens typically expire after an hour, and can be refreshed by sending an HTTP request with any valid refresh token:
-
+----
+Токени `Bearer` (на пред'явника) прострочений після години, та може бути оновлений через надсилання HTTP запиту з любим валідним токеном оновлення:
+----
   POST /oauth2/v4/token HTTP/1.1
   Host: www.googleapis.com
   Content-length: {CONTENT_LENGTH}
@@ -697,25 +703,30 @@ Bearer tokens typically expire after an hour, and can be refreshed by sending an
     grant_type=refresh_token&
     refresh_token={REFRESH_TOKEN}&
     client_id={CLIENT_ID}
-responding with
-
+----
+з відповіддю
+----
   {
     "access_token": "BEARER_TOKEN",
     "token_type": "Bearer",
     "expires_in": 3600
   }
-All userland requests to the server should include the header
-
+----
+Всі запити користувацького простору до сервера мають включати заголовок
+----
   Authorization: Bearer BEARER_TOKEN
-after substituting the actual BEARER_TOKEN.
+----
+після підставки справжнього BEARER_TOKEN.
 
-Google expires all but the most recent 50 bearer tokens, so the expiry times are just guidance. The refresh tokens persist between sessions and can be expired manually by the user. We can therefore have a one-time setup application to obtain the refresh token and then include the refresh token as configuration for the user’s install of the headless server.
+Google прострочує всі, крім останніх 50 токенів на пред'явника, так що час прострочення є тільки приблизним. Оновлені токени зберігаються між сессіями, та можуть бути прострочені користувачем вручну. Таким чином ми можемо одноразове налаштування застосування для отримання оновлень токенів, та потім включати токен оновлення як конфігурацію для встановлення користувацького сервера.
 
-Drone doesn’t implement the /auth endpoint, or the refresh, and simply provides a BEARER_TOKEN through their user interface.
+Drone не реалізує ендпоінт `/auth`, або `refresh`, та просто провадить `BEARER_TOKEN` через їх користувацькій інтерфейс.
 
-4.3.2 Data
-The first step is to model the data needed for OAuth2. We create an ADT with fields having exactly the same name as required by the OAuth2 server. We will use String and Long for brevity, but we could use refined types if they leak into our business models.
-
+4.3.2 Дані
+~~~~~~~~~~
+Перший крок є моделювання даних, потрібних для OAuth2. Ми створимо  ADT з полями, що мають точно ті самі назви, які потрібні для OAuth2 сервера. Ми будемо використовувати `String` та `Long` для краткості, але ми можемо використовувати очищені типи, якщо вони підпадають під нашу бізнес модель.
+[source,scala]
+----
   import refined.api.Refined
   import refined.string.Url
   
@@ -752,19 +763,22 @@ The first step is to model the data needed for OAuth2. We create an ADT with fie
     token_type: String,
     expires_in: Long
   )
-Avoid using java.net.URL at all costs: it uses DNS to resolve the hostname part when performing toString, equals or hashCode.
+----
+Уникайте використання `java.net.URL` за любу ціну: він використовує DNS для розрішення частини `hostname` для виконання `toString`, `equals` або `hashCode`.
 
-Apart from being insane, and very very slow, these methods can throw I/O exceptions (are not pure), and can change depending on the network configuration (are not deterministic).
+Окрім того, що це безумство, і дуже-дуже повільно, ці методи можуть закидати I/O виключення (вони не чисті), та можуть змінюватись, в залежності від мережевої конфігурації (недетерміновано).
 
-The refined type String Refined Url allows us to perform equality checks based on the String and we can safely construct a URL only if it is needed by a legacy API.
+Покращений тип `String Refined Url` дозволяє нам виконувати перевірки рівності, базуючись на `String`, та ми можемо безпечно сконструювати URL, тільки якщо нам треба старий API.
 
-That said, in high performance code we would prefer to skip java.net.URL entirely and use a third party URL parser such as jurl, because even the safe parts of java.net.* are extremely slow at scale.
+Кажучи це, в високо продуктивному коді ми можемо обрати повністю виключити `java.net.URL`, та використовувати URL парсер третьої сторони, такий як `jurl`, оскільки навіть безпечні частини `java.net.*` вкрай повільні при маштабуванні.
 
-4.3.3 Functionality
-We need to marshal the data classes we defined in the previous section into JSON, URLs and POST-encoded forms. Since this requires polymorphism, we will need typeclasses.
+4.3.3 Функціональність
+~~~~~~~~~~~~~~~~~~~~~~
+Нам треба маршалити класи даних, що ми визначили в попередньому розділі в JSON, URL та POST-кодовані форми. Оскільки це потребує поліморфізму, вам будуть потрібні типокласи.
 
-jsonformat is a simple JSON library that we will study in more detail in a later chapter, as it has been written with principled FP and ease of readability as its primary design objectives. It consists of a JSON AST and encoder / decoder typeclasses:
-
+`jsonformat` є простою JSON бібліотекою, яку більш детально ми вивчимо в наступній главі, бо вона була написано на принципах FP, та простота читання в якості головної цілі розробки. Вона складається з JSON AST та типокласів кодування / декодування:
+[source,scala]
+----
   package jsonformat
   
   sealed abstract class JsValue
@@ -783,17 +797,21 @@ jsonformat is a simple JSON library that we will study in more detail in a later
   @typeclass trait JsDecoder[A] {
     def fromJson(json: JsValue): String \/ A
   }
-\/ is Scalaz’s Either and has a .flatMap. We can use it in for comprehensions, whereas stdlib Either does not support .flatMap prior to Scala 2.12. It is spoken as disjunction, or angry rabbit.
+----
+`\/` є Scalaz `Either` та має `.flatMap`. Ми можете використовувати її в `for` розширеннях, тоді як `stdlib` `Either` не підтримує `.flatMap` до Scala 2.12. Воно читається як діз'юкція, або злий заєць.
 
-scala.Either was contributed to the Scala standard library by the creator of Scalaz, Tony Morris, in 2007. \/ was created when unsafe methods were added to Either.
+`scala.Either` було додано до стандартної бібліотеки Scala  створювачем Scalaz, Tony Morris, в 2007-му році. `\/` було створено, коли до `Either` були додані небезпечні методи.
 
-We need instances of JsDecoder[AccessResponse] and JsDecoder[RefreshResponse]. We can do this by making use of a helper function:
-
+Нам знадобляться примірники `JsDecoder[AccessResponse]` та `JsDecoder[RefreshResponse]`. Ми можемо зробити це через використання допоміжної функції:
+[source,scala]
+----
   implicit class JsValueOps(j: JsValue) {
     def getAs[A: JsDecoder](key: String): String \/ A = ...
   }
-We put the instances on the companions of our data types, so that they are always in the implicit scope:
-
+----
+Ми покладемо примірники до компанйонів наших типів даних, так що вони завжди будуть в неявному полі зору:
+[source,scala]
+----
   import jsonformat._, JsDecoder.ops._
   
   object AccessResponse {
@@ -814,8 +832,10 @@ We put the instances on the companions of our data types, so that they are alway
         exp <- j.getAs[Long]("expires_in")
       } yield RefreshResponse(acc, tpe, exp)
   }
-We can then parse a string into an AccessResponse or a RefreshResponse
-
+----
+Тепер ми можемо розбирати рядки в `AccessResponse` або `RefreshResponse`:
+[source,scala]
+----
   scala> import jsonformat._, JsDecoder.ops._
   scala> val json = JsParser("""
                        {
@@ -828,9 +848,11 @@ We can then parse a string into an AccessResponse or a RefreshResponse
   
   scala> json.map(_.as[AccessResponse])
   AccessResponse(BEARER_TOKEN,Bearer,3600,REFRESH_TOKEN)
-We need to write our own typeclasses for URL and POST encoding. The following is a reasonable design:
-
-  // URL query key=value pairs, in un-encoded form.
+----
+Нам треба написати наші власні типокласи для кодувань `URL` та `POST`. Наступне є прийнятним варіантом:
+[source,scala]
+----
+  // пари запиту URL key=value в закодованій формі.
   final case class UrlQuery(params: List[(String, String)])
   
   @typeclass trait UrlQueryWriter[A] {
@@ -840,8 +862,10 @@ We need to write our own typeclasses for URL and POST encoding. The following is
   @typeclass trait UrlEncodedWriter[A] {
     def toUrlEncoded(a: A): String Refined UrlEncoded
   }
-We need to provide typeclass instances for basic types:
-
+----
+Нам треба запровадити примірники типокласів для базових типів:
+[source,scala]
+----
   import java.net.URLEncoder
   
   object UrlEncodedWriter {
@@ -865,33 +889,41 @@ We need to provide typeclass instances for basic types:
     }
   
   }
-We use Refined.unsafeApply when we can logically deduce that the contents of the string are already url encoded, bypassing any further checks.
+----
+Ми використали `Refined.unsafeApply` коли ми можемо логічно вивести, що вміст рядка вже закодований як `url` кодування, пропускаючи любі подальші перевірки.
 
-ilist is an example of simple typeclass derivation, much as we derived Numeric[Complex] from the underlying numeric representation. The .intercalate method is like .mkString but more general.
+`ilist` є приклад простого походження типокласів, здебільшого як ми продукували `Numeric[Complex]` від підлеглої числової репрезентації. Метод `.intercalate` подібний до `.mkString`, але більше загальний.
 
-UrlEncodedWriter is making use of the Single Abstract Method (SAM types) Scala language feature. The full form of the above is
-
+`UrlEncodedWriter` використовує можливість мови Scala - Single Abstract Method (SAM типи). Повна форма вище наступна:
+[source,scala]
+----
   implicit val string: UrlEncodedWriter[String] =
     new UrlEncodedWriter[String] {
       override def toUrlEncoded(s: String): String = ...
     }
-When the Scala compiler expects a class (which has a single abstract method) but receives a lambda, it fills in the boilerplate automatically.
+----
+Коли компілятор Scala очікує клас (що має єдиний абстрактний метод), але отримує лямбду, він заповнює шаблонний код автоматично.
 
-Prior to SAM types, a common pattern was to define a method named instance on the typeclass companion
-
+До SAM типів загальним шаблоном було визначати метод з назвою `instance` на компанйоні типокласу:
+[source,scala]
+----
   def instance[T](f: T => String): UrlEncodedWriter[T] =
     new UrlEncodedWriter[T] {
       override def toUrlEncoded(t: T): String = f(t)
     }
-allowing for
-
+----
+що дозволяє робити
+[source,scala]
+----
   implicit val string: UrlEncodedWriter[String] = instance { s => ... }
-This pattern is still used in code that must support older versions of Scala, or for typeclasses instances that need to provide more than one method.
+----
+Цей шаблон все ще використовується в коді, що має підтримувати старіші версії Scala, або для примірників типокласів, що мають провадити більше ніж один метод.
 
-Note that there are a lot of bugs around SAM types, as they do not interact with all the language features. Revert to the non-SAM variant if there are any strange compiler crashes.
+Зауважте, що існує багато помилок коло SAM типів, через що вони не взаємодіють з усіма можливістями мови. Підкатіться до не-SAM варіанту, якщо трапляються дивні падіння компілятора.
 
-In a dedicated chapter on Typeclass Derivation we will calculate instances of UrlQueryWriter automatically, as well as clean up what we have already written, but for now we will write the boilerplate for the types we wish to convert:
-
+В окремій главі Походження типокласів ми будемо обчислювати примірники `UrlQueryWriter` автоматично, так само, як очищати те, що вже написане, але натепер ми будемо писати шаблонний код для типів, які ми бажаємо перетворити:
+[source,scala]
+----
   import UrlEncodedWriter.ops._
   object AuthRequest {
     implicit val query: UrlQueryWriter[AuthRequest] = { a =>
@@ -926,11 +958,14 @@ In a dedicated chapter on Typeclass Derivation we will calculate instances of Ur
       ).toUrlEncoded
     }
   }
-4.3.4 Module
-That concludes the data and functionality modelling required to implement OAuth2. Recall from the previous chapter that we define components that need to interact with the world as algebras, and we define business logic in a module, so it can be thoroughly tested.
+----
+4.3.4 Модуль
+~~~~~~~~~~~~
+Це складає моделювання даних та функціональності, потрібною для реалізації OAuth2. Згадайте з попередньої глави, що ми визначили компоненти, що треба для взаємодії зі світом як алгебри, та ми визначаємо бізнес логіку в модулі, так що вона може бути докладно протестована.
 
-We define our dependency algebras, and use context bounds to show that our responses must have a JsDecoder and our POST payload must have a UrlEncodedWriter:
-
+Ми визначаємо наші залежні алгебри, та ми використовуємо обмеження контексту, щоб показати, що наші відповіді повинні мати `JsDecoder`, та вміст нашого `POST` повинно мати `UrlEncodedWriter`:
+[source,scala]
+----
   trait JsonClient[F[_]] {
     def get[A: JsDecoder](
       uri: String Refined Url,
@@ -943,15 +978,12 @@ We define our dependency algebras, and use context bounds to show that our respo
       headers: IList[(String, String] = IList.empty
     ): F[A]
   }
-Note that we only define the happy path in the JsonClient API. We will get around to error handling in a later chapter.
+----
+Зауважте, що ми визначаємо тільки щасливий шлях в JsonClient API. Ми будемо розглядати обробку помилок в наступній главі.
 
-Obtaining a CodeToken from the Google OAuth2 server involves
-
-starting an HTTP server on the local machine, and obtaining its port number.
-making the user open a web page in their browser, which allows them to log in with their Google credentials and authorise the application, with a redirect back to the local machine.
-capturing the code, informing the user of next steps, and closing the HTTP server.
-We can model this with three methods on a UserInteraction algebra.
-
+Отримання `CodeToken` від сервера Google OAuth2 включає запуск HTTP сервера на локальній машині, та отримання його номеру порта. Користувач відкриває веб сторінку в своєму браузері, що дозволяє війти з Google паролем та авторизувати застосування, з редиректом знову на локальну машину. Код захоплюється, інформуючи користува щодо подальших кроків, та закриття HTTP сервера. Ми можемо змоделювати це трьома методами в алгебрі `UserInteraction`.
+[source,scala]
+----
   final case class CodeToken(token: String, redirect_uri: String Refined Url)
   
   trait UserInteraction[F[_]] {
@@ -959,15 +991,19 @@ We can model this with three methods on a UserInteraction algebra.
     def open(uri: String Refined Url): F[Unit]
     def stop: F[CodeToken]
   }
-It almost sounds easy when put like that.
+----
+Це вигладає майже просто, якщо дивитись на це таким чином.
 
-We also need an algebra to abstract over the local system time
-
+Нам також потрібна алгебра для абстрагування над локальним системним часом:
+[source,scala]
+----
   trait LocalClock[F[_]] {
     def now: F[Epoch]
   }
-And introduce data types that we will use in the refresh logic
-
+----
+Також введемо типи даних, що ми будемо використовувати в логиці оновлення:
+[source,scala]
+----
   final case class ServerConfig(
     auth: String Refined Url,
     access: String Refined Url,
@@ -978,8 +1014,10 @@ And introduce data types that we will use in the refresh logic
   )
   final case class RefreshToken(token: String)
   final case class BearerToken(token: String, expires: Epoch)
-Now we can write an OAuth2 client module:
-
+----
+Тепер ми можемо написати модуль клієнта OAuth2:
+[source,scala]
+----
   import http.encoding.UrlQueryWriter.ops._
   
   class OAuth2Client[F[_]: Monad](
@@ -1023,11 +1061,19 @@ Now we can write an OAuth2 client module:
         bearer  = BearerToken(msg.access_token, expires)
       } yield bearer
   }
-4.4 Summary
-algebraic data types (ADTs) are defined as products (final case class) and coproducts (sealed abstract class).
-Refined types enforce constraints on values.
-concrete functions can be defined in an implicit class to maintain left-to-right flow.
-polymorphic functions are defined in typeclasses. Functionality is provided via “has a” context bounds, rather than “is a” class hierarchies.
-typeclass instances are implementations of a typeclass.
-@simulacrum.typeclass generates .ops on the companion, providing convenient syntax for typeclass functions.
-typeclass derivation is compiletime composition of typeclass instances.
+----
+4.4 Підсумок
+------------
+* Алгебраїчні типи даних (ADT) визначені як продукти (фінальні кейс класи) та ко-продукти (закорковані абстрактні класи).
+
+* Очищені типи накладають обмеження на значення.
+
+* Суцільні функції можуть бути визначені в неявному класі для керуванням потоку зліва-направо.
+
+* Поліморфічні функції визначені в типокласах. Функціональність реалізується через обмеження контексту “має деякий”, скоріше ніж ієрархіями класів “є різновидом”.
+
+* Примірники типокласів є реалізаціями типокласів.
+
+* `@simulacrum.typeclass` генерує `.ops` на компаньйоні, провадячи зручний синтаксис для функцій типокласів.
+
+* Походження типокласів є композиція часу компіляції примірників типокласів.
