@@ -1,0 +1,386 @@
+include::header.adoc[]
+
+== day 0
+
+Я наколи не ставив собі за мету зробити ”(ви можете) вивчити `Scalaz` за X днів.” _day 1_ був написаний 31 серпня 2012 року, коли `Scalaz 7` була в `milestone 7`. Потім _day 2_ був написаний на другий день, і так далі. Це веб журнал, ” як (я) вивчав Scalaz.” Як такий, він стислий та мінімальний. В деякі дні я витрачав більше часу на читання книжок та спроб кодувати, ніє на написання посту.
+
+Перед тим, як поринути в деталі, я бажаю зробити вступ, щоб облегчити ваше входження. Можете вільно пропустити цю частину, та повернутись до неї пізніше.
+
+=== Введення до  Scalaz 
+
+Існує декілька вступів до Scalaz, але найкращий я бачив в Scalaz talk by Nick Partridge, наданий в Melbourne Scala Users Group 22 березня 2010 року:
+
+Scalaz talk діє - http://bit.ly/c2eTVR Безліч коду показує, як/чому існує ця бібліотека.
+
+— Nick Partridge (@nkpart) March 28, 2010
+Я збираюсь позичити деякий матеріал звідти.
+
+Scalaz складається з трьох частин:
+
+* Нові типи даних (`Validation`, `NonEmptyList`, etc)
+* Розлирення до стандартних класів (`OptionOps`, `ListOps`, etc)
+* Реалізація кожної окремої загальної функції, що вам потрібна (ad-hoc поліморфізм, трейти + неявні)
+
+== Що таке поліморфізм?
+
+=== Параметричний поліморфізм
+
+Nick каже:
+
+В цій функції `head`, вона приймає список з `A`, та повертає `A`. І не має значення, що таке `A`: це може бути `Int`, `String`, `Orange`, `Car`, будь-що. Любе `A` буде робити, і функція визначена для кожного `A`, яке тут тільки може бути.
+
+[source,scala]
+----
+scala> def head[A](xs: List[A]): A = xs(0)
+head: [A](xs: List[A])A
+
+scala> head(1 :: 2 :: Nil)
+res0: Int = 1
+
+scala> case class Car(make: String)
+defined class Car
+
+scala> head(Car("Civic") :: Car("CR-V") :: Nil)
+res1: Car = Car(Civic)
+----
+
+Haskell wiki каже:
+
+Параметричний поліморфізм має місце, коли тип значення має одну або більше (необмежених) змінних типу, так що значення може адаптувати любий тип, що утворюється від заміни ціх змінних на конкретні типи.
+
+=== Поліморфізм субтипів
+
+Давайте подумаємо про функцію `plus`, що може додати два значення типу `A`:
+
+[source,scala]
+----
+scala> def plus[A](a1: A, a2: A): A = ???
+plus: [A](a1: A, a2: A)A
+----
+
+В залежності від типу `A`, нам треба провадити різні визначення для того, що ми вважаємо додаванням для них. Один зі шляхів є впровадження субтипізації.
+
+[source,scala]
+----
+scala> trait Plus[A] {
+         def plus(a2: A): A
+       }
+defined trait Plus
+
+scala> def plus[A <: Plus[A]](a1: A, a2: A): A = a1.plus(a2)
+plus: [A <: Plus[A]](a1: A, a2: A)A
+----
+
+Ми можемо щонайменьше провадити різні визначення `plus` для `A`. Але це не гнучко, оскікльки трейт `Plus` потребує бути міксований під час визначення типу даних. Так що це не може працювати для `Int` та `String`.
+
+=== Ad-hoc поліморфізм
+
+Третій підхід в Scala є запровадити неявне перетворення або неявні параметри для трейта.
+
+[source,scala]
+----
+scala> trait Plus[A] {
+         def plus(a1: A, a2: A): A
+       }
+defined trait Plus
+
+scala> def plus[A: Plus](a1: A, a2: A): A = implicitly[Plus[A]].plus(a1, a2)
+plus: [A](a1: A, a2: A)(implicit evidence$1: Plus[A])A
+----
+
+Це дійсно ad-hoc в тому сенсі, що  
+
+** ми можемо провадити окремі визначення функцій для різних типів `A`
+
+** ми можемо провадити визначення функції для типів (як `Int`) без доступу до джерела коду
+
+** визначення функції може бути вімкнене або вимкнене в разних полях зору
+
+Остання позиція робить Scala ad-hoc поліморфізм більш потужним, ніж такий в Haskell. Більше про це можна знайти в Debasish Ghosh @debasishg _Scala Implicits : Type Classes Here I Come_.
+
+Давайте подивимось на функцію `plus` більш детально.
+
+=== функція sum 
+
+Nick демонструє приклад ad-hoc поліморфізму, поступово роблячи функцію `sum` більш загальною, починаючи з простої функції, що додає список `Int`:
+
+[source,scala]
+----
+scala> def sum(xs: List[Int]): Int = xs.foldLeft(0) { _ + _ }
+sum: (xs: List[Int])Int
+
+scala> sum(List(1, 2, 3, 4))
+res3: Int = 10
+----
+
+== Monoid
+ 
+Якщо ми спробуємо узагальнити трохі більше. Я збирають витягнути річ з назвою `Monoid`. … Це тип, для якого існує функція `mappend`, що продукує інший тип в тій же множині; а також функцію, що продукує нуль.
+
+[source,scala]
+----
+scala> object IntMonoid {
+         def mappend(a: Int, b: Int): Int = a + b
+         def mzero: Int = 0
+       }
+defined module IntMonoid
+----
+
+Якщо ми втягнемо це, це буде різновидом узагальнень, що відбувається тут:
+
+[source,scala]
+----
+scala> def sum(xs: List[Int]): Int = xs.foldLeft(IntMonoid.mzero)(IntMonoid.mappend)
+sum: (xs: List[Int])Int
+
+scala> sum(List(1, 2, 3, 4))
+res5: Int = 10
+----
+
+Тепер ми абстрагуємось від типу щодо `Monoid`, так що ми можемо визначити `Monoid` для любого типу `A`. Так що тепер `IntMonoid` є моноідом для `Int`:
+
+[source,scala]
+----
+scala> trait Monoid[A] {
+         def mappend(a1: A, a2: A): A
+         def mzero: A
+       }
+defined trait Monoid
+
+scala> object IntMonoid extends Monoid[Int] {
+         def mappend(a: Int, b: Int): Int = a + b
+         def mzero: Int = 0
+       }
+defined module IntMonoid
+----
+
+Що ми можемо робити, це щоб `sum` приймала `List` з `Int`, та моноід `Int` для складання:
+
+[source,scala]
+----
+scala> def sum(xs: List[Int], m: Monoid[Int]): Int = xs.foldLeft(m.mzero)(m.mappend)
+sum: (xs: List[Int], m: Monoid[Int])Int
+
+scala> sum(List(1, 2, 3, 4), IntMonoid)
+res7: Int = 10
+----
+
+Ми не використовуємо тут нічого, що має справу з Int, так що ми можемо замінити всі `Int` загальним типом:
+
+[source,scala]
+----
+scala> def sum[A](xs: List[A], m: Monoid[A]): A = xs.foldLeft(m.mzero)(m.mappend)
+sum: [A](xs: List[A], m: Monoid[A])A
+
+scala> sum(List(1, 2, 3, 4), IntMonoid)
+res8: Int = 10
+----
+
+Фінальна зміна, що ми маємо зробити, це зробити `Monoid` неявним, так що ми не маємо вказувати його кожного разу.
+
+[source,scala]
+----
+scala> def sum[A](xs: List[A])(implicit m: Monoid[A]): A = xs.foldLeft(m.mzero)(m.mappend)
+sum: [A](xs: List[A])(implicit m: Monoid[A])A
+
+scala> implicit val intMonoid = IntMonoid
+intMonoid: IntMonoid.type = IntMonoid$@3387dfac
+
+scala> sum(List(1, 2, 3, 4))
+res9: Int = 10
+----
+
+Nick не зробив цього, але неявний параметр часто записується як межа контексту:
+
+[source,scala]
+----
+scala> def sum[A: Monoid](xs: List[A]): A = {
+         val m = implicitly[Monoid[A]]
+         xs.foldLeft(m.mzero)(m.mappend)
+       }
+sum: [A](xs: List[A])(implicit evidence$1: Monoid[A])A
+
+scala> sum(List(1, 2, 3, 4))
+res10: Int = 10
+----
+
+Тепер наша функція `sum` досить загальна, додаючи любі моноіди в списку. Ми можемо перевірити це, написавши інший `Monoid` для `String`. Я також збираюсь запакувати це в об'єкт з назвою `Monoid`. Причиною для цього є правила розрішення неявних в Scala: коли треба неявний параметр деякого типу, компілятор буде дивитись будь-де в полі зору. Це включатиме о'бєкт-компанйон типу, який ви шукаєте.
+
+[source,scala]
+----
+scala> :paste
+// Входимо в режим paste (ctrl-D для завершення)
+
+trait Monoid[A] {
+  def mappend(a1: A, a2: A): A
+  def mzero: A
+}
+object Monoid {
+  implicit val IntMonoid: Monoid[Int] = new Monoid[Int] {
+    def mappend(a: Int, b: Int): Int = a + b
+    def mzero: Int = 0
+  }
+  implicit val StringMonoid: Monoid[String] = new Monoid[String] {
+    def mappend(a: String, b: String): String = a + b
+    def mzero: String = ""
+  }
+}
+def sum[A: Monoid](xs: List[A]): A = {
+  val m = implicitly[Monoid[A]]
+  xs.foldLeft(m.mzero)(m.mappend)
+}
+
+// Виходимо з режиму paste, тепер інтерпретуємо.
+
+defined trait Monoid
+defined module Monoid
+sum: [A](xs: List[A])(implicit evidence$1: Monoid[A])A
+
+scala> sum(List("a", "b", "c"))
+res12: String = abc
+----
+
+Ви все ще можете надати інший моноід напряму в функцію. Ми можемо надати примірник моноіда для `Int` з використанням множення.
+
+[source,scala]
+----
+ scala> val multiMonoid: Monoid[Int] = new Monoid[Int] {
+         def mappend(a: Int, b: Int): Int = a * b
+         def mzero: Int = 1
+       }
+multiMonoid: Monoid[Int] = $anon$1@48655fb6
+
+scala> sum(List(1, 2, 3, 4))(multiMonoid)
+res14: Int = 24
+----
+
+=== FoldLeft
+
+Що ми бажаємо була функція, що була б загальною для `List`. … Так що ми бажали узагальнити операцію `foldLeft`.
+
+[source,scala]
+----
+scala> object FoldLeftList {
+         def foldLeft[A, B](xs: List[A], b: B, f: (B, A) => B) = xs.foldLeft(b)(f)
+       }
+defined module FoldLeftList
+
+scala> def sum[A: Monoid](xs: List[A]): A = {
+         val m = implicitly[Monoid[A]]
+         FoldLeftList.foldLeft(xs, m.mzero, m.mappend)
+       }
+sum: [A](xs: List[A])(implicit evidence$1: Monoid[A])A
+
+scala> sum(List(1, 2, 3, 4))
+res15: Int = 10
+
+scala> sum(List("a", "b", "c"))
+res16: String = abc
+
+scala> sum(List(1, 2, 3, 4))(multiMonoid)
+res17: Int = 24
+----
+
+Тепер ми застосуємо ту саму абстракцію щоб підтягнути типоклас FoldLeft.
+
+[source,scala]
+----
+scala> :paste
+// Entering paste mode (ctrl-D to finish)
+
+trait FoldLeft[F[_]] {
+  def foldLeft[A, B](xs: F[A], b: B, f: (B, A) => B): B
+}
+object FoldLeft {
+  implicit val FoldLeftList: FoldLeft[List] = new FoldLeft[List] {
+    def foldLeft[A, B](xs: List[A], b: B, f: (B, A) => B) = xs.foldLeft(b)(f)
+  }
+}
+
+def sum[M[_]: FoldLeft, A: Monoid](xs: M[A]): A = {
+  val m = implicitly[Monoid[A]]
+  val fl = implicitly[FoldLeft[M]]
+  fl.foldLeft(xs, m.mzero, m.mappend)
+}
+
+// Exiting paste mode, now interpreting.
+
+warning: there were 2 feature warnings; re-run with -feature for details
+defined trait FoldLeft
+defined module FoldLeft
+sum: [M[_], A](xs: M[A])(implicit evidence$1: FoldLeft[M], implicit evidence$2: Monoid[A])A
+
+scala> sum(List(1, 2, 3, 4))
+res20: Int = 10
+
+scala> sum(List("a", "b", "c"))
+res21: String = abc
+----
+
+Обоє, `Int` та `List`, тепер видалені з `sum`.
+
+=== Типокласи в Scalaz 
+
+В прикладі вище трейти `Monoid` та `FoldLeft` відповідають типокласам Haskell. Scalaz провадить багато типокласів.
+
+Все це розбито на потрібні вам частини. Так що загалом це подібно до ультимативної качка-типізації, оскільки ви визначаєте в визначенні вашої функції тільки те, що вам треба, і нічого більше.
+
+==== Ін'єкція методів (покращення бібліотек) 
+
+Якщо ви написали функцію, що складає два типи з використання `Monoid`, нам треба викликати її таким чином.
+
+[source,scala]
+----
+scala> def plus[A: Monoid](a: A, b: A): A = implicitly[Monoid[A]].mappend(a, b)
+plus: [A](a: A, b: A)(implicit evidence$1: Monoid[A])A
+
+scala> plus(3, 4)
+res25: Int = 7
+----
+
+Ми бажаємо впровадити оператор. Але ми не бажаємо покращити лише один тип, але всі типи, що мають примірник для `Monoid`. Дозвольте мені зробити це в стилі Scalaz 7.
+
+[source,scala]
+----
+scala> trait MonoidOp[A] {
+         val F: Monoid[A]
+         val value: A
+         def |+|(a2: A) = F.mappend(value, a2)
+       }
+defined trait MonoidOp
+
+scala> implicit def toMonoidOp[A: Monoid](a: A): MonoidOp[A] = new MonoidOp[A] {
+         val F = implicitly[Monoid[A]]
+         val value = a
+       }
+toMonoidOp: [A](a: A)(implicit evidence$1: Monoid[A])MonoidOp[A]
+
+scala> 3 |+| 4
+res26: Int = 7
+
+scala> "a" |+| "b"
+res28: String = ab
+----
+
+Нам вдалось ін'єктувати `|+|` до `Int` та `String` одночасно, тільки однією дефініцією.
+
+=== Стандартний синтаксис типів 
+
+Використовуючи той самий прийом, Scalaz також провадить ін'єкцію методів для типів стандартної бібліотеки, як `Option` та `Boolean`:
+
+[source,scala]
+----
+scala> 1.some | 2
+res0: Int = 1
+
+scala> Some(1).getOrElse(2)
+res1: Int = 1
+
+scala> (1 > 10)? 1 | 2
+res3: Int = 2
+
+scala> if (1 > 10) 1 else 2
+res4: Int = 2
+----
+
+Я маю надію ви отримали відчуття, звідки походить Scalaz.

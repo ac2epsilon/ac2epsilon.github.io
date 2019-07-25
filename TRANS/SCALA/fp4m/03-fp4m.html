@@ -5,7 +5,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.10" />
-<title>3. Розробка застосування</title>
+<title></title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -796,17 +796,14 @@ asciidoc.install();
 </head>
 <body class="book">
 <div id="header">
-<h1>3. Розробка застосування</h1>
 </div>
 <div id="content">
-<div id="preamble">
+<div class="sect1">
+<h2 id="_3__">3. Розробка застосування</h2>
 <div class="sectionbody">
 <div class="paragraph"><p>В цій главі ми випишемо бізнес логіку та тести для чисто функціонального застосування сервера. Джерельний код для цього застосування включений в каталозі <code>example</code> разом з джерелом цієї книги, однак рекомендовано не читати код до фінальної глави, оскільки будуть значні рефакторинги по мірі того, як ми вивчатимемо FP.</p></div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_3_1_">3.1 Специфікація</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_3_1_">3.1 Специфікація</h3>
 <div class="paragraph"><p>Наше застосування буде керувати фермою побудови <em>just-in-time</em> на обмежений бюджет. Воно буде слухати сервер <em>Drone Continuous Integration</em>, та відгалужувати робочі агенти з використанням <em>Google Container Engine</em> (GKE), щоб задовільняти потреби робочої черги.</p></div>
 <div class="imageblock">
 <div class="content">
@@ -823,10 +820,8 @@ asciidoc.install();
 <div class="paragraph"><p>Збійний вузол повинен завжди бути найменьш коштовною опцією.</p></div>
 <div class="paragraph"><p>Обоє, Drone та GKE, мають JSON over REST API з аутентифікацією OAuth 2.0.</p></div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="_3_2__">3.2 Інтерфейси / алгебри</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_3_2__">3.2 Інтерфейси / алгебри</h3>
 <div class="paragraph"><p>Тепер ми будемо кодифікувати архитектурну діаграму з попереднього розділу. Зпершу, нам треба визначити простий тип даних для зберігання відмітки часу в мілісекундах, оскільки така проста річ не існує в стандартних бібліотеках ані Java, ані Scala:</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span>  <span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
@@ -858,10 +853,8 @@ asciidoc.install();
 <div class="paragraph"><p>Хоча ми згодні, що параметри мають бути такі загальні, як це можливо, ми не згодні, що функція має приймати <code>Seq</code>, тільки якщо вона не може обробляти порожню <code>Seq</code>, інакше єдиним способом дії буде виключення, що руйнує загальність та спричиняє побічний ефект.</p></div>
 <div class="paragraph"><p>Ми обираємо <code>NonEmptyList</code> не тому, що це <code>List</code>, а тому що це непорожня властивість. Коли ми вивчимо щодо ієрархії класів типів Scalaz, ми побачимо кращий шлях для запиту на не-порожність.</p></div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="_3_3__">3.3 Бізнес логіка</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_3_3__">3.3 Бізнес логіка</h3>
 <div class="paragraph"><p>Тепер ми напишемо бізнес логіку, що визначає поведінку застосування, розглядаючи тільки щасливий шлях.</p></div>
 <div class="paragraph"><p>Нам треба клас <code>WorldView</code> щоб зберігати знімок нашого знання щодо світу. Якщо б ми писали це застосування на Akka, <code>WorldView</code> мав би бути, можливо, <code>var</code> в <code>Actor</code> зі станом.</p></div>
 <div class="paragraph"><p><code>WorldView</code> агрегує значення повернення всіх методів алгебри, та додає поле <code>pending</code> для відстеження незадовільнених запитів.</p></div>
@@ -898,6 +891,7 @@ asciidoc.install();
     <span class="kt">state</span> <span class="o">=</span> <span class="n">update</span><span class="o">(</span><span class="n">state</span><span class="o">)</span>
     <span class="n">state</span> <span class="k">=</span> <span class="n">act</span><span class="o">(</span><span class="n">state</span><span class="o">)</span>
 </pre></div></div></div>
+</div>
 <div class="sect2">
 <h3 id="_3_3_1_initial">3.3.1 initial</h3>
 <div class="paragraph"><p>В <code>initial</code> ми викликаємо всі зовнішні сервіси, та агрегуємо їх результати в <code>WorldView</code>. По замовчанню поле <code>pending</code> є порожня <code>Map</code>.</p></div>
@@ -984,11 +978,8 @@ asciidoc.install();
 <div class="paragraph"><p>Оскільки <code>NeedsAgent</code> та <code>Stale</code> не покривають всі можливі ситуації, нам треба загальний випадок <code>_</code>, що нічого не робить. Згадайте з Глави 2, що <code>.pure</code> створює <code>for</code> (монадичний) контекст зі значення.</p></div>
 <div class="paragraph"><p><code>foldLeftM</code> подібний до <code>foldLeft</code>, але кожна ітерація згортання може повертати монадичне значення. В нашому випадку кожна ітерація згортання повертає <code>F[WorldView]</code>. <code>M</code> означає <code>Monadic</code>. Ми пізнаємо більше про ці піднесені методи, що поводяться як дехто може очікувати, беручи монадичні значення на місті значень.</p></div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_3_4__">3.4 Юніт тести</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_3_4__">3.4 Юніт тести</h3>
 <div class="paragraph"><p>Підхід FP до написання застосувань є мрією розробника: делегування написання реалізацій алгебр членам команди, та фокусування на розробці бізнес логіки відповідає потребам.</p></div>
 <div class="paragraph"><p>Наше застосування сильно залежне від таймінгів та веб сервісів третіх сторін. Якби це було традиційне OOP застосування, ми б створили моки для всіх викликів методів, або тестували акторів на вихідних скриньках. FP мокінг еквівалентний до провадження альтернативної реалізації алгебр залежностей. Алгебри вже ізолюють частини системи, що мають бути моковані, тобто інтерпретовані інакше в юніт тестах.</p></div>
 <div class="paragraph"><p>Ми почнемо з деяких тестових даних:</p></div>
@@ -1121,13 +1112,11 @@ asciidoc.install();
 <div class="paragraph"><p>Всі ці тести синхроггі та ізольовані відносно потоку виконавця тестів (що може виконувати тести паралельно). Якщо ми розробляли нашу тестову сюїту в Akka, наші тести могли б бути предметом для довільних таймаутів, та збої були б приховані в файлах журналів.</p></div>
 <div class="paragraph"><p>Ривок продуктивності простих тестів для бізнес логіки не може бути переоцінений. Згляньтесь на те, що 90% часу розробника застосування є взаємодія з замовником в проясненні, оновленні та полагодженні ціх бізнес правил. Все інше деталі реалізації.</p></div>
 </div>
-</div>
-<div class="sect1">
-<h2 id="_3_5_">3.5 Паралельність</h2>
-<div class="sectionbody">
-<div class="paragraph"><p>Застосування, що ми розробили, виконує кожний з алгебраїчних методів послідовно. Але є очевидні місця, де робота може бути виконана паралельно.</p></div>
 <div class="sect2">
-<h3 id="_3_5_1_initial">3.5.1 initial</h3>
+<h3 id="_3_5_">3.5 Паралельність</h3>
+<div class="paragraph"><p>Застосування, що ми розробили, виконує кожний з алгебраїчних методів послідовно. Але є очевидні місця, де робота може бути виконана паралельно.</p></div>
+<div class="sect3">
+<h4 id="_3_5_1_initial">3.5.1 initial</h4>
 <div class="paragraph"><p>В нашому визначенні <code>initial</code> ми можемо запитати, щоб вся інформація треба нам одночасно, замість одного запиту за раз.</p></div>
 <div class="paragraph"><p>На відміну від <code>flatMap</code> для послідовних операцій, <code>Scalaz</code> використовує синтаксис <code>Apply</code> для паралельних операцій:</p></div>
 <div class="listingblock">
@@ -1145,6 +1134,7 @@ asciidoc.install();
     <span class="o">}</span>
 </pre></div></div></div>
 </div>
+</div>
 <div class="sect2">
 <h3 id="_3_5_2_act">3.5.2 act</h3>
 <div class="paragraph"><p>В поточній логіці для <code>act</code>, ми зупиняємо кожний вузол послідовно, очікуючи на результат, та потім продовжуємо. Але ми можемо зупинити всі вузли паралельно, та потім оновити наше бачення світу.</p></div>
@@ -1159,11 +1149,8 @@ asciidoc.install();
 </pre></div></div></div>
 <div class="paragraph"><p>Можливо це простіше зрозуміти, ніж послідовну версію.</p></div>
 </div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="_3_6_">3.6 Підсумок</h2>
-<div class="sectionbody">
+<div class="sect2">
+<h3 id="_3_6_">3.6 Підсумок</h3>
 <div class="paragraph"><p>Алгебри визначають інтерфейс між системами.</p></div>
 <div class="paragraph"><p>Модулі є реалізаціями алгебри в термінах інших алгебр.</p></div>
 <div class="paragraph"><p>Інтерпретатори є суцільними реалізаціями алгебри для фіксованого <code>F[_]</code>.</p></div>
@@ -1171,11 +1158,12 @@ asciidoc.install();
 </div>
 </div>
 </div>
+</div>
 <div id="footnotes"><hr /></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2019-07-07 23:06:10 EEST
+ 2019-07-25 02:08:49 EEST
 </div>
 </div>
 </body>
