@@ -7,15 +7,18 @@ include::header.adoc[]
 image:images/recursion.png[]
 Ми коротко згадували рекурсію в попередній главі. В цій главі ми близько розглянемо рекурсію, чому вона важлива для Haskell, та як ми можете виробляти дуже стислі та елегантні рішення до проблем, розмірковуючи рекурсивно.
 
-Якщо ви все ще не знаєте що таке рекурсія, прочитайте це речення. Ха! Це просто жарт! Насправді рекурсія є шляхом визначення функцій, в яких функція застосовується в своєму власному визначенні. Definitions in mathematics are often given recursively. For instance, the fibonacci sequence is defined recursively. First, we define the first two fibonacci numbers non-recursively. We say that F(0) = 0 and F(1) = 1, meaning that the 0th and 1st fibonacci numbers are 0 and 1, respectively. Then we say that for any other natural number, that fibonacci number is the sum of the previous two fibonacci numbers. So F(n) = F(n-1) + F(n-2). That way, F(3) is F(2) + F(1), which is (F(1) + F(0)) + F(1). Because we've now come down to only non-recursively defined fibonacci numbers, we can safely say that F(3) is 2. Having an element or two in a recursion definition defined non-recursively (like F(0) and F(1) here) is also called the edge condition and is important if you want your recursive function to terminate. If we hadn't defined F(0) and F(1) non recursively, you'd never get a solution any number because you'd reach 0 and then you'd go into negative numbers. All of a sudden, you'd be saying that F(-2000) is F(-2001) + F(-2002) and there still wouldn't be an end in sight!
+Якщо ви все ще не знаєте що таке рекурсія, прочитайте це речення. Ха! Це просто жарт! Насправді рекурсія є шляхом визначення функцій, в яких функція застосовується в своєму власному визначенні. Визначення в математиці часто даються рекурсивно. Наприклад, послідовність Фібоначчі визначається рекурсивно. Спочатку ми визначаємо перші два числа Фібоначчі нерекурсивно. Ми кажемо, що `F(0) = 0` та `F(1) = 1`, що означає, що перший і другий елементи послідовності є `0` та `1`, відповідно. Потім ми кажемо, що для кожного іншого натурального числа число Фібоначчі є сумою попередніх двох чисел послідовності. Так що `F(n) = F(n-1) + F(n-2)`. Таким чином, `F(3)` є `F(2) + F(1)`, що є `(F(1) + F(0)) + F(1)`. Оскільки ми тепер дійшли до тільки нерекурсивно визначених чисел Фібоначчі, ми можемо безпечно сказати, що `F(3)` є `2`. Маючи елемент або два в рекурсивньому визначенні, визначені нерекурсивно, (як `F(0)` та `F(1)` тут), що також називаються граничними умовами, і важливо, якщо ви бажаєте, щоб ваша рекурсивна функція завершилась. Якщо ви не визначили `F(0)` та `F(1)` нерекурсивно, ви ніколи не отримаєте рішення для любого значення, бо дійдете до нуля, та потім пійдете по від'ємним числам. З часом ви дізнаєтесь, що `F(-2000)` є `F(-2001) + F(-2002)`, і все ще кінця цьому не буде видно!
 
-Recursion is important to Haskell because unlike imperative languages, you do computations in Haskell by declaring what something is instead of declaring how you get it. That's why there are no while loops or for loops in Haskell and instead we many times have to use recursion to declare what something is.
+Рекурсія важлива в Haskell, оскільки на відміну від імперативних мов, ви робите обчислення в Haskell через декларацію, що є дещо, замість декларування того, як це треба отримати. Ось чому немає `while` циклів або `for` циклів в Haskell, і замість ми багато раз маємо використовувати рекурсію для декларування, чим є дещо.
 
-Maximum awesome
-The maximum function takes a list of things that can be ordered (e.g. instances of the Ord typeclass) and returns the biggest of them. Think about how you'd implement that in an imperative fashion. You'd probably set up a variable to hold the maximum value so far and then you'd loop through the elements of a list and if an element is bigger than then the current maximum value, you'd replace it with that element. The maximum value that remains at the end is the result. Whew! That's quite a lot of words to describe such a simple algorithm!
+=== Максимальна чудовість
 
-Now let's see how we'd define it recursively. We could first set up an edge condition and say that the maximum of a singleton list is equal to the only element in it. Then we can say that the maximum of a longer list is the head if the head is bigger than the maximum of the tail. If the maximum of the tail is bigger, well, then it's the maximum of the tail. That's it! Now let's implement that in Haskell.
+Функція `maximum` бере список речей, що можуть бути впорядковані (тобто примірників типокласу `Ord`), та повертає більший з них. Поміркуйте про те, як би ви реалізували це в імперативний спосіб. Ви б, можливо, встановили змінну для зберігання максимального значення, та потім би додали цикл по елементах списку, та якщо елемент більше, ніж поточне максимальне значення, ви заміщуюте його цім елементом. Максимальне значення, що залишиться в кінці, і є результат. Фу! Це досить багато слів для опису такого простого алгоритму!
 
+Тепер давайте подивимось, як ми визначемо це рекурсивно. Ми можемо спочатку встановити граничну умову, та сказати, що максимум синглтон списку дорівнює значенню його єдиного елементу. Потім ми можемо сказати, що максимум довшого списку є голова, якщо голова більша ніж максимум хвоста. Якщо максимум хвоста більший, гаразд, тоді максимум буде цей максимум хвоста. І все! Тепер давайте реалізуємо це в Haskell.
+
+[source,scala]
+----
 maximum' :: (Ord a) => [a] -> a  
 maximum' [] = error "maximum of empty list"  
 maximum' [x] = x  
@@ -23,101 +26,142 @@ maximum' (x:xs)
     | x > maxTail = x  
     | otherwise = maxTail  
     where maxTail = maximum' xs  
-As you can see, pattern matching goes great with recursion! Most imperative languages don't have pattern matching so you have to make a lot of if else statements to test for edge conditions. Here, we simply put them out as patterns. So the first edge condition says that if the list is empty, crash! Makes sense because what's the maximum of an empty list? I don't know. The second pattern also lays out an edge condition. It says that if it's the singleton list, just give back the only element.
+----
 
-Now the third pattern is where the action happens. We use pattern matching to split a list into a head and a tail. This is a very common idiom when doing recursion with lists, so get used to it. We use a where binding to define maxTail as the maximum of the rest of the list. Then we check if the head is greater than the maximum of the rest of the list. If it is, we return the head. Otherwise, we return the maximum of the rest of the list.
+Як ви можете бачити, порівняння шаблонів гарно пасує до рекурсії! Більшість імперативних мов не мають порівняння шаблонів, так що ви маєте робити багато `if else` тверджень для перевірки граничних умов. тут ми просто покладаємо їх як шаблони. Так що перша гранична умова каже, якщо список порожній, це крах! Має сенс, оскільки що буде максимумом порожнього списку? Я не знаю. Другий шаблон також окреслює граничну умову. Він каже, що якщо це синглтон список - просто повернути його єдиний елемент.
 
-Let's take an example list of numbers and check out how this would work on them: [2,5,1]. If we call maximum' on that, the first two patterns won't match. The third one will and the list is split into 2 and [5,1]. The where clause wants to know the maximum of [5,1], so we follow that route. It matches the third pattern again and [5,1] is split into 5 and [1]. Again, the where clause wants to know the maximum of [1]. Because that's the edge condition, it returns 1. Finally! So going up one step, comparing 5 to the maximum of [1] (which is 1), we obviously get back 5. So now we know that the maximum of [5,1] is 5. We go up one step again where we had 2 and [5,1]. Comparing 2 with the maximum of [5,1], which is 5, we choose 5.
+Тепер третій шаблон, де відбувається справжня дія. Ми використовуємо співпадіння шаблонів для поділу списку на голову та хвіст. Це дуже загальна ідиома при виконанні рекурсії зі списками, так що використаємо її. Ми використовуємо `where` прикріплення для визначення `maxTail` як максимума залишку списка. Коли ми перевіряємо, чи голова більша ніж максимум залишку списку. Якщо це так, ми повертаємо голову. Інакше ми повертаємо максимум залишку списку.
 
-An even clearer way to write this function is to use max. If you remember, max is a function that takes two numbers and returns the bigger of them. Here's how we could rewrite maximum' by using max:
+Давайте візьмемо список прикладу, та перевіримо, як це буде робити з ним: `[2,5,1]`. Якщо ми викличемо для нього `maximum'`, перші два шаблони не співпадуть. Третій співпаде, і поділить список на `2` та `[5,1]`. Твердження `where` бажає знати максимум від `[5,1]`, так що ми йдемо цім шляхом. Він знову співпадає з третім шаблоном, та `[5,1]` ділиться на `5` та `[1]`. Знову, твердження `where` бажає мати максимум від `[1]`. Оскільки це гранична умова, вона повертає `1`. Нарешті! Так що підіймаємось на рівень вище, порівнюючи `5` з максимумом `[1]` (що є `1`), і очевидно отримуємо `5`. Так що ми знаємо, що максимум `[5,1]` є `5`. Ми знову підіймаємось на один рівень вище, де ми маємо `2` та `[5,1]`. Порівняння `2` з максимумом `[5,1]`, що є `5`, ми обираємо `5`.
 
+Навіть ясніший шлях написати цю функцію є використання `max`. Якщо ви пам'ятаєте, `max` є функцією, що приймає два числа, та повертає більше з них. Ось як ми можемо переписати `maximum'` з використанням `max`:
+
+[source,scala]
+----
 maximum' :: (Ord a) => [a] -> a  
 maximum' [] = error "maximum of empty list"  
 maximum' [x] = x  
 maximum' (x:xs) = max x (maximum' xs)  
-How's that for elegant! In essence, the maximum of a list is the max of the first element and the maximum of the tail.
+----
+
+Як це елегантно! В основному, максимум списку є `max` першого елементу та максимум хвоста.
 
 image::images/maxs.png[]
-A few more recursive functions
-Now that we know how to generally think recursively, let's implement a few functions using recursion. First off, we'll implement replicate. replicate takes an Int and some element and returns a list that has several repetitions of the same element. For instance, replicate 3 5 returns [5,5,5]. Let's think about the edge condition. My guess is that the edge condition is 0 or less. If we try to replicate something zero times, it should return an empty list. Also for negative numbers, because it doesn't really make sense.
+=== Декілька ще більш рекурсивних функцій
 
+Тепер, коли ми знаємо, як загалом мислити рекурсивно, давайте реалізуємо декілька функцій використовуючи рекурсію. Для початку реалізуємо `replicate`. `replicate` бере `Int` та деякий елемент, та повертає список, що має декілька повторень того самого елементу. Наприклад, `replicate 3 5` повертає `[5,5,5]`. Давайте думати про граничні умови. Я маю думку, що гранична умова `0` або меньше. Якщо ми спробуємо повторити дещо нуль раз, це має повертати порожній список. Також і для негативних чисел, оскільки це не має ніякого сернсу.
+
+[source,scala]
+----
 replicate' :: (Num i, Ord i) => i -> a -> [a]  
 replicate' n x  
     | n <= 0    = []  
     | otherwise = x:replicate' (n-1) x  
-We used guards here instead of patterns because we're testing for a boolean condition. If n is less than or equal to 0, return an empty list. Otherwise return a list that has x as the first element and then x replicated n-1 times as the tail. Eventually, the (n-1) part will cause our function to reach the edge condition.
+----
 
-Note: Num is not a subclass of Ord. That means that what constitutes for a number doesn't really have to adhere to an ordering. So that's why we have to specify both the Num and Ord class constraints when doing addition or subtraction and also comparison.
-Next up, we'll implement take. It takes a certain number of elements from a list. For instance, take 3 [5,4,3,2,1] will return [5,4,3]. If we try to take 0 or less elements from a list, we get an empty list. Also if we try to take anything from an empty list, we get an empty list. Notice that those are two edge conditions right there. So let's write that out:
+Ми використали тут охоронців замість шаблонів, оскільки ми перевіряємо на логічні умови. Якщо `n` меньше або рівне до `0`, повертаємо порожній список. Інакше повертаємо список, що має `x` як перший елемент, та потім `x`, повторений `n-1` разів в якості хвоста. З часом частина `(n-1)` приведе нашу функцію до граничної умови.
 
+Note: `Num` не є субкласом до `Ord`. Це означає, що те, що належить до чисел, не обов'язково має бути впорядкованим. Ось чому ми маємо вказувати обоє обмеження, класи `Num` та `Ord`, і потім робити додавання і віднімання, а також порівняння.
+
+Далі ми реалізуємо `take`. Вона приймає певне число елементів зі списку. Наприклад, `take 3 [5,4,3,2,1]` буде повертати `[5,4,3]`. Якщо ми спробуємо взяти `0` або меньше елементів зі списку ми отримаємо порожній список. Зауважне ці дві граничні умови. Так що давайте запишемо:
+
+[source,scala]
+----
 take' :: (Num i, Ord i) => i -> [a] -> [a]  
 take' n _  
     | n <= 0   = []  
 take' _ []     = []  
 take' n (x:xs) = x : take' (n-1) xs  
+----
 
 image:images/painter.png[]
-The first pattern specifies that if we try to take a 0 or negative number of elements, we get an empty list. Notice that we're using _ to match the list because we don't really care what it is in this case. Also notice that we use a guard, but without an otherwise part. That means that if n turns out to be more than 0, the matching will fall through to the next pattern. The second pattern indicates that if we try to take anything from an empty list, we get an empty list. The third pattern breaks the list into a head and a tail. And then we state that taking n elements from a list equals a list that has x as the head and then a list that takes n-1 elements from the tail as a tail. Try using a piece of paper to write down how the evaluation would look like if we try to take, say, 3 from [4,3,2,1].
+Перший шаблон задає, що коли ми спробуємо взяти `0` або від'ємне число елементів, ми отримаємо порожній список. Зауважте, що ми використовуємо `_` для порівняння списку, оскільки нас насправді не турбує, що це в данному випадку. Також зауважте, що ми використовуємо охоронця, але без частини `otherwise`. Це означає, що якщо `n` виявиться більше ніж `0`, порівняння провалиться до наступного шаблону. Другий шаблон вказує, що якщо ми спробуємо взяти будь-що з порожнього списку, ми отримаємо порожній список. Третій шаблон розбиває список на голову та хвіст. І потім ми стверджуємо, що взяти `n` елементів зі списку те саме, що список, що має `x` в якості голови, та список, що бере `n-1` елементів з хвоста списка. Спробуйте взяти шматок папіру для запису, як виглядає це обчислення, якщо ми, скажімо, беремо `3` з `[4,3,2,1]`.
 
-reverse simply reverses a list. Think about the edge condition. What is it? Come on ... it's the empty list! An empty list reversed equals the empty list itself. O-kay. What about the rest of it? Well, you could say that if we split a list to a head and a tail, the reversed list is equal to the reversed tail and then the head at the end.
+`reverse` просто обертає список. Подумайте про граничні умови. Що це буде? Гаразд ... це порожній список! Порожній список обернений дорівнює самому порожньому списку. Окей. Як щодо інших варіантів? Ви можете сказати, що якщо розділити список на голову та хвіст, обернений список дорівнює оберненому хвосту, та потім голова в кінці.
 
+[source,scala]
+----
 reverse' :: [a] -> [a]  
 reverse' [] = []  
 reverse' (x:xs) = reverse' xs ++ [x]  
-There we go!
+----
 
-Because Haskell supports infinite lists, our recursion doesn't really have to have an edge condition. But if it doesn't have it, it will either keep churning at something infinitely or produce an infinite data structure, like an infinite list. The good thing about infinite lists though is that we can cut them where we want. repeat takes an element and returns an infinite list that just has that element. A recursive implementation of that is really easy, watch.
+Це все!
 
+Оскільки Haskell підтримує нескінчені списки, наша рекурсія насправді не обов'язково повинна мати граничну умову. Але якщо вона не має її, вона або буде продовжувати накручувати без кінця, або продукувати безкінечну структуру даних. Гарна річ щодо безкінечних списків в тому, що ми можемо обрізати їх, якщо схочемо. `repeat` бере елемент, та повертає безкінечний список, що має цей елемент. Рекурсивна реалізація цього дійсно проста, дивіться.
+
+[source,scala]
+----
 repeat' :: a -> [a]  
 repeat' x = x:repeat' x  
-Calling repeat 3 will give us a list that starts with 3 and then has an infinite amount of 3's as a tail. So calling repeat 3 would evaluate like 3:repeat 3, which is 3:(3:repeat 3), which is 3:(3:(3:repeat 3)), etc. repeat 3 will never finish evaluating, whereas take 5 (repeat 3) will give us a list of five 3's. So essentially it's like doing replicate 5 3.
+----
 
-zip takes two lists and zips them together. zip [1,2,3] [2,3] returns [(1,2),(2,3)], because it truncates the longer list to match the length of the shorter one. How about if we zip something with an empty list? Well, we get an empty list back then. So there's our edge condition. However, zip takes two lists as parameters, so there are actually two edge conditions.
+Виклик `repeat 3` дасть нам список, що починається з `3`, і потім має безкінечну кількість `3` в хвості. Так що виклик `repeat 3` буде обчислюватись як `3:repeat 3`, що є `3:(3:repeat 3)`, що є `3:(3:(3:repeat 3))`, тощо. `repeat 3` ніколи не припинить обчислення, але `take 5 (repeat 3)` дасть нам список з п'яти трійок. Так що це те саме, що зробити `replicate 5 3`.
 
+`zip` приймає два списки да поєднує їх разом. `zip [1,2,3] [2,3]` повертає `[(1,2),(2,3)]`, оскільки вона відсікає довший список до довжини коротшого. Що, коли ми поєднаємо щось з порожнім списком? Тоді ми знову отримаємо порожній список. Так що це наша гранична умова. Однак `zip` приймає два списки як параметри, так що насправді дві граничні умови.
+
+[source,scala]
+----
 zip' :: [a] -> [b] -> [(a,b)]  
 zip' _ [] = []  
 zip' [] _ = []  
 zip' (x:xs) (y:ys) = (x,y):zip' xs ys  
-First two patterns say that if the first list or second list is empty, we get an empty list. The third one says that two lists zipped are equal to pairing up their heads and then tacking on the zipped tails. Zipping [1,2,3] and ['a','b'] will eventually try to zip [3] with []. The edge condition patterns kick in and so the result is (1,'a'):(2,'b'):[], which is exactly the same as [(1,'a'),(2,'b')].
+----
 
-Let's implement one more standard library function — elem. It takes an element and a list and sees if that element is in the list. The edge condition, as is most of the times with lists, is the empty list. We know that an empty list contains no elements, so it certainly doesn't have the droids we're looking for.
+Перші два шаблони кажуть, що якщо перший список або другий список порожні ми отримуємо порожній список. Третій каже, що два поєднані списки рівні до пари з їх голів, та потім список з поєднанних хвостів. Поєднання `[1,2,3]` та `['a','b']` з часом спробує `zip [3]` з `[]`. Гранична умова спрацьовує, і таким чином результат буде `(1,'a'):(2,'b'):[]`, що точно те саме, що і `[(1,'a'),(2,'b')]`.
 
+Давайте реалізуємо ще одну функцію зі стандартної бібліотеки — `elem`. Вона бере елемент та список, та дивиться, чи елемент є в списку. Гранична умова, як в більшості випадків зі списками, це порожній список. Ми знаємо, що порожній список не має елементів, так що він напевне не має того, що ми шукаємо.
+
+[source,scala]
+----
 elem' :: (Eq a) => a -> [a] -> Bool  
 elem' a [] = False  
 elem' a (x:xs)  
     | a == x    = True  
     | otherwise = a `elem'` xs   
-Pretty simple and expected. If the head isn't the element then we check the tail. If we reach an empty list, the result is False.
+----
 
-Quick, sort!
-We have a list of items that can be sorted. Their type is an instance of the Ord typeclass. And now, we want to sort them! There's a very cool algoritm for sorting called quicksort. It's a very clever way of sorting items. While it takes upwards of 10 lines to implement quicksort in imperative languages, the implementation is much shorter and elegant in Haskell. Quicksort has become a sort of poster child for Haskell. Therefore, let's implement it here, even though implementing quicksort in Haskell is considered really cheesy because everyone does it to showcase how elegant Haskell is.
+Досить просто та очікувано. Якщо голова не є нашим елементом, тоді ми перевіряємо хвіст. Якщо ми досягли порожнього списку результатом буде `False`.
+
+=== Сортуй, швидко!
+
+Ми маємо з елементів, що може бути відсортований. Їх тип є примірником типокласу `Ord`. І тепер ми бажаємо відсортувати їх! Існує дуже крутий алгоритм сортування з назвою `quicksort`. Це дуже розумний спосіб сортувати елементи. Хоча це займає 10 рядків для реалізації `quicksort` на імперативних мовах, реалізація значно коротша і елегантніша на Haskell. Quicksort став різновидом візитівки для Haskell. Таким чином давайте реалізуємо його тут, навіть не зважаючи на те, що реалізація `quicksort` на Haskell стала загальним місцем, бо кожний робить її, щоб показати елегантність Haskell.
 
 image:images/quickman.png[]
-So, the type signature is going to be quicksort :: (Ord a) => [a] -> [a]. No surprises there. The edge condition? Empty list, as is expected. A sorted empty list is an empty list. Now here comes the main algorithm: a sorted list is a list that has all the values smaller than (or equal to) the head of the list in front (and those values are sorted), then comes the head of the list in the middle and then come all the values that are bigger than the head (they're also sorted). Notice that we said sorted two times in this definition, so we'll probably have to make the recursive call twice! Also notice that we defined it using the verb is to define the algorithm instead of saying do this, do that, then do that .... That's the beauty of functional programming! How are we going to filter the list so that we get only the elements smaller than the head of our list and only elements that are bigger? List comprehensions. So, let's dive in and define this function.
+І так, сигнатура типу має бути `quicksort :: (Ord a) => [a] -> [a]`. No surprises there. Гранична умова? Порожній список, як і очікувалось. Відсортований порожній список є порожній список. Тепер іде головний алоритм: сортований список є список, що має всі значення меньші (або еквівалентні до) голови списку спереду (і ці значення відсортовані), потім іде голова списку всередині і потім ідуть всі значення, що більші ніж голова (вони також відсортовані). Зауважте, що ми сказали _відсортовані_ два рази в цьому визначенні, так що ми можливо маємо зробити рекурсивний виклик двічі! Також зауважте, що ми визначили його з використанням дієслова _is_ для визначення алгоритму, замість казати роби це, роби те, потім оце .... Це краса функціонального програмування! Як ми збираємось фільтрувати список, так щоб він містив тільки елементи, меньші голови нашого списку, та елементи, що більші. Давайте зануримось, та визначимо цю функцію.
 
+[source,scala]
+----
 quicksort :: (Ord a) => [a] -> [a]  
 quicksort [] = []  
 quicksort (x:xs) =   
     let smallerSorted = quicksort [a | a <- xs, a <= x]  
         biggerSorted = quicksort [a | a <- xs, a > x]  
     in  smallerSorted ++ [x] ++ biggerSorted  
-Let's give it a small test run to see if it appears to behave correctly.
+----
 
+Давайте зробимо невеликий тест щоб побачити, чи це робить коректно.
+
+[source,scala]
+----
 ghci> quicksort [10,2,5,3,1,6,7,4,2,3,4,8,9]  
-[1,2,2,3,3,4,4,5,6,7,8,9,10]  
+ [1,2,2,3,3,4,4,5,6,7,8,9,10]  
 ghci> quicksort "the quick brown fox jumps over the lazy dog"  
 "        abcdeeefghhijklmnoooopqrrsttuuvwxyz"  
-Booyah! That's what I'm talking about! So if we have, say [5,1,9,4,6,7,3] and we want to sort it, this algorithm will first take the head, which is 5 and then put it in the middle of two lists that are smaller and bigger than it. So at one point, you'll have [1,4,3] ++ [5] ++ [9,6,7]. We know that once the list is sorted completely, the number 5 will stay in the fourth place since there are 3 numbers lower than it and 3 numbers higher than it. Now, if we sort [1,4,3] and [9,6,7], we have a sorted list! We sort the two lists using the same function. Eventually, we'll break it up so much that we reach empty lists and an empty list is already sorted in a way, by virtue of being empty. Here's an illustration:
+----
+
+Клац! Ще те, про що я говорив! Так що коли ми маємо, скажімо, `[5,1,9,4,6,7,3]`, і ми маємо відсортувати його, цей алгоритм спочатку бере голову, що є `5`, і потім кладе посередині двох списків, тих що меньше та тих що більше. Так що в одній точці ви будете мати `[1,4,3] ++ [5] ++ [9,6,7]`. Ми знаємо, що коли список буде відсортований повністю, число `5` буде на четвертому місці, оскільки три числа меньші, та три числа більші ніж воно. Тепер, якщо ми відсортуємо `[1,4,3]` та `[9,6,7]`, ми матимемо відсортований список! Ми сортуємо два списки, використовуючи ту саму функцію. З часом ми розіб'ємо їх до того стану, що отримаємо порожні списки, а порожні списки вже відсортовані, хоча і порожні. Ось ілюстрація:
 
 image::images/quicksort.png[]
-An element that is in place and won't move anymore is represented in orange. If you read them from left to right, you'll see the sorted list. Although we chose to compare all the elements to the heads, we could have used any element to compare against. In quicksort, an element that you compare against is called a pivot. They're in green here. We chose the head because it's easy to get by pattern matching. The elements that are smaller than the pivot are light green and elements larger than the pivot are dark green. The yellowish gradient thing represents an application of quicksort.
+Елемент, що вже на своєму місці, і більше не рухається, представлений помаранчевим. Якщо ви читаєте це зліва направо, ви побачите відсортований список. Хоча ми обрали порівнювати елементи з головою, ми можемо обрати кожний елемент для порівняння. В `quicksort` елемент, з яким ви порівнюєте має назву точки повороту. Вони тут зелені. Ми обрали їх як голову, бо її просто отримати через порівняння шаблонів. Елементи, що меньші за поворотну точку світло зелені, та більші елементи темно зелені. Жовтуватий градієнт представляє застосування `quicksort`.
 
-Thinking recursively
-We did quite a bit of recursion so far and as you've probably noticed, there's a pattern here. Usually you define an edge case and then you define a function that does something between some element and the function applied to the rest. It doesn't matter if it's a list, a tree or any other data structure. A sum is the first element of a list plus the sum of the rest of the list. A product of a list is the first element of the list times the product of the rest of the list. The length of a list is one plus the length of the tail of the list. Ekcetera, ekcetera ...
+=== Думати рекурсивно
+
+Ми вже наробили досі рекурсій, і ви можливо помітили, що тут є шаблон. Зазвичай ви визначаєте граничну умову, та потім ви визначаєте функцію, що робить щось між деяким елементом і функцією, застосованою до залишку. Не має значення, чи це список, дерево або люба інша структура даних. `sum` в перший елемент списку, плюс `sum` залишку списку. `product` списку є перший елемент списку, помножений на `product` залишку списку. Довжина списку є один плюс довжина хвоста списку. І так далі, і так далі ...
 
 image:images/brain.png[]
-Of course, these also have edge cases. Usually the edge case is some scenario where a recursive application doesn't make sense. When dealing with lists, the edge case is most often the empty list. If you're dealing with trees, the edge case is usually a node that doesn't have any children.
+Звичайно, також існують граничні умови. Звичайно граничні випадки є деякий сценарій, де рекурсивне застосування не має сенсу. Коли маємо справу зі списками, граничний випадок найбільш часто є порожнім списком. Якщо ви маєте справу з деревами, це часто вузол, що не має жодних дітей.
 
-It's similar when you're dealing with numbers recursively. Usually it has to do with some number and the function applied to that number modified. We did the factorial function earlier and it's the product of a number and the factorial of that number minus one. Such a recursive application doesn't make sense with zero, because factorials are defined only for positive integers. Often the edge case value turns out to be an identity. The identity for multiplication is 1 because if you multiply something by 1, you get that something back. Also when doing sums of lists, we define the sum of an empty list as 0 and 0 is the identity for addition. In quicksort, the edge case is the empty list and the identity is also the empty list, because if you add an empty list to a list, you just get the original list back.
+Це подібно до того, коли ви маєте справу з числами рекурсивно. Звичайно ми маєм осправу з деяким числом, і потім функцію, застосовану до модифікації цього числа. Ми робили функцію факторіала раніше, і це добуток числа і факторіала цього числа мінус одиниця. Таке рекурсивне застосування не має сенсу для нуля, оскільки факторіали визначені тільки для позитивних цілих. Часто граничним випадком є значення ідентичності. Для множення це 1, оскільки якщо ви помножите щось на 1, ви отримаєте те саме. Також коли ви робите суму списків, ми визначаємо суму порожнього списку як 0, і 0 є ідентичність для додавання. В `quicksort` граничний випадок є порожній список, оскільки якщо ви додасте порожній список до списка, ви отримаєте всього лише оригінальний список.
 
-So when trying to think of a recursive way to solve a problem, try to think of when a recursive solution doesn't apply and see if you can use that as an edge case, think about identities and think about whether you'll break apart the parameters of the function (for instance, lists are usually broken into a head and a tail via pattern matching) and on which part you'll use the recursive call.
+Таким чином, коли намагаєтесь думати в рекурсивний спосіб для вирішення проблеми, намагайтесь подумати, коли рекурсивність не може застосовуватись, і побачте, чи ви не можете використати це в якості граничного випадку, подумайте про ідентичності, і подумайте, чи ви можете розбити на частини параметри функції (наприклад, списки зазвичай розбиваються на голову та хвіст через порівняння шаблонів), і на якій частині ви будете застосовувати рекурсивний виклик.
