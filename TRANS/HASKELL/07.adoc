@@ -747,7 +747,7 @@ ghci> decode 5 . encode 5 $ "This is a sentence"
 
 Найбільш очевидний шлях представити асоціативні списки в Haskell буде використання списку пар. Перший компонент в парі буде ключем, другий компонент значення. Ось приклад асоціативного списку з номерами телефонів:
 
-[source,scala]
+[source,haskell]
 ----
 phoneBook =   
     [("betty","555-2938")  
@@ -761,7 +761,7 @@ phoneBook =
 
 Не зважаючи на ці досить дивні відступи це все ще пари рядків. Найбільш загальна задача коли маємо справу з асоціативними списками є пошук значення по ключу. Давайте створимо функцію, що шукає деяке значення по ключу.
 
-[source,scala]
+[source,haskell]
 ----
 findKey :: (Eq k) => k -> [(k,v)] -> v  
 findKey key xs = snd . head . filter (\(k,v) -> key == k) $ xs  
@@ -769,7 +769,7 @@ findKey key xs = snd . head . filter (\(k,v) -> key == k) $ xs
 
 Досить просто. Функція, що бере ключ та список, фільтрує список так, що залишаються лише співпадаючі ключі, бере першу пару ключ-значення та повертає значення. Але що трапляється, якщо ключ що ми шукаємо відсутній в асоціативному списку? Хмм. В даному випадку якщо ключа немає в списку ми скінчимо беручи `head` від порожнього списку, що закидає помилку часу виконання. Однак нам слідує уникати таких простих катастроф нашої програми, так що використаємо тип даних `Maybe`. Якщо ми не знайшли ключ ми повертаємо `Nothing`. Якщо ми знайшли його, ми повертаємо `Just` дещо, де дещо це значення, що відповідає ключу.
 
-[source,scala]
+[source,haskell]
 ----
 findKey :: (Eq k) => k -> [(k,v)] -> Maybe v  
 findKey key [] = Nothing  
@@ -782,7 +782,7 @@ findKey key ((k,v):xs) = if key == k
 
 Це класична рекурсивна функція, що оперує зі списком. Граничний випадок, поділення списку на голову та хвіст, рекурсивні виклики - вони всі тут. Це класичний шаблон `fold`, так що давайте подивимось, як це може бути реалізовано через згортання.
 
-[source,scala]
+[source,haskell]
 ----
 findKey :: (Eq k) => k -> [(k,v)] -> Maybe v  
 findKey key = foldr (\(k,v) acc -> if key == k then Just v else acc) Nothing  
@@ -790,7 +790,7 @@ findKey key = foldr (\(k,v) acc -> if key == k then Just v else acc) Nothing
 
 Note: Зазвичай краще використовувати згортки для цього стандартного шаблону рекурсії по списку, замість явного написання рекурсії, бо це краще читати та розпізнавати. Всі знають що це згортання, коли вони бачать виклик `foldr`, але читання явної рекурсії займає деякий час.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> findKey "penny" phoneBook  
 Just "853-2492"  
@@ -807,7 +807,7 @@ image:images/legomap.png[]
 
 Оскільки `Data.Map` експортує функції, що перетинаються з такими з `Prelude` та `Data.List`, ми будемо робити кваліфікований імпорт.
 
-[source,scala]
+[source,haskell]
 ----
 import qualified Data.Map as Map  
 ----
@@ -818,7 +818,7 @@ import qualified Data.Map as Map
 
 Функція `fromList` бере асоціативний список (в формі списка) і повертає мапу з тими самими асоціаціями.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.fromList [("betty","555-2938"),("bonnie","452-2928"),("lucille","205-2928")]  
 fromList [("betty","555-2938"),("bonnie","452-2928"),("lucille","205-2928")]  
@@ -828,7 +828,7 @@ fromList [(1,2),(3,2),(5,5)]
 
 Якщо в оригінальному асоціативному списку є дублікати ключів, дублікати просто відкидаються. Ось сигнатура типу для `fromList`
 
-[source,scala]
+[source,haskell]
 ----
 Map.fromList :: (Ord k) => [(k, v)] -> Map.Map k v  
 ----
@@ -839,7 +839,7 @@ Map.fromList :: (Ord k) => [(k, v)] -> Map.Map k v
 
 `empty` представляє порожню мапу. Вона не приймає аргументів, вона просто повертає порожню мапу.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.empty  
 fromList []  
@@ -847,7 +847,7 @@ fromList []
 
 `insert` бере ключ, значення та мапу, і повертає нову мапу, що така сама, тільки з доданим ключем та значенням.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.empty  
 fromList []  
@@ -861,7 +861,7 @@ fromList [(3,100),(4,200),(5,600)]
 
 Ми можемо реалізувати наш власний `fromList` через використання порожньої мапи, `insert` та `fold`. Дивіться:
 
-[source,scala]
+[source,haskell]
 ----
 fromList' :: (Ord k) => [(k,v)] -> Map.Map k v  
 fromList' = foldr (\(k,v) acc -> Map.insert k v acc) Map.empty  
@@ -871,7 +871,7 @@ fromList' = foldr (\(k,v) acc -> Map.insert k v acc) Map.empty
 
 `null` перевіряє, чи мапа є порожня.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.null Map.empty  
 True  
@@ -881,7 +881,7 @@ False
 
 `size` повідомляє про розмір мапи.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.size Map.empty  
 0  
@@ -891,7 +891,7 @@ ghci> Map.size $ Map.fromList [(2,4),(3,3),(4,2),(5,4),(6,4)]
 
 `singleton` бере ключ та значення, та створює мапу, що має одне відображення.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.singleton 3 9  
 fromList [(3,9)]  
@@ -903,7 +903,7 @@ fromList [(3,9),(5,9)]
 
 `member` є предикатом, що приймає ключ і мапу, та повідомляє, чи ключ в мапі або ні.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.member 3 $ Map.fromList [(3,6),(4,3),(6,9)]  
 True  
@@ -913,7 +913,7 @@ False
 
 `map` та `filter` роблять як їх еквіваленти для списків.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.map (*100) $ Map.fromList [(1,1),(2,4),(3,9)]  
 fromList [(1,100),(2,400),(3,900)]  
@@ -923,7 +923,7 @@ fromList [(2,'A'),(4,'B')]
 
 `toList` є зворотнім до `fromList`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.toList . Map.insert 9 2 $ Map.singleton 4 3  
 [(4,3),(9,2)]  
@@ -933,7 +933,7 @@ ghci> Map.toList . Map.insert 9 2 $ Map.singleton 4 3
 
 `fromListWith` є милою маленькою функцією. Вона діє як `fromList`, тільки вона не відкидає дублікати ключів, але використовує надану функцію для вирішення, що з ними робити. Скажімо, дівчина має декілька номерів, і ми маємо асоціативний список приблизно такого вигляду.
 
-[source,scala]
+[source,haskell]
 ----
 phoneBook =   
     [("betty","555-2938")  
@@ -951,7 +951,7 @@ phoneBook =
 
 Тепер, якщо ми просто використовуємо `fromList` щоб перенести це в мапу, ми втратимо декілька номерів! Так що ось як ми будемо робити:
 
-[source,scala]
+[source,haskell]
 ----
 phoneBookToMap :: (Ord k) => [(k, String)] -> Map.Map k String  
 phoneBookToMap xs = Map.fromListWith (\number1 number2 -> number1 ++ ", " ++ number2) xs  
@@ -965,7 +965,7 @@ ghci> Map.lookup "betty" $ phoneBookToMap phoneBook
 
 Якщо ми знайдемо дублікований ключ, функція, яку ми передали, буде використана для комбінації ціх значень для ключа в деяке інше значення. Ми можемо також спочатку створити для всіх значень в асоціативному списку списки синглтони, і потім ми можемо використати `++` для комбінації чисел.
 
-[source,scala]
+[source,haskell]
 ----
 phoneBookToMap :: (Ord k) => [(k, a)] -> Map.Map k [a]  
 phoneBookToMap xs = Map.fromListWith (++) $ map (\(k,v) -> (k,[v])) xs  
@@ -975,7 +975,7 @@ ghci> Map.lookup "patsy" $ phoneBookToMap phoneBook
 
 Дуже добре! Інший випадок це коли ми робимо мапу з асоціативного списку чисел, і коли трапляється дублікований ключ, ми бажаємо зберігти більше значення для ключа.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.fromListWith max [(2,3),(2,5),(2,100),(3,29),(3,22),(3,11),(4,22),(4,15)]  
 fromList [(2,100),(3,29),(4,22)]  
@@ -983,7 +983,7 @@ fromList [(2,100),(3,29),(4,22)]
 
 Або ми можемо скласти разом значення по тому самому ключу.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.fromListWith (+) [(2,3),(2,5),(2,100),(3,29),(3,22),(3,11),(4,22),(4,15)]  
 fromList [(2,108),(3,62),(4,37)]  
@@ -991,7 +991,7 @@ fromList [(2,108),(3,62),(4,37)]
 
 `insertWith` те саме до `insert`, що `fromListWith` до `fromList`. Вона вставляє пару ключ-значення в мапу, але якщо мапа вже містить ключ, вона використовує передану функцію для визначення того, що треба робити.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Map.insertWith (+) 3 100 $ Map.fromList [(3,4),(5,103),(6,339)]  
 fromList [(3,104),(5,103),(6,339)]  
@@ -1008,7 +1008,7 @@ image:images/legosets.png[]
 
 Покладіть твердження `import` в скрипт:
 
-[source,scala]
+[source,haskell]
 ----
 import qualified Data.Set as Set  
 ----
@@ -1017,7 +1017,7 @@ import qualified Data.Set as Set
 
 Скажімо ми маємо два шматки тексту. Ми бажаємо з'ясувати, які символи використовуються в кожному з них.
 
-[source,scala]
+[source,haskell]
 ----
 text1 = "I just had an anime dream. Anime... Reality... Are they so different?"  
 text2 = "The old man left his garbage can out and now his trash is all over my lawn!"  
@@ -1025,7 +1025,7 @@ text2 = "The old man left his garbage can out and now his trash is all over my l
 
 Функція `fromList` робить майже як ви могли очікувати. Вона бере список та конвертуж його в множину.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let set1 = Set.fromList text1  
 ghci> let set2 = Set.fromList text2  
@@ -1037,7 +1037,7 @@ fromList " !Tabcdefghilmnorstuvwy"
 
 Як ви можете бачити, елементи впорядковані і кожний елемент унікальний. Тепер давайте використаємо функцію `intersection` щоб побачити, які елементи поділяють обоє.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Set.intersection set1 set2  
 fromList " adefhilmnorstuy"  
@@ -1045,7 +1045,7 @@ fromList " adefhilmnorstuy"
 
 Ми можемо використовувати функцію `difference` щоб побачити, які літери в першій множині, але не в другій, і навпаки.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Set.difference set1 set2  
 fromList ".?AIRj"  
@@ -1055,7 +1055,7 @@ fromList "!Tbcgvw"
 
 Або ми можемо бачити всі унікальні літери в обох послідовностях з використанням `union`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Set.union set1 set2  
 fromList " !.?AIRTabcdefghijlmnorstuvwy"  
@@ -1063,7 +1063,7 @@ fromList " !.?AIRTabcdefghijlmnorstuvwy"
 
 Функції `null`, `size`, `member`, `empty`, `singleton`, `insert` та `delete` всі роблять як ви могли цього очікувати.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Set.null Set.empty  
 True  
@@ -1083,7 +1083,7 @@ fromList [3,5]
 
 Ми також можемо перевірити підмножини. Множина `A` є підмножиною `B`, якщо `B` містить всі елементи, що і `A`. Множина `A` є власне підмножиною множини `B`, якщо `B` містить всі елементи, що і `A` ,але також і інші елементи.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Set.fromList [2,3,4] `Set.isSubsetOf` Set.fromList [1,2,3,4,5] 
 True  
@@ -1097,7 +1097,7 @@ False
 
 Ми також можемо відображати множини і фільтрувати їх.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Set.filter odd $ Set.fromList [3,4,5,6,7,2,3,4]  
 fromList [3,5,7]  
@@ -1107,7 +1107,7 @@ fromList [3,4,5,6,7,8]
 
 Множини часто використовуються для позбавлення списків від дублікатів, спершу перетворивши їх на множину за допомогою `fromList`, та потім перетворивши її на список за допомогою `toList`. Функція `Data.List` `nub` вже робить це, але зачистка дублікатів для великих списків значно швидша, якщо ви перекачаєте його в множину, ніж якщо використаєте `nub`. Але викорастання `nub` вимагає тільки щоб тип елементів списку був частиною типокласу `Eq`, натомість якщо ви бажаєте перевести елементи в множину, тип списку має бути в `Ord`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let setNub xs = Set.toList $ Set.fromList xs  
 ghci> setNub "HEY WHATS CRACKALACKIN"  
@@ -1129,7 +1129,7 @@ image:images/making_modules.png[]
 
 На початку модуля ми вказуємо ім'я модуля. Якщо ми маємо файл з назвою `Geometry.hs`, тоді ми маємо назвати наш модуль `Geometry`. Потім ми вказуємо функції, які він експортує, і після цього ми починаємо писати функції. Так що ми почнемо з цього.
 
-[source,scala]
+[source,haskell]
 ----
 module Geometry  
 ( sphereVolume  
@@ -1143,7 +1143,7 @@ module Geometry
 
 Як ми бачимо, ми робимо площі та об'єми для сфер, кубів та кубоїдів. Ідемо далі і визначаємо функції:
 
-[source,scala]
+[source,haskell]
 ----
 module Geometry  
 ( sphereVolume  
@@ -1178,19 +1178,25 @@ rectangleArea a b = a * b
 
 Тут досить стандартна геометрія. Деякі речі мають прийти на думку. Оскільки куб лише особливий випадок кубоїду, ми визначили його площу та об'єм через трактування його як кубоїда, в якого всі сторони рівної довжини. Ми також визначили допоміжну функцію з назвою `rectangleArea`, що обчислює площу прямокутника на основі довжини сторін. Вона скоріше тривіальна, бо це лише множення. Зауважте, що ми використали її в наших функціях в модулі (а саме `cuboidArea` та `cuboidVolume`), але ми не експортували її! Оскільки ми лише бажаємо, щоб наш модуль представляв лише функції, що мають справу з тривимірними об'єктами, ми використали `rectangleArea`, але ми не експортували її.
 
-When making a module, we usually export only those functions that act as a sort of interface to our module so that the implementation is hidden. If someone is using our Geometry module, they don't have to concern themselves with functions that we don't export. We can decide to change those functions completely or delete them in a newer version (we could delete rectangleArea and just use * instead) and no one will mind because we weren't exporting them in the first place.
+При створенні модуля ми зазвичай експортуємо тільки ті функції, що діють як різновид інтерфейсу до нашого модуля, так що сама релалізація прохована. Якщо дехто використовує наш модуль `Geometry`, вони не мають обтяжувати себе функціями, які ми не експортуємо. Ми можемо вирішити змінити ці функції повністю, або видалити їх в новій версії (ми можемо видалити `rectangleArea` та замість поставити лише `*`), і ніхто не перейматиметься, бо ми для початку не експортували їх.
 
-To use our module, we just do:
+Щоб використати наш модуль ми просто робимо:
 
+[source,haskell]
+----
 import Geometry  
-Geometry.hs has to be in the same folder that the program that's importing it is in, though.
+----
 
-Modules can also be given a hierarchical structures. Each module can have a number of sub-modules and they can have sub-modules of their own. Let's section these functions off so that Geometry is a module that has three sub-modules, one for each type of object.
+`Geometry.hs` повинен бути в тій же папці, що і програма, до якої ми його імпортуємо.
 
-First, we'll make a folder called Geometry. Mind the capital G. In it, we'll place three files: Sphere.hs, Cuboid.hs, and Cube.hs. Here's what the files will contain:
+Модулі також можуть бути взяті як ієрархічні структури. Кожний модуль може мати декілька субмодулів, і ті також можуть мати власні субмодулі. Давайте поділимо ці функції, так що `Geometry` буде модулем, що має три субмодулі, по одному для кожного типу об'єктів.
 
-Sphere.hs
+Спочатку створимо папку з назвою `Geometry`. Подумайте про велику  `G`. В цій папці розташуємо три файли: `Sphere.hs`, `Cuboid.hs`, та `Cube.hs`. Ось що будуть містити файли:
 
+`Sphere.hs`
+
+[source,haskell]
+----
 module Geometry.Sphere  
 ( volume  
 , area  
@@ -1201,8 +1207,12 @@ volume radius = (4.0 / 3.0) * pi * (radius ^ 3)
   
 area :: Float -> Float  
 area radius = 4 * pi * (radius ^ 2)  
-Cuboid.hs
+----
 
+`Cuboid.hs`
+
+[source,haskell]
+----
 module Geometry.Cuboid  
 ( volume  
 , area  
@@ -1216,8 +1226,12 @@ area a b c = rectangleArea a b * 2 + rectangleArea a c * 2 + rectangleArea c b *
   
 rectangleArea :: Float -> Float -> Float  
 rectangleArea a b = a * b  
-Cube.hs
+----
 
+`Cube.hs`
+
+[source,haskell]
+----
 module Geometry.Cube  
 ( volume  
 , area  
@@ -1230,20 +1244,26 @@ volume side = Cuboid.volume side side side
   
 area :: Float -> Float  
 area side = Cuboid.area side side side  
-Alright! So first is Geometry.Sphere. Notice how we placed it in a folder called Geometry and then defined the module name as Geometry.Sphere. We did the same for the cuboid. Also notice how in all three sub-modules, we defined functions with the same names. We can do this because they're separate modules. We want to use functions from Geometry.Cuboid in Geometry.Cube but we can't just straight up do import Geometry.Cuboid because it exports functions with the same names as Geometry.Cube. That's why we do a qualified import and all is well.
+----
 
-So now if we're in a file that's on the same level as the Geometry folder, we can do, say:
+Гаразд! Перше `Geometry.Sphere`. Зауважте, як ми поклали його в папку з назвою `Geometry`, та потім визначили модуль на ім'я `Geometry.Sphere`. Ми зробили те саме для кубоїда. Також зауважте, як в усіх трьох субмодулях ми визначили функції з тими самими назвами. Ми можемо зробити це, оскільки вони в окремих модулях. Ми бажаємо використати функції з `Geometry.Cuboid` в `Geometry.Cube`, але ми не можемо напряму зробити імпорт `Geometry.Cuboid`, оскільки він експортує функції з тими самими іменами, що і `Geometry.Cube`. Ось чому ми зробили кваліфікований імпорт, і все гаразд.
 
+Так що коли ми в файлі на тому самому рівні, що і папка `Geometry`, ми можемо зробити, скажімо, таке:
+
+[source,haskell]
+----
 import Geometry.Sphere  
-And then we can call area and volume and they'll give us the area and volume for a sphere. And if we want to juggle two or more of these modules, we have to do qualified imports because they export functions with the same names. So we just do something like:
+----
 
-[source,scala]
+І потім ми можемо викликати `area` та `volume`, і вони даватимуть нам площу та об'єм сфери. Але якщо ми бажаємо жанглювати двома або більше з ціх модулів, ми маємо робити кваліфікований імпорт, оскільки вони експортують функції з тіма самими іменами. Так що ми робимо дещо таке:
+
+[source,haskell]
 ----
 import qualified Geometry.Sphere as Sphere  
 import qualified Geometry.Cuboid as Cuboid  
 import qualified Geometry.Cube as Cube  
 ----
 
-And then we can call Sphere.area, Sphere.volume, Cuboid.area, etc. and each will calculate the area or volume for their corresponding object.
+І потім ми можемо викликати `Sphere.area`, `Sphere.volume`, `Cuboid.area`, тощо, і кожний буде обчислювати площу та об'єм для свого відповідного об'єкту.
 
-The next time you find yourself writing a file that's really big and has a lot of functions, try to see which functions serve some common purpose and then see if you can put them in their own module. You'll be able to just import your module the next time you're writing a program that requires some of the same functionality.
+Наступного разу, коли ви будете писати файл, що дійсно великий, та має безліч функцій, спробуйте визначити, які функції служать якімось загальним цілям, і потім розгляньте, як покласти ці функції у свій власний модуль. Ви будете в змозі просто імпортувати ваш власний модуль наступного разу, коли ви писатимите програму, що потребує тої самої функціональності.

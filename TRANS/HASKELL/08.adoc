@@ -116,7 +116,7 @@ ghci> surface (Circle (Point 0 0) 24)
 1809.5574  
 ----
 
-Як щодо функції, що рухає фігуру? Вона бере фігуру, величину руху по осі `x`, величину руху осі `y`, та потім повертає нову фігуру, що має ті самі розміри, але розміщений в іншому місці.
+Як щодо функції, що рухає фігуру? Вона бере фігуру, величину руху по осі `x`, величину руху по осі `y`, та потім повертає нову фігуру, що має ті самі розміри, але розміщений в іншому місці.
 
 [source,scala]
 ----
@@ -210,7 +210,7 @@ flavor :: Person -> String
 flavor (Person _ _ _ _ _ flavor) = flavor  
 ----
 
-Хух! Я напевне не був радий написати це! Не зважаючи на плутанину в СКУКУ під час написання, цей метод робить.
+Хух! Я напевне не був радий написати це! Не зважаючи на плутанину і СКУКУ під час написання, цей метод робить.
 
 [source,scala]
 ----
@@ -238,39 +238,58 @@ data Person = Person { firstName :: String
                      } deriving (Show)   
 ----
 
-So instead of just naming the field types one after another and separating them with spaces, we use curly brackets. First we write the name of the field, for instance, firstName and then we write a double colon :: (also called Paamayim Nekudotayim, haha) and then we specify the type. The resulting data type is exactly the same. The main benefit of this is that it creates functions that lookup fields in the data type. By using record syntax to create this data type, Haskell automatically made these functions: firstName, lastName, age, height, phoneNumber and flavor.
+Так що замість називати типи полів один за одним, та розділяти їх проміжками ми використовуємо фігурні дужки. Спочатку ми пишемо ім'я поля, наприклад `firstName`, та потім ми пишемо дві двокрапки `::` (що також називається `Paamayim Nekudotayim`, ахаха - _насправді це саме подвійна двокрапка на івриті, назва з'явилась вперше в PHP3 як кваліфікатор поля зору. прим.перекл._), і потім ми задаємо тип. Результуючий тип даних саме такий. Головна перевага цього в тому, що він створює функції, що шукають поля в типі даних. Через використання синтаксису полів для створення цього типу даних, Haskell автоматично створює ці функції: `firstName`, `lastName`, `age`, `height`, `phoneNumber` та `flavor`.
 
+[source,scala]
+----
 ghci> :t flavor  
 flavor :: Person -> String  
 ghci> :t firstName  
 firstName :: Person -> String  
-There's another benefit to using record syntax. When we derive Show for the type, it displays it differently if we use record syntax to define and instantiate the type. Say we have a type that represents a car. We want to keep track of the company that made it, the model name and its year of production. Watch.
+----
 
+Є інша вигода використовувати синтаксис записів. Коли ви наслідуєте  `Show` для типа, він відображує його по різному, якщо ми використоауємо синтаксис запису при визначенні і створенні екземпляру типу. Скажімо ми маємо тип, що представляє машину. Ми бажаємо відслідковувати компанію, що виробляє її, назву моделі, та рік її виробництва. Дивіться.
+
+[source,scala]
+----
 data Car = Car String String Int deriving (Show)  
 ghci> Car "Ford" "Mustang" 1967  
 Car "Ford" "Mustang" 1967  
-If we define it using record syntax, we can make a new car like this.
+----
 
+Якщо ми використаємо синтаксис запису, ми можемо створити нову машину таким чином.
+
+[source,scala]
+----
 data Car = Car {company :: String, model :: String, year :: Int} deriving (Show)  
 ghci> Car {company="Ford", model="Mustang", year=1967}  
 Car {company = "Ford", model = "Mustang", year = 1967}  
-When making a new car, we don't have to necessarily put the fields in the proper order, as long as we list all of them. But if we don't use record syntax, we have to specify them in order.
+----
 
-Use record syntax when a constructor has several fields and it's not obvious which field is which. If we make a 3D vector data type by doing data Vector = Vector Int Int Int, it's pretty obvious that the fields are the components of a vector. However, in our Person and Car types, it wasn't so obvious and we greatly benefited from using record syntax.
+Коли ми створюємо машину, ми не обов'язково покладаємо поля в певному порядку, доки ми вказуємо їх всі. Але якщо ми не використовуємо синтаксис запису, ми маємо вказувати їх по порядку.
 
-Type parameters
-A value constructor can take some values parameters and then produce a new value. For instance, the Car constructor takes three values and produces a car value. In a similar manner, type constructors can take types as parameters to produce new types. This might sound a bit too meta at first, but it's not that complicated. If you're familiar with templates in C++, you'll see some parallels. To get a clear picture of what type parameters work like in action, let's take a look at how a type we've already met is implemented.
+Використовуйте синтаксис записів, коли конструктор має декілька полів, і не очевидне, яке поле є яке. Якщо ми створюємо тип даних для тривимірного вектора, роблячи `data Vector = Vector Int Int Int`, є досить очевидним, що поля є компонентами вектора. Але в наших типах `Person` та `Car` це не буде таким очевидним, і ми отримаємо велику вигоду, використовуючи синтаксис запису.
 
+=== Параметри типів
+
+Конструктор значення може приймати деякі параметри значення, та потім продукувати нове значення. Наприклад, конструктор `Car` бере три значення і продукує значення машини. В подібний спосіб конструктори типів можуть приймати типи та продукувати нові типи. Спочатку це може виглядати трохи абстрактним, але це не так складно. Якщо ви знайомі з шаблонами в C++, ви побачите деякі паралелі. Щоб отримати ясну картину як діють параметри типів насправді, давайте поглянемо, як реалізовані типи, з якими ми вже зустрічались.
+
+[source,scala]
+----
 data Maybe a = Nothing | Just a  
-yeti
-The a here is the type parameter. And because there's a type parameter involved, we call Maybe a type constructor. Depending on what we want this data type to hold when it's not Nothing, this type constructor can end up producing a type of Maybe Int, Maybe Car, Maybe String, etc. No value can have a type of just Maybe, because that's not a type per se, it's a type constructor. In order for this to be a real type that a value can be part of, it has to have all its type parameters filled up.
+----
 
-So if we pass Char as the type parameter to Maybe, we get a type of Maybe Char. The value Just 'a' has a type of Maybe Char, for example.
+image:images/yeti.png[]
+Тут `a` є параметром типу. І оскільки задіяно параметр типу, ми викликаємо конструктор типу `Maybe`. В залежності від того, який тип даних ми бажаємо містити, коли це не `Nothing`, цей конструктор може кінець кінцем продукувати тип `Maybe Int`, `Maybe Car`, `Maybe String`, тощо. Жодне значення не може мати тип просто `Maybe`, оскільки це не тип як такий, це конструктор типів. Щоб це стало реальним типом, частиною якого може бути значення, він має заповнити всі свої параметри типів.
 
-You might not know it, but we used a type that has a type parameter before we used Maybe. That type is the list type. Although there's some syntactic sugar in play, the list type takes a parameter to produce a concrete type. Values can have an [Int] type, a [Char] type, a [[String]] type, but you can't have a value that just has a type of [].
+Так що коли ми передамо `Char` як параметр типів до `Maybe`, ми отримаємо тип `Maybe Char`. Значення `Just 'a'` має тип `Maybe Char`, як для прикладу.
 
-Let's play around with the Maybe type.
+Ви могли цього не знати, але ми використовували тип, що мав параметр типу, перед тим як ми використовували `Maybe`. Цей тип є тип списку. Хоча тут задієний деякий синтаксичний цукор, тип списку приймає параметр для утворення певного типу. Значення можуть мати тип `[Int]`, тип `[Char]`, тип `[[String]]`, але ви не можете мати значення, що має просто тип `[]`.
 
+Давайте пограємось з типом `Maybe`.
+
+[source,scala]
+----
 ghci> Just "Haha"  
 Just "Haha"  
 ghci> Just 84  
@@ -283,35 +302,55 @@ ghci> :t Nothing
 Nothing :: Maybe a  
 ghci> Just 10 :: Maybe Double  
 Just 10.0  
-Type parameters are useful because we can make different types with them depending on what kind of types we want contained in our data type. When we do :t Just "Haha", the type inference engine figures it out to be of the type Maybe [Char], because if the a in the Just a is a string, then the a in Maybe a must also be a string.
+----
 
-Notice that the type of Nothing is Maybe a. Its type is polymorphic. If some function requires a Maybe Int as a parameter, we can give it a Nothing, because a Nothing doesn't contain a value anyway and so it doesn't matter. The Maybe a type can act like a Maybe Int if it has to, just like 5 can act like an Int or a Double. Similarly, the type of the empty list is [a]. An empty list can act like a list of anything. That's why we can do [1,2,3] ++ [] and ["ha","ha","ha"] ++ [].
+Параметри типів корисні, оскільки ми можемо робити різні типи з їх допомогою, в залежності від того, який тип ми бажаємо щоб містився в нашому типі даних. Коли ми робимо `:t Just "Haha"`, рушій виводу типів здогадується, що тип має бути `Maybe [Char]`, бо якщо `a` в  `Just` є рядком, тоді `a` в `Maybe` також має бути рядком.
 
-Using type parameters is very beneficial, but only when using them makes sense. Usually we use them when our data type would work regardless of the type of the value it then holds inside it, like with our Maybe a type. If our type acts as some kind of box, it's good to use them. We could change our Car data type from this:
+Зауважте, що тип `Nothing` є `Maybe a`. Його тип поліморфний. Якщо деяка функція потребує `Maybe Int` в якості параметра, ми можемо дати їй `Nothing`, оскільки `Nothing` все одно не містить значення, так що воно не має значення. Тип `Maybe a` може діяти як `Maybe Int` в разі потреби, так само, як `5` може діяти як `Int` або `Double`. Подібним чином тип порожнього списку є `[a]`. Порожній список може діяти як список будь чого. Ось чому ми можемо робити `[1,2,3] ++ []` та `["ha","ha","ha"] ++ []`.
 
+Використання параметрів типів дуже корисні, але тільки якщо їх використання має сенс. Зазвичай ми використовуємо їх, коли наш тип даних буде робити незалежно від типа значення, що буде міститись в ньому. Якщо наш тип діє як свого роду ящик, буде гарно використати його. Ми можемо змінити наш тип даних `Car` з такого:
+
+[source,scala]
+----
 data Car = Car { company :: String  
                , model :: String  
                , year :: Int  
                } deriving (Show)  
-To this:
+----
 
+До такого:
+
+[source,scala]
+----
 data Car a b c = Car { company :: a  
                      , model :: b  
                      , year :: c   
                      } deriving (Show)  
-But would we really benefit? The answer is: probably no, because we'd just end up defining functions that only work on the Car String String Int type. For instance, given our first definition of Car, we could make a function that displays the car's properties in a nice little text.
+----
 
+Але чи буде з цього користь? Відповідь така: мабуть ні, бо ми лише скінчимо визначенням функцій, що роблять на типі `Car String String Int`. Наприклад, беручи наше перше визначення `Car`, ми можемо створити функцію, що показує властивості машини в вигляді невеликого гарного тексту.
+
+[source,scala]
+----
 tellCar :: Car -> String  
 tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ " was made in " ++ show y  
 ghci> let stang = Car {company="Ford", model="Mustang", year=1967}  
 ghci> tellCar stang  
 "This Ford Mustang was made in 1967"  
-A cute little function! The type declaration is cute and it works nicely. Now what if Car was Car a b c?
+----
 
+Мила мала функція! Декларація типу мила і вона робить гарно. Тепер що буде, коли б `Car` був `Car a b c`?
+
+[source,scala]
+----
 tellCar :: (Show a) => Car String String a -> String  
 tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ " was made in " ++ show y  
-We'd have to force this function to take a Car type of (Show a) => Car String String a. You can see that the type signature is more complicated and the only benefit we'd actually get would be that we can use any type that's an instance of the Show typeclass as the type for c.
+----
 
+Ми б мали примушувати цю функцію приймати тип `Car` `(Show a) => Car String String a`. Ви бачите що ця сигнатура типу більш ускладнена, і дійсно може бути корисною, коли б могли використовувати любий тип, що є примірником типокласу `Show`, як тип для `c`.
+
+[source,scala]
+----
 ghci> tellCar (Car "Ford" "Mustang" 1967)  
 "This Ford Mustang was made in 1967"  
 ghci> tellCar (Car "Ford" "Mustang" "nineteen sixty seven")  
@@ -320,18 +359,26 @@ ghci> :t Car "Ford" "Mustang" 1967
 Car "Ford" "Mustang" 1967 :: (Num t) => Car [Char] [Char] t  
 ghci> :t Car "Ford" "Mustang" "nineteen sixty seven"  
 Car "Ford" "Mustang" "nineteen sixty seven" :: Car [Char] [Char] [Char]  
-meekrat
-In real life though, we'd end up using Car String String Int most of the time and so it would seem that parameterizing the Car type isn't really worth it. We usually use type parameters when the type that's contained inside the data type's various value constructors isn't really that important for the type to work. A list of stuff is a list of stuff and it doesn't matter what the type of that stuff is, it can still work. If we want to sum a list of numbers, we can specify later in the summing function that we specifically want a list of numbers. Same goes for Maybe. Maybe represents an option of either having nothing or having one of something. It doesn't matter what the type of that something is.
+----
 
-Another example of a parameterized type that we've already met is Map k v from Data.Map. The k is the type of the keys in a map and the v is the type of the values. This is a good example of where type parameters are very useful. Having maps parameterized enables us to have mappings from any type to any other type, as long as the type of the key is part of the Ord typeclass. If we were defining a mapping type, we could add a typeclass constraint in the data declaration:
+image:images/meekrat.png[]
+Однак в реальному житті ми будемо в більшості випадків використовувати `Car String String Int`, так що параметризація типів типу `Car` насправді не варта цього. Ми звичайно використовуємо параметри типів, коли тип, що міститься в різних конструкторах типу даних насправді не такий важливий для роботи типу. Список речей є список речей, і немає значення, якого типу є ці речі - він все одне буде робити. Якщо ви бажаєте отримати суму чисел, ми можемо вказати візніше в функції суми, що нам потрібен список чисел. Те саме і щодо `Maybe`. `Maybe` представляє опцію або не мати нічого, або мати одне щось. Не має значення, якого типу є це дещо.
 
+Інший тип параметризованого типу є те, з чим ми вже стикались, і це `Map k v` з `Data.Map`. `k` є типом ключів в мапі, і `v` є типом значень. Це гарний приклад того, де параметри типів дуже корисні. Маючі параметризовані мапи дозволяє нам робити відображення з любого типу на інший тип, доки тип ключа є частиною типокласу `Ord`. Якщо ми визначили тип відображення, ми можемо додати обмеження типокласу в декларації даних:
+
+[source,scala]
+----
 data (Ord k) => Map k v = ...  
-However, it's a very strong convention in Haskell to never add typeclass constraints in data declarations. Why? Well, because we don't benefit a lot, but we end up writing more class constraints, even when we don't need them. If we put or don't put the Ord k constraint in the data declaration for Map k v, we're going to have to put the constraint into functions that assume the keys in a map can be ordered. But if we don't put the constraint in the data declaration, we don't have to put (Ord k) => in the type declarations of functions that don't care whether the keys can be ordered or not. An example of such a function is toList, that just takes a mapping and converts it to an associative list. Its type signature is toList :: Map k a -> [(k, a)]. If Map k v had a type constraint in its data declaration, the type for toList would have to be toList :: (Ord k) => Map k a -> [(k, a)], even though the function doesn't do any comparing of keys by order.
+----
 
-So don't put type constraints into data declarations even if it seems to make sense, because you'll have to put them into the function type declarations either way.
+Однак існує дуже сильна домовленість в Haskell ніколи не додавати обмеження типокласів в декларації даних. Чому? Гаразд, бо ми не отримаємо багато вигоди, але ми закінчимо написанням додаткових класових обмежень, навіть якщо не потребуємо їх. Якщо ми покладемо, або не покладемо обмеження `Ord k` в декларацію даних для `Map k v`, ми матимемо покладати обмеження в функції, що очікують, що ключі в мапі можуть бути впорядковані. Але якщо ми не покладемо обмеження в декларацію даних, ми не маємо ставити `(Ord k) =>` в декларації типу функцій, що не переймаються через впорядкованість ключів. Прикладом такої функції є `toList`, що просто бере відображення, та конвертує його в асоціативний список. Її сигнатура типу є `toList ::Map k a -> [(k, a)]`. Якщо `Map k v` має обмеження типу в своїй декларації типу, тип для `toList` має бути `toList ::(Ord k) => Map k a -> [(k, a)]`, навіть якщо функція не робить жодних порівнянь ключів за порядком.
 
-Let's implement a 3D vector type and add some operations for it. We'll be using a parameterized type because even though it will usually contain numeric types, it will still support several of them.
+Так що не покладайте обмеження типу в визначення даних, навіть якщо це виглядає як маюче сенс, бо ви матимете покладати їх в декларації типів функцій в жодному випадку.
 
+Давайте реалізуємо тип 3D вектора, і додамо до нього деякі операції. Ми будемо використовувати параметризований тип, бо якщо він звичайно буде містити числові типи, він все одно буде підтримувати декілька з них.
+
+[source,scala]
+----
 data Vector a = Vector a a a deriving (Show)  
   
 vplus :: (Num t) => Vector t -> Vector t -> Vector t  
@@ -342,10 +389,14 @@ vectMult :: (Num t) => Vector t -> t -> Vector t
   
 scalarMult :: (Num t) => Vector t -> Vector t -> t  
 (Vector i j k) `scalarMult` (Vector l m n) = i*l + j*m + k*n  
-vplus is for adding two vectors together. Two vectors are added just by adding their corresponding components. scalarMult is for the scalar product of two vectors and vectMult is for multiplying a vector with a scalar. These functions can operate on types of Vector Int, Vector Integer, Vector Float, whatever, as long as the a from Vector a is from the Num typeclass. Also, if you examine the type declaration for these functions, you'll see that they can operate only on vectors of the same type and the numbers involved must also be of the type that is contained in the vectors. Notice that we didn't put a Num class constraint in the data declaration, because we'd have to repeat it in the functions anyway.
+----
 
-Once again, it's very important to distinguish between the type constructor and the value constructor. When declaring a data type, the part before the = is the type constructor and the constructors after it (possibly separated by |'s) are value constructors. Giving a function a type of Vector t t t -> Vector t t t -> t would be wrong, because we have to put types in type declaration and the vector type constructor takes only one parameter, whereas the value constructor takes three. Let's play around with our vectors.
+`vplus` існує для додавання разом двох векторів. Два вектори додаються просто через додавання своїх відповідних компонент. `scalarMult` є для скалярнрного множення двох векторів, і `vectMult` для множення вектора на скаляр. Ці методи можуть оперувати на типах `Vector Int`, `Vector Integer`, `Vector Float`, та будь-чого, доки  `a` в `Vector a` належить з типокласу `Num`. Також, якщо ви перевірите декларації типів для ціх функцій, ви побачите, що вони можуть оперувати тільки на векторах одного типу, і задіяні числа також мають бути одного типу, що міститься в векторах. Зауважте, що ми не покладаємо обмеження класу `Num` в декларацію даних, бо ми  все одно повторюємо його в функціях.
 
+І ще раз: дуже важливо розрізняти конструктор типу і конструктор значення. При декларації типу даних, частина перед `=` є конструктором типу, і конструктори після нього (можливо розділені `|`) є конструкторами значення. Беручи функцію типу `Vector t t t -> Vector t t t -> t` буде помилкою, оскільки ми маємо покладати типи в декларації типів, і конструктор типу вектора приймає тільки один параметр, тоді як конструктор значення бере три. Давайте пограємось з нашими векторами.
+
+[source,scala]
+----
 ghci> Vector 3 5 8 `vplus` Vector 9 2 8  
 Vector 12 7 16  
 ghci> Vector 3 5 8 `vplus` Vector 9 2 8 `vplus` Vector 0 2 3  
@@ -356,28 +407,41 @@ ghci> Vector 4 9 5 `scalarMult` Vector 9.0 2.0 4.0
 74.0  
 ghci> Vector 2 9 3 `vectMult` (Vector 4 9 5 `scalarMult` Vector 9 2 4)  
 Vector 148 666 222  
-Derived instances
-gob
-In the Typeclasses 101 section, we explained the basics of typeclasses. We explained that a typeclass is a sort of an interface that defines some behavior. A type can be made an instance of a typeclass if it supports that behavior. Example: the Int type is an instance of the Eq typeclass because the Eq typeclass defines behavior for stuff that can be equated. And because integers can be equated, Int is a part of the Eq typeclass. The real usefulness comes with the functions that act as the interface for Eq, namely == and /=. If a type is a part of the Eq typeclass, we can use the == functions with values of that type. That's why expressions like 4 == 4 and "foo" /= "bar" typecheck.
+----
 
-We also mentioned that they're often confused with classes in languages like Java, Python, C++ and the like, which then baffles a lot of people. In those languages, classes are a blueprint from which we then create objects that contain state and can do some actions. Typeclasses are more like interfaces. We don't make data from typeclasses. Instead, we first make our data type and then we think about what it can act like. If it can act like something that can be equated, we make it an instance of the Eq typeclass. If it can act like something that can be ordered, we make it an instance of the Ord typeclass.
+=== Виведені примірники
 
-In the next section, we'll take a look at how we can manually make our types instances of typeclasses by implementing the functions defined by the typeclasses. But right now, let's see how Haskell can automatically make our type an instance of any of the following typeclasses: Eq, Ord, Enum, Bounded, Show, Read. Haskell can derive the behavior of our types in these contexts if we use the deriving keyword when making our data type.
+image:images/gob.png[]
+В розділі Типокласи 101 ми пояснили основи типокласів. Ми пояснили, що типокласи є різновидом інтерфейса, що визначає деяку поведінку. Тип може бути зроблений примірником типокласу, якщо він підтримує цю поведінку. Приклад: тип `Int` є примірником типокласу `Eq`, оскільки типоклас `Eq` визначає поведінку для речей, що можуть бути рівними. І оскільки можливо порівняти цілі, `Int` є частиною типокласу `Eq`. Реальна користь іде від функцій, що діють як інтерфейс для `Eq`, а саме `==` та `/=`. Якщо тип є частиною типокласу `Eq`, ми можемо використовувати функції `==` зі значенням цього типу. Ось чому вирази як `4 == 4` та `"foo" /= "bar"` проходять перевірку типів.
 
-Consider this data type:
+Ми також зазначали, що вони часто плутаються з класами в мовах як Java, Python, C++ і тому подібних, що потім бентежить багато людей. В ціх мовах класи є калькою, з якої потім створюються об'єкти, що мають стан та можуть виконувати деякі дії. Типокласи більше подібні до інтерфейсів. Ми не створюємо дані з типокласів. Замість цього ми створюємо наші типи даних, і потім ми думаємо, як вони можуть діяти. Якщо вони можуть діяти як дещо, що можливо порівняти, ми робимо його примірником типокласа `Eq`. Якщо воно діє як дещо, що можливо впорядкувати, ми робимо його примірником типокласу `Ord`.
 
+В наступному розділі ми поглянемо, як ми можемо вручну зробити наші типи примірниками типокласів, через реалізацію функцій, визначених в типокласах. Але прямо зараз давайте поглянемо, як Haskell може автоматично зробити наш тип примірником наступних типокласів: `Eq`, `Ord`, `Enum`, `Bounded`, `Show`, `Read`. Haskell може вивести поведінку наших типів в ціх контекстах, якщо ми використовуємо ключове слово `deriving` при створенні нашого типу даних.
+
+Розглянемо цей тип даних:
+
+[source,scala]
+----
 data Person = Person { firstName :: String  
                      , lastName :: String  
                      , age :: Int  
                      }  
-It describes a person. Let's assume that no two people have the same combination of first name, last name and age. Now, if we have records for two people, does it make sense to see if they represent the same person? Sure it does. We can try to equate them and see if they're equal or not. That's why it would make sense for this type to be part of the Eq typeclass. We'll derive the instance.
+----
 
+Він описує особу. Уявімо, що жодні дві людини не мають ту саму комбінацію імені, фамілії та віку. Тепер, якщо ми маємо записи про двох людей, чи матиме сенс перевірити, що вони представляють ту саму особу? Напевне що так. Ми можемо спробувати порівняти їх, щоб побачити, чи воні однакові чи ні. Ось чому має сенс для цього типу бути частиною типокласу `Eq`. Ми виведемо примірник.
+
+[source,scala]
+----
 data Person = Person { firstName :: String  
                      , lastName :: String  
                      , age :: Int  
                      } deriving (Eq)  
-When we derive the Eq instance for a type and then try to compare two values of that type with == or /=, Haskell will see if the value constructors match (there's only one value constructor here though) and then it will check if all the data contained inside matches by testing each pair of fields with ==. There's only one catch though, the types of all the fields also have to be part of the Eq typeclass. But since both String and Int are, we're OK. Let's test our Eq instance.
+----
 
+Коли ми виводимо примірник `Eq` для типа, і потім намагаємось порівняти два значення цього типу за допомогою `==` або `/=`, Haskell подивиться, чи співпадають конструктори значень (в нас тільки один конструктор значень), і потім він перевірить, що всі дані, які містяться всередині співпадають, через перевірку пар полів за допомогою `==`. Однак є одна пастка: типи всіх полів також мають бути частиною типокласу `Eq`. Але оскільки обоє, `String` та `Int` - так, то в нас все гаразд. Давайте перевіримо наш примірник `Eq`.
+
+[source,scala]
+----
 ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}  
 ghci> let adRock = Person {firstName = "Adam", lastName = "Horovitz", age = 41}  
 ghci> let mca = Person {firstName = "Adam", lastName = "Yauch", age = 44}  
@@ -389,49 +453,81 @@ ghci> mikeD == mikeD
 True  
 ghci> mikeD == Person {firstName = "Michael", lastName = "Diamond", age = 43}  
 True  
-Of course, since Person is now in Eq, we can use it as the a for all functions that have a class constraint of Eq a in their type signature, such as elem.
+----
 
+Звичайно, оскільки `Person` тепер в `Eq`, ми можемо використовувати його для всіх функцій, що мають обмеження класу `Eq` в своїй сигнатурі типу, таких як `elem`.
+
+[source,scala]
+----
 ghci> let beastieBoys = [mca, adRock, mikeD]  
 ghci> mikeD `elem` beastieBoys  
 True  
-The Show and Read typeclasses are for things that can be converted to or from strings, respectively. Like with Eq, if a type's constructors have fields, their type has to be a part of Show or Read if we want to make our type an instance of them. Let's make our Person data type a part of Show and Read as well.
+----
 
+Типокласи `Show` та `Read` призначені для речей, що можуть бути перетворені на або з рядків, відповідно. Так само, як для `Eq`, якщо конструктор типу має поля, їх тип має бути частиною `Show` або `Read`, якщо ми бажаємо зробити наш тип їх примірником. Давайте зробимо наш тип даних `Person` частиною також `Show` та `Read`.
+
+[source,scala]
+----
 data Person = Person { firstName :: String  
                      , lastName :: String  
                      , age :: Int  
                      } deriving (Eq, Show, Read)  
-Now we can print a person out to the terminal.
+----
 
+Тепер ми можемо друкувати дані про особу на терміналі.
+
+[source,scala]
+----
 ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}  
 ghci> mikeD  
 Person {firstName = "Michael", lastName = "Diamond", age = 43}  
 ghci> "mikeD is: " ++ show mikeD  
 "mikeD is: Person {firstName = \"Michael\", lastName = \"Diamond\", age = 43}"  
-Had we tried to print a person on the terminal before making the Person data type part of Show, Haskell would have complained at us, claiming it doesn't know how to represent a person as a string. But now that we've derived a Show instance for it, it does know.
+----
 
-Read is pretty much the inverse typeclass of Show. Show is for converting values of our a type to a string, Read is for converting strings to values of our type. Remember though, when we use the read function, we have to use an explicit type annotation to tell Haskell which type we want to get as a result. If we don't make the type we want as a result explicit, Haskell doesn't know which type we want.
+Коли б ми спробували друкувати особу на термінал, перед тим, як зробити тип даних `Person` частиною `Show`, Haskell би поскаржився на нас, кажучи що не може представити особу як рядок. Але тепер, коли ми вивели примірник `Show` для цього, він вже знає.
 
+`Read` є достатньо повною протилежністю до типокласу `Show`. `Show` служить перетворенню значень нашого типу до рядка, `Read` для перетворення рядків до значень нашого типу. Однак пам'ятайте, коли ми використовуємо функцію читання, ми маємо використовувати явну анотацію типу, щоб сказати Haskell, який тип ми бажаємо отримати як результат. Якщо ми не зробимо бажаний тип явним, Haskell не знатиме, який тип ми бажаємо.
+
+[source,scala]
+----
 ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" :: Person  
 Person {firstName = "Michael", lastName = "Diamond", age = 43}  
-If we use the result of our read later on in a way that Haskell can infer that it should read it as a person, we don't have to use type annotation.
+----
 
+Якщо ми використовуємо результат нашого читання пізніше в спосіб, що Haskell зможе вивести, що прочитане має використовуватись як особа, ми не повинні використовувати анотацію типу.
+
+[source,scala]
+----
 ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" == mikeD  
 True  
-We can also read parameterized types, but we have to fill in the type parameters. So we can't do read "Just 't'" :: Maybe a, but we can do read "Just 't'" :: Maybe Char.
+----
 
-We can derive instances for the Ord type class, which is for types that have values that can be ordered. If we compare two values of the same type that were made using different constructors, the value which was made with a constructor that's defined first is considered smaller. For instance, consider the Bool type, which can have a value of either False or True. For the purpose of seeing how it behaves when compared, we can think of it as being implemented like this:
+Ми також можемо читати параметризовані типи, але ми повинні заповнити параметри типів. Так що ми не можемо робити `read "Just 't'" :: Maybe a`, але можемо зробити `read "Just 't'" :: Maybe Char`.
 
+Ми можемо вивести примірники для типокласу `Ord`, що є для типів, значення яких можна впорядкувати. Якщо ми порівняємо два значення того самого типу, що були створені з використанням різних конструкторів, значення, що було створене за допомогою конструктора, що був визначений раніше, вважається меньшим. Наприклад, розглянемо тип `Bool`, що має значення або `False` або `True`. Для наших цілей побачити їх поведінку при порівнянні, будемо вважати що вони реалізовані таким чином:
+
+[source,scala]
+----
 data Bool = False | True deriving (Ord)  
-Because the False value constructor is specified first and the True value constructor is specified after it, we can consider True as greater than False.
+----
 
+Оскільки конструктор значення `False` вказаний першим, і конструктор значення `True` вказаний після цього, ми розглядаємо `True` як більше за `False`.
+
+[source,scala]
+----
 ghci> True `compare` False  
 GT  
 ghci> True > False  
 True  
 ghci> True < False  
 False  
-In the Maybe a data type, the Nothing value constructor is specified before the Just value constructor, so a value of Nothing is always smaller than a value of Just something, even if that something is minus one billion trillion. But if we compare two Just values, then it goes to compare what's inside them.
+----
 
+В типі даних `Maybe` конструктор значення `Nothing` вказаний перед конструктором `Just`, так що `Nothing` завжди меньший, ніж значення `Just` дещо, навіть як це дещо мінус мільярд трильйонів. Але якщо ми порівняємо два `Just` значення, тоді відбудеться порівняння того, що в них.
+
+[source,scala]
+----
 ghci> Nothing < Just 100  
 True  
 ghci> Nothing > Just (-49999)  
@@ -440,6 +536,8 @@ ghci> Just 3 `compare` Just 2
 GT  
 ghci> Just 100 > Just 50  
 True  
+----
+
 But we can't do something like Just (*3) > Just (*2), because (*3) and (*2) are functions, which aren't instances of Ord.
 
 We can easily use algebraic data types to make enumerations and the Enum and Bounded typeclasses help us with that. Consider the following data type:
