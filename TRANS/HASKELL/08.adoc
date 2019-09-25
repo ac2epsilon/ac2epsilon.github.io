@@ -8,7 +8,7 @@ include::header.adoc[]
 
 Досі ми зустрічали багато типів даних. `Bool`, `Int`, `Char`, `Maybe`,тощо. Але як ми створюємо свої власні? Гаразд, один спосіб є використання ключового слова `data` для визначення типу. Давайте подивимось, як визначений тип `Bool` в стандартній бібліотеці.
 
-[source,scala]
+[source,haskell]
 ----
 data Bool = False | True  
 ----
@@ -17,7 +17,7 @@ data Bool = False | True
 
 В подібному стилі ми можемо думати про тип `Int`, як визначений таким чином:
 
-[source,scala]
+[source,haskell]
 ----
 data Int = -2147483648 | -2147483647 | ... | -1 | 0 | 1 | 2 | ... | 2147483647  
 ----
@@ -27,17 +27,17 @@ image:images/caveman.png[]
 
 Тепер давайте подумаємо про те, як ми можемо представити фігуру в Haskell. Один спосіб може бути використання таплів. Коло може бути позначено як `(43.1, 55.0, 10.4)`, де перші два поля є координати центру, а третє поле є радіус. Звучить OK, але це може представляти 3D вектор або будь-що ще. Краще рішення може бути зробити ваш власний тип для представлення фігури. Скажімо, фігури, що може бути колом або прямокутником. Ось вона:
 
-[source,scala]
+[source,haskell]
 ----
 data Shape = Circle Float Float Float | Rectangle Float Float Float Float   
-[source,scala]
+[source,haskell]
 ----
 
 Що це тепер? Думайте про це так. Конструктор значення `Circle` має три поля, що приймають числа з плаваючою крапкою. Так що коли ми пишемо конструктор значення, ми можемо опціонально додати деякі типи після нього, і ці типи визначають значення, що він міститиме. Тут перші два поля є координатами його центру, третя є радіусом. Конструктор значення `Rectangle` має чотири поля, що приймають плаваючу крапку. Перші два є координатами його верхнього лівого кута, та другі два є координати його нижнього правого кута.
 
 Тепер, коли я кажу поля, я насправді маю на увазі параметри. Конструктори значень насправді є функціями, що кінець кінцем повертають значення типу даних. Давайте поглянемо на сигнатури типів для ціх двох конструкторів.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> :t Circle  
 Circle :: Float -> Float -> Float -> Shape  
@@ -47,7 +47,7 @@ Rectangle :: Float -> Float -> Float -> Float -> Shape
 
 Круть, так що конструктори значень є функціями як всі інші. Хто б міг подумати? Давайте створимо функцію, що приймає фігуру та повертає її поверхню.
 
-[source,scala]
+[source,haskell]
 ----
 surface :: Shape -> Float  
 surface (Circle _ _ r) = pi * r ^ 2  
@@ -56,7 +56,7 @@ surface (Rectangle x1 y1 x2 y2) = (abs $ x2 - x1) * (abs $ y2 - y1)
 
 Перша помітна річ тут є декларація типу. Вона каже, що функція приймає фігуру та повертає число. Ми не можемо написати декларацію типу `Circle -> Float`, оскільки `Circle` не є типом, але `Shape` так. Це так само, як ми не можемо написати функцію з декларацією типу `True -> Int`. Наступна річ, яку ми відмітимо тут, є те, що ми можемо робити порівняння шаблонів до конструкторів. Ми порівнювали шаблони проти конструкторів до цього (насправді весь час), коли ми порівнювали шаблони проти значень як `[]` або `False` або `5`, тількі ці значення не мали жодних полів. Ми тільки що написали конструктор, та потім прикріпили його поля до імен. Оскільки ми зацікавлені в радіусі, ми насправді не зацікавлені в перших двох полях, що кажуть нам, де знаходиться коло.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> surface $ Circle 10 20 10  
 314.15927  
@@ -66,14 +66,14 @@ ghci> surface $ Rectangle 0 0 100 100
 
 Вау, це робить! Але якщо ви спробуєте просто надрукувати `Circle 10 20 5` в підказці, ми отримаємо помилку. Це тому, що Haskell не знає, як відображувати наші типи даних як рядок (доки). Згадайте, коли ми намагаємось друкувати значення в підказці, Haskell спочатку виконує функцію `show` для отримання рядкової репрезентації нашого значення, та потім він друкує це на термінал. Щоб зробити наш тип `Shape` частиною типокласа `Show`, ми модифікуємо його таким чином:
 
-[source,scala]
+[source,haskell]
 ----
 data Shape = Circle Float Float Float | Rectangle Float Float Float Float deriving (Show)  
 ----
 
 Ми доки не будемо заморочувати себе `deriving` дуже сильно. Давайте просто скажемо, що якщо ми додаємо `deriving (Show)` в кінці декларації даних, Haskell автомагічно робить цей тип частиною типокласу `Show`. Так що зараз ми можемо робити таке:
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Circle 10 20 5  
 Circle 10.0 20.0 5.0  
@@ -83,7 +83,7 @@ Rectangle 50.0 230.0 60.0 90.0
 
 Конструктори значень є функціями, так що ми можемо відображати їх та частково застосовувати їх, і все інше. Якщо ми бажаємо список концентричних з різними радіусами, ми можемо зробити це.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> map (Circle 10 20) [4,5,6,6]  
 [Circle 10.0 20.0 4.0,Circle 10.0 20.0 5.0,Circle 10.0 20.0 6.0,Circle 10.0 20.0 6.0]  
@@ -91,7 +91,7 @@ ghci> map (Circle 10 20) [4,5,6,6]
 
 Наш тип даних гарний, хоча він міг би бути кращим. Давайте створимо проміжний тип даних, що визначає точку в двовимірному просторі. Потім ми можемо використовувати це для створення наших фігур більш зрозумілим способом.
 
-[source,scala]
+[source,haskell]
 ----
 data Point = Point Float Float deriving (Show)  
 data Shape = Circle Point Float | Rectangle Point Point deriving (Show)  
@@ -99,7 +99,7 @@ data Shape = Circle Point Float | Rectangle Point Point deriving (Show)
 
 Зауважте, що коли визначали точку, ми використали те саме ім'я для типу даних та значення конструктора. Це не має особливого значення, хоча це загально використовувати те саме ім'я що і тип, якщо це конструктор одного значення. Так що тепер `Circle` має два поля, один має тип `Point`, та інше тип `Float`. Це спрощує розуміння того, що є що. Те саме стосується і прямокутника. Ми маємо налаштувати нашу функцію `surface` для відзеркалення ціх змін.
 
-[source,scala]
+[source,haskell]
 ----
 surface :: Shape -> Float  
 surface (Circle _ r) = pi * r ^ 2  
@@ -108,7 +108,7 @@ surface (Rectangle (Point x1 y1) (Point x2 y2)) = (abs $ x2 - x1) * (abs $ y2 - 
 
 Одна річ, що ми маємо змініти, це шаблони. Ми зневажили цілу точку в шаблоні кола. В шаблоні прямокутника ми просто використовували вкладене порівняння шаблонів, щоб отримати поля точок. Якщо ми б бажали посилатись на самі точки з якоїсь причини, ми могли б використати `as`-шаблони.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> surface (Rectangle (Point 0 0) (Point 100 100))  
 10000.0  
@@ -118,7 +118,7 @@ ghci> surface (Circle (Point 0 0) 24)
 
 Як щодо функції, що рухає фігуру? Вона бере фігуру, величину руху по осі `x`, величину руху по осі `y`, та потім повертає нову фігуру, що має ті самі розміри, але розміщений в іншому місці.
 
-[source,scala]
+[source,haskell]
 ----
 nudge :: Shape -> Float -> Float -> Shape  
 nudge (Circle (Point x y) r) a b = Circle (Point (x+a) (y+b)) r  
@@ -127,7 +127,7 @@ nudge (Rectangle (Point x1 y1) (Point x2 y2)) a b = Rectangle (Point (x1+a) (y1+
 
 Досить прямолінійно. Ми додаємо зсув до точок, що відповідають за позицію фігури.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> nudge (Circle (Point 34 34) 10) 5 10  
 Circle (Point 39.0 44.0) 10.0  
@@ -135,7 +135,7 @@ Circle (Point 39.0 44.0) 10.0
 
 Якщо ми не бажаємо мати справу напряму з точками, ми можемо зробити деякі додаткові функції, що створюють фігури деякого розміру з нульовими координатами, та потім рухати їх.
 
-[source,scala]
+[source,haskell]
 ----
 baseCircle :: Float -> Shape  
 baseCircle r = Circle (Point 0 0) r  
@@ -150,7 +150,7 @@ Rectangle (Point 60.0 23.0) (Point 100.0 123.0)
 
 Якщо ви бажаєте експортувати функції та типи, що ми визначили тут, в модулі, ми можемо почати, наприклад, так:
 
-[source,scala]
+[source,haskell]
 ----
 module Shapes   
 ( Point(..)  
@@ -173,14 +173,14 @@ module Shapes
 image:images/record.png[]
 OK, ми отримали завдання створити тип даних, що описував би осообу. Інформація, що ми бажаємо зберігати щодо особи, наступна: ім'я, фамілія, вік, зріст, номер телефону та улюблений сорт морозива. Не знаю як щодо вас, але це все, що я будь-коли бажав знати про людину. Давайте дамо цьому хід!
 
-[source,scala]
+[source,haskell]
 ----
 data Person = Person String String Int Float String String deriving (Show)  
 ----
 
 Окей. Перше поле є першим ім'ям, друге фамілія, третє вік і так далі. Давайте створимо особу.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let guy = Person "Buddy" "Finklestein" 43 184.2 "526-2928" "Chocolate"  
 ghci> guy  
@@ -189,7 +189,7 @@ Person "Buddy" "Finklestein" 43 184.2 "526-2928" "Chocolate"
 
 Це дещо круте, але трохи не читається. Що, коли ми бажаємо створити функцію для отримання окремої інформації про особу? Функцію, що отримує ім'я, фамілію, вік, тощо. Гаразд, ми маємо визначити її таким чином.
 
-[source,scala]
+[source,haskell]
 ----
 firstName :: Person -> String  
 firstName (Person firstname _ _ _ _ _) = firstname  
@@ -212,7 +212,7 @@ flavor (Person _ _ _ _ _ flavor) = flavor
 
 Хух! Я напевне не був радий написати це! Не зважаючи на плутанину і СКУКУ під час написання, цей метод робить.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let guy = Person "Buddy" "Finklestein" 43 184.2 "526-2928" "Chocolate"  
 ghci> firstName guy  
@@ -227,7 +227,7 @@ ghci> flavor guy
 
 Я шуткую, він є. Гигиги! Творці Haskell були досить розумні та передбачили цей сценарій. Вони включили альтернативний спосіб для написання типів даних. Ось як ми можемо досягти ту ж функціональність за допомогою синтаксису запису.
 
-[source,scala]
+[source,haskell]
 ----
 data Person = Person { firstName :: String  
                      , lastName :: String  
@@ -240,7 +240,7 @@ data Person = Person { firstName :: String
 
 Так що замість називати типи полів один за одним, та розділяти їх проміжками ми використовуємо фігурні дужки. Спочатку ми пишемо ім'я поля, наприклад `firstName`, та потім ми пишемо дві двокрапки `::` (що також називається `Paamayim Nekudotayim`, ахаха - _насправді це саме подвійна двокрапка на івриті, назва з'явилась вперше в PHP3 як кваліфікатор поля зору. прим.перекл._), і потім ми задаємо тип. Результуючий тип даних саме такий. Головна перевага цього в тому, що він створює функції, що шукають поля в типі даних. Через використання синтаксису полів для створення цього типу даних, Haskell автоматично створює ці функції: `firstName`, `lastName`, `age`, `height`, `phoneNumber` та `flavor`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> :t flavor  
 flavor :: Person -> String  
@@ -250,7 +250,7 @@ firstName :: Person -> String
 
 Є інша вигода використовувати синтаксис записів. Коли ви наслідуєте  `Show` для типа, він відображує його по різному, якщо ми використоауємо синтаксис запису при визначенні і створенні екземпляру типу. Скажімо ми маємо тип, що представляє машину. Ми бажаємо відслідковувати компанію, що виробляє її, назву моделі, та рік її виробництва. Дивіться.
 
-[source,scala]
+[source,haskell]
 ----
 data Car = Car String String Int deriving (Show)  
 ghci> Car "Ford" "Mustang" 1967  
@@ -259,7 +259,7 @@ Car "Ford" "Mustang" 1967
 
 Якщо ми використаємо синтаксис запису, ми можемо створити нову машину таким чином.
 
-[source,scala]
+[source,haskell]
 ----
 data Car = Car {company :: String, model :: String, year :: Int} deriving (Show)  
 ghci> Car {company="Ford", model="Mustang", year=1967}  
@@ -274,7 +274,7 @@ Car {company = "Ford", model = "Mustang", year = 1967}
 
 Конструктор значення може приймати деякі параметри значення, та потім продукувати нове значення. Наприклад, конструктор `Car` бере три значення і продукує значення машини. В подібний спосіб конструктори типів можуть приймати типи та продукувати нові типи. Спочатку це може виглядати трохи абстрактним, але це не так складно. Якщо ви знайомі з шаблонами в C++, ви побачите деякі паралелі. Щоб отримати ясну картину як діють параметри типів насправді, давайте поглянемо, як реалізовані типи, з якими ми вже зустрічались.
 
-[source,scala]
+[source,haskell]
 ----
 data Maybe a = Nothing | Just a  
 ----
@@ -288,7 +288,7 @@ image:images/yeti.png[]
 
 Давайте пограємось з типом `Maybe`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Just "Haha"  
 Just "Haha"  
@@ -310,7 +310,7 @@ Just 10.0
 
 Використання параметрів типів дуже корисні, але тільки якщо їх використання має сенс. Зазвичай ми використовуємо їх, коли наш тип даних буде робити незалежно від типа значення, що буде міститись в ньому. Якщо наш тип діє як свого роду ящик, буде гарно використати його. Ми можемо змінити наш тип даних `Car` з такого:
 
-[source,scala]
+[source,haskell]
 ----
 data Car = Car { company :: String  
                , model :: String  
@@ -320,7 +320,7 @@ data Car = Car { company :: String
 
 До такого:
 
-[source,scala]
+[source,haskell]
 ----
 data Car a b c = Car { company :: a  
                      , model :: b  
@@ -330,7 +330,7 @@ data Car a b c = Car { company :: a
 
 Але чи буде з цього користь? Відповідь така: мабуть ні, бо ми лише скінчимо визначенням функцій, що роблять на типі `Car String String Int`. Наприклад, беручи наше перше визначення `Car`, ми можемо створити функцію, що показує властивості машини в вигляді невеликого гарного тексту.
 
-[source,scala]
+[source,haskell]
 ----
 tellCar :: Car -> String  
 tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ " was made in " ++ show y  
@@ -341,7 +341,7 @@ ghci> tellCar stang
 
 Мила мала функція! Декларація типу мила і вона робить гарно. Тепер що буде, коли б `Car` був `Car a b c`?
 
-[source,scala]
+[source,haskell]
 ----
 tellCar :: (Show a) => Car String String a -> String  
 tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ " was made in " ++ show y  
@@ -349,7 +349,7 @@ tellCar (Car {company = c, model = m, year = y}) = "This " ++ c ++ " " ++ m ++ "
 
 Ми б мали примушувати цю функцію приймати тип `Car` `(Show a) => Car String String a`. Ви бачите що ця сигнатура типу більш ускладнена, і дійсно може бути корисною, коли б могли використовувати любий тип, що є примірником типокласу `Show`, як тип для `c`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> tellCar (Car "Ford" "Mustang" 1967)  
 "This Ford Mustang was made in 1967"  
@@ -366,7 +366,7 @@ image:images/meekrat.png[]
 
 Інший тип параметризованого типу є те, з чим ми вже стикались, і це `Map k v` з `Data.Map`. `k` є типом ключів в мапі, і `v` є типом значень. Це гарний приклад того, де параметри типів дуже корисні. Маючі параметризовані мапи дозволяє нам робити відображення з любого типу на інший тип, доки тип ключа є частиною типокласу `Ord`. Якщо ми визначили тип відображення, ми можемо додати обмеження типокласу в декларації даних:
 
-[source,scala]
+[source,haskell]
 ----
 data (Ord k) => Map k v = ...  
 ----
@@ -377,7 +377,7 @@ data (Ord k) => Map k v = ...
 
 Давайте реалізуємо тип 3D вектора, і додамо до нього деякі операції. Ми будемо використовувати параметризований тип, бо якщо він звичайно буде містити числові типи, він все одно буде підтримувати декілька з них.
 
-[source,scala]
+[source,haskell]
 ----
 data Vector a = Vector a a a deriving (Show)  
   
@@ -395,7 +395,7 @@ scalarMult :: (Num t) => Vector t -> Vector t -> t
 
 І ще раз: дуже важливо розрізняти конструктор типу і конструктор значення. При декларації типу даних, частина перед `=` є конструктором типу, і конструктори після нього (можливо розділені `|`) є конструкторами значення. Беручи функцію типу `Vector t t t -> Vector t t t -> t` буде помилкою, оскільки ми маємо покладати типи в декларації типів, і конструктор типу вектора приймає тільки один параметр, тоді як конструктор значення бере три. Давайте пограємось з нашими векторами.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Vector 3 5 8 `vplus` Vector 9 2 8  
 Vector 12 7 16  
@@ -420,7 +420,7 @@ image:images/gob.png[]
 
 Розглянемо цей тип даних:
 
-[source,scala]
+[source,haskell]
 ----
 data Person = Person { firstName :: String  
                      , lastName :: String  
@@ -430,7 +430,7 @@ data Person = Person { firstName :: String
 
 Він описує особу. Уявімо, що жодні дві людини не мають ту саму комбінацію імені, фамілії та віку. Тепер, якщо ми маємо записи про двох людей, чи матиме сенс перевірити, що вони представляють ту саму особу? Напевне що так. Ми можемо спробувати порівняти їх, щоб побачити, чи воні однакові чи ні. Ось чому має сенс для цього типу бути частиною типокласу `Eq`. Ми виведемо примірник.
 
-[source,scala]
+[source,haskell]
 ----
 data Person = Person { firstName :: String  
                      , lastName :: String  
@@ -440,7 +440,7 @@ data Person = Person { firstName :: String
 
 Коли ми виводимо примірник `Eq` для типа, і потім намагаємось порівняти два значення цього типу за допомогою `==` або `/=`, Haskell подивиться, чи співпадають конструктори значень (в нас тільки один конструктор значень), і потім він перевірить, що всі дані, які містяться всередині співпадають, через перевірку пар полів за допомогою `==`. Однак є одна пастка: типи всіх полів також мають бути частиною типокласу `Eq`. Але оскільки обоє, `String` та `Int` - так, то в нас все гаразд. Давайте перевіримо наш примірник `Eq`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}  
 ghci> let adRock = Person {firstName = "Adam", lastName = "Horovitz", age = 41}  
@@ -457,7 +457,7 @@ True
 
 Звичайно, оскільки `Person` тепер в `Eq`, ми можемо використовувати його для всіх функцій, що мають обмеження класу `Eq` в своїй сигнатурі типу, таких як `elem`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let beastieBoys = [mca, adRock, mikeD]  
 ghci> mikeD `elem` beastieBoys  
@@ -466,7 +466,7 @@ True
 
 Типокласи `Show` та `Read` призначені для речей, що можуть бути перетворені на або з рядків, відповідно. Так само, як для `Eq`, якщо конструктор типу має поля, їх тип має бути частиною `Show` або `Read`, якщо ми бажаємо зробити наш тип їх примірником. Давайте зробимо наш тип даних `Person` частиною також `Show` та `Read`.
 
-[source,scala]
+[source,haskell]
 ----
 data Person = Person { firstName :: String  
                      , lastName :: String  
@@ -476,7 +476,7 @@ data Person = Person { firstName :: String
 
 Тепер ми можемо друкувати дані про особу на терміналі.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> let mikeD = Person {firstName = "Michael", lastName = "Diamond", age = 43}  
 ghci> mikeD  
@@ -489,7 +489,7 @@ ghci> "mikeD is: " ++ show mikeD
 
 `Read` є достатньо повною протилежністю до типокласу `Show`. `Show` служить перетворенню значень нашого типу до рядка, `Read` для перетворення рядків до значень нашого типу. Однак пам'ятайте, коли ми використовуємо функцію читання, ми маємо використовувати явну анотацію типу, щоб сказати Haskell, який тип ми бажаємо отримати як результат. Якщо ми не зробимо бажаний тип явним, Haskell не знатиме, який тип ми бажаємо.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" :: Person  
 Person {firstName = "Michael", lastName = "Diamond", age = 43}  
@@ -497,24 +497,24 @@ Person {firstName = "Michael", lastName = "Diamond", age = 43}
 
 Якщо ми використовуємо результат нашого читання пізніше в спосіб, що Haskell зможе вивести, що прочитане має використовуватись як особа, ми не повинні використовувати анотацію типу.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> read "Person {firstName =\"Michael\", lastName =\"Diamond\", age = 43}" == mikeD  
 True  
 ----
 
-Ми також можемо читати параметризовані типи, але ми повинні заповнити параметри типів. Так що ми не можемо робити `read "Just 't'" :: Maybe a`, але можемо зробити `read "Just 't'" :: Maybe Char`.
+Ми також можемо читати параметризовані типи, але ми повинні заповнити параметри типів. Так що ми не можемо робити `read "Just 't'" ::Maybe a`, але можемо зробити `read "Just 't'" ::Maybe Char`.
 
 Ми можемо вивести примірники для типокласу `Ord`, що є для типів, значення яких можна впорядкувати. Якщо ми порівняємо два значення того самого типу, що були створені з використанням різних конструкторів, значення, що було створене за допомогою конструктора, що був визначений раніше, вважається меньшим. Наприклад, розглянемо тип `Bool`, що має значення або `False` або `True`. Для наших цілей побачити їх поведінку при порівнянні, будемо вважати що вони реалізовані таким чином:
 
-[source,scala]
+[source,haskell]
 ----
 data Bool = False | True deriving (Ord)  
 ----
 
 Оскільки конструктор значення `False` вказаний першим, і конструктор значення `True` вказаний після цього, ми розглядаємо `True` як більше за `False`.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> True `compare` False  
 GT  
@@ -526,7 +526,7 @@ False
 
 В типі даних `Maybe` конструктор значення `Nothing` вказаний перед конструктором `Just`, так що `Nothing` завжди меньший, ніж значення `Just` дещо, навіть як це дещо мінус мільярд трильйонів. Але якщо ми порівняємо два `Just` значення, тоді відбудеться порівняння того, що в них.
 
-[source,scala]
+[source,haskell]
 ----
 ghci> Nothing < Just 100  
 True  
@@ -538,25 +538,39 @@ ghci> Just 100 > Just 50
 True  
 ----
 
-But we can't do something like Just (*3) > Just (*2), because (*3) and (*2) are functions, which aren't instances of Ord.
+Але ми не можемо робити дещо як `Just (*3) > Just (*2)`, оскільки `(*3)` та `(*2)` є функціями, що не є примірниками `Ord`.
 
-We can easily use algebraic data types to make enumerations and the Enum and Bounded typeclasses help us with that. Consider the following data type:
+Ми можемо просто використовувати алгебраїчні типи даних для створення переліків, і типокласи `Enum` та `Bounded` допомагають нам з цім. Розглянемо наступний тип даних:
 
+[source,haskell]
+----
 data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday  
-Because all the value constructors are nullary (take no parameters, i.e. fields), we can make it part of the Enum typeclass. The Enum typeclass is for things that have predecessors and successors. We can also make it part of the Bounded typeclass, which is for things that have a lowest possible value and highest possible value. And while we're at it, let's also make it an instance of all the other derivable typeclasses and see what we can do with it.
+----
 
+Оскільки всі конструктори даних мають нульову арність (не мають параметрів, тобто полів), ми можемо зробити його типокласу `Enum`. Типоклас `Enum` призначений для речей, що мають попередників та наступників. Ми також можемо зробити його частиною типокласу `Bounded`, що існує для речей, що мають найменьше можливе значення та найбільше можливе значення. І доки ми поряд з цім, давайте також зробимо його примірником всіх інших виведених типокласів, і побачимо, що ми можемо з цім зробити.
+
+[source,haskell]
+----
 data Day = Monday | Tuesday | Wednesday | Thursday | Friday | Saturday | Sunday   
            deriving (Eq, Ord, Show, Read, Bounded, Enum)  
-Because it's part of the Show and Read typeclasses, we can convert values of this type to and from strings.
+----
 
+Оскільки це є частиною типокласів `Show` та `Read`, ми можемо перетворити значення цього типу на та з рядків.
+
+[source,haskell]
+----
 ghci> Wednesday  
 Wednesday  
 ghci> show Wednesday  
 "Wednesday"  
 ghci> read "Saturday" :: Day  
 Saturday  
-Because it's part of the Eq and Ord typeclasses, we can compare or equate days.
+----
 
+Оскільки це є частиною типокласу `Eq` та `Ord`, ми можемо порівняти або перевірити дні на рівність.
+
+[source,haskell]
+----
 ghci> Saturday == Sunday  
 False  
 ghci> Saturday == Saturday  
@@ -565,14 +579,22 @@ ghci> Saturday > Friday
 True  
 ghci> Monday `compare` Wednesday  
 LT  
-It's also part of Bounded, so we can get the lowest and highest day.
+----
 
+Це також є частиною `Bounded`, так що ми можемо отримати найменьший та найбільший день.
+
+[source,haskell]
+----
 ghci> minBound :: Day  
 Monday  
 ghci> maxBound :: Day  
 Sunday  
-It's also an instance of Enum. We can get predecessors and successors of days and we can make list ranges from them!
+----
 
+Це також є примірником `Enum`. Ми можемо отримати попередні та наступні дні, та ми можемо створити диапазони з них!
+
+[source,haskell]
+----
 ghci> succ Monday  
 Tuesday  
 ghci> pred Saturday  
@@ -581,19 +603,28 @@ ghci> [Thursday .. Sunday]
 [Thursday,Friday,Saturday,Sunday]  
 ghci> [minBound .. maxBound] :: [Day]  
 [Monday,Tuesday,Wednesday,Thursday,Friday,Saturday,Sunday]  
-That's pretty awesome.
+----
 
-Type synonyms
-Previously, we mentioned that when writing types, the [Char] and String types are equivalent and interchangeable. That's implemented with type synonyms. Type synonyms don't really do anything per se, they're just about giving some types different names so that they make more sense to someone reading our code and documentation. Here's how the standard library defines String as a synonym for [Char].
+Це досить чудово.
 
+=== Синоніми типів
+
+До цього ми згадували, що при написанні типів `[Char]` та `String` еквівалентні та взаємозамінні. Це зроблено за допомогою синонимів типів. Синоніми типів насправді нічого не роблять як такі, вони тільки надають деяким типам різні імена, так що вони мають більше сенсу при читанні коду або документації. Ось як стандартна бібліотека визначає `String` як синонім для `[Char]`.
+
+[source,haskell]
+----
 type String = [Char]  
-chicken
-We've introduced the type keyword. The keyword might be misleading to some, because we're not actually making anything new (we did that with the data keyword), but we're just making a synonym for an already existing type.
+----
 
-If we make a function that converts a string to uppercase and call it toUpperString or something, we can give it a type declaration of toUpperString :: [Char] -> [Char] or toUpperString :: String -> String. Both of these are essentially the same, only the latter is nicer to read.
+image:images/chicken.png[]
+Ми вводили ключове слово `type`. Ключове слово може декого ввесвти в оману, бо насправді ми не створюємо нічого нового (ми робимо це за допомогою ключового слова `data`), але ми лише створюємо синонім для вже існуючого типу.
 
-When we were dealing with the Data.Map module, we first represented a phonebook with an association list before converting it into a map. As we've already found out, an association list is a list of key-value pairs. Let's look at a phonebook that we had.
+Якщо ми створимо функцію, що конвертує рядок в верхній реєстр, та назвемо її `toUpperString` або якось ще, ми можемо надати їй декларацію типу `toUpperString ::[Char] -> [Char]` або `toUpperString ::String -> String`. Обоє з них будуть по суті одне і те ж, тільки останню приємнише читати.
 
+Коли ми мали справу з модулем `Data.Map`, ми спочатку представили телефонний довідник за допомогою асоціативного списку, перед перетворенням його на мапу. Як ми вже з'ясували, асоціативний список є списком пар ключ-значення. Давайте подивимось на телефонний довідник, що в нас є.
+
+[source,haskell]
+----
 phoneBook :: [(String,String)]  
 phoneBook =      
     [("betty","555-2938")     
@@ -603,56 +634,92 @@ phoneBook =
     ,("wendy","939-8282")     
     ,("penny","853-2492")     
     ]  
-We see that the type of phoneBook is [(String,String)]. That tells us that it's an association list that maps from strings to strings, but not much else. Let's make a type synonym to convey some more information in the type declaration.
+----
 
+Ми бачимо, що тип довідника `phoneBook` є `[(String,String)]`. Це каже нам, що це асоціативний список, що відображує рядки на рядки, але нічого більше. Давайте створимо синонім типу, щоб передати дещо більше інформації в декларації типу.
+
+[source,haskell]
+----
 type PhoneBook = [(String,String)]  
-Now the type declaration for our phonebook can be phoneBook :: PhoneBook. Let's make a type synonym for String as well.
+----
 
+Тепер декларація типу для нашого довідника може бути `phoneBook ::PhoneBook`. Давайте створимо синонім типу також і для `String`.
+
+[source,haskell]
+----
 type PhoneNumber = String  
 type Name = String  
 type PhoneBook = [(Name,PhoneNumber)]  
-Giving the String type synonyms is something that Haskell programmers do when they want to convey more information about what strings in their functions should be used as and what they represent.
+----
 
-So now, when we implement a function that takes a name and a number and sees if that name and number combination is in our phonebook, we can give it a very pretty and descriptive type declaration.
+Надати синонім типу для `String` є дещо, що програмісти Haskell роблять, коли вони бажають передати більше інформації щодо того, що будуть робити рядки в їх функціях, і що вони представляють.
 
+Так що тепер, коли ми реалізуємо функцію, що приймає ім'я і номер, і перевіряємо, що комбінація імені і номера є в нашому довіднику, ми можемо надати їй дуже гарну і описову декларацію типу.
+
+[source,haskell]
+----
 inPhoneBook :: Name -> PhoneNumber -> PhoneBook -> Bool  
 inPhoneBook name pnumber pbook = (name,pnumber) `elem` pbook  
-If we decided not to use type synonyms, our function would have a type of String -> String -> [(String,String)] -> Bool. In this case, the type declaration that took advantage of type synonyms is easier to understand. However, you shouldn't go overboard with them. We introduce type synonyms either to describe what some existing type represents in our functions (and thus our type declarations become better documentation) or when something has a long-ish type that's repeated a lot (like [(String,String)]) but represents something more specific in the context of our functions.
+----
 
-Type synonyms can also be parameterized. If we want a type that represents an association list type but still want it to be general so it can use any type as the keys and values, we can do this:
+Якщо ми оберемо не використовувати синоніми, наша функція мала б тип `String -> String -> [(String,String)] -> Bool`. В цьому випадку декларація типу, що користується перевагами синонимів, простіша для розуміння. Але з ними не треба передати куті меду. Ми вводимо синоніми типів або для опису, що саме представляє тип в наших функціях (і таким чином наші декларації типів стають кращою документацією), або коли дещо має задовгий тип, що представляє багато чого (як `[(String,String)]`), але являє собою дещо більш специфічне в контексті нашої функції.
 
+Синоніми типів також можуть бути параметризованими. Якщо ви бажаєте мати тип, що представляє асоціативний список, але також бажаєте зробити його загальним, так щоб ви могли використовувати любі типи для ключів та значень, ми можемо зробити таке:
+
+[source,haskell]
+----
 type AssocList k v = [(k,v)]  
-Now, a function that gets the value by a key in an association list can have a type of (Eq k) => k -> AssocList k v -> Maybe v. AssocList is a type constructor that takes two types and produces a concrete type, like AssocList Int String, for instance.
+----
 
-Fonzie says: Aaay! When I talk about concrete types I mean like fully applied types like Map Int String or if we're dealin' with one of them polymorphic functions, [a] or (Ord a) => Maybe a and stuff. And like, sometimes me and the boys say that Maybe is a type, but we don't mean that, cause every idiot knows Maybe is a type constructor. When I apply an extra type to Maybe, like Maybe String, then I have a concrete type. You know, values can only have types that are concrete types! So in conclusion, live fast, love hard and don't let anybody else use your comb!
-Just like we can partially apply functions to get new functions, we can partially apply type parameters and get new type constructors from them. Just like we call a function with too few parameters to get back a new function, we can specify a type constructor with too few type parameters and get back a partially applied type constructor. If we wanted a type that represents a map (from Data.Map) from integers to something, we could either do this:
+Тепер функція, що отримує значення по ключу в асоціативному списку може мати тип `(Eq k) => k -> AssocList k v -> Maybe v`. `AssocList` є конструктором типу, що приймає два типи і продукує конкретний тип, як наприклад `AssocList Int String`.
 
+Фонзі каже: Йо! Коли я казав про конкретні типи, я мав на увазі повністю застосовані типи, як `Map Int String`, або якщо ми мали справу з однією з тих поліморфних функцій, `[a]` або `(Ord a) => Maybe a`. І подібно до цього, я і хлопці кажуть, що `Maybe` є типом, але ми не маємо це на увазі, бо кожний ідіот знає, що `Maybe` є конструктором типів. Коли я застосовую додатковий тип до `Maybe`, як `Maybe String`, тоді я маю конкретний тип. Ви знаєте, що значення можуть мати тільки тип якщо він конкретний! Так що підсумовуючи - живіть швидко, любіть кріпко і не дозволяйте комусь іншому використовувати ваш гребінець!
+
+Так само, як ми можемо частково застосувати функції, так що ми отримуємо нові функції, так само ми можемо вказати конструктор типів з недостатньою кількістю параметрів типів, та отримати новий конструктор типів. Якщо ми бажаємо тип, що представляє мапу (від `Data.Map`) від цілих до чогось іншого, ми однаково можемо зробити це:
+
+[source,haskell]
+----
 type IntMap v = Map Int v  
-Or we could do it like this:
+----
 
+Або ми можемо зробити це так:
+
+[source,haskell]
+----
 type IntMap = Map Int  
-Either way, the IntMap type constructor takes one parameter and that is the type of what the integers will point to.
+----
 
-Oh yeah. If you're going to try and implement this, you'll probably going to do a qualified import of Data.Map. When you do a qualified import, type constructors also have to be preceeded with a module name. So you'd write type IntMap = Map.Map Int.
-Make sure that you really understand the distinction between type constructors and value constructors. Just because we made a type synonym called IntMap or AssocList doesn't mean that we can do stuff like AssocList [(1,2),(4,5),(7,9)]. All it means is that we can refer to its type by using different names. We can do [(1,2),(3,5),(8,9)] :: AssocList Int Int, which will make the numbers inside assume a type of Int, but we can still use that list as we would any normal list that has pairs of integers inside. Type synonyms (and types generally) can only be used in the type portion of Haskell. We're in Haskell's type portion whenever we're defining new types (so in data and type declarations) or when we're located after a ::. The :: is in type declarations or in type annotations.
+В жодному разі конструктор типів `IntMap` приймає один параметр, і це тип того, на що будуть вказувати наші цілі.
 
-Another cool data type that takes two types as its parameters is the Either a b type. This is roughly how it's defined:
+О так. Якщо ви бажаєте спробувати і реалізувати це, ви можливо збираєтесь зробити кваліфікований імпорт `Data.Map`. Коли ви робите кваліфікований імпорт, конструктори типів також повинні мати перед собою ім'я модуля. Так що ви напишете `type IntMap = Map.Map Int`. Переконайтесь, що ви дійсно розумієте різницю між конструкторами типів і конструкторами значень. Тільки через те, що ми зробили синонім типу з назвою `IntMap` або `AssocList`, це не означає, що ми можемо робити речі, як `AssocList [(1,2),(4,5),(7,9)]`. Все що це означає, що ми можемо посилатись до його типу з використанням інших імен. Ми можемо робити `[(1,2),(3,5),(8,9)] ::AssocList Int Int`, що буде очікувати тип `Int` всередині, але ми можемо все ще використовувати цей список якби це був звичайний список з цілими всередині. Синоніми типів (і взагалі типи) можуть бути використані в частині типів в Haskell. Ми в типовій частині Haskell коли ми визначаємо нові типи (тобто в визначеннях даних та типів), або коли ми знаходимось за `::`. `::` є деккларація або анотація типу.
 
+Інший крутий тип даних, що приймає два типи як параметри, є тип `Either a b`. Грубо кажучи він визначений так:
+
+[source,haskell]
+----
 data Either a b = Left a | Right b deriving (Eq, Ord, Read, Show)  
-It has two value constructors. If the Left is used, then its contents are of type a and if Right is used, then its contents are of type b. So we can use this type to encapsulate a value of one type or another and then when we get a value of type Either a b, we usually pattern match on both Left and Right and we different stuff based on which one of them it was.
+----
 
+Він має два конструктори значень. Якщо використовується `Left`, тоді його компоненти типу `a`, і коли використовується `Right`, тоді його вміст типу `b`. Так що ми можемо використовувати цей тип для інкапсуляції значення одного або іншого типу, і тоді, коли ми отримуємо значення `Either a b`, ми звичайно порівнюємо з шаблоном на обох, `Left` та `Right`, і ми відрізняємо речі на основі того, який з двох типів він має.
+
+[source,haskell]
+----
 ghci> Right 20  
 Right 20  
 ghci> Left "w00t"  
 Left "w00t"  
 ghci> :t Right 'a'  
-Right 'a' :: Either a Char  
+Right 'a' ::Either a Char  
 ghci> :t Left True  
-Left True :: Either Bool b  
-So far, we've seen that Maybe a was mostly used to represent the results of computations that could have either failed or not. But somtimes, Maybe a isn't good enough because Nothing doesn't really convey much information other than that something has failed. That's cool for functions that can fail in only one way or if we're just not interested in how and why they failed. A Data.Map lookup fails only if the key we were looking for wasn't in the map, so we know exactly what happened. However, when we're interested in how some function failed or why, we usually use the result type of Either a b, where a is some sort of type that can tell us something about the possible failure and b is the type of a successful computation. Hence, errors use the Left value constructor while results use Right.
+Left True ::Either Bool b  
+----
 
-An example: a high-school has lockers so that students have some place to put their Guns'n'Roses posters. Each locker has a code combination. When a student wants a new locker, they tell the locker supervisor which locker number they want and he gives them the code. However, if someone is already using that locker, he can't tell them the code for the locker and they have to pick a different one. We'll use a map from Data.Map to represent the lockers. It'll map from locker numbers to a pair of whether the locker is in use or not and the locker code.
+Досі ми бачили, що `Maybe` здебільшого використовувався для представлення обчислень, що могли або схибити, або ні. Але іноді `Maybe` не досить гарний, оскільки `Nothing` насправді не передає досить інформації, окрім того що дещо схибило. Це добре для функцій, що можуть схибити тільки в один спосіб, або якщо нас не цікавить, як вони схибили. Пошук `Data.Map` буде невдалий тільки якщо ключ не буде знайдений в мапі, так що ми точно знаємо, що скоїлось. Однак якщо ми зацікавлені, як саме функція схибила та чому, ми зазвичай використовуємо результат типу `Either a b`, де `a` є деяким різновидом типу, що може сказати дещо про можливий збій, та `b` є типом вдалого обчислення. Таким чином помилки використовують конструктор значення `Left`, тоді як результати використовують `Right`.
 
+Приклад: вища школа має роздягальні, так що студенти мають місце для наліплювання своїх плакатів Guns'n'Roses. Кожна комірка має свою кодову комбінацію. Коли студент бажає нову роздягальну, він каже наглядачеві роздягальні, який номер він бажає, і той дає йому код. Але якщо хтось вже використовує цю комірку, він не може скзати код від тієї комірки, і вони мають обрати інший. Ми будемо використовувати мапу від `Data.Map` для представлення комірок. Мапа буде відображати номери комірок на пару, того чи комірка вже зайнята або ні, і код комірки.
+
+[source,haskell]
+----
 import qualified Data.Map as Map  
   
 data LockerState = Taken | Free deriving (Show, Eq)  
@@ -660,8 +727,12 @@ data LockerState = Taken | Free deriving (Show, Eq)
 type Code = String  
   
 type LockerMap = Map.Map Int (LockerState, Code)  
-Simple stuff. We introduce a new data type to represent whether a locker is taken or free and we make a type synonym for the locker code. We also make a type synonym for the type that maps from integers to pairs of locker state and code. And now, we're going to make a function that searches for the code in a locker map. We're going to use an Either String Code type to represent our result, because our lookup can fail in two ways — the locker can be taken, in which case we can't tell the code or the locker number might not exist at all. If the lookup fails, we're just going to use a String to tell what's happened.
+----
 
+Прості речі. Ми ввели новий тип даних для представлення того, чи комірка вільна чи ні,  і ми створили синонім для коду комірки. Ми також створили синонім типу для типу, що відображує цілі на пари зі стану та коду комірки. І тепер ми збираємось створити функцію, що шукатиме код в мапі комірок. Ми збираємось використати тип `Either String Code` для представлення нашого результату, оскільки наш результат може бути невдалим в два способи — комірка може бути зайнятою, в якому випадку ми кажемо код, або номер комірки може взагалі не існувати. Якщо пошук схибив, ми просто збираємось використати `String`, щоб сказати що трапилось.
+
+[source,haskell]
+----
 lockerLookup :: Int -> LockerMap -> Either String Code  
 lockerLookup lockerNumber map =   
     case Map.lookup lockerNumber map of   
@@ -669,8 +740,12 @@ lockerLookup lockerNumber map =
         Just (state, code) -> if state /= Taken   
                                 then Right code  
                                 else Left $ "Locker " ++ show lockerNumber ++ " is already taken!"  
-We do a normal lookup in the map. If we get a Nothing, we return a value of type Left String, saying that the locker doesn't exist at all. If we do find it, then we do an additional check to see if the locker is taken. If it is, return a Left saying that it's already taken. If it isn't, then return a value of type Right Code, in which we give the student the correct code for the locker. It's actually a Right String, but we introduced that type synonym to introduce some additional documentation into the type declaration. Here's an example map:
+----
 
+Ми тут робимо звичайний пошук по мапі. Якщо ми отримаємо `Nothing`, ми повертаємо значення типу `Left String`, що каже, що комірка не існує взагалі. Якщо ми знайдемо її, тоді ми робимо додаткову перевірку, щоб перевірити, чи комірка зайнята. Якщо це так, повертаємо `Left`, що каже, що вона зайнята. Якщо це не так, тоді повертаємо значення типу `Right Code`, в якому ми надаємо студентові коректний код комірки. Насправді це `Right String`, але ми ввели новий синонім типу, щоб додати деяку додаткову документацію до декларації типу. Ось приклад мапи:
+
+[source,haskell]
+----
 lockers :: LockerMap  
 lockers = Map.fromList   
     [(100,(Taken,"ZD39I"))  
@@ -680,8 +755,12 @@ lockers = Map.fromList
     ,(109,(Taken,"893JJ"))  
     ,(110,(Taken,"99292"))  
     ]  
-Now let's try looking up some locker codes.
+----
 
+Тепер давайте спробуємо пошукати деякі коди комірок.
+
+[source,haskell]
+----
 ghci> lockerLookup 101 lockers  
 Right "JAH3I"  
 ghci> lockerLookup 100 lockers  
@@ -692,24 +771,37 @@ ghci> lockerLookup 110 lockers
 Left "Locker 110 is already taken!"  
 ghci> lockerLookup 105 lockers  
 Right "QOTSA"  
-We could have used a Maybe a to represent the result but then we wouldn't know why we couldn't get the code. But now, we have information about the failure in our result type.
+----
 
-Recursive data structures
-the fonz
-As we've seen, a constructor in an algebraic data type can have several (or none at all) fields and each field must be of some concrete type. With that in mind, we can make types whose constructors have fields that are of the same type! Using that, we can create recursive data types, where one value of some type contains values of that type, which in turn contain more values of the same type and so on.
+Ми могли б використати `Maybe` для представлення результату, але тоді ми б не знали, чому ми не змогли отримати код. Але тепер ми маємо інформацію щодо збою в нашому результуючому типі.
 
-Think about this list: [5]. That's just syntactic sugar for 5:[]. On the left side of the :, there's a value and on the right side, there's a list. And in this case, it's an empty list. Now how about the list [4,5]? Well, that desugars to 4:(5:[]). Looking at the first :, we see that it also has an element on its left side and a list (5:[]) on its right side. Same goes for a list like 3:(4:(5:6:[])), which could be written either like that or like 3:4:5:6:[] (because : is right-associative) or [3,4,5,6].
+=== Рекурсивні структури даних
 
-We could say that a list can be an empty list or it can be an element joined together with a : with another list (that can be either the empty list or not).
+image:images/thefonz.png[]
+Як ми бачили, конструктор в алгебраїчному типі даних може мати декілька (або взагалі жодного) полів, і кожне поле повинно бути деякого конкретного типу. З цім на думці ми можемо створити типи, конструктори якого матимуть поля, що будуть того самого типу! Використовуючи це ми можемо створити рекурсивні типи даних, коли одне значення того самого типу містить значення цього типу, що, в свою чергу, містить ще більше значень того ж типу, і так далі.
 
-Let's use algebraic data types to implement our own list then!
+Подумайте про цей список: `[5]`. Це тільки синтаксичний цукор для `5:[]`. З лівого боку від `:` знаходиться значення, та з правого боку список. І в цьому порядку це порожній список. Тепер як щодо списку `[4,5]`? Гаразд, це розцукровується до `4:(5:[])`. Дивлячись на перше `:` ми бачимо, що він також має елемент з лівої сторони, і список `(5:[])` з правої сторони. Те саме зі списками як `3:(4:(5:6:[]))`, що може бути записане також як `3:4:5:6:[]` (оскільки `:` право-асоциативне), або `[3,4,5,6]`.
 
-data List a = Empty | Cons a (List a) deriving (Show, Read, Eq, Ord)  
-This reads just like our definition of lists from one of the previous paragraphs. It's either an empty list or a combination of a head with some value and a list. If you're confused about this, you might find it easier to understand in record syntax.
+Ми можемо сказати, що список може бути порожнім списком, або це може бути елемент, приєднаний разом через `:` з іншим списком (що також може бути порожнім списком, або ні).
 
-data List a = Empty | Cons { listHead :: a, listTail :: List a} deriving (Show, Read, Eq, Ord)  
-You might also be confused about the Cons constructor here. cons is another word for :. You see, in lists, : is actually a constructor that takes a value and another list and returns a list. We can already use our new list type! In other words, it has two fields. One field is of the type of a and the other is of the type [a].
+Давайте використаємо алгебраїчні типи даних для реалізації нашого власного типу!
 
+[source,haskell]
+----
+data List a = Empty | Cons a (List a) deriving (Show, Read, Eq, Ord)
+----
+
+Це читається так само, як наше визначення списків з одного з наших попередніх параграфів. Це або порожній список, або комбінація голови в вигляді деякого значення, та списку. Якщо ви стурбовані цім, ви можете знайти простішим зрозуміти синтаксис запису.
+
+[source,haskell]
+----
+data List a = Empty | Cons { listHead ::a, listTail ::List a} deriving (Show, Read, Eq, Ord)  
+----
+
+Ви також можете бути стурбовані щодо наведеного тут конструктора `Cons`. `cons` є інша слово для `:`. Ви бачите, що в списках `:` насправді є конструктором, що приймає значення та інший список, та повертає список. Ми вже використали наш власний тип списку! В інших словах, він має два поля. Одне поле має тип `a`, і інше має тип `[a]`.
+
+[source,haskell]
+----
 ghci> Empty  
 Empty  
 ghci> 5 `Cons` Empty  
@@ -718,59 +810,87 @@ ghci> 4 `Cons` (5 `Cons` Empty)
 Cons 4 (Cons 5 Empty)  
 ghci> 3 `Cons` (4 `Cons` (5 `Cons` Empty))  
 Cons 3 (Cons 4 (Cons 5 Empty))  
-We called our Cons constructor in an infix manner so you can see how it's just like :. Empty is like [] and 4 `Cons` (5 `Cons` Empty) is like 4:(5:[]).
+----
 
-We can define functions to be automatically infix by making them comprised of only special characters. We can also do the same with constructors, since they're just functions that return a data type. So check this out.
+Ми викликали наш конструктор `Cons` в інфіксній манері, так що ми можемо бачити, наскільки це просто `:`. `Empty` як `[]`, і `4 `Cons` (5 `Cons` Empty)` як `4:(5:[])`.
 
+Ми можемо визначати функції, що автоматично будуть інфіксними, якщо вони будуть складатись тільки зі спеціальних символів. Ми можемо зробити те саме з конструкторами, бо вони є лише функціями, що повертають тип даних. Перевіримо це.
+
+[source,haskell]
+----
 infixr 5 :-:  
 data List a = Empty | a :-: (List a) deriving (Show, Read, Eq, Ord)  
-First off, we notice a new syntactic construct, the fixity declarations. When we define functions as operators, we can use that to give them a fixity (but we don't have to). A fixity states how tightly the operator binds and whether it's left-associative or right-associative. For instance, *'s fixity is infixl 7 * and +'s fixity is infixl 6. That means that they're both left-associative (4 * 3 * 2 is (4 * 3) * 2) but * binds tighter than +, because it has a greater fixity, so 5 * 4 + 3 is (5 * 4) + 3.
+----
 
-Otherwise, we just wrote a :-: (List a) instead of Cons a (List a). Now, we can write out lists in our list type like so:
+Поперше ми помічаємо нову синтаксичну конструкцію, декларацію фіксіті. Коли ми визначаємо функції як оператори, ми можемо використовувати це для надання фіксіті (але не маємо робити це). Фіксіті вказує, як сильно оператор прикріплюється, та чи є він ліво-асоціативним або право-асоціативним. Наприклад, фіксіті `*` є `infixl 7 *` та фіксіті `+` є `infixl 6`. Це означає, що вони обоє ліво-асоціативні `(4 * 3 * 2 is (4 * 3) * 2)`, але * прикріплюється краще, ніж `+`, бо він має більшу фіксіті, так що `5 * 4 + 3 is (5 * 4) + 3`.
 
+Так що ми пишемо просто `a :-: (List a)`, замість `Cons a (List a)`. Тепер ми можемо записати наші списки з нашим типом ось так:
+
+[source,haskell]
+----
 ghci> 3 :-: 4 :-: 5 :-: Empty  
 (:-:) 3 ((:-:) 4 ((:-:) 5 Empty))  
 ghci> let a = 3 :-: 4 :-: 5 :-: Empty  
 ghci> 100 :-: a  
 (:-:) 100 ((:-:) 3 ((:-:) 4 ((:-:) 5 Empty)))  
-When deriving Show for our type, Haskell will still display it as if the constructor was a prefix function, hence the parentheses around the operator (remember, 4 + 3 is (+) 4 3).
+----
 
-Let's make a function that adds two of our lists together. This is how ++ is defined for normal lists:
+Коли ми виводимо `Show` для нашого типу, Haskell все ще буде відображувати його так, якби конструктор був префіксною функцією, ось чому ми бачимо дужки коло оператора (згадайте, `4 + 3` є `(+) 4 3`).
 
+Давайте створимо функцію, що додає два наші списки разом. Ось як `++` визначений для звичайних списків:
+
+[source,haskell]
+----
 infixr 5  ++ 
 (++) :: [a] -> [a] -> [a]  
 []     ++ ys = ys  
 (x:xs) ++ ys = x : (xs ++ ys)  
-So we'll just steal that for our own list. We'll name the function .++.
+----
 
+Так що ми просто вкрадемо його для нашого списку. Ми назвемо функцію `.++`.
+
+[source,haskell]
+----
 infixr 5  .++  
 (.++) :: List a -> List a -> List a   
 Empty .++ ys = ys  
 (x :-: xs) .++ ys = x :-: (xs .++ ys)  
-And let's see if it works ...
+----
 
+І давайте подивимось, чи буде це робити ...
+
+[source,haskell]
+----
 ghci> let a = 3 :-: 4 :-: 5 :-: Empty  
 ghci> let b = 6 :-: 7 :-: Empty  
 ghci> a .++ b  
 (:-:) 3 ((:-:) 4 ((:-:) 5 ((:-:) 6 ((:-:) 7 Empty))))  
-Nice. Is nice. If we wanted, we could implement all of the functions that operate on lists on our own list type.
+----
 
-Notice how we pattern matched on (x :-: xs). That works because pattern matching is actually about matching constructors. We can match on :-: because it is a constructor for our own list type and we can also match on : because it is a constructor for the built-in list type. Same goes for []. Because pattern matching works (only) on constructors, we can match for stuff like that, normal prefix constructors or stuff like 8 or 'a', which are basically constructors for the numeric and character types, respectively.
+Гарно. Це гарно. Якщо б ми побажали, ми б реалізували всі функції, що оперують на списках, для нашого власного типу списків.
 
-binary search tree
-Now, we're going to implement a binary search tree. If you're not familiar with binary search trees from languages like C, here's what they are: an element points to two elements, one on its left and one on its right. The element to the left is smaller, the element to the right is bigger. Each of those elements can also point to two elements (or one, or none). In effect, each element has up to two sub-trees. And a cool thing about binary search trees is that we know that all the elements at the left sub-tree of, say, 5 are going to be smaller than 5. Elements in its right sub-tree are going to be bigger. So if we need to find if 8 is in our tree, we'd start at 5 and then because 8 is greater than 5, we'd go right. We're now at 7 and because 8 is greater than 7, we go right again. And we've found our element in three hops! Now if this were a normal list (or a tree, but really unbalanced), it would take us seven hops instead of three to see if 8 is in there.
+Зауважте, як ми порівняли шаблон на `(x :-: xs)`. Це робить, бо порівняння шаблонів насправді має справу з порівнянням конструкторів. Ми можемо порівнювати на `:-:`, бо це конструктор для нашого власного типу списка, і ми також можемо порівнювати на `:`, бо це також конструктор для вбудованого типу списка. Те саме і для `[]`. Оскільки порівняння шаблонів робить (тільки) на конструкторах, ми можемо порівнювати на таких речах, звичайних префіксних конструкторах або такому, як `8` або `'a'`, що загалом конструктори для числових та символьних типах, відповідно.
 
-Sets and maps from Data.Set and Data.Map are implemented using trees, only instead of normal binary search trees, they use balanced binary search trees, which are always balanced. But right now, we'll just be implementing normal binary search trees.
+image:images/binarytree.png[]
+Тепер ми збираємось реалізувати двійникове дерево пошуку. Якщо ви не знайомі з такими деревами з мов як C, ось цо вони таке: елемент вказує на два елемента, один сліва і один зправа. Елемент зліва меньший, елемент зправа більший. Кожний з ціх елементів також може вказувати на два елементи (або один, або на жодний). Ефективно кожний елемент має два під-дерева. І крута річ щодо двійникових дерев пошуку в тому, що ми знаємо, що всі елементи на лівому суб-дереві для, скажімо, `5`, будуть меньшими за `5`. Елементи в правому суб-дереві будуть більшими. Так що коли нам треба знайти `8` в нашому дереві, ми починаємо з `5`, та потім, через те, що `8` більше `5`, ми йдемо направо. Тепер ми на `7`, і оскільки `8` більше `7`, ми знову йдемо направо. І ми знайшли наш елемент за три стрибка! Тепер, якщо б це був список (або дерево, але дуже розбалансоване), це зайняло сім стрибків замість трьох, щоб побачити `8`.
 
-Here's what we're going to say: a tree is either an empty tree or it's an element that contains some value and two trees. Sounds like a perfect fit for an algebraic data type!
+Множини та мапи від `Data.Set` та `Data.Map` реалізовані за допомогою дерев, тільки замість звичайних двійникових дерев пошуку вони використовують збалансовані двійникові дерева, що весь час збалансовані. Але зараз ми реалізуємо тільки звичайне двійнікове дерево пошуку.
 
+Ось що ми збираємось тут сказати: дерево або порожнє дерево, або це елемент, що містить деяке значення та два дерева. Звучить як ідеально підходяще для алгебраїчних типів даних!
+
+[source,haskell]
+----
 data Tree a = EmptyTree | Node a (Tree a) (Tree a) deriving (Show, Read, Eq)  
-Okay, good, this is good. Instead of manually building a tree, we're going to make a function that takes a tree and an element and inserts an element. We do this by comparing the value we want to insert to the root node and then if it's smaller, we go left, if it's larger, we go right. We do the same for every subsequent node until we reach an empty tree. Once we've reached an empty tree, we just insert a node with that value instead of the empty tree.
+----
 
-In languages like C, we'd do this by modifying the pointers and values inside the tree. In Haskell, we can't really modify our tree, so we have to make a new sub-tree each time we decide to go left or right and in the end the insertion function returns a completely new tree, because Haskell doesn't really have a concept of pointer, just values. Hence, the type for our insertion function is going to be something like a -> Tree a - > Tree a. It takes an element and a tree and returns a new tree that has that element inside. This might seem like it's inefficient but laziness takes care of that problem.
+Так, гарно, це гарно. Замість побудови дерева вручну ми збираємось створити функцію, що приймає дерево і елемент, і вставляє елемент. Ми робимо це через порівняння значення, яке ми бажаємо вставити до кореневого вузла, і коли воно меньше, ми йдемо наліво, або якщо більше - направо. Ми робимо те саме для кожного наступного вузла, доки не дойдемо до порожнього дерева. Як тільки ми дійшли до порожнього дерева, ми просто вставляємо вузол з вставляємим значення замість порожнього дерева.
 
-So, here are two functions. One is a utility function for making a singleton tree (a tree with just one node) and a function to insert an element into a tree.
+В таких мовах, як C, ми робили б це через модифікацію вказівників та значень в дереві. В Haskell ми насправді не можемо модифікувати наше дерево, так що нам треба створити нове суб-дерево кожний раз, коли ми вирішуємо пійти наліво або направо, і кінець кінцем функція вставки повертає повністю нове дерево, бо насправді Haskell не має концепції вказівника, тільки значення. Таким чином, тип для нашої функції вставки буде щось `a -> Tree a - > Tree a`. Вона приймає елемент та дерево, та повертає нове дерево, що має в собі цей елемент. Це може виглядати як неефективне, але лінивість потурбується про цю проблему.
 
+Так, ось дві функції. Одна функція допоміжна, для створення синглтона дерева (вузол тільки з одним елементом), та функція для вставляння елементу в дерево.
+
+[source,haskell]
+----
 singleton :: a -> Tree a  
 singleton x = Node x EmptyTree EmptyTree  
   
@@ -780,26 +900,38 @@ treeInsert x (Node a left right)
     | x == a = Node x left right  
     | x < a  = Node a (treeInsert x left) right  
     | x > a  = Node a left (treeInsert x right)  
-The singleton function is just a shortcut for making a node that has something and then two empty sub-trees. In the insertion function, we first have the edge condition as a pattern. If we've reached an empty sub-tree, that means we're where we want and instead of the empty tree, we put a singleton tree with our element. If we're not inserting into an empty tree, then we have to check some things. First off, if the element we're inserting is equal to the root element, just return a tree that's the same. If it's smaller, return a tree that has the same root value, the same right sub-tree but instead of its left sub-tree, put a tree that has our value inserted into it. Same (but the other way around) goes if our value is bigger than the root element.
+----
 
-Next up, we're going to make a function that checks if some element is in the tree. First, let's define the edge condition. If we're looking for an element in an empty tree, then it's certainly not there. Okay. Notice how this is the same as the edge condition when searching for elements in lists. If we're looking for an element in an empty list, it's not there. Anyway, if we're not looking for an element in an empty tree, then we check some things. If the element in the root node is what we're looking for, great! If it's not, what then? Well, we can take advantage of knowing that all the left elements are smaller than the root node. So if the element we're looking for is smaller than the root node, check to see if it's in the left sub-tree. If it's bigger, check to see if it's in the right sub-tree.
+Функція `singleton` є просто скороченням для створення вузла, що містить дещо, та потім ще два порожні суб-дерева. В функції вставляння ми спочатку маємо граничну умову в якості шаблона. Якщо ми досягли порожнього суб-дерева, що означає що ми там де треба, і замість порожнього дерева ми покладаємо синглтон дерево з нашим елементом. Якщо ми не вставляємо в порожньє дерево, тоді ми маємо перевірити декілька речей. Спочатку, якщо елемент, що ми вставляємо, дорівнює кореневому елементу, просто повертаємо дерево, що є тим самим. Якщо значення меньше, повертаємо дерево, що має той самий корінь і значення, те саме праве суб-дерево, але замість лівого суб-дерева покладаємо дерево з вставленим нашим елементом. Те саме (але навпаки) відбувається, коли значення більше, ніж кореневий елемент.
 
+Далі ми збираємось створити функцію, що перевіряє, чи деякий елемент знаходиться в нашому дереві. Спочатку давайте визначимо граничну умову. Якщо ми шукаємо елемент в порожньому дереві, його там напевне не буде. Гаразд. Зауважте, наскільки це те саме, що і гранична умова при пошуку елементів в списку. Якщо ми шукаємо елемент в порожньому списку, його там нема. В любому разі, якщо ми не шукаємо елемент в порожньому дереві, тоді ми перевіряємо деякі речі. Якщо елемент в кореневому вузлі є те, що ми шукаємо, чудово! Якщо ні, що тоді? Гаразд, ми можемо отримати вигоду від знання, що всі елементи меньші, ніж в кореневому вузлі. Так що якщо ми шукаємо меньший елемент, ніж кореневий, перевіряємо, чи може він знаходиться в лівому суб-дереві. Якщо значення більше, шукаємо його в правому суб-дереві.
+
+[source,haskell]
+----
 treeElem :: (Ord a) => a -> Tree a -> Bool  
 treeElem x EmptyTree = False  
 treeElem x (Node a left right)  
     | x == a = True  
     | x < a  = treeElem x left  
     | x > a  = treeElem x right  
-All we had to do was write up the previous paragraph in code. Let's have some fun with our trees! Instead of manually building one (although we could), we'll use a fold to build up a tree from a list. Remember, pretty much everything that traverses a list one by one and then returns some sort of value can be implemented with a fold! We're going to start with the empty tree and then approach a list from the right and just insert element after element into our accumulator tree.
+----
 
+Все що нам знадобилось, це записати попередній параграф в коді. Давайте розважимось з нашими деревами! Замість вручну будувати дерево (хоча ми можемо), ми використаємо згортку для побудови дерева зі списка. Пам'ятайте, що майже все, що проходить по списку одне по одному, та потім повертає деякий різновид значення, може бути реалізовано як згортка! Ми збираємось почати з порожнього дерева, та потім проходити список зправа, і просто включати елемент за елементом в наше акумулююче дерево.
+
+[source,haskell]
+----
 ghci> let nums = [8,6,4,1,7,3,5]  
 ghci> let numsTree = foldr treeInsert EmptyTree nums  
 ghci> numsTree  
 Node 5 (Node 3 (Node 1 EmptyTree EmptyTree) (Node 4 EmptyTree EmptyTree)) (Node 7 (Node 6 EmptyTree EmptyTree) (Node 8 EmptyTree EmptyTree))  
-In that foldr, treeInsert was the folding function (it takes a tree and a list element and produces a new tree) and EmptyTree was the starting accumulator. nums, of course, was the list we were folding over.
+----
 
-When we print our tree to the console, it's not very readable, but if we try, we can make out its structure. We see that the root node is 5 and then it has two sub-trees, one of which has the root node of 3 and the other a 7, etc.
+В цьому `foldr` функція `treeInsert` була функцією згортки (вона приймає дерево і елемент списку, і продукує нове дерево), і `EmptyTree` було початковим аккумулятором. `nums`, звичайно, було списком, по якому ми робили згортку.
 
+Потім ми друкуємо наше дерево на консолі, це не дуже читається, але якщо ми спробуємо, ми можемо відтворити нашу структуру. Ми бачимо, що кореневий вузол є `5`, та потім має два суб-дерева, один з яких має кореневий вузол `3`, а інший `7`, тощо.
+
+[source,haskell]
+----
 ghci> 8 `treeElem` numsTree  
 True  
 ghci> 100 `treeElem` numsTree  
@@ -808,62 +940,90 @@ ghci> 1 `treeElem` numsTree
 True  
 ghci> 10 `treeElem` numsTree  
 False  
-Checking for membership also works nicely. Cool.
+----
 
-So as you can see, algebraic data structures are a really cool and powerful concept in Haskell. We can use them to make anything from boolean values and weekday enumerations to binary search trees and more!
+Перевірка на членство також робить гарно. Круто.
 
-Typeclasses 102
-tweet
-So far, we've learned about some of the standard Haskell typeclasses and we've seen which types are in them. We've also learned how to automatically make our own types instances of the standard typeclasses by asking Haskell to derive the instances for us. In this section, we're going to learn how to make our own typeclasses and how to make types instances of them by hand.
+Так що, як ви можете бачити, алгебраїчні структури даних насправді крута і потужна конецепція в Haskell. Ми можемо використовувати їх для створення будь-чого, від логічних значень та переліку днів тижня до двійникових дерев пошуку і більше!
 
-A quick recap on typeclasses: typeclasses are like interfaces. A typeclass defines some behavior (like comparing for equality, comparing for ordering, enumeration) and then types that can behave in that way are made instances of that typeclass. The behavior of typeclasses is achieved by defining functions or just type declarations that we then implement. So when we say that a type is an instance of a typeclass, we mean that we can use the functions that the typeclass defines with that type.
+=== Типокласи 102
 
-Typeclasses have pretty much nothing to do with classes in languages like Java or Python. This confuses many people, so I want you to forget everything you know about classes in imperative languages right now.
+image:images/trafficlight.png[]
+Досі ми вивчили щодо стандартних типокласів Haskell, і ми побачили, які класи належать до них. Ми також навчились, як автоматично створювати примірники наших класів для стандартних типокласів, щоб Haskell виводив примірники для нас. В цьому розділі ми збираємось вивчити, як створювати свої власні типокласи, та як робити їх типи примірники руками.
 
-For example, the Eq typeclass is for stuff that can be equated. It defines the functions == and /=. If we have a type (say, Car) and comparing two cars with the equality function == makes sense, then it makes sense for Car to be an instance of Eq.
+Швидке нагадування про типокласи: типокласи як інтерфейси. Типоклас визначає деяку поведінку (як порівняння на рівність, порівняння на впорядкованість, перелік), і потім типи, що можуть поводитись в цей спосіб, складають примірники цього типокласу. Поведінка типокласу досягається через визначення функцій, або тільки декларацій типів, які ми реалізуємо. Так що коли ми кажемо, що тип є примірником типокласу, це означає, що ми можемо використовувати функції, що типоклас визначає за допомогою цього типу.
 
-This is how the Eq class is defined in the standard prelude:
+Типокласи не мають нічого спільного з класами в мовах як Java або Python. Це бентежить багатьох людей, так що я бажаю, щоб ви забули все, що ви знаєте про класи в імперативних мовах, прямо зараз.
 
+Наприклад типоклас `Eq` є для речей, що можуть бути рівними. Він визначає функції `==` та `/=`. Якщо ми маємо тип, (скажімо, `Car`), і порівняння двох машин функцією `==` має сенс, тоді `Car` буде примірником `Eq`.
+
+Ось як клас `Eq` визначений в стандартному `prelude`:
+
+[source,haskell]
+----
 class Eq a where  
     (==) :: a -> a -> Bool  
     (/=) :: a -> a -> Bool  
     x == y = not (x /= y)  
     x /= y = not (x == y)  
-Woah, woah, woah! Some new strange syntax and keywords there! Don't worry, this will all be clear in a second. First off, when we write class Eq a where, this means that we're defining a new typeclass and that's called Eq. The a is the type variable and it means that a will play the role of the type that we will soon be making an instance of Eq. It doesn't have to be called a, it doesn't even have to be one letter, it just has to be a lowercase word. Then, we define several functions. It's not mandatory to implement the function bodies themselves, we just have to specify the type declarations for the functions.
+----
 
-Some people might understand this better if we wrote class Eq equatable where and then specified the type declarations like (==) :: equatable -> equatable -> Bool.
-Anyway, we did implement the function bodies for the functions that Eq defines, only we defined them in terms of mutual recursion. We said that two instances of Eq are equal if they are not different and they are different if they are not equal. We didn't have to do this, really, but we did and we'll see how this helps us soon.
+Ой, ой, ой! Якійсь новий дивний синтаксис і ключові слова! Не турбуйтесь, все з'ясується за секунду. Для початку, коли ми пишемо `class Eq a where`, це означає, що ми визначаємо новий типоклас, і він має назву `Eq`. `a` є змінною типа, і це означає, що вона буде відігравати роль типа, що скоро буде створювати примірник `Eq`. Вона не має називатись `a`, вона навіть не має складатись з однієї літери, вона лише повинна бути словом в нижньому реєстрі. Потім ми визначаємо декілька функцій. Не є обов'язковим самому реалізувати тіла функцій, ми тільки маємо вказати декларації типів для функцій.
 
-If we have say class Eq a where and then define a type declaration within that class like (==) :: a -> -a -> Bool, then when we examine the type of that function later on, it will have the type of (Eq a) => a -> a -> Bool.
-So once we have a class, what can we do with it? Well, not much, really. But once we start making types instances of that class, we start getting some nice functionality. So check out this type:
+Деякі люди можуть зрозуміти це краще, якщо ми запишемо `class Eq equatable where` і потім вкажемо декларації типів, як `(==) ::equatable -> equatable -> Bool`.
 
+В жодному разі ми реалізували тіла функції для функцій, що визначає `Eq`, тільки ми визначили їх в термінах взаємної рекурсії. Ми кажемо, що два примірника `Eq` рівні, якщо вони не різні, і вони різні, якщо вони не рівні. Насправді ми не мали цього робити, але ми зробили і ми побачимо, як це скоро нам допоможе.
+
+Якщо ми сказали `class Eq a where`, та потім визначили декларацію типу в класі, як `(==) ::a -> -a -> Bool`, тоді коли ми після цього перевіряємо тип цієї функції, вона буде мати тип `(Eq a) => a -> a -> Bool`.
+
+Так,  коли ми одного разу створили клас, що ми можемо робити з ним? Гаразд, насправді не багато. Але як тільки ми починаємо створювати примірники типів цього класу, ми починаємо отримувати деяку милу функціональність. Так що перевірте цей тип:
+
+[source,haskell]
+----
 data TrafficLight = Red | Yellow | Green  
-It defines the states of a traffic light. Notice how we didn't derive any class instances for it. That's because we're going to write up some instances by hand, even though we could derive them for types like Eq and Show. Here's how we make it an instance of Eq.
+----
 
+Він визначає стан світлофора. Зауважте, як ми не виводили жодних примірників класу для нього. Це тому, що ми збираємось написати деякі примірники вручну, навіть якщо ми можемо вивести їх для типів як `Eq` та `Show`. Ось як ми робимо його примірником `Eq`.
+
+[source,haskell]
+----
 instance Eq TrafficLight where  
     Red == Red = True  
     Green == Green = True  
     Yellow == Yellow = True  
     _ == _ = False  
-We did it by using the instance keyword. So class is for defining new typeclasses and instance is for making our types instances of typeclasses. When we were defining Eq, we wrote class Eq a where and we said that a plays the role of whichever type will be made an instance later on. We can see that clearly here, because when we're making an instance, we write instance Eq TrafficLight where. We replace the a with the actual type.
+----
 
-Because == was defined in terms of /= and vice versa in the class declaration, we only had to overwrite one of them in the instance declaration. That's called the minimal complete definition for the typeclass — the minimum of functions that we have to implement so that our type can behave like the class advertises. To fulfill the minimal complete definition for Eq, we have to overwrite either one of == or /=. If Eq was defined simply like this:
+Ми зробили це, використовуючи ключове слово `instance`. Так що клас для визначення нових типокласів, та примірник для перетворення наших класів на примірники типокласів. Коли ми визначаємо `Eq`, ми пишемо `class Eq a where`, і ми сказали, що `a` грає роль того самого типу, примірник якого ми пізніше створюємо. Ми можемо бачити це ясно тут, бо коли ми створюємо примірник, ми пишемо `instance Eq TrafficLight where`. Ми заміняємо `a` на справжній тип.
 
+Через те, що `==` було визначено в термінах `/=`, і навпаки, в декларації класа, нам треба тільки переписати один з них в декларації примірника. Це називається мінімально повним визначенням для типокласу — мінімум функцій, що нам треба реалізувати, так що наш тип зможе поводитись так, як проголошує клас. Щоб задовільнити мінімальному повному визначенню для `Eq`, ми маємо переписати одне, або `==` або `/=`. Якщо `Eq` було визначено просто як:
+
+[source,haskell]
+----
 class Eq a where  
     (==) :: a -> a -> Bool  
     (/=) :: a -> a -> Bool  
-we'd have to implement both of these functions when making a type an instance of it, because Haskell wouldn't know how these two functions are related. The minimal complete definition would then be: both == and /=.
+----
 
-You can see that we implemented == simply by doing pattern matching. Since there are many more cases where two lights aren't equal, we specified the ones that are equal and then just did a catch-all pattern saying that if it's none of the previous combinations, then two lights aren't equal.
+ми б мали реалізовувати обоє ці функції, коли робимо тип примірником класу, оскільки Haskell не має гадки, що ці дві функції пов'язані. Мінімальне повне визначення буде обоє, `==` та `/=`.
 
-Let's make this an instance of Show by hand, too. To satisfy the minimal complete definition for Show, we just have to implement its show function, which takes a value and turns it into a string.
+Ви можете бачити, що ми реалізували `==` просто через порівняння шаблону. Оскільки існує значно більше випадків, коли два світла не рівні, ми вказали ті що рівні, і потім просто зробили шаблон спіймати-всіх, що каже, що якщо це не жодна з попередніх комбінацій, тоді світло не те саме.
 
+Давайте також вручну зробимо його примірником `Show`. Щоб задовільнити мінімальному повному визначенню для `Show`, ми тільки маємо реалізувати його функцію `show`, що приймає значення, та перетворює його на рядок.
+
+[source,haskell]
+----
 instance Show TrafficLight where  
     show Red = "Red light"  
     show Yellow = "Yellow light"  
     show Green = "Green light"  
-Once again, we used pattern matching to achieve our goals. Let's see how it works in action:
+[source,haskell]
+----
 
+І знову, ми використали порівняння шаблонів для досягнення наших цілей. Давайте побачимо, як це робить в дії:
+
+[source,haskell]
+----
 ghci> Red == Red  
 True  
 ghci> Red == Yellow  
@@ -872,51 +1032,73 @@ ghci> Red `elem` [Red, Yellow, Green]
 True  
 ghci> [Red, Yellow, Green]  
 [Red light,Yellow light,Green light]  
-Nice. We could have just derived Eq and it would have had the same effect (but we didn't for educational purposes). However, deriving Show would have just directly translated the value constructors to strings. But if we want lights to appear like "Red light", then we have to make the instance declaration by hand.
+----
 
-You can also make typeclasses that are subclasses of other typeclasses. The class declaration for Num is a bit long, but here's the first part:
+Мило. Ми могли просто вивести `Eq`, і це мало б такий самий ефект (але ми не зробили це для цілей навчання). Однак вивід `Show` був би прямо трансльований від конструкторів на рядки. Але якщо ви бажаєте, щоб світло виглядало як "Red light", тоді нам треба зробити декларацію примірника вручну.
 
+Ви також можете створити типокласи, що є субкласами інших типокласів. Декларація класу для `Num` трохи задовга, але ось перша частина:
+
+[source,haskell]
+----
 class (Eq a) => Num a where  
    ...    
-As we mentioned previously, there are a lot of places where we can cram in class constraints. So this is just like writing class Num a where, only we state that our type a must be an instance of Eq. We're essentially saying that we have to make a type an instance of Eq before we can make it an instance of Num. Before some type can be considered a number, it makes sense that we can determine whether values of that type can be equated or not. That's all there is to subclassing really, it's just a class constraint on a class declaration! When defining function bodies in the class declaration or when defining them in instance declarations, we can assume that a is a part of Eq and so we can use == on values of that type.
+----
 
-But how are the Maybe or list types made as instances of typeclasses? What makes Maybe different from, say, TrafficLight is that Maybe in itself isn't a concrete type, it's a type constructor that takes one type parameter (like Char or something) to produce a concrete type (like Maybe Char). Let's take a look at the Eq typeclass again:
+Як ми вказували до цього, існує багато місць, де ми можемо впихнути обмеження класу. Так що це як написати `class Num a where`, тільки ми стверджуємо, що наш тип має бути примірником `Eq`. В основному ми кажемо, що нам треба зробити тип примірником `Eq`, перед тим, як ми зможемо зробити його примірником `Num`. Перед тим, як деякий тип може розглядатись як число, має сенс визначитись, чи значення цього типу можуть бути рівними, чи ні. Це і все, що тут відносно субкласів: це просто обмеження на декларації класу! Коли визначаємо тіла функцій в декларації класу, або коли визначаємо їх в деклараціях примірника, ми можемо вважати, що `a` є частиною `Eq`, так що ми можемо використовувати `==` на значеннях цього типу.
 
+Але як `Maybe` або типи списків стають примірниками типокласів? Що робить `Maybe` іншим від, скажімо, `TrafficLight`, це те, `Maybe` сам по собі не є конкретним типом, це конструктор типу, що приймає один параметр типу (як `Char` або будь-що інше) для продукування конкретного типу (як `Maybe Char`). Давайте поглянемо на типоклас `Eq` знову:
+
+[source,haskell]
+----
 class Eq a where  
     (==) :: a -> a -> Bool  
     (/=) :: a -> a -> Bool  
     x == y = not (x /= y)  
     x /= y = not (x == y)   
-From the type declarations, we see that the a is used as a concrete type because all the types in functions have to be concrete (remember, you can't have a function of the type a -> Maybe but you can have a function of a -> Maybe a or Maybe Int -> Maybe String). That's why we can't do something like
+----
 
+З декларації типу ми бачимо, що `a` використовується як конкретний тип, бо всі типи в функціях мають бути конкретними (пам'ятаєте, ви не можете мати функцію типу `a -> Maybe`, але ви можете мати функцію `a -> Maybe a` або `Maybe Int -> Maybe String`). Ось чому ми не можемо робити щось таке
+
+[source,haskell]
+----
 instance Eq Maybe where  
     ...    
-Because like we've seen, the a has to be a concrete type but Maybe isn't a concrete type. It's a type constructor that takes one parameter and then produces a concrete type. It would also be tedious to write instance Eq (Maybe Int) where, instance Eq (Maybe Char) where, etc. for every type ever. So we could write it out like so:
+----
 
+Бо, як ми бачили, `a` має бути конкретним типом, але `Maybe` не є конкретним типом. Це конструктор типу, що бере один параметр, і потім продукує конкретний тип. Також буде обтяжливо написати `instance Eq (Maybe Int) where`, instance Eq (Maybe Char) where, тощо. для кожного існуючого класу. Так що ми можемо записати це таким чином:
+
+[source,haskell]
+----
 instance Eq (Maybe m) where  
     Just x == Just y = x == y  
     Nothing == Nothing = True  
     _ == _ = False  
-        
-This is like saying that we want to make all types of the form Maybe something an instance of Eq. We actually could have written (Maybe something), but we usually opt for single letters to be true to the Haskell style. The (Maybe m) here plays the role of the a from class Eq a where. While Maybe isn't a concrete type, Maybe m is. By specifying a type parameter (m, which is in lowercase), we said that we want all types that are in the form of Maybe m, where m is any type, to be an instance of Eq.
+----
 
-There's one problem with this though. Can you spot it? We use == on the contents of the Maybe but we have no assurance that what the Maybe contains can be used with Eq! That's why we have to modify our instance declaration like this:
+Це як сказати, що ми бажаємо зробити всі типи в формі `Maybe` дещо примірниками `Eq`. Ми насправді можемо записати `(Maybe something)`, але ми зазвичай обираємо одну літеру, щоб бути в стилі Haskell. Тут `(Maybe m)` грає роль `a` в `class Eq a where`. Хоча `Maybe` і не конкретний тип, `Maybe m` вже так. Задаючи параметр типу (`m`, що в нижньому реєстрі), ми кажемо, що ми бажаємо, щоб всі типи, що мають форму `Maybe m`, де `m` є довільний тип, були примірниками `Eq`.
 
+Однак з цім є одна проблема. Чи ви помітили її? Ми використовуємо  `==` на вмісті `Maybe`, але в нас немає гарантій, що вміст `Maybe` може бути використаний з `Eq`! Ось чому ми маємо модифікувати нашу декларацію примірника таким чином:
+
+[source,haskell]
+----
 instance (Eq m) => Eq (Maybe m) where  
     Just x == Just y = x == y  
     Nothing == Nothing = True  
     _ == _ = False  
-        
-We had to add a class constraint! With this instance declaration, we say this: we want all types of the form Maybe m to be part of the Eq typeclass, but only those types where the m (so what's contained inside the Maybe) is also a part of Eq. This is actually how Haskell would derive the instance too.
+----
 
-Most of the times, class constraints in class declarations are used for making a typeclass a subclass of another typeclass and class constraints in instance declarations are used to express requirements about the contents of some type. For instance, here we required the contents of the Maybe to also be part of the Eq typeclass.
+Нам знадобилось додати обмеження класу! З цією декларацією примірника ми кажемо: ми бажаємо, щоб всі типи в формі `Maybe m` були частиною типокласу `Eq`, але тільки ті типи, де `m` (тобто те, що міститься в `Maybe`) також є частиною `Eq`. Це насправді те, як Haskell буде виводити примірник, також.
 
-When making instances, if you see that a type is used as a concrete type in the type declarations (like the a in a -> a -> Bool), you have to supply type parameters and add parentheses so that you end up with a concrete type.
+В більшості випадків обмеження класу в деклараціях класу використовуються щоб зробити типоклас субкласом іншого типокласу, та обмеження класу в деклараціях примірника використовуються для вираження вимог щодо вміста деякого типу. Наприклад, тут ми вимагаємо, щоб вміст `Maybe` також був частиною типокласу `Eq`.
 
-Take into account that the type you're trying to make an instance of will replace the parameter in the class declaration. The a from class Eq a where will be replaced with a real type when you make an instance, so try mentally putting your type into the function type declarations as well. (==) :: Maybe -> Maybe -> Bool doesn't make much sense but (==) :: (Eq m) => Maybe m -> Maybe m -> Bool does. But this is just something to think about, because == will always have a type of (==) :: (Eq a) => a -> a -> Bool, no matter what instances we make.
-Ooh, one more thing, check this out! If you want to see what the instances of a typeclass are, just do :info YourTypeClass in GHCI. So typing :info Num will show which functions the typeclass defines and it will give you a list of the types in the typeclass. :info works for types and type constructors too. If you do :info Maybe, it will show you all the typeclasses that Maybe is an instance of. Also :info can show you the type declaration of a function. I think that's pretty cool.
+Коли створюєте примірники, якщо ви бачите, що тип використовується як конкретний тип в деклараціях типу (як `a` в `a -> a -> Bool`), ви маєте надати параметри типу, та додати дужки, так щоб у вас утворився конкретний тип.
 
-A yes-no typeclass
+Прийміть до уваги, що тип, який ви намагаєтесь зробити примірником,буде заміщати параметр в декларації класу. `a` з `class Eq a where` буде замінений на реальний тип, коли ви створюватимете примірник, так що спробуйте подумки покласти ваш тип в декларації типу функцій, також. `(==) ::Maybe -> Maybe -> Bool` не має багато сенсу, але `(==) ::(Eq m) => Maybe m -> Maybe m -> Bool` так. Але це тільки ще одне, про що треба подумати, бо `==` буде завжди мати тип `(==) ::(Eq a) => a -> a -> Bool`, не важливо, які примірники ми створюємо.
+
+О, ще одна річ, перевірте це! Якщо ви бажаєте побачити, які примірники є в типокласа, просто зробіть `:info YourTypeClass` в GHCI. Так що набравши `:info Num` покаже вам, які функції визначає типоклас, і це також видасть вам список типів в типокласі. `:info` робить для типів, і також для конструкторів. Якщо ви робите `:info Maybe`, воно покаже вам всі типокласи, для яких `Maybe` є примірником. Також `:info` може показати декларацію типу для функції. Я думаю це досить круто.
+
+=== Типоклас так-ні
+
 yesno
 In JavaScript and some other weakly typed languages, you can put almost anything inside an if expression. For example, you can do all of the following: if (0) alert("YEAH!") else alert("NO!"), if ("") alert ("YEAH!") else alert("NO!"), if (false) alert("YEAH") else alert("NO!), etc. and all of these will throw an alert of NO!. If you do if ("WHAT") alert ("YEAH") else alert("NO!"), it will alert a "YEAH!" because JavaScript considers non-empty strings to be a sort of true-ish value.
 
