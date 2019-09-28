@@ -1099,50 +1099,80 @@ instance (Eq m) => Eq (Maybe m) where
 
 === Типоклас так-ні
 
-yesno
-In JavaScript and some other weakly typed languages, you can put almost anything inside an if expression. For example, you can do all of the following: if (0) alert("YEAH!") else alert("NO!"), if ("") alert ("YEAH!") else alert("NO!"), if (false) alert("YEAH") else alert("NO!), etc. and all of these will throw an alert of NO!. If you do if ("WHAT") alert ("YEAH") else alert("NO!"), it will alert a "YEAH!" because JavaScript considers non-empty strings to be a sort of true-ish value.
+image:images/yesno.png[]
+В JavaScript та деяких інших слабо типізованих мовах ви можете покласти майже будь-що в вираз `if`. Наприклад, ви можете зробити все з наступного: `if (0) alert("YEAH!") else alert("NO!")`, `if ("") alert ("YEAH!") else alert("NO!")`, `if (false) alert("YEAH") else alert("NO!)`, etc., і все це буде викликати `alert NO!`. Якщо ви зробите `if ("WHAT") alert ("YEAH") else alert("NO!")`, буде виконане `alert YEAH!`, оскільки JavaScript розглядає непорожні рядки як різновид правдо-подібних значень.
 
-Even though strictly using Bool for boolean semantics works better in Haskell, let's try and implement that JavaScript-ish behavior anyway. For fun! Let's start out with a class declaration.
+Навіть якщо пряме використання `Bool` для логічної семантики робить краще в Haskell, давайте спробуємо і реалізуємо цю JavaScript подібну поведінку все одно. Для розваги! Давайте почнемо з декларації класу.
 
+[source,haskell]
+----
 class YesNo a where  
     yesno :: a -> Bool  
-Pretty simple. The YesNo typeclass defines one function. That function takes one value of a type that can be considered to hold some concept of true-ness and tells us for sure if it's true or not. Notice that from the way we use the a in the function, a has to be a concrete type.
+----
 
-Next up, let's define some instances. For numbers, we'll assume that (like in JavaScript) any number that isn't 0 is true-ish and 0 is false-ish.
+Досить просто. Типоклас `YesNo` визначає одну функцію. Ця функція бере одне значення типу `a`, що може розгядатись як емність деякої концепції правдивості, і каже нам напевне, чи це правда, чи ні. Зауважте, що з того, в який спосіб ми використовуємо `a` в функції, це має бути конкретним типом.
 
+Далі давайте визначимо деякі примірники. Для чисел ми вважаємо, що (подібно до JavaScript) любе число, що не є `0`, є правдивим, та `0` є лживим.
+
+[source,haskell]
+----
 instance YesNo Int where  
     yesno 0 = False  
     yesno _ = True  
-Empty lists (and by extensions, strings) are a no-ish value, while non-empty lists are a yes-ish value.
+----
 
+Порожні списки (і по розширенню рядки) є ні-значеннями, тоді як непорожні списки є так-значеннями.
+
+[source,haskell]
+----
 instance YesNo [a] where  
     yesno [] = False  
     yesno _ = True  
-Notice how we just put in a type parameter a in there to make the list a concrete type, even though we don't make any assumptions about the type that's contained in the list. What else, hmm ... I know, Bool itself also holds true-ness and false-ness and it's pretty obvious which is which.
+----
 
+Зауважте, як ми просто поклали в параметр типу `a`, щоб зробити список конкретним типом, навіть якщо ми не робимо жодних припущень щодо типу, що міститься в списку. Що ще, хм ... Я знаю, `Bool` сам по собі містить правдивість та неправдивість, і це досить очевидно щодо цього.
+
+[source,haskell]
+----
 instance YesNo Bool where  
     yesno = id     
-Huh? What's id? It's just a standard library function that takes a parameter and returns the same thing, which is what we would be writing here anyway.
+----
 
-Let's make Maybe a an instance too.
+Так, що за `id`? Це тільки функція стандартної бібліотеки, що приймає параметр, та повертає ту саму річ, що саме те, що ми бажаємо тут написати.
 
+Давайте також зробимо примірником `Maybe`.
+
+[source,haskell]
+----
 instance YesNo (Maybe a) where  
     yesno (Just _) = True  
     yesno Nothing = False  
-We didn't need a class constraint because we made no assumptions about the contents of the Maybe. We just said that it's true-ish if it's a Just value and false-ish if it's a Nothing. We still had to write out (Maybe a) instead of just Maybe because if you think about it, a Maybe -> Bool function can't exist (because Maybe isn't a concrete type), whereas a Maybe a -> Bool is fine and dandy. Still, this is really cool because now, any type of the form Maybe something is part of YesNo and it doesn't matter what that something is.
+----
 
-Previously, we defined a Tree a type, that represented a binary search tree. We can say an empty tree is false-ish and anything that's not an empty tree is true-ish.
+Нам не треба обмеження типу, оскільки ми не маємо припущень щодо вмісту `Maybe`. Ми тільки що сказали, що ми правдиві коли маємо `Just` значення, та ні коли `Nothing`. Ми все ще маємо писати `(Maybe a)` замість просто `Maybe`, оскільки, якщо ви про це подумаєте, функція `Maybe -> Bool` не може існувати (оскільки `Maybe` не є конкретним типом), тоді як `Maybe a -> Bool` добре і елегантно. Це вже досить круто, бо зараз любий тип в формі `Maybe` дещо є частиною `YesNo`, і це не має значення, що є це дещо.
 
+До цього ми визначили тип `Tree a`, що представляв дерево двійникового пошуку. Ми можемо сказати, що порожнє дерево фальшиве, і непорожнє дерево є правдивим.
+
+[source,haskell]
+----
 instance YesNo (Tree a) where  
     yesno EmptyTree = False  
     yesno _ = True  
-Can a traffic light be a yes or no value? Sure. If it's red, you stop. If it's green, you go. If it's yellow? Eh, I usually run the yellows because I live for adrenaline.
+----
 
+Чи може світло світлофора бути значенням так або ні? Звичайно. Якщо світло червоне, ви зупиняєтесь. Якщо світло зелене, ви йдете. Якщо воно жовте? Ну так, зазвичай я біжу на жовтий, бо я живу на адреналіні.
+
+[source,haskell]
+----
 instance YesNo TrafficLight where  
     yesno Red = False  
     yesno _ = True  
-Cool, now that we have some instances, let's go play!
+----
 
+Круто, тепер, коли ми маємо декілька примірників, давайте гратись!
+
+[source,haskell]
+----
 ghci> yesno $ length []  
 False  
 ghci> yesno "haha"  
@@ -1161,12 +1191,20 @@ ghci> yesno [0,0,0]
 True  
 ghci> :t yesno  
 yesno :: (YesNo a) => a -> Bool  
-Right, it works! Let's make a function that mimics the if statement, but it works with YesNo values.
+----
 
+Все вірно, це робить! Давайте створимо функцію, що копіює твердження `if`, але робить зі значеннями `YesNo`.
+
+[source,haskell]
+----
 yesnoIf :: (YesNo y) => y -> a -> a -> a  
 yesnoIf yesnoVal yesResult noResult = if yesno yesnoVal then yesResult else noResult  
-Pretty straightforward. It takes a yes-no-ish value and two things. If the yes-no-ish value is more of a yes, it returns the first of the two things, otherwise it returns the second of them.
+----
 
+Досить прямолінійно. Вона приймає значення `yes-no` та дві речі. Якщо значення скоріше `yes`, повертається перша з двох речей, інакше повертається друга річ.
+
+[source,haskell]
+----
 ghci> yesnoIf [] "YEAH!" "NO!"  
 "NO!"  
 ghci> yesnoIf [2,3,4] "YEAH!" "NO!"  
@@ -1176,43 +1214,64 @@ ghci> yesnoIf True "YEAH!" "NO!"
 ghci> yesnoIf (Just 500) "YEAH!" "NO!"  
 "YEAH!"  
 ghci> yesnoIf Nothing "YEAH!" "NO!"  
-"NO!"  
-The Functor typeclass
-So far, we've encountered a lot of the typeclasses in the standard library. We've played with Ord, which is for stuff that can be ordered. We've palled around with Eq, which is for things that can be equated. We've seen Show, which presents an interface for types whose values can be displayed as strings. Our good friend Read is there whenever we need to convert a string to a value of some type. And now, we're going to take a look at the Functor typeclass, which is basically for things that can be mapped over. You're probably thinking about lists now, since mapping over lists is such a dominant idiom in Haskell. And you're right, the list type is part of the Functor typeclass.
+"NO!"
+----
 
-What better way to get to know the Functor typeclass than to see how it's implemented? Let's take a peek.
+=== Типоклас Functor
 
+Досі ми зустрічали багато типокласів в стандартній бібліотеці. Ми грали з `Ord`, що призначений для речей, що можуть бути впорядковані. Ми намотали на вус щодо `Eq`, що є для речей, які можуть бути рівними. Ми бачили `Show`, що представляє інтерфейс для типів, чиї значення можуть бути відображені як рядки. Наш гарний друг `Read` був поряд, коли нам треба конвертувати рядок на значення деякого типу. І тепер ми збираємось подивитись на типоклас `Functor`, що в основному для речей, по яких можна робити відображення. Можливо, ви зараз думаєте про списки, оскільки відображення по списках є домінантною ідіомою в Haskell. І ви праві, тип списку є частиною типокласу `Functor`.
+
+Що може бути кращим способом отримати знання про типоклас `Functor`, ніж побачити його реалізацію? Давайте поглянемо.
+
+[source,haskell]
+----
 class Functor f where  
     fmap :: (a -> b) -> f a -> f b  
-I AM FUNCTOOOOR!!!
-Alright. We see that it defines one function, fmap, and doesn't provide any default implementation for it. The type of fmap is interesting. In the definitions of typeclasses so far, the type variable that played the role of the type in the typeclass was a concrete type, like the a in (==) :: (Eq a) => a -> a -> Bool. But now, the f is not a concrete type (a type that a value can hold, like Int, Bool or Maybe String), but a type constructor that takes one type parameter. A quick refresher example: Maybe Int is a concrete type, but Maybe is a type constructor that takes one type as the parameter. Anyway, we see that fmap takes a function from one type to another and a functor applied with one type and returns a functor applied with another type.
+----
 
-If this sounds a bit confusing, don't worry. All will be revealed soon when we check out a few examples. Hmm, this type declaration for fmap reminds me of something. If you don't know what the type signature of map is, it's: map :: (a -> b) -> [a] -> [b].
+image:images/functor.png[]
+Гаразд, ми бачимо що це визначає функцію, `fmap`, і не провадимо жодної реалізації по замовчанню для неї. Тип `fmap` є цікавим. Досі в визначеннях типокласів змінна типу, що грала роль типу в типокласі, була конкретного типу, як `a` в `(==) ::(Eq a) => a -> a -> Bool`. Але тепер `f` не є конкретним типом (тип, що може містити `a`, як `Int`, `Bool` або `Maybe String`), але це конструктор типу, що приймає один параметр типу. Швидке нагадування: `Maybe Int` є конкретним типом, але `Maybe` є конструктором типу, що приймає один тип в якості параметра. В жодному разі, ми бачимо що `fmap` бере функцію з одного типу до іншого, і функтор, застосований з одного типу та повертає функтор, застосований з іншим типом.
 
-Ah, interesting! It takes a function from one type to another and a list of one type and returns a list of another type. My friends, I think we have ourselves a functor! In fact, map is just a fmap that works only on lists. Here's how the list is an instance of the Functor typeclass.
+Не турбуйтесь, якщо це виглядає трохи збентежливо. Все швидко викриється, коли ми побачимо декілька прикладів. Хм, ця декларація типу `fmap` нагадує мені щось. Якщо ви не знаєте, якого типу є сигнатура `map`, вона така: `map ::(a -> b) -> [a] -> [b]`.
 
+А, цікаво! Це бере функцію від одного типу до іншого, і список одного типу і повертає список іншого типу. Мої друзі, ми маємо з вами функтор! Фактично, `map` є просто `fmap`, що робить на списках. Ось як список є примірником типокласу `Functor`.
+
+[source,haskell]
+----
 instance Functor [] where  
     fmap = map  
-That's it! Notice how we didn't write instance Functor [a] where, because from fmap :: (a -> b) -> f a -> f b, we see that the f has to be a type constructor that takes one type. [a] is already a concrete type (of a list with any type inside it), while [] is a type constructor that takes one type and can produce types such as [Int], [String] or even [[String]].
+----
 
-Since for lists, fmap is just map, we get the same results when using them on lists.
+І це все! Зауважте, що ми не писали `instance Functor [a] where`, бо з `fmap ::(a -> b) -> f a -> f b`, ми бачимо, що `f` має бути конструктором типів, що приймає один тип. `[a]` є вже конкретним типом (списком з деяким списком всередині), тоді як `[]` є конструтором типів, що приймає один тип, і може продукувати типи як  `[Int]`, `[String]` або навіть `[[String]]`.
 
+Оскільки для списків `fmap` є просто `map`, ми отримуємо ті самі результати, коли використовуємо його на списках.
+
+[source,haskell]
+----
 map :: (a -> b) -> [a] -> [b]  
 ghci> fmap (*2) [1..3]  
 [2,4,6]  
 ghci> map (*2) [1..3]  
 [2,4,6]  
-What happens when we map or fmap over an empty list? Well, of course, we get an empty list. It just turns an empty list of type [a] into an empty list of type [b].
+----
 
-Types that can act like a box can be functors. You can think of a list as a box that has an infinite amount of little compartments and they can all be empty, one can be full and the others empty or a number of them can be full. So, what else has the properties of being like a box? For one, the Maybe a type. In a way, it's like a box that can either hold nothing, in which case it has the value of Nothing, or it can hold one item, like "HAHA", in which case it has a value of Just "HAHA". Here's how Maybe is a functor.
+Що трапиться, коли ми зробимо `map` або `fmap` на порожньому списку? Гаразд, звичайно ми отримаємо порожній список. Вони просто перетворюють порожній список типу `[a]` в порожній список типу `[b]`.
 
+Типи, що можуть діяти як бокси, можуть бути функторами. You can think of a list as a box that has an infinite amount of little compartments and they can all be empty, one can be full and the others empty or a number of them can be full. So, what else has the properties of being like a box? For one, the Maybe a type. In a way, it's like a box that can either hold nothing, in which case it has the value of Nothing, or it can hold one item, like "HAHA", in which case it has a value of Just "HAHA". Here's how Maybe is a functor.
+
+[source,haskell]
+----
 instance Functor Maybe where  
     fmap f (Just x) = Just (f x)  
     fmap f Nothing = Nothing  
+----
+
 Again, notice how we wrote instance Functor Maybe where instead of instance Functor (Maybe m) where, like we did when we were dealing with Maybe and YesNo. Functor wants a type constructor that takes one type and not a concrete type. If you mentally replace the fs with Maybes, fmap acts like a (a -> b) -> Maybe a -> Maybe b for this particular type, which looks OK. But if you replace f with (Maybe m), then it would seem to act like a (a -> b) -> Maybe m a -> Maybe m b, which doesn't make any damn sense because Maybe takes just one type parameter.
 
 Anyway, the fmap implementation is pretty simple. If it's an empty value of Nothing, then just return a Nothing. If we map over an empty box, we get an empty box. It makes sense. Just like if we map over an empty list, we get back an empty list. If it's not an empty value, but rather a single value packed up in a Just, then we apply the function on the contents of the Just.
 
+[source,haskell]
+----
 ghci> fmap (++ " HEY GUYS IM INSIDE THE JUST") (Just "Something serious.")  
 Just "Something serious. HEY GUYS IM INSIDE THE JUST"  
 ghci> fmap (++ " HEY GUYS IM INSIDE THE JUST") Nothing  
@@ -1221,8 +1280,12 @@ ghci> fmap (*2) (Just 200)
 Just 400  
 ghci> fmap (*2) Nothing  
 Nothing  
+----
+
 Another thing that can be mapped over and made an instance of Functor is our Tree a type. It can be thought of as a box in a way (holds several or no values) and the Tree type constructor takes exactly one type parameter. If you look at fmap as if it were a function made only for Tree, its type signature would look like (a -> b) -> Tree a -> Tree b. We're going to use recursion on this one. Mapping over an empty tree will produce an empty tree. Mapping over a non-empty tree will be a tree consisting of our function applied to the root value and its left and right sub-trees will be the previous sub-trees, only our function will be mapped over them.
 
+[source,haskell]
+----
 instance Functor Tree where  
     fmap f EmptyTree = EmptyTree  
     fmap f (Node x leftsub rightsub) = Node (f x) (fmap f leftsub) (fmap f rightsub)  
@@ -1230,14 +1293,24 @@ ghci> fmap (*2) EmptyTree
 EmptyTree  
 ghci> fmap (*4) (foldr treeInsert EmptyTree [5,7,3,2,1,7])  
 Node 28 (Node 4 EmptyTree (Node 8 EmptyTree (Node 12 EmptyTree (Node 20 EmptyTree EmptyTree)))) EmptyTree  
+----
+
 Nice! Now how about Either a b? Can this be made a functor? The Functor typeclass wants a type constructor that takes only one type parameter but Either takes two. Hmmm! I know, we'll partially apply Either by feeding it only one parameter so that it has one free parameter. Here's how Either a is a functor in the standard libraries:
 
+[source,haskell]
+----
 instance Functor (Either a) where  
     fmap f (Right x) = Right (f x)  
     fmap f (Left x) = Left x  
+----
+
 Well well, what did we do here? You can see how we made Either a an instance instead of just Either. That's because Either a is a type constructor that takes one parameter, whereas Either takes two. If fmap was specifically for Either a, the type signature would then be (b -> c) -> Either a b -> Either a c because that's the same as (b -> c) -> (Either a) b -> (Either a) c. In the implementation, we mapped in the case of a Right value constructor, but we didn't in the case of a Left. Why is that? Well, if we look back at how the Either a b type is defined, it's kind of like:
 
+[source,haskell]
+----
 data Either a b = Left a | Right b  
+----
+
 Well, if we wanted to map one function over both of them, a and b would have to be the same type. I mean, if we tried to map a function that takes a string and returns a string and the b was a string but the a was a number, that wouldn't really work out. Also, from seeing what fmap's type would be if it operated only on Either values, we see that the first parameter has to remain the same while the second one can change and the first parameter is actualized by the Left value constructor.
 
 This also goes nicely with our box analogy if we think of the Left part as sort of an empty box with an error message written on the side telling us why it's empty.
@@ -1250,7 +1323,9 @@ Try figuring out how Map k is made an instance of Functor by yourself!
 With the Functor typeclass, we've seen how typeclasses can represent pretty cool higher-order concepts. We've also had some more practice with partially applying types and making instances. In one of the next chapters, we'll also take a look at some laws that apply for functors.
 
 Just one more thing! Functors should obey some laws so that they may have some properties that we can depend on and not think about too much. If we use fmap (+1) over the list [1,2,3,4], we expect the result to be [2,3,4,5] and not its reverse, [5,4,3,2]. If we use fmap (\a -> a) (the identity function, which just returns its parameter) over some list, we expect to get back the same list as a result. For example, if we gave the wrong functor instance to our Tree type, using fmap over a tree where the left sub-tree of a node only has elements that are smaller than the node and the right sub-tree only has nodes that are larger than the node might produce a tree where that's not the case. We'll go over the functor laws in more detail in one of the next chapters.
-Kinds and some type-foo
+
+==== Kinds and some type-foo
+
 TYPE FOO MASTER
 Type constructors take other types as parameters to eventually produce concrete types. That kind of reminds me of functions, which take values as parameters to produce values. We've seen that type constructors can be partially applied (Either String is a type that takes one type and produces a concrete type, like Either String Int), just like functions can. This is all very interesting indeed. In this section, we'll take a look at formally defining how types are applied to type constructors, just like we took a look at formally defining how values are applied to functions by using type declarations. You don't really have to read this section to continue on your magical Haskell quest and if you don't understand it, don't worry about it. However, getting this will give you a very thorough understanding of the type system.
 
@@ -1258,42 +1333,70 @@ So, values like 3, "YEAH" or takeWhile (functions are also values, because we ca
 
 What are kinds and what are they good for? Well, let's examine the kind of a type by using the :k command in GHCI.
 
+[source,haskell]
+----
 ghci> :k Int  
 Int :: *  
+----
+
 A star? How quaint. What does that mean? A * means that the type is a concrete type. A concrete type is a type that doesn't take any type parameters and values can only have types that are concrete types. If I had to read * out loud (I haven't had to do that so far), I'd say star or just type.
 
 Okay, now let's see what the kind of Maybe is.
 
+[source,haskell]
+----
 ghci> :k Maybe  
 Maybe :: * -> *  
+----
+
 The Maybe type constructor takes one concrete type (like Int) and then returns a concrete type like Maybe Int. And that's what this kind tells us. Just like Int -> Int means that a function takes an Int and returns an Int, * -> * means that the type constructor takes one concrete type and returns a concrete type. Let's apply the type parameter to Maybe and see what the kind of that type is.
 
+[source,haskell]
+----
 ghci> :k Maybe Int  
 Maybe Int :: *  
+----
+
 Just like I expected! We applied the type parameter to Maybe and got back a concrete type (that's what * -> * means. A parallel (although not equivalent, types and kinds are two different things) to this is if we do :t isUpper and :t isUpper 'A'. isUpper has a type of Char -> Bool and isUpper 'A' has a type of Bool, because its value is basically True. Both those types, however, have a kind of *.
 
 We used :k on a type to get its kind, just like we can use :t on a value to get its type. Like we said, types are the labels of values and kinds are the labels of types and there are parallels between the two.
 
 Let's look at another kind.
 
+[source,haskell]
+----
 ghci> :k Either  
 Either :: * -> * -> *  
+----
+
 Aha, this tells us that Either takes two concrete types as type parameters to produce a concrete type. It also looks kind of like a type declaration of a function that takes two values and returns something. Type constructors are curried (just like functions), so we can partially apply them.
 
+[source,haskell]
+----
 ghci> :k Either String  
 Either String :: * -> *  
 ghci> :k Either String Int  
 Either String Int :: *  
+----
+
 When we wanted to make Either a part of the Functor typeclass, we had to partially apply it because Functor wants types that take only one parameter while Either takes two. In other words, Functor wants types of kind * -> * and so we had to partially apply Either to get a type of kind * -> * instead of its original kind * -> * -> *. If we look at the definition of Functor again
 
+[source,haskell]
+----
 class Functor f where   
     fmap :: (a -> b) -> f a -> f b  
+----
+
 we see that the f type variable is used as a type that takes one concrete type to produce a concrete type. We know it has to produce a concrete type because it's used as the type of a value in a function. And from that, we can deduce that types that want to be friends with Functor have to be of kind * -> *.
 
 Now, let's do some type-foo. Take a look at this typeclass that I'm just going to make up right now:
 
+[source,haskell]
+----
 class Tofu t where  
     tofu :: j a -> t a j  
+----
+
 Man, that looks weird. How would we make a type that could be an instance of that strange typeclass? Well, let's look at what its kind would have to be. Because j a is used as the type of a value that the tofu function takes as its parameter, j a has to have a kind of *. We assume * for a and so we can infer that j has to have a kind of * -> *. We see that t has to produce a concrete value too and that it takes two types. And knowing that a has a kind of * and j has a kind of * -> *, we infer that t has to have a kind of * -> (* -> *) -> *. So it takes a concrete type (a), a type constructor that takes one concrete type (j) and produces a concrete type. Wow.
 
 OK, so let's make a type with a kind of * -> (* -> *) -> *. Here's one way of going about it.
@@ -1301,33 +1404,52 @@ OK, so let's make a type with a kind of * -> (* -> *) -> *. Here's one way of go
 data Frank a b  = Frank {frankField :: b a} deriving (Show)  
 How do we know this type has a kind of * -> (* -> *) - > *? Well, fields in ADTs are made to hold values, so they must be of kind *, obviously. We assume * for a, which means that b takes one type parameter and so its kind is * -> *. Now we know the kinds of both a and b and because they're parameters for Frank, we see that Frank has a kind of * -> (* -> *) -> * The first * represents a and the (* -> *) represents b. Let's make some Frank values and check out their types.
 
+[source,haskell]
+----
 ghci> :t Frank {frankField = Just "HAHA"}  
 Frank {frankField = Just "HAHA"} :: Frank [Char] Maybe  
 ghci> :t Frank {frankField = Node 'a' EmptyTree EmptyTree}  
 Frank {frankField = Node 'a' EmptyTree EmptyTree} :: Frank Char Tree  
 ghci> :t Frank {frankField = "YES"}  
 Frank {frankField = "YES"} :: Frank Char []  
+----
+
 Hmm. Because frankField has a type of form a b, its values must have types that are of a similar form as well. So they can be Just "HAHA", which has a type of Maybe [Char] or it can have a value of ['Y','E','S'], which has a type of [Char] (if we used our own list type for this, it would have a type of List Char). And we see that the types of the Frank values correspond with the kind for Frank. [Char] has a kind of * and Maybe has a kind of * -> *. Because in order to have a value, it has to be a concrete type and thus has to be fully applied, every value of Frank blah blaah has a kind of *.
 
 Making Frank an instance of Tofu is pretty simple. We see that tofu takes a j a (so an example type of that form would be Maybe Int) and returns a t a j. So if we replace Frank with j, the result type would be Frank Int Maybe.
 
+[source,haskell]
+----
 instance Tofu Frank where  
     tofu x = Frank x  
 ghci> tofu (Just 'a') :: Frank Char Maybe  
 Frank {frankField = Just 'a'}  
 ghci> tofu ["HELLO"] :: Frank [Char] []  
 Frank {frankField = ["HELLO"]}  
+----
+
 Not very useful, but we did flex our type muscles. Let's do some more type-foo. We have this data type:
 
-data Barry t k p = Barry { yabba :: p, dabba :: t k }  
+[source,haskell]
+----
+data Barry t k p = Barry { yabba ::p, dabba ::t k }  
+----
+
 And now we want to make it an instance of Functor. Functor wants types of kind * -> * but Barry doesn't look like it has that kind. What is the kind of Barry? Well, we see it takes three type parameters, so it's going to be something -> something -> something -> *. It's safe to say that p is a concrete type and thus has a kind of *. For k, we assume * and so by extension, t has a kind of * -> *. Now let's just replace those kinds with the somethings that we used as placeholders and we see it has a kind of (* -> *) -> * -> * -> *. Let's check that with GHCI.
 
+[source,haskell]
+----
 ghci> :k Barry  
 Barry :: (* -> *) -> * -> * -> *  
+----
+
 Ah, we were right. How satisfying. Now, to make this type a part of Functor we have to partially apply the first two type parameters so that we're left with * -> *. That means that the start of the instance declaration will be: instance Functor (Barry a b) where. If we look at fmap as if it was made specifically for Barry, it would have a type of fmap :: (a -> b) -> Barry c d a -> Barry c d b, because we just replace the Functor's f with Barry c d. The third type parameter from Barry will have to change and we see that it's conviniently in its own field.
 
+[source,haskell]
+----
 instance Functor (Barry a b) where  
     fmap f (Barry {yabba = x, dabba = y}) = Barry {yabba = f x, dabba = y}  
 There we go! We just mapped the f over the first field.
+----
 
 In this section, we took a good look at how type parameters work and kind of formalized them with kinds, just like we formalized function parameters with type declarations. We saw that there are interesting parallels between functions and type constructors. They are, however, two completely different things. When working on real Haskell, you usually won't have to mess with kinds and do kind inference by hand like we did now. Usually, you just have to partially apply your own type to * -> * or * when making it an instance of one of the standard typeclasses, but it's good to know how and why that actually works. It's also interesting to see that types have little types of their own. Again, you don't really have to understand everything we did here to read on, but if you understand how kinds work, chances are that you have a very solid grasp of Haskell's type system.
