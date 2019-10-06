@@ -1257,7 +1257,7 @@ ghci> map (*2) [1..3]
 
 Що трапиться, коли ми зробимо `map` або `fmap` на порожньому списку? Гаразд, звичайно ми отримаємо порожній список. Вони просто перетворюють порожній список типу `[a]` в порожній список типу `[b]`.
 
-Типи, що можуть діяти як бокси, можуть бути функторами. You can think of a list as a box that has an infinite amount of little compartments and they can all be empty, one can be full and the others empty or a number of them can be full. So, what else has the properties of being like a box? For one, the Maybe a type. In a way, it's like a box that can either hold nothing, in which case it has the value of Nothing, or it can hold one item, like "HAHA", in which case it has a value of Just "HAHA". Here's how Maybe is a functor.
+Типи, що можуть діяти як бокси, можуть бути функторами. Ви можете думати про список як про бокс, що має безліч малих компонент, і всі вони можуть бути порожні, один з них може бути повним а інші порожні, або декілька можуть бути повні. Так, що інше має властивості бути як бокс? Для початку це `Maybe`. В деякому смислі це як бокс, що може або нічого не містити, і в цьому випадку це значення `Nothing`, або він може містити один елемент, як `"HAHA"`, в якому випадку він має значення `Just "HAHA"`. Ось як `Maybe` є функтором.
 
 [source,haskell]
 ----
@@ -1266,9 +1266,9 @@ instance Functor Maybe where
     fmap f Nothing = Nothing  
 ----
 
-Again, notice how we wrote instance Functor Maybe where instead of instance Functor (Maybe m) where, like we did when we were dealing with Maybe and YesNo. Functor wants a type constructor that takes one type and not a concrete type. If you mentally replace the fs with Maybes, fmap acts like a (a -> b) -> Maybe a -> Maybe b for this particular type, which looks OK. But if you replace f with (Maybe m), then it would seem to act like a (a -> b) -> Maybe m a -> Maybe m b, which doesn't make any damn sense because Maybe takes just one type parameter.
+Знову, зауважте, як ми пишемо `instance Functor Maybe where` замість `instance Functor (Maybe m) where`, як ми робили, коли мали справи з `Maybe` та `YesNo`. `Functor` бажає конструктора типу, що приймає один тип, а не конкретний тип. Якщо ви подумки заміните `f` на `Maybe`, `fmap` діє як `(a -> b) -> Maybe a -> Maybe b` для цього типу предикату, що виглядає OK. Але якщо ви заміните `f` на `(Maybe m)`, тоді воно діятиме як `(a -> b) -> Maybe m a -> Maybe m b`, що не має жодного дідькова сенсу, оскільки `Maybe` бере тільки один параметр типу.
 
-Anyway, the fmap implementation is pretty simple. If it's an empty value of Nothing, then just return a Nothing. If we map over an empty box, we get an empty box. It makes sense. Just like if we map over an empty list, we get back an empty list. If it's not an empty value, but rather a single value packed up in a Just, then we apply the function on the contents of the Just.
+В жодному разі, реалізція `fmap` досить проста. Якщо це порожнє значення `Nothing`, тоді просто повертаємо `Nothing`. Якщо ми відображуємо порожній бокс, ми отримуємо порожній бокс. Це має сенс. Так само, як ми робимо `map` по порожньому списку, ми знову отримуємо порожній список. Якщо це не порожнє значення, але скоріше поодиноке значення, запаковане в `Just`, тоді ми застосовуємо функцію на вмісті цього `Just`.
 
 [source,haskell]
 ----
@@ -1282,7 +1282,7 @@ ghci> fmap (*2) Nothing
 Nothing  
 ----
 
-Another thing that can be mapped over and made an instance of Functor is our Tree a type. It can be thought of as a box in a way (holds several or no values) and the Tree type constructor takes exactly one type parameter. If you look at fmap as if it were a function made only for Tree, its type signature would look like (a -> b) -> Tree a -> Tree b. We're going to use recursion on this one. Mapping over an empty tree will produce an empty tree. Mapping over a non-empty tree will be a tree consisting of our function applied to the root value and its left and right sub-trees will be the previous sub-trees, only our function will be mapped over them.
+Інша річ, по якій можна робити відображення та створити примірник `Functor` є наш тип `Tree`. Це можна промислити як свого роду бокс (містить декілька або жодних значень), і конструктор типу `Tree` бере рівно один параметр типу. Якщо ви подивитесь на `fmap`, так якби це було функцією, створеною тільки для `Tree`, його сигнатура типу виглядала б як `(a -> b) -> Tree a -> Tree b`. Ми збираємось використати рекурсію для цього. Відображення по порожньому дереву буде продукувати порожнє дерево. Відображення по непорожньому дереву буде дерево, що складається з нашої функції, застосованої до кореневого значення, та його ліве та праве субдерево будуть попередніми субдеревами, з відображенням нашої функції по них.
 
 [source,haskell]
 ----
@@ -1295,7 +1295,7 @@ ghci> fmap (*4) (foldr treeInsert EmptyTree [5,7,3,2,1,7])
 Node 28 (Node 4 EmptyTree (Node 8 EmptyTree (Node 12 EmptyTree (Node 20 EmptyTree EmptyTree)))) EmptyTree  
 ----
 
-Nice! Now how about Either a b? Can this be made a functor? The Functor typeclass wants a type constructor that takes only one type parameter but Either takes two. Hmmm! I know, we'll partially apply Either by feeding it only one parameter so that it has one free parameter. Here's how Either a is a functor in the standard libraries:
+Мило! Тепер як щодо `Either a b`? Чи може це бути перетворене на функтор? Типоклас `Functor` бажає конструктор типу, що бере тільки один параметр, але `Either` бере два. Хммм! Я знаю, ми будемо частково застосовувати `Either`, подаючи йому один параметр, так що він матиме лише один вільний параметр. Ось як `Either` є функтором в стандартних бібліотеках:
 
 [source,haskell]
 ----
@@ -1304,34 +1304,35 @@ instance Functor (Either a) where
     fmap f (Left x) = Left x  
 ----
 
-Well well, what did we do here? You can see how we made Either a an instance instead of just Either. That's because Either a is a type constructor that takes one parameter, whereas Either takes two. If fmap was specifically for Either a, the type signature would then be (b -> c) -> Either a b -> Either a c because that's the same as (b -> c) -> (Either a) b -> (Either a) c. In the implementation, we mapped in the case of a Right value constructor, but we didn't in the case of a Left. Why is that? Well, if we look back at how the Either a b type is defined, it's kind of like:
+Гаразд-гаразд, що ми тут зробили? Ви можете бачити, як ми зробили примірником `Either a`, замість просто `Either`. Це тому, що `Either a` є конструктором типу, що бере один параметр, тоді як `Either` бере два. Якщо б `fmap` була особливою для `Either a`, тип сигнатури був би `(b -> c) -> Either a b -> Either a c`, оскільки це те саме, що і `(b -> c) -> (Either a) b -> (Either a) c`. В реалізації ми відображуємо ми робимо відображення в випадку конструктора значення `Right`, але не робимо в випадку `Left`. Чому це так? Гаразд, коли ми подивимось назад на те, як реалізований тип `Either a b`, це буде щось таке:
 
 [source,haskell]
 ----
 data Either a b = Left a | Right b  
 ----
 
-Well, if we wanted to map one function over both of them, a and b would have to be the same type. I mean, if we tried to map a function that takes a string and returns a string and the b was a string but the a was a number, that wouldn't really work out. Also, from seeing what fmap's type would be if it operated only on Either values, we see that the first parameter has to remain the same while the second one can change and the first parameter is actualized by the Left value constructor.
+Гаразд, якщо ви бажаєте відобразити одну функцію по обох з них, `a` та `b` мали б бути того самого типу. Я маю на увазі, якщо ми спробуємо відобразити функцію, що бере рядок та повертає рядок, та `b` був би рядком, але `a` був би числом, це не мало б працювати. Також від спостереження, що якщо тип `fmap` був би такий, що робив би тільки на значеннях `Either`, ми побачимо що перший параметр має залишатись тим самим, коли другий може змінюватись, і перший параметр актуалізований конструктором значення `Left`.
 
-This also goes nicely with our box analogy if we think of the Left part as sort of an empty box with an error message written on the side telling us why it's empty.
+Це також гарно проходить з нашою аналогією боксу, якщо ми подумаємо про частину `Left` як про різновид порожнього боксу з повідомленням помилки, що лише сповіщає нам, чому тут порожнє.
 
-Maps from Data.Map can also be made a functor because they hold values (or not!). In the case of Map k v, fmap will map a function v -> v' over a map of type Map k v and return a map of type Map k v'.
+Мапи від `Data.Map` також може бути зроблене функтором, бо вони містять значення (або ні!). В випадку `Map k v` `fmap` буде функцією відображення `v -> v'` по мапі типу `Map k v`, та повертає мапу типу `Map k v'`.
 
-Note, the ' has no special meaning in types just like it doesn't have special meaning when naming values. It's used to denote things that are similar, only slightly changed.
-Try figuring out how Map k is made an instance of Functor by yourself!
+Зауважте, що `'` не має особливого значення в типах, так само, як це не має особливого значення при іменуванні значень. Це використовується для позначення речей, що є подібними, але досить зміненими.
 
-With the Functor typeclass, we've seen how typeclasses can represent pretty cool higher-order concepts. We've also had some more practice with partially applying types and making instances. In one of the next chapters, we'll also take a look at some laws that apply for functors.
+Спробуйте самостійно уявити, як `Map k` перетворюється на примірник `Functor`!
 
-Just one more thing! Functors should obey some laws so that they may have some properties that we can depend on and not think about too much. If we use fmap (+1) over the list [1,2,3,4], we expect the result to be [2,3,4,5] and not its reverse, [5,4,3,2]. If we use fmap (\a -> a) (the identity function, which just returns its parameter) over some list, we expect to get back the same list as a result. For example, if we gave the wrong functor instance to our Tree type, using fmap over a tree where the left sub-tree of a node only has elements that are smaller than the node and the right sub-tree only has nodes that are larger than the node might produce a tree where that's not the case. We'll go over the functor laws in more detail in one of the next chapters.
+З типокласом `Functor` ми побачили, як типокласи можуть представляти досить круті концепції вищих порядків. Ми також мали деяку додаткову практику з частково застосованими типами, та створенням примірників. В одному з наступних глав ми також поглянемо на деякі закони, що стосуються функторів.
 
-==== Kinds and some type-foo
+Тільки ще одна річ! Функтори повинні підкорюватись деяким законам, так що вони можуть мати деякі властивості, на які ми можемо розраховувати, і не сильно цім перейматись. Якщо ми використовуємо `fmap (+1)` на списку `[1,2,3,4]`, ми очікуємо що результат буде `[2,3,4,5]`, а не навпаки, `[5,4,3,2]`. Якщо ми використовуємо `fmap (\a -> a)` (функція ідентичності, що просто повертає параметр) для деякого списку, ми очікуємо отримати назад той самий список як результат. Наприклад, якщо ми отримаємо помилковий примірник функтора для типу `Tree`, використання `fmap` до дерева, у якого ліве субдерево вузла має елементи, що меньші ніж вузол, і праве субдерево має елементи, що більші ніж вузол, зможе продукувати дерево, де це не дотримується. Ми пройдемо по законах функторів більш детально в одній з наступних глав.
 
-TYPE FOO MASTER
-Type constructors take other types as parameters to eventually produce concrete types. That kind of reminds me of functions, which take values as parameters to produce values. We've seen that type constructors can be partially applied (Either String is a type that takes one type and produces a concrete type, like Either String Int), just like functions can. This is all very interesting indeed. In this section, we'll take a look at formally defining how types are applied to type constructors, just like we took a look at formally defining how values are applied to functions by using type declarations. You don't really have to read this section to continue on your magical Haskell quest and if you don't understand it, don't worry about it. However, getting this will give you a very thorough understanding of the type system.
+==== Різновиди та деяке тип-фу
 
-So, values like 3, "YEAH" or takeWhile (functions are also values, because we can pass them around and such) each have their own type. Types are little labels that values carry so that we can reason about the values. But types have their own little labels, called kinds. A kind is more or less the type of a type. This may sound a bit weird and confusing, but it's actually a really cool concept.
+image:images/typefoo.png[]
+Конструктори типів беруть інші типи як параметри, щоб при нагоді утворити конкретні типи. Це дещо нагадує мені функції, що приймають значення як параметри, щоб зпродукувати значення. Ми бачили, що конструктори типів можуть бути застосовані частково (`Either String` є типом, що бере один тип і продукує конкретний тип, як `Either String Int`), так само як це може функція. Таким чином все це дуже цікаво. В цьому розділі ми поглянемо на формальне визначення, як типи застосовуються до конструкторів типів, так само як ми дивились на формальне визначення, як значення застосовуються до функцій, через використання декларацій типу. Насправді ви не маєте читати цей розділ, щоб продовжити наш магічний квест Haskell, і якщо ви його не зрозумієте не турбуйтесь про це. Однак якщо ви зрозумієте це, ви отримаєте дуже глибоке розуміння системи типів.
 
-What are kinds and what are they good for? Well, let's examine the kind of a type by using the :k command in GHCI.
+Так ось, значення як `3`, `"YEAH"` або `takeWhile` (функції також є значеннями, бо ми можемо передавати їх і таке інше), кожний має свій власний тип. Типи є маленькими мітками, що носять на собі значення, так що ми можемо розмірковувати щодо значень. Але типи мають власні маленькі мітки, що називаються різновидами. Різновид є більш-менш типом типу. Це може виглядати трохи збоченим і збентежливим, але насправді це дійсно крута концепція.
+
+Що таке різновиди і для чого вони гарні? Гаразд, давайте дослідимо різновиди типу з використанням команди `:k` в GHCI.
 
 [source,haskell]
 ----
@@ -1339,9 +1340,9 @@ ghci> :k Int
 Int :: *  
 ----
 
-A star? How quaint. What does that mean? A * means that the type is a concrete type. A concrete type is a type that doesn't take any type parameters and values can only have types that are concrete types. If I had to read * out loud (I haven't had to do that so far), I'd say star or just type.
+Зірочка? Як мило. Що це може значити? `*` означає що тип є конкретним. Конкретний тип є типом, що не приймає жодних параметрів типу, та значення можуть мати тільки типи, що є конкретними типами. Якщо я б читав` * `вголос (досі я не робив цього), я б сказав _зірка_ або просто _тип_.
 
-Okay, now let's see what the kind of Maybe is.
+Гаразд, давайте подивимось, який різновид у `Maybe`.
 
 [source,haskell]
 ----
@@ -1349,7 +1350,7 @@ ghci> :k Maybe
 Maybe :: * -> *  
 ----
 
-The Maybe type constructor takes one concrete type (like Int) and then returns a concrete type like Maybe Int. And that's what this kind tells us. Just like Int -> Int means that a function takes an Int and returns an Int, * -> * means that the type constructor takes one concrete type and returns a concrete type. Let's apply the type parameter to Maybe and see what the kind of that type is.
+Конструктор типу `Maybe` бере один конкретний тип (такий як `Int`), та потім повертає конкретний тип, як `Maybe Int`. І це те, що каже нам цей різновид. Так само, як `Int -> Int` означає, що функція бере `Int` і повертає `Int`, `* -> *` означає, що конструктор типу бере один конкретний тип, та повертає конкретний тип. Давайте застосуємо параметр типу до `Maybe`, та побачити, який різновид має цей тип.
 
 [source,haskell]
 ----
@@ -1357,11 +1358,11 @@ ghci> :k Maybe Int
 Maybe Int :: *  
 ----
 
-Just like I expected! We applied the type parameter to Maybe and got back a concrete type (that's what * -> * means. A parallel (although not equivalent, types and kinds are two different things) to this is if we do :t isUpper and :t isUpper 'A'. isUpper has a type of Char -> Bool and isUpper 'A' has a type of Bool, because its value is basically True. Both those types, however, have a kind of *.
+Саме так як я очікував! Ми застосували параметр типу до `Maybe`, та отримали назад конкретний тип (ось що означає `* -> *`. Це можна порівняти (хоча це не те саме, типи і різновиди є різними речами) з тим, як ми робимо `:t isUpper` та `:t isUpper 'A'`. `isUpper` має тип `Char -> Bool`, та `isUpper 'A'` має тип `Bool`, оскільки його значення в основному є `True`. Однак обоє ці типи мають різновид` * `.
 
-We used :k on a type to get its kind, just like we can use :t on a value to get its type. Like we said, types are the labels of values and kinds are the labels of types and there are parallels between the two.
+Ми використовували `:k` на типі для отримання його різновиду, так само, як ми можемо використовувати `:t` на значенні для отримання його типу. Як ми казали, типи є мітками на значеннях, і різновиди є мітками на типах, і є параллелі між ціма двома.
 
-Let's look at another kind.
+Давайте поглянемо на інші різновиди.
 
 [source,haskell]
 ----
@@ -1369,7 +1370,7 @@ ghci> :k Either
 Either :: * -> * -> *  
 ----
 
-Aha, this tells us that Either takes two concrete types as type parameters to produce a concrete type. It also looks kind of like a type declaration of a function that takes two values and returns something. Type constructors are curried (just like functions), so we can partially apply them.
+Ага, це каже нам, що `Either` бере два конкретні типи як параметри типів для продукування конкретного типу. Це також дещо виглядає як декларація типу, що приймає два значення, та повертає дещо. Конструктори типів каровані (так само як функції), так що ми можемо застосовувати їх частково.
 
 [source,haskell]
 ----
@@ -1379,7 +1380,7 @@ ghci> :k Either String Int
 Either String Int :: *  
 ----
 
-When we wanted to make Either a part of the Functor typeclass, we had to partially apply it because Functor wants types that take only one parameter while Either takes two. In other words, Functor wants types of kind * -> * and so we had to partially apply Either to get a type of kind * -> * instead of its original kind * -> * -> *. If we look at the definition of Functor again
+Коли ми бажали зробити `Either` частиною типокласу `Functor`, ми мали частково застосувати його, оскільки `Functor` бажає типи, що беруть тільки один параметр, тоді як `Either` приймає два. Іншими словами `Functor` бажає типи `* -> *`, так що ми мали частково застосувати `Either`, щоб отримати тип різновиду` * -> *` замість оригінального різновиду ` * -> * -> *`. Якщо ми подивимось знову на визначення `Functor`
 
 [source,haskell]
 ----
@@ -1387,9 +1388,9 @@ class Functor f where
     fmap :: (a -> b) -> f a -> f b  
 ----
 
-we see that the f type variable is used as a type that takes one concrete type to produce a concrete type. We know it has to produce a concrete type because it's used as the type of a value in a function. And from that, we can deduce that types that want to be friends with Functor have to be of kind * -> *.
+ми побачимо, що змінна типу `f` використовується як тип, що бере один конкретний тип для продукування конкретного типу. Ми знаємо, що він має продукувати конкретний тип, оскільки він використовується як тип як тип значення в функції. І з цього ми можемо вивести, що типи, що бажають товарішувати з `Functor` повинні мати різновид `* -> *`.
 
-Now, let's do some type-foo. Take a look at this typeclass that I'm just going to make up right now:
+Тепер давайте проробимо деяке тип-фу. Поглянемо на цей типоклас, що я маю намір створити прямо зараз:
 
 [source,haskell]
 ----
@@ -1397,12 +1398,16 @@ class Tofu t where
     tofu :: j a -> t a j  
 ----
 
-Man, that looks weird. How would we make a type that could be an instance of that strange typeclass? Well, let's look at what its kind would have to be. Because j a is used as the type of a value that the tofu function takes as its parameter, j a has to have a kind of *. We assume * for a and so we can infer that j has to have a kind of * -> *. We see that t has to produce a concrete value too and that it takes two types. And knowing that a has a kind of * and j has a kind of * -> *, we infer that t has to have a kind of * -> (* -> *) -> *. So it takes a concrete type (a), a type constructor that takes one concrete type (j) and produces a concrete type. Wow.
+Чоловіче, це виглядає збочено. Як ми можемо створити тип, що може бути примірником цього дивного типокласу? Гаразд, давайте подивимось якого різновиду має це буде. Оскільки `j a` використовується як тип значення, що приймає функція `tofu` як параметр, `j a` повинно мати різновид `* `. Ми очікуємо `* ` для `a`, так що ми можемо вивести, що `j` повинне мати різновид `* -> * `. Ми бачимо, що `t` повинно продукувати конкретне значення також, і що воно бере два типи. І занючи що `a` має різновид `* ` та `j` має різновид `* -> * `, ми виводимо що `t` повинно мати різновид `* -> (* -> *) -> *`. Так що він приймає конкретний тип (`a`), деякий конструктор типів, що приймає один конкретний тип (`j`) і продукує новий тип. Вау.
 
-OK, so let's make a type with a kind of * -> (* -> *) -> *. Here's one way of going about it.
+Гаразд, давайте створимо тип з різновидом `* -> (* -> *) -> *`. Ось один спосіб зробити це.
 
+[source,haskell]
+----
 data Frank a b  = Frank {frankField :: b a} deriving (Show)  
-How do we know this type has a kind of * -> (* -> *) - > *? Well, fields in ADTs are made to hold values, so they must be of kind *, obviously. We assume * for a, which means that b takes one type parameter and so its kind is * -> *. Now we know the kinds of both a and b and because they're parameters for Frank, we see that Frank has a kind of * -> (* -> *) -> * The first * represents a and the (* -> *) represents b. Let's make some Frank values and check out their types.
+----
+
+ЯК ми знаємо, цей тип має різновид `* -> (* -> *) - > *`? Гаразд, поля ADT зроблені щоб містити значення, так що вони, вочевидь, повинні мати різновид `* `. Ми очікуємо `* ` для `a`, що означає, що `b` бере один параметр типу, так що його різновид `* -> * `. Тепер ми знаємо різновиди обох, `a` та `b`, і оскільки вони є параметрами для `Frank`, ми бачимо, що `Frank` має різновид `* -> (* -> *) -> *`. Перший `* ` представляє `a`, та `(* -> *)` представляє `b`. Давайте створимо деякі значення `Frank`, та перевіримо їх типи.
 
 [source,haskell]
 ----
@@ -1414,9 +1419,9 @@ ghci> :t Frank {frankField = "YES"}
 Frank {frankField = "YES"} :: Frank Char []  
 ----
 
-Hmm. Because frankField has a type of form a b, its values must have types that are of a similar form as well. So they can be Just "HAHA", which has a type of Maybe [Char] or it can have a value of ['Y','E','S'], which has a type of [Char] (if we used our own list type for this, it would have a type of List Char). And we see that the types of the Frank values correspond with the kind for Frank. [Char] has a kind of * and Maybe has a kind of * -> *. Because in order to have a value, it has to be a concrete type and thus has to be fully applied, every value of Frank blah blaah has a kind of *.
+Хм. Оскільки `frankField` має тип в формі `a b`, його значення повинні мати типи, що також мають подібну форму. Так що вони можуть бути `Just "HAHA"`, що має тип `Maybe [Char]`, або він може мати значення `['Y','E','S']`, що має тип `[Char]` (якщо ми використали для цього наш власний тип списку, це буде мати тип `List Char`). І ми бачимо, що типи значень `Frank` відповідають різновиду для `Frank`. `[Char]` має різновид `* `і `Maybe` має різновид `* -> * `. Оскільки для отримання значення, це має бути конкретний тип, і, таким чином, має бути повністю застосованим, кожне значення `Frank blah blaah` має різновид `*`.
 
-Making Frank an instance of Tofu is pretty simple. We see that tofu takes a j a (so an example type of that form would be Maybe Int) and returns a t a j. So if we replace Frank with j, the result type would be Frank Int Maybe.
+Перетворення `Frank` на примірник `Tofu` досить просте. Ми бачимо, що `tofu` бере `j a` (прикладом типу такої форми може бути `Maybe Int`) в повертає `t a j`. Так що коли ми змінимо `Frank` на `j`, результуючий тип буде `Frank Int Maybe`.
 
 [source,haskell]
 ----
@@ -1428,14 +1433,14 @@ ghci> tofu ["HELLO"] :: Frank [Char] []
 Frank {frankField = ["HELLO"]}  
 ----
 
-Not very useful, but we did flex our type muscles. Let's do some more type-foo. We have this data type:
+Не дуже корисно, але ми розім'яли наші типові м'язи. Давайте зробимо деяке тип-фу. Ми маємо цей тип даних:
 
 [source,haskell]
 ----
 data Barry t k p = Barry { yabba ::p, dabba ::t k }  
 ----
 
-And now we want to make it an instance of Functor. Functor wants types of kind * -> * but Barry doesn't look like it has that kind. What is the kind of Barry? Well, we see it takes three type parameters, so it's going to be something -> something -> something -> *. It's safe to say that p is a concrete type and thus has a kind of *. For k, we assume * and so by extension, t has a kind of * -> *. Now let's just replace those kinds with the somethings that we used as placeholders and we see it has a kind of (* -> *) -> * -> * -> *. Let's check that with GHCI.
+І ми бажаємо зробити його примірником `Functor`. `Functor` бажає типи різновиду `* -> * `, але `Barry` не виглядає так, що має такий тип. Який різновид має Barry? Гаразд, ми бачимо він має три параметри типу, так що різновид має бути `something -> something -> something -> * `. Безпечно сказати, `p` є конкретним типом, так що має різновид `* `. Для `k` ми вважаємо `* `, так що по розширенню `t` буде мати різновид `* -> * `. Тепер просто замінимо ці різновиди на `something` що ми використовували як замінник, і ми бачимо, що він має різновид `(* -> *) -> * -> * -> *`. Давайте перевіримо це в GHCI.
 
 [source,haskell]
 ----
@@ -1443,13 +1448,14 @@ ghci> :k Barry
 Barry :: (* -> *) -> * -> * -> *  
 ----
 
-Ah, we were right. How satisfying. Now, to make this type a part of Functor we have to partially apply the first two type parameters so that we're left with * -> *. That means that the start of the instance declaration will be: instance Functor (Barry a b) where. If we look at fmap as if it was made specifically for Barry, it would have a type of fmap :: (a -> b) -> Barry c d a -> Barry c d b, because we just replace the Functor's f with Barry c d. The third type parameter from Barry will have to change and we see that it's conviniently in its own field.
+Так, ми були праві. Це задовільно. Тепер, щоб зробити цей тип частиною `Functor`, ми маємо частково застосувати перші два параметри типу, так щоб залишилось `* -> *`. Це означає, що початок декларації примірника буде: `instance Functor (Barry a b) where`. Якщо ми поглянемо на `fmap`, якби він був створений спеціально для `Barry`, він мав би тип `fmap :: (a -> b) -> Barry c d a -> Barry c d b`, оскільки ми просто замінили в `Functor` `f` на `Barry c d`. Третій параметр типу від `Barry` має змінитись, і ми бачимо що це зручно в його особистому полі.
 
 [source,haskell]
 ----
 instance Functor (Barry a b) where  
     fmap f (Barry {yabba = x, dabba = y}) = Barry {yabba = f x, dabba = y}  
-There we go! We just mapped the f over the first field.
 ----
 
-In this section, we took a good look at how type parameters work and kind of formalized them with kinds, just like we formalized function parameters with type declarations. We saw that there are interesting parallels between functions and type constructors. They are, however, two completely different things. When working on real Haskell, you usually won't have to mess with kinds and do kind inference by hand like we did now. Usually, you just have to partially apply your own type to * -> * or * when making it an instance of one of the standard typeclasses, but it's good to know how and why that actually works. It's also interesting to see that types have little types of their own. Again, you don't really have to understand everything we did here to read on, but if you understand how kinds work, chances are that you have a very solid grasp of Haskell's type system.
+Ось ми де! Ми тільки но відобразили `f` по першому полю.
+
+В цьому розділі ми зробили гарний погляд на те, як роблять параметри типів, і як це дещо формалізовано за допомогою різновидів, так само як ми формалізували параметри функцій за допомогою декларацій типів. Ми побачили, що є цікаві параллелі між функціями та конструкторами типів. Однак вони є повністю відмінними речами. При роботі з реальним Haskell, ви зазвичай не матимете судрувати з різновидами, і робити вивід різновидов вручну, як ми робили це. Зазвичай ви будете просто частково застосовувати ваш власний тип до `* -> *` або `* `, коли робите його примірником одного зі стандартних типокласів, але гарно знати, як і чому це дійсно робить. Також цікаво побачити, що типи мають свої маленькі типи. Знову, ви насправді не маєте розуміти все що ви тут прочитали, але якщо ви розумієте, як роблять різновиди, є шанси, що ви маєте дуже солідну хватку до системи типів Haskell.
