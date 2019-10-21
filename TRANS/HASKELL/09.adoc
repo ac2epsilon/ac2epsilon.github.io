@@ -72,9 +72,9 @@ main = do
 
 А, цікаво, новий синтаксис! І це читається майже так само як імперативна програма. Якщо ви скомпілюєте це і спробуєте в дії, це буде поводитись так само, як ми цього очікуємо. Зауважте, що ми тільки но сказали `do` і потім поклали серію кроків, як би ми зробили в імперативній програмі. Кожний з ціх кроків є I/O дією. Збираючи їх докупи за допомогою синтаксису `do`, ми зліпили їх в одну I/O дію. Дія, яку ми отримали, має тип `IO ()`, оскільки це тип останньої I/O дії всередині.
 
-Через це `main` завжди має сигнатуру типу `main :: IO something`, де `something` є деякий конкретний тип. За домовленістю ми звичайно не вказуємо декларацію типу для `main`.
+Через це `main` завжди має сигнатуру типу `main ::IO something`, де `something` є деякий конкретний тип. За домовленістю ми звичайно не вказуємо декларацію типу для `main`.
 
-Цікава річ, з якою ми досі не зустрічались, це третій рядок, що вказує `name <- getLine`. Виглядає що вона читає рядок з входу, та зберігає її в змінній на ім'я `name`. Чи так насправді? Гаразд, давайте перевіримо тип `getLine`.
+Цікава річ, з якою ми досі не зустрічались, це третій рядок, що вказує `name <- getLine`. Виглядає що воно читає рядок з входу, та зберігає його в змінній на ім'я `name`. Чи так насправді? Гаразд, давайте перевіримо тип `getLine`.
 
 [source,scala]
 ----
@@ -83,46 +83,68 @@ getLine :: IO String
 ----
 
 image:images/luggage.png[]
-Aha, o-kay. getLine is an I/O action that contains a result type of String. That makes sense, because it will wait for the user to input something at the terminal and then that something will be represented as a string. So what's up with name <- getLine then? You can read that piece of code like this: perform the I/O action getLine and then bind its result value to name. getLine has a type of IO String, so name will have a type of String. You can think of an I/O action as a box with little feet that will go out into the real world and do something there (like write some graffiti on a wall) and maybe bring back some data. Once it's fetched that data for you, the only way to open the box and get the data inside it is to use the <- construct. And if we're taking data out of an I/O action, we can only take it out when we're inside another I/O action. This is how Haskell manages to neatly separate the pure and impure parts of our code. getLine is in a sense impure because its result value is not guaranteed to be the same when performed twice. That's why it's sort of tainted with the IO type constructor and we can only get that data out in I/O code. And because I/O code is tainted too, any computation that depends on tainted I/O data will have a tainted result.
+Так, це є. `getLine` є I/O дією, що містить тип результату `String`. Це має сенс, оскільки це буде очікувати користувача, докі він введе дещо в терміналі, і потім це дещо буде представлене як рядок. То що відбувається в `name <- getLine`? Ви можете читати цей шматок коду таким чином: виконати I/O дію `getLine`, та потім прив'язати значення результату до `name`. `getLine` має тип `IO String`, так що `name` буде мати тип `String`. Ви можете думати про I/O дію як бокс на маленьких ніжках, що виходитиме в реальний світ і робитиме там дещо (як малювати графіті на стінах), або приносити назад деякі дані. Коли ці дані були підтягрутя до вас, єдиним способом відкрити бокс і отримати дані всередині є використання конструкції `<-`. І коли ми беремо дані з I/O дії, ми можемо дістати їх лише коли ми всередині іншої I/O. Ось як діє Haskell для гарного поділу кода на чисту і нечисту частину. `getLine` в деякому сенсі є нечистим, бо його значення результату не буде гарантовано тим самим, якщо його виконати двічі. Ось чому він дещо заплямований конструктором типу IO, і ми можемо отримати ці дані лише від I/O коду. І оскільки I/O код також заплямований, любі обчислення, що залежать від заплямованих I/O даних, будуть мати заплямований результат.
 
-When I say tainted, I don't mean tainted in such a way that we can never use the result contained in an I/O action ever again in pure code. No, we temporarily un-taint the data inside an I/O action when we bind it to a name. When we do name <- getLine, name is just a normal string, because it represents what's inside the box. We can have a really complicated function that, say, takes your name (a normal string) as a parameter and tells you your fortune and your whole life's future based on your name. We can do this:
+Коли я кажу заплямований, я не маю на увазі це в такий спосіб, що ми ніколи не зможемо використовувати результат в I/O дії, будь-коли в чистому коді. Ні, ми тимчасово роз-плямовуємо дані в I/O дії, коли ми прикріплюємо її до `name`. Коли ми робимо `name <- getLine`, `name` є просто звичайний рядок, оскільки він представляє те, що знаходиться в боксі. Ми можемо мати дійсно складну функцію, що скажімо бере ваше ім'я (звичайний рядок) як параметр, і каже вам всю вашу вдачу і майбутнє всього вашого життя, базуючись на вашому імені. Ми можемо зробити це:
 
+[source,scala]
+----
 main = do  
     putStrLn "Hello, what's your name?"  
     name <- getLine  
     putStrLn $ "Read this carefully, because this is your future: " ++ tellFortune name  
-and tellFortune (or any of the functions it passes name to) doesn't have to know anything about I/O, it's just a normal String -> String function!
+----
 
-Take a look at this piece of code. Is it valid?
+і `tellFortune` (або жодна функція, куди вона передає `name`) не має знати нічого про I/O, це просто нормальна функція `String -> String`!
 
+Подивіться на цей шматок коду, чи він валідний?
+
+[source,scala]
+----
 nameTag = "Hello, my name is " ++ getLine  
-If you said no, go eat a cookie. If you said yes, drink a bowl of molten lava. Just kidding, don't! The reason that this doesn't work is that ++ requires both its parameters to be lists over the same type. The left parameter has a type of String (or [Char] if you will), whilst getLine has a type of IO String. You can't concatenate a string and an I/O action. We first have to get the result out of the I/O action to get a value of type String and the only way to do that is to say something like name <- getLine inside some other I/O action. If we want to deal with impure data, we have to do it in an impure environment. So the taint of impurity spreads around much like the undead scourge and it's in our best interest to keep the I/O parts of our code as small as possible.
+----
 
-Every I/O action that gets performed has a result encapsulated within it. That's why our previous example program could also have been written like this:
+Якщо ви відповіли ні - пійдіть з'їжте періжок. Якщо ви сказали так - випийте ковшик розпеченої лави. Я пошуткував, не робіть цього! Причина, з якої це не робить, в тому, що `++` потребує обоє свої параметри як спискаи того самого типу. Лівий параметр має тип `String` (або `[Char]` якщо бажаєте), тоді як `getLine` має тип `IO String`. Ви не можете приєднати рядок та I/O дію. Спочатку ми маємо отримати результат від I/O дії, щоб отримати тип `String`, і це єдиний спосіб зробити це в тому, щоб сказати щось як `name <- getLine` всередині іншої I/O дії. Якщо ми бажаємо мати справу з нечистими даними, ми маємо робити це в нечистому оточенні. Так що прокляття нечистості розповсюджується навкруги як бич нечесті, так що в наших кращих інтересах утримувати I/O частини коду такими малими, як це можливо.
 
+Кожна I/O дія, що виконується, має заточений в собі результат. Ось чому наш попередній приклад програми може бути записаний таким чином:
+
+[source,scala]
+----
 main = do  
     foo <- putStrLn "Hello, what's your name?"  
     name <- getLine  
     putStrLn ("Hey " ++ name ++ ", you rock!")  
-However, foo would just have a value of (), so doing that would be kind of moot. Notice that we didn't bind the last putStrLn to anything. That's because in a do block, the last action cannot be bound to a name like the first two were. We'll see exactly why that is so a bit later when we venture off into the world of monads. For now, you can think of it in the way that the do block automatically extracts the value from the last action and binds it to its own result.
+----
 
-Except for the last line, every line in a do block that doesn't bind can also be written with a bind. So putStrLn "BLAH" can be written as _ <- putStrLn "BLAH". But that's useless, so we leave out the <- for I/O actions that don't contain an important result, like putStrLn something.
+Однак `foo` буде мати лише значення `()`, так що робити таке буде лише  різновидом балачок. Зауважте, що ми не прив'язали останній `putStrLn` до будь-чого. Це через те, що в блоці `do` остання дія не може бути прив'язана до імені, як це було з першими двома. Ми побачимо чому це так трохи пізніше, коли ми поринемо в світ монад. Зараз ви можете думати про це в спосіб, що блок `do` автоматично виділяє значення з останньої дії, і прикріпляє його до свого власного результату.
 
-Beginners sometimes think that doing
+За винятком цього останнього рядка, кожний рядок, що не прикріплений, може бути записаний як прикріплення. Так що `putStrLn "BLAH"` може бути записане як `_ <- putStrLn "BLAH"`. Але це не має користі, так що ми не будемо використовувати `<-` для I/O дій, що не мають корисних результатів, як `putStrLn something`.
 
+Початківці іноді думають, що роблячи
+
+[source,scala]
+----
 name = getLine  
-will read from the input and then bind the value of that to name. Well, it won't, all this does is give the getLine I/O action a different name called, well, name. Remember, to get the value out of an I/O action, you have to perform it inside another I/O action by binding it to a name with <-.
+----
 
-I/O actions will only be performed when they are given a name of main or when they're inside a bigger I/O action that we composed with a do block. We can also use a do block to glue together a few I/O actions and then we can use that I/O action in another do block and so on. Either way, they'll be performed only if they eventually fall into main.
+буде читати з входу, та потім прикріпляти значення до `name`. Гаразд, так не буде, все що тут робиться це надання дії `getLine` іншого імені, а саме `name`. Пам'ятайте, щоб отримати значення від I/O дії, ми маємо виконати її в середині іншої I/O дії, через прикріплення її до імені за допомогою `<-`.
 
-Oh, right, there's also one more case when I/O actions will be performed. When we type out an I/O action in GHCI and press return, it will be performed.
+I/O дії будуть виконані лише тоді, якщо їм надано ім'я `main`, або коли вони всередині більшої I/O дії, що компонується за допомогою блоку `do`. Ми також можемо використати блок `do` для склеювання разом декількох I/O дій, і потім ми можемо використовувати цю I/O дію в іншому `do` блоці, і так далі. З іншого боку, всі вони будуть виконані тільки якщо вони з часом дійдуть до `main`.
 
+О, гаразд, існує ще один випадок, коли будуть виконані I/O дії. Коли ми набираємо I/O дію в GHCI та натискаємо `return`, це також буде виконане.
+
+[source,scala]
+----
 ghci> putStrLn "HEEY"  
 HEEY  
-Even when we just punch out a number or call a function in GHCI and press return, it will evaluate it (as much as it needs) and then call show on it and then it will print that string to the terminal using putStrLn implicitly.
+----
 
-Remember let bindings? If you don't, refresh your memory on them by reading this section. They have to be in the form of let bindings in expression, where bindings are names to be given to expressions and expression is the expression that is to be evaluated that sees them. We also said that in list comprehensions, the in part isn't needed. Well, you can use them in do blocks pretty much like you use them in list comprehensions. Check this out:
+Хоч коли ми вводимо число або викликаємо функцію в GHCI і натискаємо `return`, це буде обчислене (здебільшого як це нам і треба), і потім викликає `show` на цьому, і потім це друкує рядок на терміналі, неявно викликаючи `putStrLn`.
 
+Пам'ятаєте прикріплення `let`? Якщо ні, оновіть вашу пам'ять щодо них в цьому розділі. Вони мають бути в формі `let` прикріплень в виразах, де прикріалення є іменами що будуть надані виразам, та вираз є вираз, що буде обчислений коли хтось бачить його. Ми також бачили його в осяжностях списків, де частина `in` непотрібна. Гаразд, ви можете використовувати їх в `do` блоках, майже так само, як ми використовуємо їх в осяжностях списків. Перевірте це:
+
+[source,scala]
+----
 import Data.Char  
   
 main = do  
@@ -133,12 +155,16 @@ main = do
     let bigFirstName = map toUpper firstName  
         bigLastName = map toUpper lastName  
     putStrLn $ "hey " ++ bigFirstName ++ " " ++ bigLastName ++ ", how are you?"  
-See how the I/O actions in the do block are lined up? Also notice how the let is lined up with the I/O actions and the names of the let are lined up with each other? That's good practice, because indentation is important in Haskell. Now, we did map toUpper firstName, which turns something like "John" into a much cooler string like "JOHN". We bound that uppercased string to a name and then used it in a string later on that we printed to the terminal.
+----
 
-You may be wondering when to use <- and when to use let bindings? Well, remember, <- is (for now) for performing I/O actions and binding their results to names. map toUpper firstName, however, isn't an I/O action. It's a pure expression in Haskell. So use <- when you want to bind results of I/O actions to names and you can use let bindings to bind pure expressions to names. Had we done something like let firstName = getLine, we would have just called the getLine I/O action a different name and we'd still have to run it through a <- to perform it.
+Бачите, як підрівняні I/O дії в блоці `do`? Також зауважте, як `let` вирівняне разом з I/O діями і іменами `let`, вирівняними один з одним? Це гарна практика, бо відступи важливі в Haskell. Тепер: ми зробили `toUpper firstName`, що перетворює якесь `"John"` в значно крутіший рядок як `"JOHN"`. Ми прикріплюємо цей збільшений рядок до `name`, та потім використовуємо його в рядку нижче, коли друкуємо на термінал.
 
-Now we're going to make a program that continuously reads a line and prints out the same line with the words reversed. The program's execution will stop when we input a blank line. This is the program:
+Ви можете поцікавитись, коли використавувати `<-`, та коли використовувати прикріплення `let`? Гаразд, пам'ятайте, що `<-` є (поки що) для виконання I/O дій та прикріплення їх результатів до імен. Однак `map toUpper firstName` не є I/O дією. Це чистий вираз в Haskell. Так що використовуйте `<-`, коли ви бажаєте прикріпити результати I/O дій до імен, і ви можете використовувати `let` для прикріалень чистих виразів до імен. Так що коли ми робимо дещо як `let firstName = getLine`, ми отримаємо лише нове ім'я для I/O дії `getLine`, і ми все ще маємо запустити її через `<-`, щоб вона виконалась.
 
+Тепер ми збираємось зробити програму, що постійно читає рядок і друкує той самий рядок зі словами в зворотньому порядку. Виконання програми буде припинено, коли ми введемо порожній рядок. Ось програма:
+
+[source,scala]
+----
 main = do   
     line <- getLine  
     if null line  
@@ -149,24 +175,33 @@ main = do
   
 reverseWords :: String -> String  
 reverseWords = unwords . map reverse . words  
-To get a feel of what it does, you can run it before we go over the code.
+----
 
-Protip: To run a program you can either compile it and then run the produced executable file by doing ghc --make helloworld and then ./helloworld or you can use the runhaskell command like so: runhaskell helloworld.hs and your program will be executed on the fly.
-First, let's take a look at the reverseWords function. It's just a normal function that takes a string like "hey there man" and then calls words with it to produce a list of words like ["hey","there","man"]. Then we map reverse on the list, getting ["yeh","ereht","nam"] and then we put that back into one string by using unwords and the final result is "yeh ereht nam". See how we used function composition here. Without function composition, we'd have to write something like reverseWords st = unwords (map reverse (words st)).
+Щоб отримати відчуття того, що вона робить, ви можете виконати її перед тим, як ми пройдемось по коду.
 
-What about main? First, we get a line from the terminal by performing getLine call that line line. And now, we have a conditional expression. Remember that in Haskell, every if must have a corresponding else because every expression has to have some sort of value. We make the if so that when a condition is true (in our case, the line that we entered is blank), we perform one I/O action and when it isn't, the I/O action under the else is performed. That's why in an I/O do block, ifs have to have a form of if condition then I/O action else I/O action.
+Protip: Щоб виконати програму ви можете або скомпілювати її, та потім виконати отримий виконавчий файл, роблячи `ghc --make helloworld` та потім `./helloworld`, або ви можете використовувати команду `runhaskell` ось так: `runhaskell helloworld.hs` і ваша програма буде виконана на льоту.
 
-Let's first take a look at what happens under the else clause. Because, we have to have exactly one I/O action after the else, we use a do block to glue together two I/O actions into one. You could also write that part out as:
+Спочатку давайте поглянемо на функцію `reverseWords`. Це тільки звичайна функція, що приймає рядок як `"hey there man"`, та потім викликає `words` для продукування списку слів як `["hey","there","man"]`. Потім ми `map reverse` на списку, отримуючи `["yeh","ereht","nam"]`, і потім ми знову покладаємо все це в один рядок, використовуючи `unwords`, і фінальний результат буде `"yeh ereht nam"`. Дивітья, як ми використовували композицію функцій. Без композиції функцій ми б мали написати щось як `reverseWords st = unwords (map reverse (words st))`.
 
+Що відносно `main`? Спершу ми отримуємо рядок з термінала, виконуючи виклик `getLine` що повертається в `line`. І тепер ми маємо условний вираз. Пам'ятайте, що в Haskell кожний `if` повинен мати відповідний `else`, оскільки кожний вираз повинен мати деякий різновид значення. Ми робимо `if`, так що коли умова `true` (в нашому випадку введений нами рядок порожній), ми виконуємо одну I/O дію, та коли ні - буде виконана інша I/O дія для `else`. Ось чому в блоці `I/O do`, `if` повинні мати форму `if умова then I/O дія else I/O дія`.
+
+Давайте спочатку поглянемо на те, що відбувається в частині `else`. Оскільки ми повинні мати саме одну I/O дію після `else`, ми використовуємо блок `do` для склеювання разом двох I/O дій в одну. Ви також можете записати цю частину таким чином:
+
+[source,scala]
+----
 else (do  
     putStrLn $ reverseWords line  
     main)  
-This makes it more explicit that the do block can be viewed as one I/O action, but it's uglier. Anyway, inside the do block, we call reverseWords on the line that we got from getLine and then print that out to the terminal. After that, we just perform main. It's called recursively and that's okay, because main is itself an I/O action. So in a sense, we go back to the start of the program.
+----
 
-Now what happens when null line holds true? What's after the then is performed in that case. If we look up, we'll see that it says then return (). If you've done imperative languages like C, Java or Python, you're probably thinking that you know what this return does and chances are you've already skipped this really long paragraph. Well, here's the thing: the return in Haskell is really nothing like the return in most other languages! It has the same name, which confuses a lot of people, but in reality it's quite different. In imperative languages, return usually ends the execution of a method or subroutine and makes it report some sort of value to whoever called it. In Haskell (in I/O actions specifically), it makes an I/O action out of a pure value. If you think about the box analogy from before, it takes a value and wraps it up in a box. The resulting I/O action doesn't actually do anything, it just has that value encapsulated as its result. So in an I/O context, return "haha" will have a type of IO String. What's the point of just transforming a pure value into an I/O action that doesn't do anything? Why taint our program with IO more than it has to be? Well, we needed some I/O action to carry out in the case of an empty input line. That's why we just made a bogus I/O action that doesn't do anything by writing return ().
+Це робить більш наочним, що блок `do` має розгядатись як одна I/O дія, але це огидніше. В любому разі в блоці `do` ми викликаємо  `reverseWords` на рядку, що ми отрумуємо від `getLine`, та потім друкуємо це на терміналі. Після цього ми просто виконуємо `main`. Вона виключається рекурсивно і це гаразд, оскільки `main` сама є I/O дією. Так що в деякому сенсі ми повертаємось на початок програми.
 
-Using return doesn't cause the I/O do block to end in execution or anything like that. For instance, this program will quite happily carry out all the way to the last line:
+Тепер, що трапляється коли `null line` стає `true`? Це те, що в данному випадку виконується після `then`. Якщо ми подивимось, ми побачимо що виконується `then return ()`. Якщо ви візьмете імперативні мови, як C, Java або Python, ви можливо думаєте, що знаєте що робить цей `return`, так що є шанси, що ви перестрибнули цей доволі довгий параграф. Гаразд, ось як вам таке: `return` в Haskell насправді нічого подібного до `return` в більшості мов! Воно має те саме ім'я, що бентежить багато людей, але в реальності це досить інше. В імперативних мовах `return` звичайно закінчує виконання метода або процедури, і повідомляє про це деяким разновидом значення до викликаючої сторони. В Haskell (точніше в I/O діях), це виробляє I/O дію з чистого значення. Якщо ви подумаєте про аналогію бокса з попередніх розділів, це приймає значення і огортає його в бокс. Отримана I/O дія насправді нічого не робить, це просто це значення, оточене як його результат. Так що в контексті I/O `return "haha"` буде мати тип `IO String`. Який сенс в простому перетворенні чистого значення в I/O дію, що нічого не робить? Навіщо заплямовувати нашу програму в IO більше, ніж це мало би бути? Гаразд, нам треба деяка I/O дія, що треба видати в випадку порожнього вхідного рядка. Ось чому ми просто створили фіктивну I/O дію, дію що нічого не робить, написавши `return ()`.
 
+Використання `return` не спричиняє закінчення блоку `I/O do` в плані виконання, або будь чого подібного. Наприклад, ця програма буде досить щасливо продовжуватись весь час до останнього рядка:
+
+[source,scala]
+----
 main = do  
     return ()  
     return "HAHAHA"  
@@ -174,50 +209,75 @@ main = do
     return "BLAH BLAH BLAH"  
     return 4  
     putStrLn line  
-All these returns do is that they make I/O actions that don't really do anything except have an encapsulated result and that result is thrown away because it isn't bound to a name. We can use return in combination with <- to bind stuff to names.
+----
 
+Всі ці `return` роблять те, що вони створюють I/O дії, що насправді нічого не роблять, крім інкапсуляції результату, і цей результат відкидається геть, оскільки він не прив'язаний до імені. Ми можемо використовувати `return` в комбінації з `<-` для прив'язки речей до імен.
+
+[source,scala]
+----
 main = do  
     a <- return "hell"  
     b <- return "yeah!"  
     putStrLn $ a ++ " " ++ b  
-So you see, return is sort of the opposite to <-. While return takes a value and wraps it up in a box, <- takes a box (and performs it) and takes the value out of it, binding it to a name. But doing this is kind of redundant, especially since you can use let bindings in do blocks to bind to names, like so:
+----
 
+Як ви бачите, `return` є різновидом протилежності до `<-`. Тоді як  `return` бере значення і огортає його в бокс, `<-` бере бокс (та виконує його), та отримує з нього значення, прикріплюючи його до імені. Але робити це є дещо надлишковим, особливо коли ви можете використовувати `let` прикріпленнях в `do` блоках до імен, десь так:
+
+[source,scala]
+----
 main = do  
     let a = "hell"  
         b = "yeah"  
     putStrLn $ a ++ " " ++ b  
-When dealing with I/O do blocks, we mostly use return either because we need to create an I/O action that doesn't do anything or because we don't want the I/O action that's made up from a do block to have the result value of its last action, but we want it to have a different result value, so we use return to make an I/O action that always has our desired result contained and we put it at the end.
+----
 
-A do block can also have just one I/O action. In that case, it's the same as just writing the I/O action. Some people would prefer writing then do return () in this case because the else also has a do.
-Before we move on to files, let's take a look at some functions that are useful when dealing with I/O.
+Коли маємо справу з блоками `I/O do`, ми в основному використовуємо `return` оба тому що нам треба створити I/O дію, що не робить нічого, або якщо ми не бажаємо, щоб I/O дія, створена з `do` блока, мала значення результата в своїй останній дії, але ми бажаємо, щоб він мав інше значення результата, так що ми використовуємо `return` для створення I/O дії, що завжди має заточеним наш бажаний результат, і ми покладаємо його в кінці.
 
-putStr is much like putStrLn in that it takes a string as a parameter and returns an I/O action that will print that string to the terminal, only putStr doesn't jump into a new line after printing out the string while putStrLn does.
+Блок `do` також може мати лише одну I/O дію. В цьому випадку це те саме, що просто записати I/O дію. Деякі люди можуть обрати запис `then do return ()` в цьому випадку, оскільки `else` також має `do`.
 
+Оскільки ми просуваємось до файлів, давайте поглянемо на деякі функції, що будуть корисні при справах з I/O.
+
+`putStr` здебільшого як `putStrLn` в тому, що він бере рядок як параметр і повертає I/O дію, що буде друкувати цей рядок на терміналі, тільки `putStr` не перестрибує на новий рядок після друкування рядка, тоді як `putStrLn` робить це.
+
+[source,scala]
+----
 main = do   putStr "Hey, "  
             putStr "I'm "  
             putStrLn "Andy!"   
 $ runhaskell putstr_test.hs  
 Hey, I'm Andy!  
-Its type signature is putStr :: String -> IO (), so the result encapsulated within the resulting I/O action is the unit. A dud value, so it doesn't make sense to bind it.
+----
 
-putChar takes a character and returns an I/O action that will print it out to the terminal.
+Її сигнатура типу є `putStr :: String -> IO () `, так що результат заточений в результуючій I/O дії є юніт. Дурне значення, так що немає сенсу прикріплювати його.
 
+`putChar` бере символ та повертає I/O дію, що буде роздруковувати його на термінал.
+
+[source,scala]
+----
 main = do   putChar 't'  
             putChar 'e'  
             putChar 'h'  
 $ runhaskell putchar_test.hs  
 teh  
-putStr is actually defined recursively with the help of putChar. The edge condition of putStr is the empty string, so if we're printing an empty string, just return an I/O action that does nothing by using return (). If it's not empty, then print the first character of the string by doing putChar and then print of them using putStr.
+----
 
+`putStr` насправді визначена рекурсивно за допомогою `putChar`. Гранична умова `putStr` є порожній рядок, так що якщо ми друкуємо порожній рядок, просто повертаємо I/O дію, що нічого не робить, використовуючи `return ()`. Якщо він не порожній, тоді друкуємо перший символ рядка, роблячи `putChar`, і потім друкуємо всі інші з використанням `putStr`.
+
+[source,scala]
+----
 putStr :: String -> IO ()  
 putStr [] = return ()  
 putStr (x:xs) = do  
     putChar x  
     putStr xs  
-See how we can use recursion in I/O, just like we can use it in pure code. Just like in pure code, we define the edge case and then think what the result actually is. It's an action that first outputs the first character and then outputs the rest of the string.
+----
 
-print takes a value of any type that's an instance of Show (meaning that we know how to represent it as a string), calls show with that value to stringify it and then outputs that string to the terminal. Basically, it's just putStrLn . show. It first runs show on a value and then feeds that to putStrLn, which returns an I/O action that will print out our value.
+Дивіться, як ми можемо використовувати рекурсію в I/O, так само як ми можемо робити це в чистому коді. Так само як в чистому коді, ми визначаємо граничний випадок, і потім думаємо, чим насправді є результат. Це дія, що спочатку виводить перший символ, і потім виводить залишок рядка.
 
+`print` бере значення любого типу, що є примірником `Show` (що означає, що ми знаємо як представляти його як рядок), викликає `show` з цім значенням для перетворення на рядок, і потім виводить цей рядок на термінал. В основному це просто `putStrLn . show`. Це спочатку виконує `show` на значенні, і потім подає його до `putStrLn`, що повертає I/O дію, що буде роздруковувати наше значення.
+
+[source,scala]
+----
 main = do   print True  
             print 2  
             print "haha"  
@@ -229,8 +289,12 @@ True
 "haha"  
 3.2  
 [3,4,3]  
-As you can see, it's a very handy function. Remember how we talked about how I/O actions are performed only when they fall into main or when we try to evaluate them in the GHCI prompt? When we type out a value (like 3 or [1,2,3]) and press the return key, GHCI actually uses print on that value to display it on our terminal!
+----
 
+Як ви можете бачити, це дуже зручна функція. Згадайте, як ми казали про те, як I/O дії виконуються тільки коли вони підпадають до `main`, або коли ми намагаємось обчислити їх в підказці GHCI. Коли ми друкуємо значення (як `3` або `[1,2,3]`), та натискаємо клавішу `return`, GHCI насправді використовує `print` на цьому значенні для відображення його на терміналі!
+
+[source,scala]
+----
 ghci> 3  
 3  
 ghci> print 3  
@@ -239,10 +303,14 @@ ghci> map (++"!") ["hey","ho","woo"]
 ["hey!","ho!","woo!"]  
 ghci> print (map (++"!") ["hey","ho","woo"])  
 ["hey!","ho!","woo!"]  
-When we want to print out strings, we usually use putStrLn because we don't want the quotes around them, but for printing out values of other types to the terminal, print is used the most.
+----
 
-getChar is an I/O action that reads a character from the input. Thus, its type signature is getChar :: IO Char, because the result contained within the I/O action is a Char. Note that due to buffering, reading of the characters won't actually happen until the user mashes the return key.
+Коли ми бажаємо роздрукувати рядки, зазвичай ми використовуємо `putStrLn`, оскільки ми не бажаємо лапки навкруги, але для друку наших значень інших типів на термінал здебільшого використовується `print`.
 
+`getChar` є I/O дією, що читає символ зі входу. Таким чином її сигнатура типу є `getChar ::IO Char`, оскільки результат, що міститься в I/O дії є `Char`. Зауважте, що через буферізацію читання символів насправді не буде відбуватись, доки користувач не начавить на клавішу вводу.
+
+[source,scala]
+----
 main = do     
     c <- getChar  
     if c /= ' '  
@@ -250,15 +318,23 @@ main = do
             putChar c  
             main  
         else return ()  
-This program looks like it should read a character and then check if it's a space. If it is, halt execution and if it isn't, print it to the terminal and then do the same thing all over again. Well, it kind of does, only not in the way you might expect. Check this out:
+----
 
+Ця програма виглядає так, що вона повинна читати символ, та перевіряти чи це проміжок. Якщо це так, виконання припиняється, та якщо ні - друкуємо його на терміналі, і потім робимо те саме спочатку і так далі. Гаразд, це робить щось подібне, тільки не в спосіб як ви можете це очікувати. Перевірте це:
+
+[source,scala]
+----
 $ runhaskell getchar_test.hs  
 hello sir  
 hello  
-The second line is the input. We input hello sir and then press return. Due to buffering, the execution of the program will begin only when after we've hit return and not after every inputted character. But once we press return, it acts on what we've been putting in so far. Try playing with this program to get a feel for it!
+----
 
-The when function is found in Control.Monad (to get access to it, do import Control.Monad). It's interesting because in a do block it looks like a control flow statement, but it's actually a normal function. It takes a boolean value and an I/O action if that boolean value is True, it returns the same I/O action that we supplied to it. However, if it's False, it returns the return (), action, so an I/O action that doesn't do anything. Here's how we could rewrite the previous piece of code with which we demonstrated getChar by using when:
+Другий рядок є ввод. Ми вводимо `hello sir` і потім натискаємо ввод. Через буферізацію виконання програми буде починатись тільки після того, як ми натиснемо `return`, і не після кожного введеного символу. Але коли ми натиснемо ввод, це діє на тому, що було введено до цього. Спробуйте погратись з цією програмою щоб отримати відчуття як вона робить!
 
+Функцію `when` можна знайти в `Control.Monad` (щоб отримати до неї доступ зробіть `import Control.Monad`). Це цікаво, бо в блоці `do` це виглядає як твердження керування виконанням, але насправді це звичайна функція. Вона приймає логічне значення та I/O дію. Якщо це логічне значення є `True`, це повертає ту саму I/O дію, що ми надали туди. Однак якщо це `False`, вона повертає `return ()`, дію, так що  I/O дія нічого не робить. Ось як ми можемо переписати попередній шмат коду, де ми демонструємо `getChar` через використання `when`:
+
+[source,scala]
+----
 import Control.Monad   
   
 main = do  
@@ -266,24 +342,36 @@ main = do
     when (c /= ' ') $ do  
         putChar c  
         main  
-So as you can see, it's useful for encapsulating the if something then do some I/O action else return () pattern.
+----
 
-sequence takes a list of I/O actions and returns an I/O actions that will perform those actions one after the other. The result contained in that I/O action will be a list of the results of all the I/O actions that were performed. Its type signature is sequence :: [IO a] -> IO [a]. Doing this:
+Так що, як ви можете бачити, це корисно для інкапсуляції шаблона `if something then do some I/O action else return ()`.
 
+`sequence` бере список I/O дій і повертає I/O дії, що будуть виконувати ці дії, одна за одною. Результат, що міститься в цій I/O дії. буде списком результатів всіх I/O дій, що виконуються. Його сигнатура типу є `sequence ::[IO a] -> IO [a]`. Роблячи це:
+
+[source,scala]
+----
 main = do  
     a <- getLine  
     b <- getLine  
     c <- getLine  
     print [a,b,c]  
-Is exactly the same as doing this:.
+----
 
+є те саме, що і наступне:
+
+[source,scala]
+----
 main = do  
     rs <- sequence [getLine, getLine, getLine]  
     print rs  
-So sequence [getLine, getLine, getLine] makes an I/O action that will perform getLine three times. If we bind that action to a name, the result is a list of all the results, so in our case, a list of three things that the user entered at the prompt.
+----
 
-A common pattern with sequence is when we map functions like print or putStrLn over lists. Doing map print [1,2,3,4] won't create an I/O action. It will create a list of I/O actions, because that's like writing [print 1, print 2, print 3, print 4]. If we want to transform that list of I/O actions into an I/O action, we have to sequence it.
+Так що `sequence [getLine, getLine, getLine]` створює I/O дію, що буде виконувати `getLine` три рази. Якщо ви прикріпите цю дію до імені, результатом є список з усіх результатів, так що в нашому випадку це список з трьох речей, які користувач вводить на підказку консолі.
 
+Загальний шаблон з `sequence` це коли ми відображуємо функції як  `print` або `putStrLn` на списки. Виконання `map print [1,2,3,4]` не створить I/O дію. Це створить сипсок I/O дій, оскільки це як написати `[print 1, print 2, print 3, print 4]`. Якщо ми бажаємо трансформувати цей список I/O дій в одну I/O дію, ми маємо створити послідовність.
+
+[source,scala]
+----
 ghci> sequence (map print [1,2,3,4,5])  
 1  
 2  
@@ -291,10 +379,14 @@ ghci> sequence (map print [1,2,3,4,5])
 4  
 5  
 [(),(),(),(),()]  
-What's with the [(),(),(),(),()] at the end? Well, when we evaluate an I/O action in GHCI, it's performed and then its result is printed out, unless that result is (), in which case it's not printed out. That's why evaluating putStrLn "hehe" in GHCI just prints out hehe (because the contained result in putStrLn "hehe" is ()). But when we do getLine in GHCI, the result of that I/O action is printed out, because getLine has a type of IO String.
+----
 
-Because mapping a function that returns an I/O action over a list and then sequencing it is so common, the utility functions mapM and mapM_ were introduced. mapM takes a function and a list, maps the function over the list and then sequences it. mapM_ does the same, only it throws away the result later. We usually use mapM_ when we don't care what result our sequenced I/O actions have.
+Що це за `[(),(),(),(),()]` в самому кінці? Гаразд, коли ми обчислюємо I/O дію в GHCI, вона виконується і потім друкується його результат, якщо результат не `()`, в якому випадку нічого не друкується. Ось чому обчислення `putStrLn "hehe"` в GHCI просто друкує `hehe` (оскільки результат що міститься в результаті `putStrLn "hehe"` в `()`). Але коли ми робимо `getLine` в GHCI, результат цієї I/O дії друкується, оскільки `getLine` має тип `IO String`.
 
+Оскільки відображення функції, що повертає I/O дію до списку, та потім створення послідовності по цьому, є таким загальним, що були введені функції `mapM` та `mapM_`. `mapM` бере функцію та список, відображує функцію на списку, та потім створює послідовність. `mapM_` робить те саме, тільки пізніше він закидає результат. Ми звичайно використовуємо `mapM_`, коли нам байдуже, який результат має наша послідовність I/O дій.
+
+[source,scala]
+----
 ghci> mapM print [1,2,3]  
 1  
 2  
@@ -304,8 +396,12 @@ ghci> mapM_ print [1,2,3]
 1  
 2  
 3  
-forever takes an I/O action and returns an I/O action that just repeats the I/O action it got forever. It's located in Control.Monad. This little program will indefinitely ask the user for some input and spit it back to him, CAPSLOCKED:
+----
 
+`forever` бере I/O дію і повертає I/O дію, що просто повторює отриману I/O дію постійно. Вона розташована в `Control.Monad`. Ця невелика програма буде безкінечно запитувати користувача щодо деякого вводу, і віддавати його назад, ВЕЛИКИМИ ЛІТЕРАМИ:
+
+[source,scala]
+----
 import Control.Monad  
 import Data.Char  
   
@@ -313,8 +409,12 @@ main = forever $ do
     putStr "Give me some input: "  
     l <- getLine  
     putStrLn $ map toUpper l  
-forM (located in Control.Monad) is like mapM, only that it has its parameters switched around. The first parameter is the list and the second one is the function to map over that list, which is then sequenced. Why is that useful? Well, with some creative use of lambdas and do notation, we can do stuff like this:
+----
 
+`forM` (розташована в `Control.Monad`) як `mapM`, тільки з переміненими параметрами. Перший параметр є списком, та другий є функція, по якій треба відображувати цей список, що потім перетворюється на послідовність. Чому це корисне? Гаразд, з деяким креативним застосуванням лямбди та `do` нотації ми можемо робити такі речі:
+
+[source,scala]
+----
 import Control.Monad  
   
 main = do   
@@ -324,10 +424,14 @@ main = do
         return color)  
     putStrLn "The colors that you associate with 1, 2, 3 and 4 are: "  
     mapM putStrLn colors  
-The (\a -> do ... ) is a function that takes a number and returns an I/O action. We have to surround it with parentheses, otherwise the lambda thinks the last two I/O actions belong to it. Notice that we do return color in the inside do block. We do that so that the I/O action which the do block defines has the result of our color contained within it. We actually didn't have to do that, because getLine already has that contained within it. Doing color <- getLine and then return color is just unpacking the result from getLine and then repackaging it again, so it's the same as just doing getLine. The forM (called with its two parameters) produces an I/O action, whose result we bind to colors. colors is just a normal list that holds strings. At the end, we print out all those colors by doing mapM putStrLn colors.
+----
 
-You can think of forM as meaning: make an I/O action for every element in this list. What each I/O action will do can depend on the element that was used to make the action. Finally, perform those actions and bind their results to something. We don't have to bind it, we can also just throw it away.
+`(\a -> do ... )` є функцією, що бере число і повертає I/O дію. Ми маємо оточити її в дужки, інакше лямбда подумає, що останні дві I/O дії належать до неї. Зауважте, що ми робимо `return color` всередині `do` блока. Ми робимо так, щоб I/O дія, яку визначає `do` блок, мала б результат кольору, що міститься в ній. Ми насправді не маємо робити це, оскільки `getLine` вже має те, що міститься в ній. Роблячи `color <- getLine` та потім `return color` є проста розпаковка результату від `getLine`, та потім знову його розпаковка, так що це як просто зробити `getLine`. `forM` (викликана з її двома параметрами) продукує I/O дію, результат якої ми прикріплюємо до `colors`. `colors` є лише звичайний список, що містить рядки. В кінці ми друкуємо всі ці кольори, роблячи `mapM putStrLn colors`.
 
+Ви можете думати про `forM` в такому сенсі: створити I/O для кожного елементу в цьому списку. Що кожна I/O дія буде робити залежить від елемента, що була використана для створення дії. Нарешті виконаємо ці дії та прикріпимо результат до чогось. Ми не маємо прикріплювати будь-що, так що ми можемо також відкинути це геть.
+
+[source,scala]
+----
 $ runhaskell form_test.hs  
 Which color do you associate with the number 1?  
 white  
@@ -342,15 +446,18 @@ white
 blue  
 red  
 orange  
-We could have actually done that without forM, only with forM it's more readable. Normally we write forM when we want to map and sequence some actions that we define there on the spot using do notation. In the same vein, we could have replaced the last line with forM colors putStrLn.
+----
 
-In this section, we learned the basics of input and output. We also found out what I/O actions are, how they enable us to do input and output and when they are actually performed. To reiterate, I/O actions are values much like any other value in Haskell. We can pass them as parameters to functions and functions can return I/O actions as results. What's special about them is that if they fall into the main function (or are the result in a GHCI line), they are performed. And that's when they get to write stuff on your screen or play Yakety Sax through your speakers. Each I/O action can also encapsulate a result with which it tells you what it got from the real world.
+Насправді ми можемо зробити це без `forM`, але з `forM` це більш читабельне. Звичайно ми пишемо `forM` коли ми бажаємо зробити `map` та `sequence` деяких дій, що ми визначили тут на місці за допомогою `do` нотації. В тому ж ключі ми можемо замінити останній рядок на `forM colors putStrLn`.
 
-Don't think of a function like putStrLn as a function that takes a string and prints it to the screen. Think of it as a function that takes a string and returns an I/O action. That I/O action will, when performed, print beautiful poetry to your terminal.
+В цьому розділі ми навчились основам вводу та виводу. Ми також з'ясували що таке I/O дії, як вони дозволяють нам вводити та виводити рядки, та коли вони насправді виконуються. Для повтору: I/O дії є значення, здебільшого як любі інші значення в Haskell. Ми можемо передавати їх як параметри до функцій, та функції можуть повертати I/O дії як результати. Що особливе щодо них, це якщо вони підпадають в функцію `main` (або є результат в рядку GHCI), вони виконуються. І ось тоді вони починають писати дещо на вашому екрані, або грають Yakety Sax в ваших гучномовцях. Кожна I/O дія також може інкапсулювати результат з тим, що ви бажаєте отримати від зовнішнього світу.
 
-Files and streams
-streams
-getChar is an I/O action that reads a single character from the terminal. getLine is an I/O action that reads a line from the terminal. These two are pretty straightforward and most programming languages have some functions or statements that are parallel to them. But now, let's meet getContents. getContents is an I/O action that reads everything from the standard input until it encounters an end-of-file character. Its type is getContents :: IO String. What's cool about getContents is that it does lazy I/O. When we do foo <- getContents, it doesn't read all of the input at once, store it in memory and then bind it to foo. No, it's lazy! It'll say: "Yeah yeah, I'll read the input from the terminal later as we go along, when you really need it!".
+Не думайте про функцію як `putStrLn` як про функцію, що бере рядок і друкує його на екрані. Думайте про це, як про функцію, що бере рядок та повертає I/O дію. Ця I/O дія буде, коли виконана, друкувати прекрасні вірші на вашому терміналі.
+
+=== Файли та потоки
+
+image:images/streams.png[]
+`getChar` є I/O дія, що читає поодинокий символ з терміналу. `getLine` є I/O дія, що читає рядок з терміналу. Вони обоє досить прямолінійні, і більшість мов програмування мають деякі функції або твердження, що відповідають до них. Але тепер давайте познайомимось з `getContents`. `getContents` є I/O дія, що читає все зі стандартного вводу, доки не зустріне символ кінця файлу. Її тип `getContents :: IO String`. Що круте щодо `getContents`, це те що вона робить ліниве I/O. Коли ми робимо `foo <- getContents`, вона не читає все і одразу, зберігає в пам'яті і потім прикріплює до `foo`. Ні, вона лінива! Вона каже: "Так так, я прочитаю вхідні дані з терміналу пізніше як ми дійдемо до цього, коли нам це дійсно знадобиться!".
 
 getContents is really useful when we're piping the output from one program into the input of our program. In case you don't know how piping works in unix-y systems, here's a quick primer. Let's make a text file that contains the following little haiku:
 
