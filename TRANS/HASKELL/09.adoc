@@ -457,17 +457,22 @@ orange
 === Файли та потоки
 
 image:images/streams.png[]
-`getChar` є I/O дія, що читає поодинокий символ з терміналу. `getLine` є I/O дія, що читає рядок з терміналу. Вони обоє досить прямолінійні, і більшість мов програмування мають деякі функції або твердження, що відповідають до них. Але тепер давайте познайомимось з `getContents`. `getContents` є I/O дія, що читає все зі стандартного вводу, доки не зустріне символ кінця файлу. Її тип `getContents :: IO String`. Що круте щодо `getContents`, це те що вона робить ліниве I/O. Коли ми робимо `foo <- getContents`, вона не читає все і одразу, зберігає в пам'яті і потім прикріплює до `foo`. Ні, вона лінива! Вона каже: "Так так, я прочитаю вхідні дані з терміналу пізніше як ми дійдемо до цього, коли нам це дійсно знадобиться!".
+`getChar` є I/O дія, що читає поодинокий символ з терміналу. `getLine` є I/O дія, що читає рядок з терміналу. Вони обоє досить прямолінійні, і більшість мов програмування мають деякі функції або твердження, що відповідають до них. Але тепер давайте познайомимось з `getContents`. `getContents` є I/O дія, що читає все зі стандартного вводу, доки не зустріне символ кінця файлу. Її тип `getContents ::IO String`. Що круте щодо `getContents`, це те що вона робить ліниве I/O. Коли ми робимо `foo <- getContents`, вона не читає все і одразу, зберігає в пам'яті і потім прикріплює до `foo`. Ні, вона лінива! Вона каже: "Так так, я прочитаю вхідні дані з терміналу пізніше як ми дійдемо до цього, коли нам це дійсно знадобиться!".
 
-getContents is really useful when we're piping the output from one program into the input of our program. In case you don't know how piping works in unix-y systems, here's a quick primer. Let's make a text file that contains the following little haiku:
+`getContents` є дійсно корисним, коли ми перенаправляємо вихід однієї програми на вхід нашої програми. В випадку, якщо ви не знаєте, як робить перенаправлення в юнікс системах, ось швидке пояснення. Давайте створимо текстовий файл, що містить наступне маленьке хайку:
 
+----
 I'm a lil' teapot  
 What's with that airplane food, huh?  
 It's so small, tasteless   
-Yeah, the haiku sucks, what of it? If anyone knows of any good haiku tutorials, let me know.
+----
 
-Now, recall the little program we wrote when we were introducing the forever function. It prompted the user for a line, returned it to him in CAPSLOCK and then did that all over again, indefinitely. Just so you don't have to scroll all the way back, here it is again:
+Так, хайку поганеньке, що з того? Якщо хтось знає гарні туторіали по хайку - дайте мені знати.
 
+Тепер згадайте маленьку програму, яку ми писали коли вводили функцію `forever`. Якщо запитати користувача ввести рядок, він повертається ВЕЛИКИМИ ЛІТЕРАМИ, і потім все починається спочатку, без кінця. Тільки ви не маєте прогортати весь час назад, ось те саме ще раз:
+
+[source,scala]
+----
 import Control.Monad  
 import Data.Char  
   
@@ -475,8 +480,12 @@ main = forever $ do
     putStr "Give me some input: "  
     l <- getLine  
     putStrLn $ map toUpper l  
-We'll save that program as capslocker.hs or something and compile it. And then, we're going to use a unix pipe to feed our text file directly to our little program. We're going to use the help of the GNU cat program, which prints out a file that's given to it as an argument. Check it out, booyaka!
+----
 
+Ми зберіжемо цю програму як `capslocker.hs` або якось інакше, і скомпілюємо її. І потім ми збираємось використати юнікс конвеєр, щоб скормити наш текстовий файл напряму в нашу маленьку програму. Ми збираємось використати допомогу програми GNU `cat`, що роздруковує файл, переданий їй як аргумент. Перевір це!
+
+[source,bash]
+----
 $ ghc --make capslocker   
 [1 of 1] Compiling Main             ( capslocker.hs, capslocker.o )  
 Linking capslocker ...  
@@ -489,32 +498,48 @@ I'M A LIL' TEAPOT
 WHAT'S WITH THAT AIRPLANE FOOD, HUH?  
 IT'S SO SMALL, TASTELESS  
 capslocker <stdin>: hGetLine: end of file  
-As you can see, piping the output of one program (in our case that was cat) to the input of another (capslocker) is done with the | character. What we've done is pretty much equivalent to just running capslocker, typing our haiku at the terminal and then issuing an end-of-file character (that's usually done by pressing Ctrl-D). It's like running cat haiku.txt and saying: “Wait, don't print this out to the terminal, tell it to capslocker instead!”.
+----
 
-So what we're essentially doing with that use of forever is taking the input and transforming it into some output. That's why we can use getContents to make our program even shorter and better:
+Як ви можете бачити, перенаправлення виходу однієї програми (в нашому випадку це була `cat`) на вхід іншої (`capslocker`) робиться символом `|`. Те що ми зробили доволі еквівалентне до простого виконання `capslocker`, друкування нашого хайку на терміналі і потім ввод символа кінця файла (це звичайно робиться натисканням `Ctrl-D`). Це як виконати `cat haiku.txt` і сказати: “Зачекай, не друкуй це на термінал, замість цього скажи це `capslocker`!”.
 
+Те, що ми в основному робимо за допомогою `forever`, це прийняти вхід і перетворити його в деякий вихід. Ось чому ми можемо використати `getContents`, щоб зробити нашу програму навіть коротше та краще:
+
+[source,scala]
+----
 import Data.Char  
   
 main = do  
     contents <- getContents  
     putStr (map toUpper contents)  
-We run the getContents I/O action and name the string it produces contents. Then, we map toUpper over that string and print that to the terminal. Keep in mind that because strings are basically lists, which are lazy, and getContents is I/O lazy, it won't try to read the whole content at once and store it into memory before printing out the capslocked version. Rather, it will print out the capslocked version as it reads it, because it will only read a line from the input when it really needs to.
+----
 
+Ми виконуємо I/O дію `getContents`, і називаємо рядок, який вона продукує, `contents`. Потім ми робимо `map toUpper` по цьому рядку і друкуємо це на термінал. Майте на увазі, що оскільки рядки в основному списки, що є лінивими, і `getContents` є лінивим I/O, вона не буде читати весь вміст одночасно, і зберігати його в пам'яті перед роздруковки збільшенної версії. Скоріше вона буде роздруковувати збільшену версію по мірі читання, оскільки вона буде читати лише один рядок з входу, коли це буде дійсно треба.
+
+[source,bash]
+----
 $ cat haiku.txt | ./capslocker  
 I'M A LIL' TEAPOT  
 WHAT'S WITH THAT AIRPLANE FOOD, HUH?  
 IT'S SO SMALL, TASTELESS  
-Cool, it works. What if we just run capslocker and try to type in the lines ourselves?
+----
 
+Круто, це робить. Що коли ми просто виконаємо `capslocker` і спробуємо набрати рядки самотужки?
+
+[source,scala]
+----
 $ ./capslocker  
 hey ho  
 HEY HO  
 lets go  
 LETS GO  
-We got out of that by pressing Ctrl-D. Pretty nice! As you can see, it prints out our capslocked input back to us line by line. When the result of getContents is bound to contents, it's not represented in memory as a real string, but more like a promise that it will produce the string eventually. When we map toUpper over contents, that's also a promise to map that function over the eventual contents. And finally when putStr happens, it says to the previous promise: "Hey, I need a capslocked line!". It doesn't have any lines yet, so it says to contents: "Hey, how about actually getting a line from the terminal?". So that's when getContents actually reads from the terminal and gives a line to the code that asked it to produce something tangible. That code then maps toUpper over that line and gives it to putStr, which prints it. And then, putStr says: "Hey, I need the next line, come on!" and this repeats until there's no more input, which is signified by an end-of-file character.
+----
 
-Let's make program that takes some input and prints out only those lines that are shorter than 10 characters. Observe:
+Ми виходимо з цього натискаючи `Ctrl-D`. Доволі мило! Як ви можете бачити, це друкує наш збільшений вхід, рядок за рядком. Коли результат `getContents` прикріплений до `contents`, він не представлений в пам'яті як справжній рядок, але більше як проміс, що з часом спродукує рядок. Коли ми робимо `map toUpper` на `contents`, це також проміс відобразити цю функцію по колись створеному  `contents`. І нарешті коли трапляється `putStr`, він каже попередньому промісу: "Хей, мені треба збільшений рядок!". Це все ще не має рядків, так що він каже до `contents`: "Хей, як щодо дійсно отримати рядок з терміналу?". І вже тоді `getContents` насправді читає з терміналу, і повертає рядок до коду, що запитував його, що спродукувати дещо цікаве. Цей код потім відображує `toUpper` по цьому рядку та видає це до `putStr`, що друкує його. І потім `putStr` каже: "Хей, мені треба наступний рядок, ворушись!", і це повторюється доки не буде більше вводу, що втілюється в вигляді символу кінця файла.
 
+Давайте створимо програму, що бере деякий ввод, і друкує тільки ті рядки, що коротше десяти символів. Дослідимо:
+
+[source,scala]
+----
 main = do  
     contents <- getContents  
     putStr (shortLinesOnly contents)  
@@ -525,10 +550,13 @@ shortLinesOnly input =
         shortLines = filter (\line -> length line < 10) allLines  
         result = unlines shortLines  
     in  result  
-We've made our I/O part of the program as short as possible. Because our program is supposed to take some input and print out some output based on the input, we can implement it by reading the input contents, running a function on them and then printing out what the function gave back.
+----
 
-The shortLinesOnly function works like this: it takes a string, like "short\nlooooooooooooooong\nshort again". That string has three lines, two of them are short and the middle one is long. It runs the lines function on that string, which converts it to ["short", "looooooooooooooong", "short again"], which we then bind to the name allLines. That list of string is then filtered so that only those lines that are shorter than 10 characters remain in the list, producing ["short", "short again"]. And finally, unlines joins that list into a single newline delimited string, giving "short\nshort again". Let's give it a go.
+Ми створили нашу I/O частину нашої програми такою короткою, як це можливо. Оскільки наша програма передбачає прийняття деякого вводу і друк деякого виводу на основі цього вводу, ми можемо реалізувати її через читання вмісту вводу, виконання функції на ньому, та потім друк того, що повертає функція.
 
+Функція `shortLinesOnly` робить саме так: вона приймає рядок, як `"short\nlooooooooooooooong\nshort again"`. Цей рядок має три рядка, два з них короткі, і середня довга. Вона виконує на цьому рядку функцію `lines`, що конвертує її на `["short", "looooooooooooooong", "short again"]`, що потім прикріплюється до імені `allLines`. Цей список рядків потім фільтрується, так що в списку залишаються лише рядки коротші десяти символів, продукуючи `["short", "short again"]`. І нарешті `unlines` поєднує список в єдиний рядок обмежений  `newline`, даючи `"short\nshort again"`. Давайте дамо цьому ход.
+
+----
 i'm short  
 so am i  
 i am a loooooooooong line!!!  
@@ -543,6 +571,8 @@ $ cat shortlines.txt | ./shortlinesonly
 i'm short  
 so am i  
 short  
+----
+
 We pipe the contents of shortlines.txt into the output of shortlinesonly and as the output, we only get the short lines.
 
 This pattern of getting some string from the input, transforming it with a function and then outputting that is so common that there exists a function which makes that even easier, called interact. interact takes a function of type String -> String as a parameter and returns an I/O action that will take some input, run that function on it and then print out the function's result. Let's modify our program to use that.
