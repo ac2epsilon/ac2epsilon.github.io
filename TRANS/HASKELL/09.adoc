@@ -616,14 +616,14 @@ respondPalindromes = unlines . map (\xs -> if isPalindrome xs then "palindrome" 
     where   isPalindrome xs = xs == reverse xs  
 ----
 
-Досить прямолінійно. First it turns something like `"elephant\nABCBA\nwhatever"` into ["elephant", "ABCBA", "whatever"] and then it maps that lambda over it, giving ["not a palindrome", "palindrome", "not a palindrome"] and then unlines joins that list into a single, newline delimited string. Now we can do
+Досить прямолінійно. Спершу це перетворює дещо накшталт `"elephant\nABCBA\nwhatever"` на `["elephant", "ABCBA", "whatever"]`, та потім відображує цю лямбду по цьому, даючи `["not a palindrome", "palindrome", "not a palindrome"]`, та потім використовує поєднання в єдиний рядок, розділений `newline`. Тепер ми можемо робити
 
 [source,haskell]
 ----
 main = interact respondPalindromes  
 ----
 
-Let's test this out:
+Давайте протестуємо це:
 
 [source,bash]
 ----
@@ -636,9 +636,9 @@ cookie
 not a palindrome  
 ----
 
-Even though we made a program that transforms one big string of input into another, it acts like we made a program that does it line by line. That's because Haskell is lazy and it wants to print the first line of the result string, but it can't because it doesn't have the first line of the input yet. So as soon as we give it the first line of input, it prints the first line of the output. We get out of the program by issuing an end-of-line character.
+Навіть якщо ми створили програму, що трансформує один великий рядок в інший, це робить так, якби ми створили програму, що робить це рядок за рядком. Це тому що Haskell лінивий,і він бажає друкувати перший рядок результуючого рядка, але він не може, бо він все ще не має першого рядка на вході. Так що так швидко, як ми отримаємо перший рядок на вході, він друкує перший рядок на виході. Ми отримаємо результат від програми, коли надамо символ кінця рядка.
 
-We can also use this program by just piping a file into it. Let's say we have this file:
+Ми також можемо використати цю програму через переправлення їй файлу. Скажімо, ми маємо такий файл:
 
 ----
 dogaroo  
@@ -647,7 +647,7 @@ rotor
 madam  
 ----
 
-and we save it as words.txt. This is what we get by piping it into our program:
+та ми зберігаємо його як `words.txt`. Ось що ми отримаємо, направивши його в програму:
 
 [source,bash]
 ----
@@ -658,13 +658,13 @@ palindrome
 palindrome  
 ----
 
-Again, we get the same output as if we had run our program and put in the words ourselves at the standard input. We just don't see the input that palindromes.hs because the input came from the file and not from us typing the words in.
+І знову ми отримали той самий вихід, так якби ми виконали нашу програму та надали слова один за одним в стандартний вхід. Ми просто не бачимо вводу до `palindromes.hs`, оскільки вхід надходить з файлу, а не від того що ми набираємо слова.
 
-So now you probably see how lazy I/O works and how we can use it to our advantage. You can just think in terms of what the output is supposed to be for some given input and write a function to do that transformation. In lazy I/O, nothing is eaten from the input until it absolutely has to be because what we want to print right now depends on that input.
+Так що тепер ви можливо бачите, як робить ліниве I/O, та як ми можемо використовувати його з вигодою. Ви можете просто думати в термінах того, як має виглядати вихід для деякого нашого вводу, і писати функцію для виконання цієї трансформації. В лінивому I/O нічого не береться з входу, доки це не буде абсолютно потрібне, оскільки те, що ми бажаємо друкувати прямо зараз залежить від цього вводу.
 
-So far, we've worked with I/O by printing out stuff to the terminal and reading from it. But what about reading and writing files? Well, in a way, we've already been doing that. One way to think about reading from the terminal is to imagine that it's like reading from a (somewhat special) file. Same goes for writing to the terminal, it's kind of like writing to a file. We can call these two files stdout and stdin, meaning standard output and standard input, respectively. Keeping that in mind, we'll see that writing to and reading from files is very much like writing to the standard output and reading from the standard input.
+Досі ми робили з I/O, друкуючи речі на терміналі та читаючи з нього. Але як щодо читання та запису до файлів? Гаразд, в деякому сенсі ми вже мали робити це. Один шлях думати про читання з терміналу є уявити, що це як читання з (дещо особливого) файла. Те саме вірне і для запису на терміналЮ це так само як писати в файл. Ми можемо називати ці два файли `stdout` та `stdin`, маючи на увазі стандартний вивід та вхід, відповідно. Маючи це на увазі ми бачимо, що запис та читання з файлів максимально подібне до писання в стандартний вивід і читання зі стандартного вводу.
 
-We'll start off with a really simple program that opens a file called girlfriend.txt, which contains a verse from Avril Lavigne's #1 hit Girlfriend, and just prints out out to the terminal. Here's girlfriend.txt:
+Ми почнемо з насправді простої програми, що відкриває файл з назвою `girlfriend.txt`, що містить текст хіта Avril Lavigne `Girlfriend`, і просто друкує його на термінал. Ось `girlfriend.txt`:
 
 ----
 Hey! Hey! You! You!   
@@ -673,7 +673,7 @@ No way! No way!
 I think you need a new one!  
 ----
 
-And here's our program:
+І ось наша програма:
 
 [source,haskell]
 ----
@@ -686,7 +686,7 @@ main = do
     hClose handle  
 ----
 
-Running it, we get the expected result:
+Виконуючи це ми отримуємо очікуваний результат:
 
 [source,bash]
 ----
@@ -697,32 +697,36 @@ No way! No way!
 I think you need a new one!  
 ----
 
-Let's go over this line by line. The first line is just four exclamations, to get our attention. In the second line, Avril tells us that she doesn't like our current romantic partner. The third line serves to emphasize that disapproval, whereas the fourth line suggests we should seek out a new girlfriend.
+Давайте пройдемо рядок за рядком. Перший рядок лише заклики, що привертають нашу увагу. В другому рядку Avril каже нам, що їй не подобається її поточний романтичний партнер. Третій рядок служить для наголосу цього твердження, а четвертий рядок каже, що нам треба шукати нову дівчину.
 
-Let's also go over the program line by line! Our program is several I/O actions glued together with a do block. In the first line of the do block, we notice a new function called openFile. This is its type signature: openFile :: FilePath -> IOMode -> IO Handle. If you read that out loud, it states: openFile takes a file path and an IOMode and returns an I/O action that will open a file and have the file's associated handle encapsulated as its result.
+Тепер пройдемо програму рядок з рядком! Наша програма є декілька I/O дій, склеєних разом за допомогою блоку `do`. В першому рядку блоку `do` ми помічаємо нову функцію на ім'я `openFile`. Ось її сигнатура типу: `openFile ::FilePath -> IOMode -> IO Handle`. ЯКщо ми прочитаємо це вголос, це означає: `openFile` бере шлях до файлу та `IOMode`, і повертає I/O дію, що буде відкривати файл, і буде мати асоційований хендлер інкапсульований як результат.
 
-FilePath is just a type synonym for String, simply defined as:
+`FilePath` є просто синонім типу для `String`, визначений просто як:
 
 [source,haskell]
 ----
 type FilePath = String  
-IOMode is a type that's defined like this:
+----
 
+`IOMode` є визначений таким чином тип:
+
+[source,haskell]
+----
 data IOMode = ReadMode | WriteMode | AppendMode | ReadWriteMode  
 ----
 
 image:images/file.png[]
-Just like our type that represents the seven possible values for the days of the week, this type is an enumeration that represents what we want to do with our opened file. Very simple. Just note that this type is IOMode and not IO Mode. IO Mode would be the type of an I/O action that has a value of some type Mode as its result, but IOMode is just a simple enumeration.
+Так само як наш тип, що представляє сім можливих значень для днів тижня, цей тип перелічує представлення того, що ми бажаємо робити з нашим відкритим файлом. Дуже просто. Просто зауважте, що цей тип `IOMode`, а не `IO Mode`. `IO Mode` має бути типом I/O дії, що має значення деякого типу `Mode` в якості результату, але `IOMode` є простий перелік.
 
-Finally, it returns an I/O action that will open the specified file in the specified mode. If we bind that action to something we get a Handle. A value of type Handle represents where our file is. We'll use that handle so we know which file to read from. It would be stupid to read a file but not bind that read to a handle because we wouldn't be able to do anything with the file. So in our case, we bound the handle to handle.
+Нарешті це повертає I/O дію, що повертає вказаний файл у вказаному режимі. Якщо ми прикріпимо дію до будь-чого, ми отримаємо `Handle`. Значення типу `Handle` представляє де є наш файл. Ми будемо використовувати цей хендлер, так що ми знатимемо з якого файлу треба читати. Це було б дурним читати файл, але не прикріпити це читання до хендлера, бо ми не були б в змозі робити будь-що з файлом. Так що в нашому випадку ми прикріпили хендлер до `handle`.
 
-In the next line, we see a function called hGetContents. It takes a Handle, so it knows which file to get the contents from and returns an IO String — an I/O action that holds as its result the contents of the file. This function is pretty much like getContents. The only difference is that getContents will automatically read from the standard input (that is from the terminal), whereas hGetContents takes a file handle which tells it which file to read from. In all other respects, they work the same. And just like getContents, hGetContents won't attempt to read the file at once and store it in memory, but it will read it as needed. That's really cool because we can treat contents as the whole contents of the file, but it's not really loaded in memory. So if this were a really huge file, doing hGetContents wouldn't choke up our memory, but it would read only what it needed to from the file, when it needed to.
+В наступному рядку ми бачимо функцію з назвою `hGetContents`. Вона приймає `Handle`, так що вона знає, з якого файла треба отримати вміст, та повертає `IO String` — I/O дію, що в якості результата зберігає вміст файлу. Ця функція доволі подібна до `getContents`. Єдина відмінність в тому, що `getContents` буде автоматично читати зі стандартного входу (тобто з терміналу), тоді як `hGetContents` бере хендлер файла, що каже з якого файла має відбуватись читання. У всіх інших відношеннях вони роблять однаково. І так само як `getContents`, `hGetContents` не буде читати файл за один раз та зберігати його в пам'яті, але буде читати його по мірі потреби. Це насправді круто, оскільки ми можемо розглядати `contents` як повний вміст файла, але він насправді не є завантаженим в пам'ять. Так що якщо це дійсно величезний файл, виконання `hGetContents` не буде поїдати нашу пам'ять, але вона лише буде читати з файла тільки те, що потрібно, і коли це потрібно.
 
-Note the difference between the handle used to identify a file and the contents of the file, bound in our program to handle and contents. The handle is just something by which we know what our file is. If you imagine your whole file system to be a really big book and each file is a chapter in the book, the handle is a bookmark that shows where you're currently reading (or writing) a chapter, whereas the contents are the actual chapter.
+Зауважте різницю між хендлером, використаним для ідентифікації файла і вмістом цього файла, прикріплені в нашій програмі до `handle` та `contents`. `handle` є лише дещо, по чому ми знаємо, що є нашим файлом. Якщо ви уявляєте вашу файлову систему як насправді велику книгу, і кожний файл є глава цієї книги, `handle` є закладкою, що показує, де ви зараз читаєте (або) главу, тоді як `contents` є саме главою.
 
-With putStr contents we just print the contents out to the standard output and then we do hClose, which takes a handle and returns an I/O action that closes the file. You have to close the file yourself after opening it with openFile!
+За допомогою `putStr contents` ми просто друкуємо вміст на стандартний вихід, і потім ми робимо `hClose`, що бере `handle` і повертає I/O дію, що зачиняє файл. Ви маєте самі зачиняти файл після відкриття його через `openFile`!
 
-Another way of doing what we just did is to use the withFile function, which has a type signature of withFile :: FilePath -> IOMode -> (Handle -> IO a) -> IO a. It takes a path to a file, an IOMode and then it takes a function that takes a handle and returns some I/O action. What it returns is an I/O action that will open that file, do something we want with the file and then close it. The result encapsulated in the final I/O action that's returned is the same as the result of the I/O action that the function we give it returns. This might sound a bit complicated, but it's really simple, especially with lambdas, here's our previous example rewritten to use withFile:
+Інший спосіб зробити те саме, що ми тільки що зробили, це використання функцію `withFile`, що має сигнатуру типу `withFile ::FilePath -> IOMode -> (Handle -> IO a) -> IO a`. Вона приймає шлях до файлу, `IOMode`, і потім вона бере функцію, яка приймає хендлер і повертає деяку I/O дію. Те що вона повертає є I/O дія, що буде відкривати файл, робити те що ви бажаєте зробити, і потім зачиняє його. Результат, інкапсульований в фінальній I/O дії, є той самий, що і результат I/O дії від функції, яку ми надаємо. Це може виглядати як дещо ускладнене, але це насправді просто, особливо з лямбдами, і ось як виглядає наш попередній, переписаний для використання `withFile`:
 
 [source,haskell]
 ----
@@ -734,7 +738,7 @@ main = do
         putStr contents)  
 ----
 
-As you can see, it's very similar to the previous piece of code. (\handle -> ... ) is the function that takes a handle and returns an I/O action and it's usually done like this, with a lambda. The reason it has to take a function that returns an I/O action instead of just taking an I/O action to do and then close the file is because the I/O action that we'd pass to it wouldn't know on which file to operate. This way, withFile opens the file and then passes the handle to the function we gave it. It gets an I/O action back from that function and then makes an I/O action that's just like it, only it closes the file afterwards. Here's how we can make our own withFile function:
+Як ви можете бачити, це дуже подібно до попереднього шматка коду. `(\handle -> ... )` є функцією, що бере `handle` та повертає I/O дію, і це звичайно виконується саме так, за допомогою лямбди. Причина того, що тут очікується функція, що повертає I/O дію, замість просто сприйняття I/O дії до виконання, та наступне закриття файлу, є в тому, що I/O дія, яку ми передаємо, не мала б знати, з яким файлом треба оперувати. Таким чином `withFile` відкриває файл, і потім передає `handle` до функції, яку ми надали. Вона отримує назад I/O дію від цієї функції, і потім створює I/O дію, що така сама, але зачиняє файл після себе. Ось як ми можемо створити свою власну функцію `withFile`:
 
 [source,haskell]
 ----
@@ -748,13 +752,13 @@ butter toast
 ----
 
 image:images/edd.png[]
-We know the result will be an I/O action so we can just start off with a do. First we open the file and get a handle from it. Then, we apply handle to our function to get back the I/O action that does all the work. We bind that action to result, close the handle and then do return result. By returning the result encapsulated in the I/O action that we got from f, we make it so that our I/O action encapsulates the same result as the one we got from f handle. So if f handle returns an action that will read a number of lines from the standard input and write them to a file and have as its result encapsulated the number of lines it read, if we used that with withFile', the resulting I/O action would also have as its result the number of lines read.
+Ми знаємо, що результатом буде I/O дія, так що ми можемо розпочати з `do`. Спочатку ми відкриваємо файл і отримуємо від нього `handle`. Потім ми застосовуємо `handle` до нашої функції, що отримати назад I/O дію, що робить всю нашу роботу. Ми прикріплюємо цю дію до `result`, зачиняємо `handle`, і потім повертаємо `result`. Через повернення результату, огорнутому в I/O дію, що ми отримали від `f`, ми зробили так, що наша I/O дія інкапсулює той самий результат, що ми отримали від `f handle`. Так що коли `f handle` повертає дію, що буде читати число рядків зі стандартного входу, і писати їх до файлу, та мати інкапсульованим результат числа рядків для читання, якби ми використовували цю `withFile'`, результуюча I/O дія також мала б своїм результатом число прочитаних рядків.
 
-Just like we have hGetContents that works like getContents but for a specific file, there's also hGetLine, hPutStr, hPutStrLn, hGetChar, etc. They work just like their counterparts without the h, only they take a handle as a parameter and operate on that specific file instead of operating on standard input or standard output. Example: putStrLn is a function that takes a string and returns an I/O action that will print out that string to the terminal and a newline after it. hPutStrLn takes a handle and a string and returns an I/O action that will write that string to the file associated with the handle and then put a newline after it. In the same vein, hGetLine takes a handle and returns an I/O action that reads a line from its file.
+Так само, як ми маємо `hGetContents`, що робить як `getContents` для специфічного файлу, також є `hGetLine`, `hPutStr`, `hPutStrLn`, `hGetChar`, etc. Вони роблять як їх колеги без `h`, тільки вони беруть хендлно як параметр, та оперують на специфічному файлі замість стандартного вводу та стандартного виходу. Приклад: `putStrLn` є функція, що приймає рядок та повертає I/O дію, що буде записувати цей рядок на терміналі та новий рядок після цього. `hPutStrLn` приймає хендлер та рядок, і повертає I/O дію, що буде писати писати рядок в файл, асоційований з хендлером. В тому ж дусі `hGetLine` бере хендлер та повертає I/O дію, що читає рядок з файла.
 
-Loading files and then treating their contents as strings is so common that we have these three nice little functions to make our work even easier:
+Завантаження файлів і потім трактування їх вмісту як рядків є настільки загальним, що ми маємо ці три чудові невеличкі функції, щоб зробити нашу роботу ще простішою:
 
-readFile has a type signature of readFile :: FilePath -> IO String. Remember, FilePath is just a fancy name for String. readFile takes a path to a file and returns an I/O action that will read that file (lazily, of course) and bind its contents to something as a string. It's usually more handy than doing openFile and binding it to a handle and then doing hGetContents. Here's how we could have written our previous example with readFile:
+`readFile` має сигнатуру типу `readFile ::FilePath -> IO String`. Пам'ятайте, `FilePath` це просто інша назва для `String`. `readFile` бере шлях до файлу і повертає I/O дію, що буде читати файл (ліниво, звичайно), та прикріплює його вміст до дечого як рядок. Це зазвичай більш зручно, ніж робити `openFile` та прикріплення його до хендлера, і потім робити `hGetContents`. Ось як ми можемо записати наш попередній приклад з `readFile`:
 
 [source,haskell]
 ----
@@ -765,9 +769,9 @@ main = do
     putStr contents  
 ----
 
-Because we don't get a handle with which to identify our file, we can't close it manually, so Haskell does that for us when we use readFile.
+Оскільки ми не отримали хендлера, з яким ми можемо ідентифікувати наш файл, ми не можемо зачинити його вручну, так що Haskell робить це за нас, коли ми використовуємо `readFile`.
 
-writeFile has a type of writeFile :: FilePath -> String -> IO (). It takes a path to a file and a string to write to that file and returns an I/O action that will do the writing. If such a file already exists, it will be stomped down to zero length before being written on. Here's how to turn girlfriend.txt into a CAPSLOCKED version and write it to girlfriendcaps.txt:
+`writeFile` має тип `writeFile ::FilePath -> String -> IO ()`. Вона бере шлях до файлу і рядок, що треба записати до цього файлу, і повертає I/O дію, що буде виконувати запис. Якщо такий файл вже існує він буде усічений до нульової довжини, перед тим як буде перезаписаний. Ось як перетворити `girlfriend.txt` на `CAPSLOCKED` версію, і записати її до `girlfriendcaps.txt`:
 
 [source,haskell]
 ----
@@ -785,9 +789,9 @@ NO WAY! NO WAY!
 I THINK YOU NEED A NEW ONE!  
 ----
 
-`appendFile` has a type signature that's just like writeFile, only appendFile doesn't truncate the file to zero length if it already exists but it appends stuff to it.
+`appendFile` має сигнатуру типу таку саму як `writeFile`, тільки `appendFile` не відсікає файл до нульової довжини, якщо він вже існує, але додає дещо до нього.
 
-Let's say we have a file todo.txt that has one task per line that we have to do. Now let's make a program that takes a line from the standard input and adds that to our to-do list.
+Скажімо, ми маємо файл `todo.txt` що має по одному завданню на рядок, що нам треба робити. Тепер давайте створимо програму, що бере рядок зі стандартного вводу і додає його до нашого списку `to-do`.
 
 [source,haskell]
 ----
@@ -808,9 +812,9 @@ Dust the dog
 Take salad out of the oven  
 ----
 
-We needed to add the "\n" to the end of each line because getLine doesn't give us a newline character at the end.
+Нам треба додати `"\n"` в кінець кожного рядка, оскільки `getLine` не видає нам символ нового рядка в кінці.
 
-Ooh, one more thing. We talked about how doing contents <- hGetContents handle doesn't cause the whole file to be read at once and stored in-memory. It's I/O lazy, so doing this:
+О, ще одна річ. Ми казали як виконання `contents <- hGetContents handle` не призводить до читання всього файлу за один раз, та розміщення його в пам'яті. Це I/O ліниве, так що виконання цього:
 
 [source,haskell]
 ----
@@ -820,11 +824,11 @@ main = do
         putStr contents)  
 ----
 
-is actually like connecting a pipe from the file to the output. Just like you can think of lists as streams, you can also think of files as streams. This will read one line at a time and print it out to the terminal as it goes along. So you may be asking, how wide is this pipe then? How often will the disk be accessed? Well, for text files, the default buffering is line-buffering usually. That means that the smallest part of the file to be read at once is one line. That's why in this case it actually reads a line, prints it to the output, reads the next line, prints it, etc. For binary files, the default buffering is usually block-buffering. That means that it will read the file chunk by chunk. The chunk size is some size that your operating system thinks is cool.
+те саме що під'єднати трубку від файла до виходу. Так само як ви можете думати про списки як про потоки, так само ви можете думати про файли як про потоки. Це буде читати один рядок за раз і друкувати його на термінал по мірі надходження. Так що ви можете запитати, якою довгою є ця труба? Як часто буде відбуватись доступ до диску? Гаразд, для текстових файлів буферизація по замовчанню зазвичай обмежується рядком. Це означає, що найменьша частина файлу, що буде прочитана за раз, є рядок. Ось чому в цьому випадку воно дійсно читає рядок, друкує вивід, читає наступний рядок, друкує його, і так далі. Для двійникових файлів звичайна буферизація зазвичай блочна. Це означає, що вона буде читати файл частина за частиною. Розмір цього блока є саме такий, який вважає за найкраще ваша операційна система.
 
-You can control how exactly buffering is done by using the hSetBuffering function. It takes a handle and a BufferMode and returns an I/O action that sets the buffering. BufferMode is a simple enumeration data type and the possible values it can hold are: NoBuffering, LineBuffering or BlockBuffering (Maybe Int). The Maybe Int is for how big the chunk should be, in bytes. If it's Nothing, then the operating system determines the chunk size. NoBuffering means that it will be read one character at a time. NoBuffering usually sucks as a buffering mode because it has to access the disk so much.
+Ви можете контролювати як саме відбувається буферизація через використання функції `hSetBuffering`. Вона приймає хендлер та `BufferMode`, і повертає I/O дію, що встановлює буферизацію. `BufferMode` є простим типом даних переліку і можливими значеннями є: `NoBuffering`, `LineBuffering` або `BlockBuffering (Maybe Int)`. `Maybe Int` для завдання того, наскільки великим має бути фрагмент, в байтах. Якщо це `Nothing`, тоді розмір буфера визначить операційна система. `NoBuffering` означає, що буде читатись один символ за раз. `NoBuffering` зазвичай програє як режим буферизації, оскільки він має дуже багато доступу до диску.
 
-Here's our previous piece of code, only it doesn't read it line by line but reads the whole file in chunks of 2048 bytes.
+Ось наш попередній фрагмент коду, тільки він не читає файл рядок за рядком, але замість цього читає цілий файл шматками по 2048 байт.
 
 [source,haskell]
 ----
@@ -835,15 +839,15 @@ main = do
         putStr contents)  
 ----
 
-Reading files in bigger chunks can help if we want to minimize disk access or when our file is actually a slow network resource.
+Читання файлів в більших шматках може допомогти, якщо ви бажаєте мінімізувати доступ до диску, або коли наш файл є насправді повільним мережевим ресурсом.
 
-We can also use hFlush, which is a function that takes a handle and returns an I/O action that will flush the buffer of the file associated with the handle. When we're doing line-buffering, the buffer is flushed after every line. When we're doing block-buffering, it's after we've read a chunk. It's also flushed after closing a handle. That means that when we've reached a newline character, the reading (or writing) mechanism reports all the data so far. But we can use hFlush to force that reporting of data that has been read so far. After flushing, the data is available to other programs that are running at the same time.
+Ми також можемо використовувати `hFlush`, що є функцією, що приймає хендлер та повертає I/O дію, що буде скидати буфер для файла, асоційованого з хендлером. Коли ми робимо буферізацію рядків, буфер скидається після кожного рядка. Коли ми робимо блочну буферизацію, це відбувається після читання фрегменту. Він також скидається після закриття хендлера. Це означає, що коли ми досягли символ нового рядка, механізм читання (або запису) повідомляє що данні скинчились. Але коли ми використовуємо `hFlush` це змушує повідомити що данні для читання скінчились. Після скидання дані доступні для інших програм, що виконуються в той самий час.
 
-Think of reading a block-buffered file like this: your toilet bowl is set to flush itself after it has one gallon of water inside it. So you start pouring in water and once the gallon mark is reached, that water is automatically flushed and the data in the water that you've poured in so far is read. But you can flush the toilet manually too by pressing the button on the toilet. This makes the toilet flush and all the water (data) inside the toilet is read. In case you haven't noticed, flushing the toilet manually is a metaphor for hFlush. This is not a very great analogy by programming analogy standards, but I wanted a real world object that can be flushed for the punchline.
+Думайте про читання блочно буферизованого файлу таким чином: ваш туалетний бачок налаштований таким чином, щоб зливатись після набору одного галону води. Так що ви починаєте запускати воду, і коли мітка галону досягнута, вода автоматично зливається, і дані в воді, що ви назбирали, може бути прочитані. Але ви можете змити туалет вручну також, натиснувши кнопку на бачку. Це змиє туалет і вся вода (дані) можуть бути прочитані. В випадку якщо ви не помітили, змивання туалету вручну є метафорою для `hFlush`. Це не дуже гарна аналогія по стандартам програмних аналогій, але я бажав використати об'єкт з реального світу, що може бути злитий для гумору.
 
-We already made a program to add a new item to our to-do list in todo.txt, now let's make a program to remove an item. I'll just paste the code and then we'll go over the program together so you see that it's really easy. We'll be using a few new functions from System.Directory and one new function from System.IO, but they'll all be explained.
+Ми вже створювали програму для додавання нового елементу до нашого `to-do` списку в `todo.txt`, тепер давайте створимо програму для видалення елементу. Я просто вставлю код і потім ми пройдемо по програмі разом, так що ви побачите що вона насправді проста. Ми будемо використовувати нові функції з `System.Directory` і одну нову функцію з `System.IO`, але вони всі будуть пояснені.
 
-Anyway, here's the program for removing an item from todo.txt:
+Так чи інакше, ось програма для видалення елемента з `todo.txt`:
 
 [source,haskell]
 ----
@@ -870,21 +874,21 @@ main = do
     renameFile tempName "todo.txt"  
 ----
 
-At first, we just open todo.txt in read mode and bind its handle to handle.
+Для початку ми просто відкриваємо `todo.txt` в режимі читання, і прикріплюємо його хендлер до `handle`.
 
-Next up, we use a function that we haven't met before which is from System.IO — openTempFile. Its name is pretty self-explanatory. It takes a path to a temporary directory and a template name for a file and opens a temporary file. We used "." for the temporary directory, because . denotes the current directory on just about any OS. We used "temp" as the template name for the temporary file, which means that the temporary file will be named temp plus some random characters. It returns an I/O action that makes the temporary file and the result in that I/O action is a pair of values: the name of the temporary file and a handle. We could just open a normal file called todo2.txt or something like that but it's better practice to use openTempFile so you know you're probably not overwriting anything.
+Далі ми використовуємо функцію, яку ми досі не зустрічали, і що походить з `System.IO` — `openTempFile`. Її ім'я досить пояснює само себе. Вона бере шлях до тимчасового каталогу і шаблон імені для файлу, і відериває тимчасовий файл. Ми використали `"."` для тимчасової директорії, оскільки `.` означає поточну директорію майже на кожній OS. Ми використали `"temp"` як ім'я шаблону для тимчасового файлу, що означає, що тимчасовий файл буде названий `temp`, плюс деякі випадкові символи. Він повертає I/O дію, що створює тимчасовий файл і результат цієї I/O дії буде пара значень: ім'я тимчасового файлу і хендлер. Ми можемо просто відкрити звичайний файл з назвою `todo2.txt`, або щось біля того, але краща практика використовувати `openTempFile`, так що ви знаєте, що ви можливо нічого не переписуєте.
 
-The reason we didn't use getCurrentDirectory to get the current directory and then pass it to openTempFile but instead just passed "." to openTempFile is because . refers to the current directory on unix-like system and Windows
+Причина, з якої ми не використовуємо `getCurrentDirectory` для отримання поточної директорії, та потім передачі її до `openTempFile`, але замість просто використання `"."` до `openTempFile` це тому, що `.` посилається на поточну директорію на unix-подібних системах та Windows.
 
-Next up, we bind the contents of todo.txt to contents. Then, split that string into a list of strings, each string one line. So todoTasks is now something like ["Iron the dishes", "Dust the dog", "Take salad out of the oven"]. We zip the numbers from 0 onwards and that list with a function that takes a number, like 3, and a string, like "hey" and returns "3 - hey", so numberedTasks is ["0 - Iron the dishes", "1 - Dust the dog" .... We join that list of strings into a single newline delimited string with unlines and print that string out to the terminal. Note that instead of doing that, we could have also done mapM putStrLn numberedTasks
+Наступним кроком ми прикріплюємо вміст `todo.txt` до `contents`. Потім розбиваємо цей рядок на список рядків, кожний рядок в одному рядку. Так що `todoTasks` депер щось подібне до `["Iron the dishes", "Dust the dog", "Take salad out of the oven"]`. Ми зціплюємо з числами від `0` і далі цей список з функцією, що приймає число, як `3`, та рядок, як `"hey"`, і повертає `"3 - hey"`, так що `numberedTasks` буде `["0 - Iron the dishes", "1 - Dust the dog"` .... Ми поєднуємо цей список рядків в один рядок розділений новими рядками за допомогою `unlines`, і друкуємо цей рядок на термінал. Зауважте, що замість робити це ми можемо також зробити `mapM putStrLn numberedTasks`.
 
-We ask the user which one they want to delete and wait for them to enter a number. Let's say they want to delete number 1, which is Dust the dog, so they punch in 1. numberString is now "1" and because we want a number, not a string, we run read on that to get 1 and bind that to number.
+Ми питаємо користувача який елемент він бажає видалити, і очікуємо доки він введе число. Скажімо він бажає видалити номер `1`, що є `Dust the dog`, так що він натискає `1`. `numberString` тепер `"1"`, і оскільки ми бажаємо число а не рядок, ми запускаємо `read` на цьому числі для отримання `1`, і прикріплюємо його до `number`.
 
-Remember the delete and !! functions from Data.List. !! returns an element from a list with some index and delete deletes the first occurence of an element in a list and returns a new list without that occurence. (todoTasks !! number) (number is now 1) returns "Dust the dog". We bind todoTasks without the first occurence of "Dust the dog" to newTodoItems and then join that into a single string with unlines before writing it to the temporary file that we opened. The old file is now unchanged and the temporary file contains all the lines that the old one does, except the one we deleted.
+Згадайте функції `delete` та `!!` з `Data.List`. `!!` повертає елемент зі списку з деяким індексом, і `delete` видаляє перше входження елементу в списку, і повертає новий список без цього входження. `(todoTasks !! number)` (`number` тепер `1`) повертає `"Dust the dog"`. Ми прикріплюємо `todoTasks` без першого входження `"Dust the dog"` до `newTodoItems`, і потім поєднуємо це в один рядок за допомогою `unlines` перед записом його в тимчасовий файл, який ми відкрили. Старий файл тепер незмінний, і тимчасовий файл містить всі рядки що містив старий, крім того що ми видалили.
 
-After that we close both the original and the temporary files and then we remove the original one with removeFile, which, as you can see, takes a path to a file and deletes it. After deleting the old todo.txt, we use renameFile to rename the temporary file to todo.txt. Be careful, removeFile and renameFile (which are both in System.Directory by the way) take file paths as their parameters, not handles.
+Після цього ми зачиняємо обоє, оригінальний та тимчасовий файли, та потім ми видаляємо оригінальній за допомогою `removeFile`, що, як ви можете бачити, бере шлях до файлу та видаляє його. Після видалення старого `todo.txt`, ми використовуємо `renameFile` для переіменування тимчасового файлу на `todo.txt`. Будьте обережні, `removeFile` та `renameFile` (що обоє, до речі, в `System.Directory`), приймають шляхі в якості параметрів, не хендлери.
 
-And that's that! We could have done this in even fewer lines, but we were very careful not to overwrite any existing files and politely asked the operating system to tell us where we can put our temporary file. Let's give this a go!
+І це все! Ми можемо зробити це навіть за меньше рядків, але ми будемо дуже обережні не переписати жодних існуючих файлів, і чемно попросимо операційну систему сказати нам, де можна розташувати наш тимчасовий файл. Надамо цьому руху!
 
 [source,haskell]
 ----
@@ -911,20 +915,20 @@ $ cat todo.txt
 Take salad out of the oven  
 ----
 
-=== Command line arguments
+=== Аргументи командного рядка
 
 image:images/arguments.png[]
-Dealing with command line arguments is pretty much a necessity if you want to make a script or application that runs on a terminal. Luckily, Haskell's standard library has a nice way of getting command line arguments of a program.
+Мати справу з аргументами командного рядка майже необхідність, якщо ви бажаєте створити скрипт або застосування, що робить в терміналі. На щастя стандартна бібліотека Haskell має гарний спосіб отримання аргументів командного рядка в програмі.
 
-In the previous section, we made one program for adding a to-do item to our to-do list and one program for removing an item. There are two problems with the approach we took. The first one is that we just hardcoded the name of our to-do file in our code. We just decided that the file will be named todo.txt and that the user will never have a need for managing several to-do lists.
+В попередньому розділі ми створили одну програму для додавання елемента `to-do` до нашого `to-do`, і одну програму для видалення елемента. Існує дві проблеми з обраним нами підходом. Перше в тому що ми жорстко закодували ім'я нашого файла `to-do` в нашому коді. Ми просто вирішили, що файл буде називатись `todo.txt`, і що користувач ніколи не матиме потреби керувати декількома списками `to-do`.
 
-One way to solve that is to always ask the user which file they want to use as their to-do list. We used that approach when we wanted to know which item the user wants to delete. It works, but it's not so good, because it requires the user to run the program, wait for the program to ask something and then tell that to the program. That's called an interactive program and the difficult bit with interactive command line programs is this — what if you want to automate the execution of that program, like with a batch script? It's harder to make a batch script that interacts with a program than a batch script that just calls one program or several of them.
+Один шлях вирішити це є завжди запитувати користувача, який файл він бажає використовувати для списку `to-do`. Ми використовували цей підхід, коли хотіли знати, який елемент користувач бажає видалити. Це робить, але це не так добре, оскільки це вимагає від користувача запустити програму, дочекатись доки програма запитає дещо, і потім сказати це програмі. Це називається інтерактивною програмою, і складна частина з інтерактивними програмами командного рядка така — що коли ми бажаємо автоматизувати роботу цієї програми, як це робиться в пакетних скриптах? Складніше скласти пакетний скрипт, що взаємодіє з програмою, ніж скрипт, що просто викликає одну програму або декілька з них.
 
-That's why it's sometimes better to have the user tell the program what they want when they run the program, instead of having the program ask the user once it's run. And what better way to have the user tell the program what they want it to do when they run it than via command line arguments!
+Ось чому іноді краще щоб користувач сказав програмі що він хоче під час запуску програми, замість щоб програма запитувала користувача під час роботи. І найкращий шлях користувачеві сказати програмі, що він бажає що вона робила, це через аргументи командного рядка!
 
-The System.Environment module has two cool I/O actions. One is getArgs, which has a type of getArgs :: IO [String] and is an I/O action that will get the arguments that the program was run with and have as its contained result a list with the arguments. getProgName has a type of getProgName :: IO String and is an I/O action that contains the program name.
+Модуль `System.Environment` також має круті I/O дії. Одна це `getArgs`, що має тип `getArgs ::IO [String]`, і є I/O дією, що буде отримувати аргументи, з якими програма була запущена, і має свій результат в вигляді списку з ціма аргументами. `getProgName` має тип `getProgName ::IO String`, і є I/O дією, що містить ім'я програми.
 
-Here's a small program that demonstrates how these two work:
+Ось невелика програма, що демонструє як роблять ці дві функції:
 
 [source,haskell]
 ----
@@ -940,7 +944,7 @@ main = do
    putStrLn progName  
 ----
 
-We bind getArgs and progName to args and progName. We say The arguments are: and then for every argument in args, we do putStrLn. Finally, we also print out the program name. Let's compile this as arg-test.
+Ми прикріпили `getArgs` та `progName` до `args` та `progName`. Ми кажемо `The arguments are:`, і потім для кожного аргумента в `args` ми робимо `putStrLn`. Нарешті ми також друкуємо ім'я нашої програми. Давайте завершимо цей `arg-test`.
 
 [source,bash]
 ----
@@ -954,21 +958,19 @@ The program name is:
 arg-test  
 ----
 
-Nice. Armed with this knowledge you could create some cool command line apps. In fact, let's go ahead and make one. In the previous section, we made a separate program for adding tasks and a separate program for deleting them. Now, we're going to join that into one program, what it does will depend on the command line arguments. We're also going to make it so it can operate on different files, not just todo.txt.
+Гарно. Обзброєні цім знанням ви можете створити деякі круті застосування командного рядка. Фактично давайте пійдемо далі і самі створимо таке. В попередньому розділі ми створили окрему прогруму для додавання завдань і окрему програму для для їх видалення. Тепер ми збираємось поєднати це в одну програму, і що вона робитиме від аргументів командного рядка. Ми також збираємось створити її так, що ми зможемо оперувати з разними файлами , не тільки з `todo.txt`.
 
-We'll call it simply todo and it'll be able to do (haha!) three different things:
+Ми назвемо її просто `todo` і вона зможе робити (хаха!) три різні речі:
 
-----
-View tasks
-Add tasks
-Delete tasks
-----
+* Переглядати завдання
+* Додавати завдання
+* Видаляти завдання
 
-We're not going to concern ourselves with possible bad input too much right now.
+Ми не збираємось обтяжувати себе можливим поганим вводом дуже сильно і прямо зараз.
 
-Our program will be made so that if we want to add the task Find the magic sword of power to the file todo.txt, we have to punch in todo add todo.txt "Find the magic sword of power" in our terminal. To view the tasks we'll just do todo view todo.txt and to remove the task with the index of 2, we'll do todo remove todo.txt 2.
+Наша програма буде зроблена таким чином, що якщо ми бажаємо додати завдання `Find the magic sword of power` до файлу `todo.txt`, нам треба набрати `todo add todo.txt "Find the magic sword of power"` в нашому терміналі. Щоб подивитись завдання, нам треба зробити тільки `todo view todo.txt`, і щоб видалити завдання з індексом 2 ми робимо `todo remove todo.txt 2`.
 
-We'll start by making a dispatch association list. It's going to be a simple association list that has command line arguments as keys and functions as their corresponding values. All these functions will be of type [String] -> IO (). They're going to take the argument list as a parameter and return an I/O action that does the viewing, adding, deleting, etc.
+Ми почнемо зі створення асоціативного списку диспечеризації. Це буде простий асоціативний список, що матиме аргументи командного рядка в якості ключів, і функції як відповідні значення. Всі ці функції будуть типу `[String] -> IO ()`. Вони будуть приймати список аргументів як параметр, і повертають I/O дію, що робить перегляд, додавання, видалення, тощо.
 
 [source,haskell]
 ----
@@ -984,7 +986,7 @@ dispatch =  [ ("add", add)
             ]  
 ----
 
-We have yet to define main, add, view and remove, so let's start with main:
+Ми все де маємо визначити `main`, `add`, `view` та `remove`, так що почнемо `main`:
 
 [source,haskell]
 ----
@@ -994,13 +996,13 @@ main = do
     action args  
 ----
 
-First, we get the arguments and bind them to (command:args). If you remember your pattern matching, this means that the first argument will get bound to command and the rest of them will get bound to args. If we call our program like todo add todo.txt "Spank the monkey", command will be "add" and args will be ["todo.xt", "Spank the monkey"].
+Спочатку ми отримуємо аргументи, і прикріплюємо їх до `(command:args)`. Якщо ви пам'ятаєте ваше співпадіння шаблонів, це означає, що перший аргумент буде прив'язаний до `command` та решта аргументів буде прив'язана до `args`. Якщо ми викличемо нашу програму як `todo add todo.txt "Spank the monkey"`, команда буде `"add"`, і `args` буде `["todo.xt", "Spank the monkey"]`.
 
-In the next line, we look up our command in the dispatch list. Because "add" points to add, we get Just add as a result. We use pattern matching again to extract our function out of the Maybe. What happens if our command isn't in the dispatch list? Well then the lookup will return Nothing, but we said we won't concern ourselves with failing gracefully too much, so the pattern matching will fail and our program will throw a fit.
+В наступному рядку ми шукаємо нашу команду в списку диспечеризації. Оскільки `"add"` вказує на `add`, ми отримуємо `Just add` в якості результату. Ми використовуємо порівняння шаблонів для виділення наших функцій з `Maybe`. Що станеться, якщо нашої `command` немає в списку диспечеризації? Гаразд, тоді пошук буде повертати `Nothing`, але ми казали, що не будемо дуже сильно заморочувати себе на збої, так що наше порівняння дасть збій, і наша програма втратить придатність.
 
-Finally, we call our action function with the rest of the argument list. That will return an I/O action that either adds an item, displays a list of items or deletes an item and because that action is part of the main do block, it will get performed. If we follow our concrete example so far and our action function is add, it will get called with args (so ["todo.txt", "Spank the monkey"]) and return an I/O action that adds Spank the monkey to todo.txt.
+Нарешті ми викликаємо функцію нашої дії з рештою списку аргументів. Це повертатиме I/O дію, що або додає елемент, або відображує список елементів, або видаляє елемент. І оскільки ця дія є частиною блоку `main do`, вона буде виконана. Якщо ми прослідимо наш приклад далі, і наша функція дії є `add`, вона буде викликана з `args` (тобто `["todo.txt", "Spank the monkey"]`), і повертає I/O дію, що додає `Spank the monkey` до `todo.txt`.
 
-Great! All that's left now is to implement add, view and remove. Let's start with add:
+Чудово! Все що нам залишилось, це реалізувати `add`, `view` та `remove`. Давайте почнемо з `add`:
 
 [source,haskell]
 ----
@@ -1008,9 +1010,9 @@ add :: [String] -> IO ()
 add [fileName, todoItem] = appendFile fileName (todoItem ++ "\n")  
 ----
 
-If we call our program like todo add todo.txt "Spank the monkey", the "add" will get bound to command in the first pattern match in the main block, whereas ["todo.txt", "Spank the monkey"] will get passed to the function that we get from the dispatch list. So, because we're not dealing with bad input right now, we just pattern match against a list with those two elements right away and return an I/O action that appends that line to the end of the file, along with a newline character.
+Якщо ми викличемо нашу програму як `todo add todo.txt "Spank the monkey"`, `"add"` буде прикріплене до `command` в першому співпадінні шаблонів в блоці `main`, тоді як `["todo.txt", "Spank the monkey"]` буде передане до функції, що ми отримали зі списку диспачеризації. Так що, оскільки ми не маємо справу з поганим вводом прямо зараз, ми просто робимо співпадіння шаблону по списку з ціма двома елементами, і повертаємо I/O дію, що додає цей рядок до кінця файлу, разом з символом нового рядка.
 
-Next, let's implement the list viewing functionality. If we want to view the items in a file, we do todo view todo.txt. So in the first pattern match, command will be "view" and args will be ["todo.txt"].
+Далі давайте реалізуємо функціональність перегляду списку. Якщо ми бажаємо переглянути елементи в файлі, ми робимо `todo view todo.txt`. Так що в першому порівнянні шаблонів `command` буде `"view"`, і `args` буде `["todo.txt"]`.
 
 [source,haskell]
 ----
@@ -1022,9 +1024,9 @@ view [fileName] = do
     putStr $ unlines numberedTasks  
 ----
 
-We already did pretty much the same thing in the program that only deleted tasks when we were displaying the tasks so that the user can choose one for deletion, only here we just display the tasks.
+Ми вже робили майже таку саму річ в програмі, що тільки видаляла завдання, де ми відображували завдання, так що користувач міг обрати одне для видаляння. Але тут ми просто відображуємо завдання.
 
-And finally, we're going to implement remove. It's going to be very similar to the program that only deleted the tasks, so if you don't understand how deleting an item here works, check out the explanation under that program. The main difference is that we're not hardcoding todo.txt but getting it as an argument. We're also not prompting the user for the task number to delete, we're getting it as an argument.
+І, нарешті, ми збираємось реалізувати `remove`. Вона буде дуже подібна до програми, що тільки видаляє завдання, так що якщо ви не розумієте, як тут робить видалення елементів, перевірте пояснення для тієї програми. Головна різниця в тому, що ми не жорстко кодуємо `todo.txt`, але отримуємо його як аргумент. Ми також не видаємо підказку користувачеві для введення номеру завдання для видалення, ми отримуємо його як аргумент.
 
 [source,haskell]
 ----
@@ -1043,9 +1045,9 @@ remove [fileName, numberString] = do
     renameFile tempName fileName  
 ----
 
-We opened up the file based on fileName and opened a temporary file, deleted the line with the index that the user wants to delete, wrote that to the temporary file, removed the original file and renamed the temporary file back to fileName.
+Ми відкрили файл на основі `fileName` і відкрили тимчасовий файл, видалили рядок з індексом, який користувач бажає видалити, записали це в тимчасовий файл, видалили оригінальний файл і переіменували тимчасовий файл назад в `fileName`.
 
-Here's the whole program at once, in all its glory!
+Ось вся програма разом, у всій своїй славі!
 
 [source,haskell]
 ----
@@ -1091,11 +1093,11 @@ remove [fileName, numberString] = do
 ----
 
 image:images/salad.png[]
-To summarize our solution: we made a dispatch association that maps from commands to functions that take some command line arguments and return an I/O action. We see what the command is and based on that we get the appropriate function from the dispatch list. We call that function with the rest of the command line arguments to get back an I/O action that will do the appropriate thing and then just perform that action!
+Щоб підсумувати наше рішення: ми створили асоціативну диспечеризацію, що відображує команди на функції, які приймають деякі аргументи командного рядка, та повертають I/O дію. Ми дивимось, що таке `command`, і на цій основі отримуємо функцію с асоціативного списку. Ми викликаємо цю функцію з залишком аргументів командного рядка, щоб отримати назад I/O дію, що буде робити відповідні речі, і потім просто виконуємо цю дію!
 
-In other languages, we might have implemented this with a big switch case statement or whatever, but using higher order functions allows us to just tell the dispatch list to give us the appropriate function and then tell that function to give us an I/O action for some command line arguments.
+В інших мовах ми б могли реалізувати це за допомогою великого твердження `switch case` або ще якось, але використання функцій вищого порядку дозволяє нам лише сказати списку диспечеризації дати нам відповідну функцію, і потім сказати функції дати нам I/O дію для деяких аргументів командного рядка.
 
-Let's try our app out!
+Давайте спробуємо наше застосування!
 
 [source,bash]
 ----
@@ -1120,17 +1122,16 @@ $ ./todo view todo.txt
 2 - Pick up children from drycleaners  
 ----
 
-Another cool thing about this is that it's easy to add extra functionality. Just add an entry in the dispatch association list and implement the corresponding function and you're laughing! As an exercise, you can try implementing a bump function that will take a file and a task number and return an I/O action that bumps that task to the top of the to-do list.
+Інша крута річ щодо цього в тому, що легко можна додати додаткову функціональність. Просто дадайте елемент в асоциативний список диспечеризації, Просто додайте елемент в асоціативний список і реалізуйте відповідну функцію - і ви вже щасливі! В якості завдання ви можете спробувати реалізувати функцію `bump`, що буде брати файл і номер завдання, і повертати I/O дію, що буде проштовхувати завдання нагору списку to-do.
 
-You could make this program fail a bit more gracefully in case of bad input (for example, if someone runs todo UP YOURS HAHAHAHA) by making an I/O action that just reports there has been an error (say, errorExit :: IO ()) and then check for possible erronous input and if there is erronous input, perform the error reporting I/O action. Another way is to use exceptions, which we will meet soon.
+Ви можете зробити, щоб ця програма падала більш витончено в випадку поганого вводу (наприклад, якщо хтось виконає `todo UP YOURS HAHAHAHA`), створивши I/O дію, яка тільки повідомляє, що була помилка (скажімо, `errorExit ::IO ()`), і потім перевіряти на потенційно помилковий ввод. Якщо ввод помилковий - виконуємо I/O дію, що повідомляє про подію. Інший шлях є використання виключень, з чим ми скоро зустрінемось.
 
-=== Randomness
+=== Випадковість
 
 image:images/random.png[]
-this picture is the ultimate source of randomness and wackiness
-Many times while programming, you need to get some random data. Maybe you're making a game where a die needs to be thrown or you need to generate some test data to test out your program. There are a lot of uses for random data when programming. Well, actually, pseudo-random, because we all know that the only true source of randomness is a monkey on a unicycle with a cheese in one hand and its butt in the other. In this section, we'll take a look at how to make Haskell generate seemingly random data.
+Багато разів під час програмування вам треба отримати деякі випадкові дані. Можливо ви створюєте гру, де треба кинути на вдачу, або вам треба згенерувати деякі тестові дані для перевірки вашої програми. В програмуванні є багато використань випадкових даних. Гаразд, насправді псевдо-випадкових, бо всі ми знаємо, що єдине справжнє джерело випадковості є мавпа на моно-колесі, з сиром в одній руці і задом в іншій. В цьому розділі ми поглянемо як змусити Haskell генерувати на-вигляд випадкові дані.
 
-In most other programming languages, you have functions that give you back some random number. Each time you call that function, you get back a (hopefully) different random number. How about Haskell? Well, remember, Haskell is a pure functional language. What that means is that it has referential transparency. What THAT means is that a function, if given the same parameters twice, must produce the same result twice. That's really cool because it allows us to reason differently about programs and it enables us to defer evaluation until we really need it. If I call a function, I can be sure that it won't do any funny stuff before giving me the results. All that matters are its results. However, this makes it a bit tricky for getting random numbers. If I have a function like this:
+В більшості інших мов програмування ви маєте функції, що повертають вам деяке випадкове число. Кожного разу, коли ви викликаєте цю функцію, ви отримуєте (маємо надію) інше випадкове число. Як щодо Haskell? Гарад, пам'ятаємо, Haskell є чисто функціональною мовою. Що означає, що він має посилкову прозорість. Що, В СВОЮ ЧЕРГУ, означає, що функція, двічі обчислена з тими самими параметрами, має двічі продукувати той самий результат. Це дійсно круто, оскільки це дозволяє нам по-іншому продумувати програми, і це дозволяє нам відкладувати виконання до того часу, коли це насправді потрібно. Якщо я викликаю функцію, я можу бути певний, що вона не буде робити жодні веселі речі перед надання мені результатів. Все що важливе, це її результат. Однак це робить отримання випадкових чисел трохи заплутаним. Наприклад, я маю таку функцію:
 
 [source,haskell]
 ----
@@ -1138,13 +1139,13 @@ randomNumber :: (Num a) => a
 randomNumber = 4  
 ----
 
-It's not very useful as a random number function because it will always return 4, even though I can assure you that the 4 is completely random, because I used a die to determine it.
+Вона не дуже корисна, як функція випадкових чисел, бо вона завжди буде повертати 4. Навіть якщо я вважатиму що це 4 повністю випадкове, бо я використав кості щоб визначити його.
 
-How do other languages make seemingly random numbers? Well, they take various info from your computer, like the current time, how much and where you moved your mouse and what kind of noises you made behind your computer and based on that, give a number that looks really random. The combination of those factors (that randomness) is probably different in any given moment in time, so you get a different random number.
+Як інші мови виробляють на вигляд випадкові числа? Гаразд, вони беруть різну інформацію з вашого комп'ютера, як поточний час, як сильно та де ви пересували мишу, та який різновид шумів ви створювали за комп'ютером. І базуючись на цьому видають число, що виглядає досить випадковим. Комбінація ціх факторів (їх випадковість) можливо є різною в кожний окремий момент часу, так що ви отримуєте інше випадкове число.
 
-Ah. So in Haskell, we can make a random number then if we make a function that takes as its parameter that randomness and based on that returns some number (or other data type).
+Ага. То в Haskell ми можемо отримати випадкове число, коли ми створимо функцію, що приймає свій параметр, що є випадковістю, і на основі цього повертає деяке число (або інший тип даних).
 
-Enter the System.Random module. It has all the functions that satisfy our need for randomness. Let's just dive into one of the functions it exports then, namely random. Here's its type: random :: (RandomGen g, Random a) => g -> (a, g). Whoa! Some new typeclasses in this type declaration up in here! The RandomGen typeclass is for types that can act as sources of randomness. The Random typeclass is for things that can take on random values. A boolean value can take on a random value, namely True or False. A number can also take up a plethora of different random values. Can a function take on a random value? I don't think so, probably not! If we try to translate the type declaration of random to English, we get something like: it takes a random generator (that's our source of randomness) and returns a random value and a new random generator. Why does it also return a new generator as well as a random value? Well, we'll see in a moment.
+Входить модуль `System.Random`. It has all the functions that satisfy our need for randomness. Let's just dive into one of the functions it exports then, namely random. Here's its type: random :: (RandomGen g, Random a) => g -> (a, g). Whoa! Some new typeclasses in this type declaration up in here! The RandomGen typeclass is for types that can act as sources of randomness. The Random typeclass is for things that can take on random values. A boolean value can take on a random value, namely True or False. A number can also take up a plethora of different random values. Can a function take on a random value? I don't think so, probably not! If we try to translate the type declaration of random to English, we get something like: it takes a random generator (that's our source of randomness) and returns a random value and a new random generator. Why does it also return a new generator as well as a random value? Well, we'll see in a moment.
 
 To use our random function, we have to get our hands on one of those random generators. The System.Random module exports a cool type, namely StdGen that is an instance of the RandomGen typeclass. We can either make a StdGen manually or we can tell the system to give us one based on a multitude of sort of random stuff.
 
