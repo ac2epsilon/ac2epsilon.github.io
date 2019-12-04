@@ -2,66 +2,81 @@ include::header.adoc[]
 
 == Функціональне вирішення проблем
 
-In this chapter, we'll take a look at a few interesting problems and how to think functionally to solve them as elegantly as possible. We probably won't be introducing any new concepts, we'll just be flexing our newly acquired Haskell muscles and practicing our coding skills. Each section will present a different problem. First we'll describe the problem, then we'll try and find out what the best (or least worst) way of solving it is.
+В цій главі ми поглянемо на деякі цікаві проблеми, і як мислити функціонально, щоб вирішувати їх настільки елегантно, наскільки це можливо. Можливо ми не будемо вводити нові концепції, ми будемо тільки розминати наші тільки що отримані м'язи Haskell і попрактикуємось в навичках кодування. Кожний розділ буде представляти іншу проблему. Спочатку ми опишемо проблему, потім ми спробуємо знайти, який є кращий (або найменьш поганий) шлях для його вирішення.
 
-Reverse Polish notation calculator
-Usually when we write mathematical expressions in school, we write them in an infix manner. For instance, we write 10 - (4 + 3) * 2. +, * and - are infix operators, just like the infix functions we met in Haskell (+, `elem`, etc.). This makes it handy because we, as humans, can parse it easily in our minds by looking at such an expression. The downside to it is that we have to use parentheses to denote precedence.
+=== Калькулятор зворотньої польської нотації
 
-Reverse Polish notation is another way of writing down mathematical expressions. Initially it looks a bit weird, but it's actually pretty easy to understand and use because there's no need for parentheses and it's very easy to punch into a calculator. While most modern calculators use infix notation, some people still swear by RPN calculators. This is what the previous infix expression looks like in RPN: 10 4 3 + 2 * -. How do we calculate what the result of that is? Well, think of a stack. You go over the expression from left to right. Every time a number is encountered, push it on to the stack. When we encounter an operator, take the two numbers that are on top of the stack (we also say that we pop them), use the operator and those two and then push the resulting number back onto the stack. When you reach the end of the expression, you should be left with a single number if the expression was well-formed and that number represents the result.
+Звичайно, коли ви пишете математичний вираз в школі, ми пишемо його в інфіксній манері. Наприклад, ми пишемо `10 - (4 + 3) * 2`. `+`, `*` та `-` є інфіксні оператори, так само як інфіксні функції, які ми зустрічали в Haskell (`+`, `\`elem`, тощо.). Це робить все зручним, оскількі ми, як люди, можемо це легко розібрати подумки, дивлячись на такий різновид виразів. Недолік цього в тому, що нам треба використовувати дужки для позначення преоритетів.
 
-this expression
-Let's go over the expression 10 4 3 + 2 * - together! First we push 10 on to the stack and the stack is now 10. The next item is 4, so we push it to the stack as well. The stack is now 10, 4. We do the same with 3 and the stack is now 10, 4, 3. And now, we encounter an operator, namely +! We pop the two top numbers from the stack (so now the stack is just 10), add those numbers together and push that result to the stack. The stack is now 10, 7. We push 2 to the stack, the stack for now is 10, 7, 2. We've encountered an operator again, so let's pop 7 and 2 off the stack, multiply them and push that result to the stack. Multiplying 7 and 2 produces a 14, so the stack we have now is 10, 14. Finally, there's a -. We pop 10 and 14 from the stack, subtract 14 from 10 and push that back. The number on the stack is now -4 and because there are no more numbers or operators in our expression, that's our result!
+Зворотня польська нотація є іншим способом записувати математичні вирази. Спочатку вона виглядає дещо схибленою, але насправді її досить легко зрозуміти і використовувати, бо немає потреби в дужках, і її дуже легко вбити в калькулятор. Хоча більшість сучасних калькуляторів використовують інфіксну нотацію, деякі користувачі досі віддані RPN калькуляторам. Ось як виглядає попередній інфіксний вираз в RPN: `10 4 3 + 2 * -`. Як ми обчислюємо результат, що буде отриманий? Гаразд, уявіть собі стек. Ви ідете по виразу зліва направо. Кожного разу коли трапляється число, заштовхуємо його в стек. Коли нам трапляється оператор, беремо два числа, що знаходяться нагорі стеку (ми кажемо, що також виштовхуємой їх), застосовуємо оператор для ціх двох, та потім заштовхуємо результуюче число назад в стек. Коли ви дійдете до кінця виразу, ви повинні залишитись з одним числом, якщо вираз був гарно сформований, і це число представляє результат.
 
-Now that we know how we'd calculate any RPN expression by hand, let's think about how we could make a Haskell function that takes as its parameter a string that contains a RPN expression, like "10 4 3 + 2 * -" and gives us back its result.
+image:images/rpn.png[]
+Давайте пройдемо по виразу `10 4 3 + 2 * -` разом! Спочатку ми заштовхуємо `10` в стек, і тепер стек `10`. Наступний елемент є `4`, так що ми заштовхуємо його в стек також. Тепер стек `10, 4`. Ми робимо те саме з `3`, і тепер стек `10, 4, 3`. І тепер ми натрапили на оператор, а саме `+`! Ми виштовхуємо два числа зі стеку (так що в стеку лише `10`), додаємо ці числа разом і заштовхуємо цей результат в стек. Тепер стек `10, 7`. Ми заштовхуємо `2` до стеку, стек тепер стає `10, 7, 2`. Ми знову натрапляємо на оператор, так що ми виштовхуємо `7` та `2` зі стеку, перемножуємо їх і заштовхуємо результат в стек. Множення `7` та `2` продукує `14`, так що тепер ми маємо в стеку `10, 14`. Нарешті маємо `-`. Ми виштовхуємо `10` та `14` зі стеку, віднімаємо `14` з `10`, і заштовхуємо його назад. Число в стеку тепер `-4`, і оскільки більше немає чисел або операторів в нашому виразі, це і є результат!
 
-What would the type of that function be? We want it to take a string as a parameter and produce a number as its result. So it will probably be something like solveRPN :: (Num a) => String -> a.
+Тепер, коли ми знаємо як обчислити любий RPN вираз вручну, давайте подумаємо, як ми можемо створити функцію Haskell, що приймає в якості свого параметру рядок, що містить RPN вираз, як `"10 4 3 + 2 * -"` і видає назад його результат.
 
-Protip: it really helps to first think what the type declaration of a function should be before concerning ourselves with the implementation and then write it down. In Haskell, a function's type declaration tells us a whole lot about the function, due to the very strong type system.
-HA HA HA
-Cool. When implementing a solution to a problem in Haskell, it's also good to think back on how you did it by hand and maybe try to see if you can gain any insight from that. Here we see that we treated every number or operator that was separated by a space as a single item. So it might help us if we start by breaking a string like "10 4 3 + 2 * -" into a list of items like ["10","4","3","+","2","*","-"].
+Який буде результат цієї функції? Ми хотіли б, що би вона брала рядок як параметр, і продукувала число в якості результата. Так що буде щось подібне до `solveRPN ::(Num a) => String -> a`.
 
-Next up, what did we do with that list of items in our head? We went over it from left to right and kept a stack as we did that. Does the previous sentence remind you of anything? Remember, in the section about folds, we said that pretty much any function where you traverse a list from left to right or right to left one element by element and build up (accumulate) some result (whether it's a number, a list, a stack, whatever) can be implemented with a fold.
+Підказка: це дійсно допомагає спочатку подумати, який має бути тип декларації функції, перед тим як обтяжувати себе реалізацією, та потім записати її. В Haskell декларація типу функції каже нам повну інформацію про функцію через дуже жорстку систему типів.
 
-In this case, we're going to use a left fold, because we go over the list from left to right. The accumulator value will be our stack and hence, the result from the fold will also be a stack, only as we've seen, it will only have one item.
+image:images/calculator.png[]
+Круто. Коли реалізується рішення проблеми в Haskell, також є гарним подумати, як це робиться вручну, і моживо спробувати подивитись, чи можливо отримати з цього якесь прозріння. Тут ми бачимо, що ми розглядаємо кожне число або оператор, що були розділені проміжками, як окремий елемент. Так що нам може стати в нагоді, якщо ми почнемо з розбиття рядка як `"10 4 3 + 2 * -"` в список елементів `["10","4","3","+","2","*","-"]`.
 
-One more thing to think about is, well, how are we going to represent the stack? I propose we use a list. Also I propose that we keep the top of our stack at the head of the list. That's because adding to the head (beginning) of a list is much faster than adding to the end of it. So if we have a stack of, say, 10, 4, 3, we'll represent that as the list [3,4,10].
+Далі що ми робили з цім списком елементів в нашій голові? Ми проходили по ньому зліва направо, і по ходу цього підтримували стек. Чи попереднє речення не нагадує вам щось? Пам'ятаєте, в розділі про згортки ми казали, що майже кожну функцію, що проходить по списку зліва направо або зправа наліво елемент за елементом, і будує (акумулює) деякий результат (чи число, чи список, стек або будь-що) може бути реалізована як згортка.
 
-Now we have enough information to roughly sketch our function. It's going to take a string, like, "10 4 3 + 2 * -" and break it down into a list of items by using words to get ["10","4","3","+","2","*","-"]. Next, we'll do a left fold over that list and end up with a stack that has a single item, so [-4]. We take that single item out of the list and that's our final result!
+В цьому випадку ми збираємось використовувати ліву згортку, оскільки ми йдемо по списку зліва направо. Значення аккумулятора буде наш стек, і такм чином результат згортки також буде стек, який, як ми бачили, буде мати лише один елемент.
 
-So here's a sketch of that function:
+Одна річ, про яку нам треба подумати, гаразд, як ми збираємось представляти стек? Я пропоную використовувати список. Також я пропоную, щоб ми тримали верхівку нашого стеку в голові нашого списку. Це тому що додавання в голову (початок) списку значно швидше, ніж додавання в його кінець. Так що якщо ми маємо стек, скажімо, `10, 4, 3`, ми представлятимо його як список `[3,4,10]`.
 
+Тепер ми маємо досить інформації щоб грубо накидати нашу функцію. Вона буде приймати рядок, як `"10 4 3 + 2 * -"` та розбивати його на список елементів за допомогою `words`, щоб отримати `["10","4","3","+","2","*","-"]`. Далі ми робитимемо ліву згортку та скінчимо зі стеком, що має один елемент, `[-4]`. Ми отримуємо цей поодинокий елмент зі списку, і це є наш фінальний результат!
+
+Так що ось ескіз цієї функції:
+
+[source,scala]
+----
 import Data.List  
   
 solveRPN :: (Num a) => String -> a  
 solveRPN expression = head (foldl foldingFunction [] (words expression))  
     where   foldingFunction stack item = ...  
-We take the expression and turn it into a list of items. Then we fold over that list of items with the folding function. Mind the [], which represents the starting accumulator. The accumulator is our stack, so [] represents an empty stack, which is what we start with. After getting the final stack with a single item, we call head on that list to get the item out and then we apply read.
+----
 
-So all that's left now is to implement a folding function that will take a stack, like [4,10], and an item, like "3" and return a new stack [3,4,10]. If the stack is [4,10] and the item "*", then it will have to return [40]. But before that, let's turn our function into point-free style because it has a lot of parentheses that are kind of freaking me out:
+Ми беремо вираз і перетворюємо його на список елементів. Потім ми робимо згортання по цьому списку елементів за допомогою функції згортки. Подумайте про `[]`, що представляє початковий аккумулятор. Аккумулятором є наш стек, так що `[]` представляє порожній стек, що є те з чого ми починаємо. Після отримання фінального стеку з одним елементом ми викликаємо `head` на цьому списку, щоб отримати елемент і потім застосовуємо `read`.
 
+Так що все, що тепер залишилось, це реалізувати функцію згортки, що буде приймати стек, як `[4,10]` та елемент, як `"3"`, та повертає новмй стек `[3,4,10]`. Якщо стек був `[4,10]` і елемент `"*"`, тоді пона має повертати `[40]`. Але перед цім давайте перетворимо нашу функцію в крапковому стилі, оскільки вона має багато дужок, що ніби дещо лякають мене:
+
+[source,scala]
+----
 import Data.List  
   
 solveRPN :: (Num a) => String -> a  
 solveRPN = head . foldl foldingFunction [] . words  
     where   foldingFunction stack item = ...  
-Ah, there we go. Much better. So, the folding function will take a stack and an item and return a new stack. We'll use pattern matching to get the top items of a stack and to pattern match against operators like "*" and "-".
+----
 
-solveRPN :: (Num a, Read a) => String -> a  
+Отак. Значно краще. Так що функція згортки буде приймати стек і елемент і повертати новий стек. Ми будемо використовувати співпадіння шаблонів для отримання верхніх елементів стеку та співпадіння шаблонів для операторів як `"*"` та `"-"`.
+
+[source,scala]
+----
+solveRPN ::(Num a, Read a) => String -> a  
 solveRPN = head . foldl foldingFunction [] . words  
     where   foldingFunction (x:y:ys) "*" = (x * y):ys  
             foldingFunction (x:y:ys) "+" = (x + y):ys  
             foldingFunction (x:y:ys) "-" = (y - x):ys  
             foldingFunction xs numberString = read numberString:xs  
-We laid this out as four patterns. The patterns will be tried from top to bottom. First the folding function will see if the current item is "*". If it is, then it will take a list like [3,4,9,3] and call its first two elements x and y respectively. So in this case, x would be 3 and y would be 4. ys would be [9,3]. It will return a list that's just like ys, only it has x and y multiplied as its head. So with this we pop the two topmost numbers off the stack, multiply them and push the result back on to the stack. If the item is not "*", the pattern matching will fall through and "+" will be checked, and so on.
+----
 
-If the item is none of the operators, then we assume it's a string that represents a number. If it's a number, we just call read on that string to get a number from it and return the previous stack but with that number pushed to the top.
+Ми розклали це як чотири шаблони. Шаблони будуть випробовуватись згори донизу. Спочатку функція згортки буде дивитись, чи поточний елемент є `"* "`. Якщо так, тоді вона братиме список як `[3,4,9,3]` та позначатиме перші два елементи `x` та `y` відповідно. Так що в цьому випадку `x` буде `3` і `y` буде `4`. `ys` буде `[9,3]`. Вона повертатиме список, що подібний до `ys`, тільки він матиме перемножені `x` та `y` в якості голови. Так що маючи це ми виштовхуємо два верхні числа зі списку, множимо їх і заштовхуємо результат назад в стек. Якщо елемент не `"*"`, співпадіння шаблону провалиться далі і буде перевірятись `"+"`, і так далі.
 
-And that's it! Also noticed that we added an extra class constraint of Read a to the function declaration, because we call read on our string to get the number. So this declaration means that the result can be of any type that's part of the Num and Read typeclasses (like Int, Float, etc.).
+Якщо елемент не один з операторів, тоді ми вважаємо що це рядок, що представляє число. Якщо це число ми просто викликаємо `read` на цьому рядку, щоб отримати з нього число, і повертаємо попередній стек, але з цім числом, покладеним зверху.
 
-For the list of items ["2","3","+"], our function will start folding from the left. The intial stack will be []. It will call the folding function with [] as the stack (accumulator) and "2" as the item. Because that item is not an operator, it will be read and the added to the beginning of []. So the new stack is now [2] and the folding function will be called with [2] as the stack and ["3"] as the item, producing a new stack of [3,2]. Then, it's called for the third time with [3,2] as the stack and "+" as the item. This causes these two numbers to be popped off the stack, added together and pushed back. The final stack is [5], which is the number that we return.
+І це все! Також зауважте, що ми додали додаткове обмеження класу `Read a` до декларації функції, бо ми викликаємо `read` на нашому рядку для отримання числа. Так що ця декларація означає, що результат може бути любого типу, що є частиною типокласів `Num` та `Read` (як `Int`, `Float`, etc.).
 
-Let's play around with our function:
+Для списку елементів `["2","3","+"]` наша функція почне згортати зліва. Початковий стек буде `[]`. Вона буде викликати функцію згортки з `[]` в якості стека (аккумулятора) і `"2"` в якості елемента. Оскільки цей елемент не оператор, він буде прочитаний `read` і доданий в початок `[]`. Так що новий стек тепер `[2]` і функція згортання буде викликана з `[2]` та `"3"` в якості елемента, продукуючи новий стек `[3,2]`. Тоді вона буде викликана третій раз з  `[3,2]` як стек і `"+"` як елемент. Це призеде до того що ці два числа будуть виштовхнуті зі стеку, додані разом і заштовхнуті назад. Фінальний стек є `[5]`, що є числом яке ми повертаємо.
 
+Давайте пограємось з нашею функцією:
+
+----
 ghci> solveRPN "10 4 3 + 2 * -"  
 -4  
 ghci> solveRPN "2 3 +"  
@@ -74,10 +89,14 @@ ghci> solveRPN "90 34 12 33 55 66 + * - + -"
 4037  
 ghci> solveRPN "90 3 -"  
 87  
-Cool, it works! One nice thing about this function is that it can be easily modified to support various other operators. They don't even have to be binary operators. For instance, we can make an operator "log" that just pops one number off the stack and pushes back its logarithm. We can also make a ternary operators that pop three numbers off the stack and push back a result or operators like "sum" which pop off all the numbers and push back their sum.
+----
 
-Let's modify our function to take a few more operators. For simplicity's sake, we'll change its type declaration so that it returns a number of type Float.
+Круто, вона робить! Одна гарна річ щодо цієї функції, що вона може бути просто модифікована для підтримки різних інших операторів. Вони навіть не мають бути двомісними операціями. Наприклад ми можемо створити оператор `"log"` що просто бере одне число зі стеку, та заштовхує назад його логарифм. Ми також можемо створити тримісну операцію, що виштовхує три числа зі стеку і заштовхує назад результат, або оператори як `"sum"`, що виштовхують всі числа і повертають назад їх суму.
 
+Давайте модифікуємо нашу функцію, щоб вона сприймала ще декілька операторів. Для спрощення ми змінимо її декларацію типу, щоб вона повертала число типу `Float`.
+
+[source,scala]
+----
 import Data.List  
   
 solveRPN :: String -> Float  
@@ -90,8 +109,11 @@ solveRPN = head . foldl foldingFunction [] . words
             foldingFunction (x:xs) "ln" = log x:xs  
             foldingFunction xs "sum" = [sum xs]  
             foldingFunction xs numberString = read numberString:xs  
-Wow, great! / is division of course and ** is floating point exponentiation. With the logarithm operator, we just pattern match against a single element and the rest of the stack because we only need one element to perform its natural logarithm. With the sum operator, we just return a stack that has only one element, which is the sum of the stack so far.
+----
 
+Йо, чудово! `/` це звичайно ділення, та `**` є експонента з плаваючою крапкою. З оператором логарифму ми робимо співпадіння шаблону тільки для одного елементу і решти списку, бо нам треба лише один елемент для обчислення натурального логарифму. З оператором `sum` ми повертаємо стек, що містить всього один елемент, що є сумою всіх елементів, які були в стеку до цього.
+
+----
 ghci> solveRPN "2.7 ln"  
 0.9932518  
 ghci> solveRPN "10 10 10 10 sum 4 /"  
@@ -100,15 +122,20 @@ ghci> solveRPN "10 10 10 10 10 sum 4 /"
 12.5  
 ghci> solveRPN "10 2 ^"  
 100.0  
-Notice that we can include floating point numbers in our expression because read knows how to read them.
+----
 
+Зуважте, що ми можемо включати в наш вираз числа з плаваючою крапкою, оскільки `read` знає як їх читати.
+
+----
 ghci> solveRPN "43.2425 0.5 ^"  
 6.575903  
-I think that making a function that can calculate arbitrary floating point RPN expressions and has the option to be easily extended in 10 lines is pretty awesome.
+----
 
-One thing to note about this function is that it's not really fault tolerant. When given input that doesn't make sense, it will just crash everything. We'll make a fault tolerant version of this with a type declaration of solveRPN :: String -> Maybe Float once we get to know monads (they're not scary, trust me!). We could make one right now, but it would be a bit tedious because it would involve a lot of checking for Nothing on every step. If you're feeling up to the challenge though, you can go ahead and try it! Hint: you can use reads to see if a read was successful or not.
+Я думаю що створити функцію, яка може обчислювати довільні RPN вирази з плаваючою крапкою, і що може бути просто розширеня в десяти рядках, є повністю неймовірним.
 
-Heathrow to London
+Одна річ, що треба відмітити, це те, що ця функція не є насправді стійкою до збоїв. Коли надається ввод що не має сенсу, це просто все зруйнує. Ми створимо захищену версію з декларацією типу `solveRPN :: String -> Maybe Float` як тільки дізнаємось про монади (вони не страшні, вірте мені!). Ми можемо зробити це прямо зараз, але це буде трохи обтяжливо, оскільки це включатиме багато перевірок на `Nothing` на кожному кроку. Однак якщо ви відчуваєте себе готовим до виклику, ви можете спробувати зробити це! Підказка: ви можете використовувати `reads` щоб побачити, чи `read` був вдалим чи ні.
+
+image:images/roads.png[]
 Our next problem is this: your plane has just landed in England and you rent a car. You have a meeting really soon and you have to get from Heathrow Airport to London as fast as you can (but safely!).
 
 There are two main roads going from Heathrow to London and there's a number of regional roads crossing them. It takes you a fixed amount of time to travel from one crossroads to another. It's up to you to find the optimal path to take so that you get to London as fast as you can! You start on the left side and can either cross to the other main road or go forward.
