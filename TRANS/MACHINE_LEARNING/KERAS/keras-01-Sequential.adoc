@@ -1,0 +1,398 @@
+include::header.adoc[]
+
+= Початок роботи з послідовною моделлю Sequential Keras
+
+Послідовна модель Sequential - це лінійний стек шарів.
+
+Можна створити послідовну модель, передавши конструктору список примірників кожного шару:
+
+[source,python]
+----
+from keras.models import Sequential
+from keras.layers import Dense, Activation
+
+model = Sequential([
+    Dense(32, input_shape=(784,)),
+    Activation('relu'),
+    Dense(10),
+    Activation('softmax'),
+])
+----
+
+Ви також можете просто додати шари методом .add ():
+
+[source,python]
+----
+model = Sequential()
+model.add(Dense(32, input_dim=784))
+model.add(Activation('relu'))
+----
+
+== Вказання вхідної форми
+
+Модель повинна знати, якої форми входу вона повинна очікувати. З цієї причини, перший шар у послідовній моделі (і лише перший, оскільки наступні шари можуть робити автоматичний висновок щодо форми) повинен отримувати інформацію про його вхідну форму. Існує кілька можливих способів зробити це:
+
+* Передайте аргумент `input_shape` першому шару. Це кортеж фігури (кортеж цілих чисел або записів `None`, де `None` вказує на те, що можна очікувати будь-яке додатне ціле число). У `input_shape` розмір партії не включений.
+* Деякі двовимірні шари, такі як `Dense`, підтримують специфікацію їх вхідної форми через аргумент `input_dim`, а деякі 3D тимчасові шари підтримують аргументи `input_dim` та `input_length`.
+If you ever need to specify a fixed batch size for your inputs (this is useful for stateful recurrent networks), you can pass a batch_size argument to a layer. If you pass both batch_size=32 and input_shape=(6, 8) to a layer, it will then expect every batch of inputs to have the batch shape (32, 6, 8).
+* Якщо вам колись потрібно буде вказати фіксований розмір партії для ваших входів (це корисно для рекурентних мереж зі станом), ви можете передати аргумент `batch_size` для шару. Якщо ви передасте шару обидва `batch_size = 32` та `input_shape = (6, 8)`, то він очікує, що кожна партія входів матиме форму партії `(32, 6, 8)`.
+Наступні фрагменти прямо еквівалентні:
+
+[source,python]
+----
+model = Sequential()
+model.add(Dense(32, input_shape=(784,)))
+
+model = Sequential()
+model.add(Dense(32, input_dim=784))
+----
+
+=== Компіляція
+
+Перш ніж тренувати модель, потрібно налаштувати процес навчання, який здійснюється за допомогою методу компіляції. Він отримує три аргументи:
+
+* Оптимізатор. Це може бути рядковий ідентифікатор існуючого оптимізатора (наприклад, `rmsprop` або `adagrad`) або екземпляр класу `Optimizer`. Див.: https://keras.io/optimizers[Оптимізатори].
+* Функція втрат. Це мета, яку модель намагатиметься мінімізувати. Це може бути рядковий ідентифікатор існуючої функції втрат (наприклад, `categorical_crossentropy` або `mse`), або може бути об'єктивною функцією. Дивіться: https://keras.io/losses[Втрати].
+* Список метрик. Для будь-якої проблеми класифікації ви можете встановити `metrics = ['accuracy']`. Метрика може бути ідентифікатором рядка існуючої метрики або спеціальною метричною функцією. Див.: https://keras.io/metrics[Метрики].
+
+[source,python]
+----
+# Для проблеми багатокласової класифікації
+model.compile(optimizer='rmsprop',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Для проблеми бінарної класифікації
+model.compile(optimizer='rmsprop',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# Для проблеми середньоквадратичної регресії
+model.compile(optimizer='rmsprop',
+              loss='mse')
+
+# Для користувацьких метрик
+import keras.backend as K
+
+def mean_pred(y_true, y_pred):
+    return K.mean(y_pred)
+
+model.compile(optimizer='rmsprop',
+              loss='binary_crossentropy',
+              metrics=['accuracy', mean_pred])
+----
+
+=== Навчання
+
+Моделі Keras навчаються на масивах Numpy з вхідних даних та міток. Для тренування моделі ви зазвичай використовуєте функцію `fit`. Прочитайте її документацію https://keras.io/models/sequential[тут].
+
+[source,python]
+----
+# Для моделі з одним входом з 2 класів (бінарна класифікація):
+
+model = Sequential()
+model.add(Dense(32, activation='relu', input_dim=100))
+model.add(Dense(1, activation='sigmoid'))
+model.compile(optimizer='rmsprop',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+# Створення фіктивних даних
+import numpy as np
+data = np.random.random((1000, 100))
+labels = np.random.randint(2, size=(1000, 1))
+
+# Тренуйте модель, повторюючи дані в партіях з 32 зразків
+model.fit(data, labels, epochs=10, batch_size=32)
+----
+
+[source,python]
+----
+# Для моделі з одним входом з 10 класів (категорична класифікація):
+
+model = Sequential()
+model.add(Dense(32, activation='relu', input_dim=100))
+model.add(Dense(10, activation='softmax'))
+model.compile(optimizer='rmsprop',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Створення фіктивних даних
+import numpy as np
+data = np.random.random((1000, 100))
+labels = np.random.randint(10, size=(1000, 1))
+
+# Перетворити мітки в категоричне однокольорове кодування
+one_hot_labels = keras.utils.to_categorical(labels, num_classes=10)
+
+# Тренуйте модель, повторюючи дані в партіях з 32 зразків
+model.fit(data, one_hot_labels, epochs=10, batch_size=32)
+----
+
+== Приклади
+
+Ось кілька прикладів для початку роботи!
+
+У https://github.com/keras-team/keras/tree/master/examples[папці прикладів] ви також знайдете приклади моделей для реальних наборів даних:
+
+* Класифікація невеликих зображень CIFAR10: Конволюційна нейронна мережа (CNN) із збільшенням даних у режимі реального часу
+* Класифікація настроїв огляду фільмів IMDB: LSTM над послідовностями слів
+* Класифікація тем новин Reuters: Багатошаровий перцептрон (MLP)
+* Класифікація рукописних цифр MNIST: MLP & CNN
+* Генерація тексту на рівні символів за допомогою LSTM
+...і більше.
+
+=== Багатошаровий перцептрон (MLP) для багатокласової softmax класифікації:
+
+[source,python]
+----
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Activation
+from keras.optimizers import SGD
+
+# Створення фіктивних даних
+import numpy as np
+x_train = np.random.random((1000, 20))
+y_train = keras.utils.to_categorical(np.random.randint(10, size=(1000, 1)), num_classes=10)
+x_test = np.random.random((100, 20))
+y_test = keras.utils.to_categorical(np.random.randint(10, size=(100, 1)), num_classes=10)
+
+model = Sequential()
+# Dense(64) - повністю пов'язаний шар із 64 прихованими одиницями.
+# У першому шарі потрібно вказати очікувану форму вхідних даних:
+# тут, 20-мірні вектори.
+model.add(Dense(64, activation='relu', input_dim=20))
+model.add(Dropout(0.5))
+model.add(Dense(64, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(10, activation='softmax'))
+
+sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(loss='categorical_crossentropy',
+              optimizer=sgd,
+              metrics=['accuracy'])
+
+model.fit(x_train, y_train,
+          epochs=20,
+          batch_size=128)
+score = model.evaluate(x_test, y_test, batch_size=128)
+----
+
+=== MLP для двійникової класифікації:
+
+[source,python]
+----
+import numpy as np
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+
+# Створення фіктивних даних
+x_train = np.random.random((1000, 20))
+y_train = np.random.randint(2, size=(1000, 1))
+x_test = np.random.random((100, 20))
+y_test = np.random.randint(2, size=(100, 1))
+
+model = Sequential()
+model.add(Dense(64, input_dim=20, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(64, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(loss='binary_crossentropy',
+              optimizer='rmsprop',
+              metrics=['accuracy'])
+
+model.fit(x_train, y_train,
+          epochs=20,
+          batch_size=128)
+score = model.evaluate(x_test, y_test, batch_size=128)
+----
+
+=== VGG-подібний convnet:
+
+[source,python]
+----
+import numpy as np
+import keras
+from keras.models import Sequential
+from keras.layers import Dense, Dropout, Flatten
+from keras.layers import Conv2D, MaxPooling2D
+from keras.optimizers import SGD
+
+# Створення фіктивних даних
+x_train = np.random.random((100, 100, 100, 3))
+y_train = keras.utils.to_categorical(np.random.randint(10, size=(100, 1)), num_classes=10)
+x_test = np.random.random((20, 100, 100, 3))
+y_test = keras.utils.to_categorical(np.random.randint(10, size=(20, 1)), num_classes=10)
+
+model = Sequential()
+# вхід: 100x100 зображень з 3 каналами -> (100, 100, 3) тензорами.
+# це стосується 32 фільтрів згортки розміром 3x3 кожен.
+model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(100, 100, 3)))
+model.add(Conv2D(32, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
+
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Dropout(0.25))
+
+model.add(Flatten())
+model.add(Dense(256, activation='relu'))
+model.add(Dropout(0.5))
+model.add(Dense(10, activation='softmax'))
+
+sgd = SGD(lr=0.01, decay=1e-6, momentum=0.9, nesterov=True)
+model.compile(loss='categorical_crossentropy', optimizer=sgd)
+
+model.fit(x_train, y_train, batch_size=32, epochs=10)
+score = model.evaluate(x_test, y_test, batch_size=32)
+----
+
+=== Класифікація послідовностей з LSTM:
+
+[source,python]
+----
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+from keras.layers import Embedding
+from keras.layers import LSTM
+
+max_features = 1024
+
+model = Sequential()
+model.add(Embedding(max_features, output_dim=256))
+model.add(LSTM(128))
+model.add(Dropout(0.5))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(loss='binary_crossentropy',
+              optimizer='rmsprop',
+              metrics=['accuracy'])
+
+model.fit(x_train, y_train, batch_size=16, epochs=10)
+score = model.evaluate(x_test, y_test, batch_size=16)
+----
+
+=== Класифікація послідовностей з 1D згортками:
+
+[source,python]
+----
+from keras.models import Sequential
+from keras.layers import Dense, Dropout
+from keras.layers import Embedding
+from keras.layers import Conv1D, GlobalAveragePooling1D, MaxPooling1D
+
+seq_length = 64
+
+model = Sequential()
+model.add(Conv1D(64, 3, activation='relu', input_shape=(seq_length, 100)))
+model.add(Conv1D(64, 3, activation='relu'))
+model.add(MaxPooling1D(3))
+model.add(Conv1D(128, 3, activation='relu'))
+model.add(Conv1D(128, 3, activation='relu'))
+model.add(GlobalAveragePooling1D())
+model.add(Dropout(0.5))
+model.add(Dense(1, activation='sigmoid'))
+
+model.compile(loss='binary_crossentropy',
+              optimizer='rmsprop',
+              metrics=['accuracy'])
+
+model.fit(x_train, y_train, batch_size=16, epochs=10)
+score = model.evaluate(x_test, y_test, batch_size=16)
+----
+
+=== Стековий LSTM для класифікації послідовностей
+
+У цій моделі ми складаємо 3 шари LSTM один на одного, роблячи модель здатною вивчати тимчасові уявлення вищого рівня.
+
+Перші два LSTM повертають свої повні вихідні послідовності, але останній повертає лише останній крок у своїй вихідній послідовності, тим самим опускаючи часовий вимір (тобто перетворюючи вхідну послідовність в єдиний вектор).
+
+image:regular_stacked_lstm.png[]
+
+[source,python]
+----
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
+import numpy as np
+
+data_dim = 16
+timesteps = 8
+num_classes = 10
+
+# очікувана форма вхідних даних: (batch_size, timeteps, data_dim)
+model = Sequential()
+# повертає послідовність векторів розмірності 32
+model.add(LSTM(32, return_sequences=True,
+               input_shape=(timesteps, data_dim)))  
+# повертає послідовність векторів розмірності 32
+model.add(LSTM(32, return_sequences=True))
+# повертає один векторний вимір 32
+model.add(LSTM(32))  
+model.add(Dense(10, activation='softmax'))
+
+model.compile(loss='categorical_crossentropy',
+              optimizer='rmsprop',
+              metrics=['accuracy'])
+
+# Створення фіктивних даних для навчання
+x_train = np.random.random((1000, timesteps, data_dim))
+y_train = np.random.random((1000, num_classes))
+
+# Створення фіктивних даних для перевірки
+x_val = np.random.random((100, timesteps, data_dim))
+y_val = np.random.random((100, num_classes))
+
+model.fit(x_train, y_train,
+          batch_size=64, epochs=5,
+          validation_data=(x_val, y_val))
+----
+
+=== Та ж складена модель LSTM, що відображається "зі станом"
+
+Періодична модель зі станом - це та модель, для якої внутрішні стани (спогади), отримані після обробки партії зразків, використовуються повторно як початкові стани для зразків наступної партії. Це дозволяє обробляти довші послідовності, зберігаючи обчислювальну складність керованою.
+
+Ви можете прочитати https://keras.io/getting-started/faq/#how-can-i-use-stateful-rnns[докладнішу інформацію] про стаціонарні RNN у FAQ.
+
+[source,python]
+----
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
+import numpy as np
+
+data_dim = 16
+timesteps = 8
+num_classes = 10
+batch_size = 32
+
+# Очікувана форма вхідної партії: (batch_size, timeteps, data_dim)
+# Зауважте, що ми маємо забезпечити повну batch_input_shape, оскільки мережа має стан.
+# вибірка індексу i в партії k - це подальше дослідження для вибірки i в партії k-1.
+model = Sequential()
+model.add(LSTM(32, return_sequences=True, stateful=True,
+               batch_input_shape=(batch_size, timesteps, data_dim)))
+model.add(LSTM(32, return_sequences=True, stateful=True))
+model.add(LSTM(32, stateful=True))
+model.add(Dense(10, activation='softmax'))
+
+model.compile(loss='categorical_crossentropy',
+              optimizer='rmsprop',
+              metrics=['accuracy'])
+
+# Створення фіктивних даних для тренування
+x_train = np.random.random((batch_size * 10, timesteps, data_dim))
+y_train = np.random.random((batch_size * 10, num_classes))
+
+# Створення фіктивних даних для перевірки
+x_val = np.random.random((batch_size * 3, timesteps, data_dim))
+y_val = np.random.random((batch_size * 3, num_classes))
+
+model.fit(x_train, y_train,
+          batch_size=batch_size, epochs=5, shuffle=False,
+          validation_data=(x_val, y_val))
+----
+          
