@@ -1,0 +1,449 @@
+include::header.adoc[]
+
+= Початок роботи з функціональним API Keras
+
+Функціональний API Keras - це спосіб визначення складних моделей, таких як моделі з декількома виходами, спрямовані ациклічні графіки або моделі з спільними шарами.
+
+Це керівництво передбачає, що ви вже знайомі з послідовною моделлю.
+
+Почнемо з чогось простого.
+
+== Перший приклад: щільно пов'язана мережа
+
+Послідовна Sequential модель - це, мабуть, кращий вибір для реалізації такої мережі, але вона допомагає почати з чогось справді простого.
+
+* Примірник шару може визиватися (на тензорі), і він повертає тензор
+* Потім тензор(и) на вході та тензор(и) на виході можуть використовуватися для визначення моделі
+* Таку модель можна навчити так само, як і Sequential моделі Keras.
+
+[source,python]
+----
+from keras.layers import Input, Dense
+from keras.models import Model
+
+# Це повертає тензор
+inputs = Input(shape=(784,))
+
+# екземпляр шару може викликатись на тензорі і повертати тензор
+output_1 = Dense(64, activation='relu')(inputs)
+output_2 = Dense(64, activation='relu')(output_1)
+predictions = Dense(10, activation='softmax')(output_2)
+
+# Це створює модель, яка включає вхідний шар і три щільні шари
+model = Model(inputs=inputs, outputs=predictions)
+model.compile(optimizer='rmsprop',
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+model.fit(data, labels)  # починає тренування
+----
+
+=== Усі моделі викликаються так само, як і шари
+
+За допомогою функціонального API легко повторно  використовувати натреновані моделі: ви можете ставитися до будь-якої моделі так, ніби до шару, визиваючи її на тензорі. Зауважте, що, викликаючи модель, ви не просто використовуєте архітектуру моделі, ви також повторно використовуєте її ваги.
+
+[source,python]
+----
+x = Input(shape=(784,))
+# This works, and returns the 10-way softmax we defined above.
+y = model(x)
+----
+
+Це може дозволити, наприклад, швидко створити моделі, які можуть обробляти послідовності входів. Ви можете перетворити модель класифікації зображень у модель відео класифікації лише в одному рядку.
+
+[source,python]
+----
+from keras.layers import TimeDistributed
+
+# Вхідний тензор для послідовностей 20 часових кроків,
+# кожен містить 784-мірний вектор
+input_sequences = Input(shape=(20, 784))
+
+# Це стосується нашої попередньої моделі до кожного кроку часу у вхідній послідовності.
+# вихід попередньої моделі був 10-ти канальний softmax,
+# тому вихід шару нижче буде послідовністю 20 векторів розміром 10.
+processed_sequences = TimeDistributed(model)(input_sequences)
+----
+
+=== Моделі з кількома входами та з декількома виходами
+
+Ось гарний випадок використання функціонального API: моделі з декількома входами та виходами. Функціональний API дозволяє легко маніпулювати великою кількістю переплетених потоків даних.
+
+Розглянемо наступну модель. Ми прагнемо передбачити, скільки ретвітів і лайків отримає заголовок новин у Twitter. Основним входом до моделі буде сам заголовок, як послідовність слів. Але для того, щоб додати інтриги, наша модель також матиме допоміжний ввід, отримуючи додаткові дані, такі як час доби, коли розміщувався заголовок тощо. Модель також буде контролюватися за допомогою двох функцій втрат. Використання основної функції втрат раніше в моделі є хорошим механізмом регуляризації глибоких моделей.
+
+Ось як виглядає наша модель:
+
+image:multi-input-multi-output-graph.png[]
+
+Давайте реалізуємо її за допомогою функціонального API.
+
+Основний вхід отримає заголовок у вигляді послідовності цілих чисел (кожне ціле число кодує слово). Цілі числа будуть від 1 до 10000 (словник 10 000 слів), а послідовності - 100 слів в довжину.
+
+[source,python]
+----
+from keras.layers import Input, Embedding, LSTM, Dense
+from keras.models import Model
+import numpy as np
+# Встановити випадкове зерно для відтворення
+np.random.seed(0)  
+
+# Введення заголовка: призначене для отримання послідовностей з 100 цілих чисел, між 1 і 10000.
+# Зауважте, що ми можемо назвати будь-який шар, передавши його через аргумент "name".
+main_input = Input(shape=(100,), dtype='int32', name='main_input')
+
+# Цей шар вбудовування буде кодувати вхідну послідовність
+# у послідовність щільних 512-мірних векторів.
+x = Embedding(output_dim=512, input_dim=10000, input_length=100)(main_input)
+
+# LSTM перетворить послідовність векторів в один вектор,
+# що містить інформацію про всю послідовність
+lstm_out = LSTM(32)(x)
+----
+
+Сюди ми вставляємо допоміжні втрати, що дозволяє спокійно тренуватися шару LSTM та Embedding, хоча основна втрата буде значно вищою в моделі.
+
+[source,python]
+----
+auxiliary_output = Dense(1, activation='sigmoid', name='aux_output')(lstm_out)
+----
+
+У цей момент ми вводимо в модель наші допоміжні вхідні дані, з'єднуючи їх з LSTM-виходом:
+
+[source,python]
+----
+auxiliary_input = Input(shape=(5,), name='aux_input')
+x = keras.layers.concatenate([lstm_out, auxiliary_input])
+
+# Зверху ми накладаємо глибоку щільно пов'язану мережу
+x = Dense(64, activation='relu')(x)
+x = Dense(64, activation='relu')(x)
+x = Dense(64, activation='relu')(x)
+
+# І, нарешті, ми додаємо основний логістичний рівень регресії
+main_output = Dense(1, activation='sigmoid', name='main_output')(x)
+----
+
+Це визначає модель з двома входами та двома виходами:
+
+[source,python]
+----
+model = Model(inputs=[main_input, auxiliary_input], outputs=[main_output, auxiliary_output])
+----
+
+Ми компілюємо модель і присвоюємо вагу 0,2 до допоміжних втрат. Щоб вказати різні `loss_weights` або `loss` для кожного з різних виводів, ви можете використовувати список або словник. Тут ми передаємо єдину втрату як аргумент `loss`, тому однакові втрати будуть використані на всіх результатах.
+
+[source,python]
+----
+model.compile(optimizer='rmsprop', loss='binary_crossentropy',
+              loss_weights=[1., 0.2])
+----
+
+Ми можемо тренувати модель, передаючи їй списки вхідних масивів та цільових масивів:
+
+[source,python]
+----
+headline_data = np.round(np.abs(np.random.rand(12, 100) * 100))
+additional_data = np.random.randn(12, 5)
+headline_labels = np.random.randn(12, 1)
+additional_labels = np.random.randn(12, 1)
+model.fit([headline_data, additional_data], [headline_labels, additional_labels],
+          epochs=50, batch_size=32)
+----
+
+Since our inputs and outputs are named (we passed them a "name" argument), we could also have compiled the model via:
+Оскільки наші входи та виходи іменовані (ми передали їм аргумент `"name"`), ми також могли скласти модель за допомогою:
+
+[source,python]
+----
+model.compile(optimizer='rmsprop',
+              loss={'main_output': 'binary_crossentropy', 'aux_output': 'binary_crossentropy'},
+              loss_weights={'main_output': 1., 'aux_output': 0.2})
+
+# І навчили це через:
+model.fit({'main_input': headline_data, 'aux_input': additional_data},
+          {'main_output': headline_labels, 'aux_output': additional_labels},
+          epochs=50, batch_size=32)
+----
+
+Щоб використовувати модель для інтерференції, використовуйте
+
+[source,python]
+----
+model.predict({'main_input': headline_data, 'aux_input': additional_data})
+----
+
+або альтернативно,
+
+[source,python]
+----
+pred = model.predict([headline_data, additional_data])
+----
+
+== Спільні шари
+
+Ще одне корисне використання функціонального API - це моделі, які використовують спільні шари. Давайте розглянемо спільні шари.
+
+Розглянемо набір даних твітів. Ми хочемо створити модель, яка може визначити, чи два твіти від однієї особи чи ні (це, наприклад, може дозволити нам порівнювати користувачів за подібністю їх твітів).
+
+Один із способів досягти цього - побудувати модель, яка кодує два твіти на два вектори, об'єднує вектори і потім додає логістичну регресію; це виводить ймовірність того, що два твіти поділяють одного автора. Потім модель буде тренуватися на парах позитивних твіттів і негативних твіттів.
+
+Оскільки проблема симетрична, механізм, що кодує перший твіт, слід повторно використовувати (ваги та все), щоб кодувати другий твіт. Тут ми використовуємо загальний шар LSTM для кодування твітів.
+
+Давайте побудуємо це за допомогою функціонального API. Ми будемо брати за твіт двійникову матрицю форми (280, 256), тобто послідовність 280 векторів розміром 256, де кожен вимір у 256-мірному векторі кодує наявність/відсутність символу (з алфавіту в 256 частих символів).
+
+[source,python]
+----
+import keras
+from keras.layers import Input, LSTM, Dense
+from keras.models import Model
+
+tweet_a = Input(shape=(280, 256))
+tweet_b = Input(shape=(280, 256))
+----
+
+Щоб поділити шар на різні входи, просто інстанціюйте шар один раз, а потім викличте його на стільки входів, скільки вам потрібно:
+
+[source,python]
+----
+# Цей шар може взяти за вхід матрицю
+# і поверне вектор розміром 64
+shared_lstm = LSTM(64)
+
+# Коли ми повторно використовуємо той самий екземпляр шару
+# багаторазово, ваги шару також використовуються повторно
+# (це ефективно *той самий* шар)
+encoded_a = shared_lstm(tweet_a)
+encoded_b = shared_lstm(tweet_b)
+
+# Ми тепер можемо об'єднати два вектори:
+merged_vector = keras.layers.concatenate([encoded_a, encoded_b], axis=-1)
+
+# І зверху додати логістичну регресію 
+predictions = Dense(1, activation='sigmoid')(merged_vector)
+
+# Ми визначаємо навчальну модель, пов'язуючи
+# вхідні твіти з прогнозами
+model = Model(inputs=[tweet_a, tweet_b], outputs=predictions)
+
+model.compile(optimizer='rmsprop',
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+model.fit([data_a, data_b], labels, epochs=10)
+----
+
+Let's pause to take a look at how to read the shared layer's output or output shape.
+Давайте зупинимось, щоб розглянути, як читати вивід спільного шару або форму виводу.
+
+=== Поняття "вузла" шару
+
+Щоразу, коли ви викликаєте шар на якомусь вході, ви створюєте новий тензор (вихід шару), і ви додаєте "вузол" до шару, пов'язуючи вхідний тензор з вихідним тензором. Коли ви викликаєте один і той же шар кілька разів, цей шар володіє декількома вузлами з індексами 0, 1, 2 ...
+
+У попередніх версіях Keras можна було отримати вихідний тензор екземпляра шару через `layer.get_output()` або його вихідну форму через `layer.output_shape`. Ви все ще можете це зробити (хоча `get_output()` було замінено результатом властивості). Але що робити, якщо шар підключений до декількох входів?
+
+Поки шар з'єднаний лише з одним входом, не буде плутанини, і `.output` поверне один вихід шару:
+
+[source,python]
+----
+a = Input(shape=(280, 256))
+
+lstm = LSTM(32)
+encoded_a = lstm(a)
+
+assert lstm.output == encoded_a
+----
+
+Не так, якщо в шарі є кілька входів:
+
+[source,python]
+----
+a = Input(shape=(280, 256))
+b = Input(shape=(280, 256))
+
+lstm = LSTM(32)
+encoded_a = lstm(a)
+encoded_b = lstm(b)
+
+lstm.output
+>> AttributeError: Layer lstm_1 has multiple inbound nodes,
+hence the notion of "layer output" is ill-defined.
+Use `get_output_at(node_index)` instead.
+----
+
+Нехай так. Наступне робить:
+
+[source,python]
+----
+assert lstm.get_output_at(0) == encoded_a
+assert lstm.get_output_at(1) == encoded_b
+----
+
+Досить просто, чи не так?
+
+The same is true for the properties input_shape and output_shape: as long as the layer has only one node, or as long as all nodes have the same input/output shape, then the notion of "layer output/input shape" is well defined, and that one shape will be returned by layer.output_shape/layer.input_shape. But if, for instance, you apply the same Conv2D layer to an input of shape (32, 32, 3), and then to an input of shape (64, 64, 3), the layer will have multiple input/output shapes, and you will have to fetch them by specifying the index of the node they belong to:
+Те саме стосується властивостей `input_shape` та `output_shape`: якщо у шару є лише один вузол, або поки всі вузли мають однакову форму вводу/виводу, тоді поняття "форма виводу/введення шару" добре визначена, і одна форма повернеться `layer.output_shape`/`layer.input_shape`. Але якщо, наприклад, ви застосуєте один і той же шар `Conv2D` до вводу форми `(32, 32, 3)`, а потім до вводу форми `(64, 64, 3)`, шар буде мати кілька форм вводу/виводу, і вам доведеться отримати їх, вказавши індекс вузла, до якого вони належать:
+
+[source,python]
+----
+a = Input(shape=(32, 32, 3))
+b = Input(shape=(64, 64, 3))
+
+conv = Conv2D(16, (3, 3), padding='same')
+conved_a = conv(a)
+
+# Поки що тільки один вхід, буде працювати наступне:
+assert conv.input_shape == (None, 32, 32, 3)
+
+conved_b = conv(b)
+# тепер властивість `.input_shape` не працює, але це так:
+assert conv.get_input_shape_at(0) == (None, 32, 32, 3)
+assert conv.get_input_shape_at(1) == (None, 64, 64, 3)
+----
+
+== Більше прикладів
+
+Приклади коду все ще є найкращим способом для початку, тому ось ще декілька.
+
+=== Модуль Inception
+
+Щоб отримати додаткові відомості про архітектуру Inception, див. http://arxiv.org/abs/1409.4842[Заглиблення в Convolutions].
+
+[source,python]
+----
+from keras.layers import Conv2D, MaxPooling2D, Input
+
+input_img = Input(shape=(256, 256, 3))
+
+tower_1 = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+tower_1 = Conv2D(64, (3, 3), padding='same', activation='relu')(tower_1)
+
+tower_2 = Conv2D(64, (1, 1), padding='same', activation='relu')(input_img)
+tower_2 = Conv2D(64, (5, 5), padding='same', activation='relu')(tower_2)
+
+tower_3 = MaxPooling2D((3, 3), strides=(1, 1), padding='same')(input_img)
+tower_3 = Conv2D(64, (1, 1), padding='same', activation='relu')(tower_3)
+
+output = keras.layers.concatenate([tower_1, tower_2, tower_3], axis=1)
+----
+
+Залишкове з'єднання на шарі згортки
+
+Додаткову інформацію про залишкові мережі див. у розділі http://arxiv.org/abs/1512.03385[Глибоке залишкове навчання для розпізнавання зображень].
+
+[source,python]
+----
+from keras.layers import Conv2D, Input
+
+# input tensor for a 3-channel 256x256 image
+x = Input(shape=(256, 256, 3))
+# 3x3 conv with 3 output channels (same as input channels)
+y = Conv2D(3, (3, 3), padding='same')(x)
+# this returns x + y.
+z = keras.layers.add([x, y])
+----
+
+=== Модель спільного бачення
+
+Ця модель повторно використовує один і той же модуль обробки зображень на двох входах, щоб класифікувати, чи дві цифри MNIST однакові або різні.
+
+[source,python]
+----
+from keras.layers import Conv2D, MaxPooling2D, Input, Dense, Flatten
+from keras.models import Model
+
+# Спочатку визначте модулі зору
+digit_input = Input(shape=(27, 27, 1))
+x = Conv2D(64, (3, 3))(digit_input)
+x = Conv2D(64, (3, 3))(x)
+x = MaxPooling2D((2, 2))(x)
+out = Flatten()(x)
+
+vision_model = Model(digit_input, out)
+
+# Потім визначте модель різпізнавання цифр
+digit_a = Input(shape=(27, 27, 1))
+digit_b = Input(shape=(27, 27, 1))
+
+# Модель бачення буде спільною, з вагами та всім
+out_a = vision_model(digit_a)
+out_b = vision_model(digit_b)
+
+concatenated = keras.layers.concatenate([out_a, out_b])
+out = Dense(1, activation='sigmoid')(concatenated)
+
+classification_model = Model([digit_a, digit_b], out)
+----
+
+=== Візуальна модель відповіді на питання
+
+Ця модель може вибрати правильну односкладну відповідь, коли задається питанням природної мови щодо малюнка.
+
+Вона працює, кодуючи питання у вектор, кодуючи зображення у вектор, поєднуючи ці два та тренуючись на базі  логістичної регресії над деяким словником потенційних відповідей.
+
+[source,python]
+----
+from keras.layers import Conv2D, MaxPooling2D, Flatten
+from keras.layers import Input, LSTM, Embedding, Dense
+from keras.models import Model, Sequential
+
+# Спочатку давайте визначимо модель бачення за допомогою послідовної моделі.
+# Ця модель буде кодувати зображення у вектор.
+vision_model = Sequential()
+vision_model.add(Conv2D(64, (3, 3), activation='relu', padding='same', input_shape=(224, 224, 3)))
+vision_model.add(Conv2D(64, (3, 3), activation='relu'))
+vision_model.add(MaxPooling2D((2, 2)))
+vision_model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+vision_model.add(Conv2D(128, (3, 3), activation='relu'))
+vision_model.add(MaxPooling2D((2, 2)))
+vision_model.add(Conv2D(256, (3, 3), activation='relu', padding='same'))
+vision_model.add(Conv2D(256, (3, 3), activation='relu'))
+vision_model.add(Conv2D(256, (3, 3), activation='relu'))
+vision_model.add(MaxPooling2D((2, 2)))
+vision_model.add(Flatten())
+
+# Тепер давайте отримаємо тензор із результатом нашої моделі бачення:
+image_input = Input(shape=(224, 224, 3))
+encoded_image = vision_model(image_input)
+
+# Далі визначимо мовну модель для кодування питання у вектор.
+# Кожне питання матиме не більше 100 слів в довжину,
+# і будемо індексувати слова як цілі числа від 1 до 9999.
+question_input = Input(shape=(100,), dtype='int32')
+embedded_question = Embedding(input_dim=10000, output_dim=256, input_length=100)(question_input)
+encoded_question = LSTM(256)(embedded_question)
+
+# Об'єднуємо вектор питання та вектор зображення:
+merged = keras.layers.concatenate([encoded_question, encoded_image])
+
+# Тренуємо логістичну регресію на 1000чі слів:
+output = Dense(1000, activation='softmax')(merged)
+
+# Це наша остаточна модель:
+vqa_model = Model(inputs=[image_input, question_input], outputs=output)
+
+# The next stage would be training this model on actual data.
+----
+
+=== Модель відео відповідача 
+
+Тепер, коли ми навчили нашу модель QA зображення, ми можемо швидко перетворити її на відео QA-модель. З відповідним навчанням ви зможете показати їй коротке відео (наприклад, людські дії на 100 кадрів) і задати природне мовне запитання щодо відео (наприклад, "у який вид спорту грає хлопець?" -> "у футбол").
+
+[source,python]
+----
+from keras.layers import TimeDistributed
+
+video_input = Input(shape=(100, 224, 224, 3))
+# Це наше відео, закодоване через попередньо навчену модель vid_model (ваги використовуються повторно)
+encoded_frame_sequence = TimeDistributed(vision_model)(video_input)  # the output will be a sequence of vectors
+encoded_video = LSTM(256)(encoded_frame_sequence)  # the output will be a vector
+
+# Це представлення на рівні моделі кодера запитання, використовуючи ті ж ваги, що і раніше:
+question_encoder = Model(inputs=question_input, outputs=encoded_question)
+
+# Давайте використаємо його для кодування питання:
+video_question_input = Input(shape=(100,), dtype='int32')
+encoded_video_question = question_encoder(video_question_input)
+
+# І це наша модель відповіді на відео запитання:
+merged = keras.layers.concatenate([encoded_video, encoded_video_question])
+output = Dense(1000, activation='softmax')(merged)
+video_qa_model = Model(inputs=[video_input, video_question_input], outputs=output0
+----
