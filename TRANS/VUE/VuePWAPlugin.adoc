@@ -1,0 +1,151 @@
+include::headers.adoc[]
+
+== Vue PWA Plugin
+
+https://medium.com/@mario.brendel1990/vue-pwa-plugin-71b93cae72ec[Mario Brendel]
+Feb 6, 2019 · 5 min read
+
+Хей! Оскільки я трохи поговорив про `pwa` у Vue JS Apps, я подумав, що може бути корисним заглибитись трохи в цю тему. Я покажу вам, як можна попередньо кешувати свої файли та як застосувати різні стратегії кешування.
+
+=== Ініціалізуйте плагін PWA
+
+Щоб продовжувати роботу, вам потрібна принаймні версія 3 VI CLI. Після цього потрібно виконати цю команду:
+
+----
+
+vue add @vue/pwa
+----
+
+Щойно ви виконаєте його, ви побачите пару файлів, яких раніше не було. Перший - `registerServiceWorker.js`. Цей файл зареєструє вашого сервісного працівника в браузері. Якщо ви подивитесь на код, ви побачите, що не слід використовувати службовий сервіс для локального розгортання. Причиною цього є те, що кешування файлів під час локальної розробки може призвести до несподіваної поведінки. Особливо, якщо ви попередньо кешуєте деякі свої файли розробки.
+
+Крім того, вам не слід намагатися змусити його запускатись локально, тобто змінюючи умову випадку у `регістріServiceWorker.js` на ‘development’. Сервісний працівник не задуманий для обробки локального середовища - зміна базового URL-адреси в `vue.config.js` все одно призведе до порушення завантаженості сервісного працівника для локального розгортання.
+
+Оскільки інші файли зараз не мають значення, ми розглянемо конфігурацію пре-кешування.
+
+=== Налаштування пре-кешування
+
+Щойно ви створили свій проект через `npm build`, ви побачите файл `service-worker.js` у вашому каталозі `dist`. Зміст повинен бути:
+
+[source,js]
+----
+...
+
+importScripts("https://storage.googleapis.com/workbox-cdn/releases/3.6.3/workbox-sw.js");
+
+importScripts(
+  "/precache-manifest.415f21068aad841ef1d7c6250910c3ca.js"
+);
+
+workbox.core.setCacheNameDetails({prefix: "todoapp"});
+
+/**
+ * The workboxSW.precacheAndRoute() method efficiently caches and responds to
+ * requests for URLs in the manifest.
+ * See https://goo.gl/S9QRab
+ */
+self.__precacheManifest = [].concat(self.__precacheManifest || []);
+workbox.precaching.suppressWarnings();
+workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
+----
+
+Як ви вже бачили, сервісний працівник використовує файл під назвою:
+
+[source,js]
+----
+precache-manifest.415f21068aad841ef1d7c6250910c3ca.js
+----
+
+Цей файл додає більшість активів до попереднього кешу. Ви можете це бачити, якщо ви запускаєте локальний http-сервер. Якщо у вас немає локального веб-сервера, виконайте такі команди:
+
+[source,bash]
+----
+npm install http-server -g
+http-server dist -p 8081 -a localhost
+----
+
+Якщо зараз відкрити вкладку мережі у веб-переглядачі, ви побачите, що файли js та css завантажуватиме службовий працівник.
+
+Але, можливо, ви не хочете кешувати файли, а лише 1. Спосіб для цього - це налаштувати `vue.config.js` (розташований у корені проекту). Якщо додати рядки
+
+[source,json]
+----
+pwa: {
+    workboxPluginMode: 'InjectManifest',
+    workboxOptions: {
+        swSrc: 'public/service-worker.js',
+    }
+}
+----
+
+ви можете створити власний файл `service-worker.js` у вашому каталозі `src`. `"InjectManifest"` гарантує, що `precache-manifest.js` також буде імпортований у ваш власний файл. Але поки ми лише що завантажимо 1 файл. Додайте це до свого `src/service-worker.js`
+
+[source,json]
+----
+workbox.precaching.precacheAndRoute([{
+    "revision": "17ecfaee522eaf5b3ad9c9aa1b2973cc",
+    "url": "/manifest.json"
+}]);
+----
+
+and now build your project again. Now you might want to unregister your service worker within the application tab within your browsers(chrome) dev tools. Afterwards you refresh the page 2 times and you will see that the manifest will indeed be served by the service worker.
+
+But since the most important files are already precached it might be more useful for you to exclude some files. To achieve this we will at first configure our service-worker.js so that precache-manifest.js will be loaded again. For this add:
+
+self.__precacheManifest = [].concat(self.__precacheManifest || []);
+workbox.precaching.suppressWarnings();
+workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
+
+to your service-worker.js. Now open your vue.config.js and exclude the files you want:
+
+...
+workboxOptions: {
+    swSrc: 'public/service-worker.js',
+    exclude: /\.js$/
+}
+...
+
+Afterwards you can open your precache-manifest.js within the dist directory and you’ll see that there are no js files anymore. For more options like include etc. see: workbox-options.
+
+If you want to see what files got actually cached you can either look them up within the indexeddb (application tab in browser dev tools) or within the cache storage.
+Configure API Caching
+
+Now that we’ve got our precaching we may want to cache some api calls or even manipulate some api calls. To do this we’ll first create a custom call to an api of your choice that doesn’t have cors restrictions. I’ll use this url:
+
+https://jsonplaceholder.typicode.com/todos/1
+
+To create the request I’ll also use axios — but you can of course use any client you want. My call now looks like this:
+
+axios.get("https://jsonplaceholder.typicode.com/todos/1")
+    .then(e => console.log(e))
+    .catch(e => console.log(e));
+
+If you still have the exclude entry for your workbox it might be good to remove this for now. You also might want to use a guest window(user) every time you change something with the service-worker.js
+
+One of the easiest ways to support caching is to use the caching strategies from workbox (if you want to know the difference between the strategies feel free to write me :)). In our example we will use the cache first approach — which means that the cache will be evaluated first and only if the cache is empty the network will be used. To achieve this we’ll add these lines to our service-worker.js
+
+workbox.routing.registerRoute('https://jsonplaceholder.typicode.com/todos/1', workbox.strategies.cacheFirst({
+    cacheName: 'placeholder-cache',
+}));
+
+Whats happening here is that we say for the given route we want to use the cache first strategy with the cache placeholder-cache. If you now open your browser and refresh 2 times you’ll see this response:
+
+Since Workbox provides really good messages you can see step by step whats happening and if you want to see the response that is used you can look for that within the application tab of your browsers dev tools. There you’ll find a cache with the given name.
+
+But you may want to add your own logic if the network fails. For this you can evaluate the promise of the strategy like this:
+
+const placeholderHandler = workbox.strategies.cacheFirst({
+    cacheName: 'placeholder-cache',
+});
+
+workbox.routing.registerRoute('https://jsonplaceholder.typicode.com/todos/1', args => {
+    return placeholderHandler.handle(args).then(response => {
+        console.log("Online: Fetch was called successful");
+        return response;
+    }).catch(err => {
+        console.log("no cache data");
+    });
+});
+
+Here you have the possibility to change response values. This will be it for now.
+
+In my next blog entry I’ll go a little bit deeper with workbox and how you can connect it with indexeddb.

@@ -1,0 +1,947 @@
+include::headers.adoc[]
+
+== Як використовувати Vee-Validate для перевірки форми
+===== Створимо кілька дивовижних форм
+https://medium.com/better-programming/how-to-use-vee-validate-to-do-form-validation-e01e9c8b6ac6[John Au-Yeung]
+Aug 29, 2019 · 18 min read
+
+Vue.js - це чудовий фреймворк для створення фронтенду веб-додатків. Він використовує компонентну архітектуру, що робить впорядкування коду простим. Це дозволяє використовувати найновіші функції, які може запропонувати  JavaScript, а це означає, що писати код для створення своїх додатків легко як ніколи. У ньому є багато додатків, таких як маршрутизація та сховище Vuex, які ви можете додати під час створення структури програми.
+
+Однак одне, чого не вистачає, - це перевірка форми. Це означає, що нам потрібно знайти власну бібліотеку перевірки форм, щоб зробити перевірку форми. Або написати код перевірки форми самостійно.
+
+Якщо ми вирішимо використовувати бібліотеку для перевірки форми, Vee-Validate є прекрасним вибором підключення безпосередньо до коду Vue.js. В основному Vee-Validate додає код до шаблонів компонентів Vue.js, щоб увімкнути перевірку форм для форм Vue.js. Він має правила для багатьох видів полів. Тому це чудовий вибір для перевірки форм Vue.js.
+
+У цій історії ми створимо додаток для адресної книги з Vue.js, який використовує Vee-Validate для перевірки наших даних. Форма дозволяє нам додавати та редагувати наші контакти; також ми можемо отримувати та видаляти контакти.
+
+Щоб створити наш додаток, по-перше, нам потрібно швидко встановити бекенд. Для цього ми використовуємо пакет Node.js під назвою JSON Server для запуску нашого бекенду. Знайдіть https://github.com/typicode/json-server[документацію пакета тут].
+
+Після запуску це надає нам маршрути, щоб зберегти наші контактні записи з фронтенду.
+
+Щоб встановити пакет, запустіть:
+
+[source,bash]
+----
+npm install -g json-server
+----
+
+Ми виконаємо його пізніше, щоб ми могли зберегти наші контакти.
+
+Тепер ми можемо почати створювати наш додаток. Для цього встановимо Vue CLI, запустивши:
+
+[source,bash]
+----
+npm install -g @vue/cli
+----
+
+Потім створіть додаток, запустивши:
+
+[source,scala]
+----
+vue create vee-validate-address-book-app
+----
+
+
+`vee-validate-address-book-app` - це назва нашої програми. Запускаючи майстра, переконайтеся, що ви не забули включити Vuex та Vue Router, оскільки ми його будемо використовувати згодом. Далі ми повинні встановити деякі бібліотеки. Нам потрібен клієнт HTTP, бібліотека Material Design, щоб наш додаток виглядав добре, і бібліотека Vee-Validate.
+
+Для цього запустіть `npm i axios vee-validate vue-material`. Axios - наш клієнт HTTP для спілкування з бек-ендом. Vue Material - це наша бібліотека матеріального дизайну.
+
+Далі ми створюємо наші компоненти, які ми вкладаємо в компоненти нашої сторінки. Для цього створіть папку `components` у нашій папці проекту та створіть у ній файл під назвою `ContactForm.vue`.
+
+У цей файл ми помістимо:
+
+[source,html]
+----
+<template>
+  <div class="contact-form">
+    <div class="center">
+      <h1>{{editing ? 'Edit': 'Add'}} Contact</h1>
+    </div>
+    <form novalidate class="md-layout" @submit="save">
+      <md-field :class="{ 'md-invalid': errors.has('firstName') }">
+        <label for="firstName">First Name</label>
+        <md-input
+          name="firstName"
+          v-model="contact.firstName"
+          v-validate="'required'"
+          :disabled="sending"
+        />
+        <span class="md-error" v-if="errors.has('firstName')">First Name is required.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('lastName') }">
+        <label for="lastName">Last Name</label>
+        <md-input
+          name="lastName"
+          v-model="contact.lastName"
+          :disabled="sending"
+          v-validate="'required'"
+        />
+        <span class="md-error" v-if="errors.has('lastName')">Last Name is required.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('addressLineOne') }">
+        <label for="addressLineOne">Address Line 1</label>
+        <md-input
+          name="addressLineOne"
+          v-model="contact.addressLineOne"
+          :disabled="sending"
+          v-validate="'required'"
+        />
+        <span class="md-error" v-if="errors.has('addressLineOne')">Address line 1 is required.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('addressLineTwo') }">
+        <label for="addressLineTwo">Address Line 2</label>
+        <md-input name="addressLineTwo" v-model="contact.addressLineTwo" :disabled="sending" />
+        <span class="md-error" v-if="errors.has('addressLineTwo')">Address line 2 is required</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('city') }">
+        <label for="city">City</label>
+        <md-input name="city" v-model="contact.city" :disabled="sending" v-validate="'required'" />
+        <span class="md-error" v-if="errors.has('city')">City is required.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('country') }">
+        <label for="country">Country</label>
+        <md-select
+          name="country"
+          v-model="contact.country"
+          md-dense
+          :disabled="sending"
+          v-validate.continues="'required'"
+        >
+          <md-option :value="c" :key="c" v-for="c in countries">{{c}}</md-option>
+        </md-select>
+        <span class="md-error" v-if="errors.firstByRule('country', 'required')">Country is required.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('postalCode') }">
+        <label for="postalCode">Postal Code</label>
+        <md-input
+          name="postalCode"
+          v-model="contact.postalCode"
+          :disabled="sending"
+          v-validate="{ required: true, regex: getPostalCodeRegex() }"
+        />
+        <span
+          class="md-error"
+          v-if="errors.firstByRule('postalCode', 'required')"
+        >Postal Code is required.</span>
+        <span
+          class="md-error"
+          v-if="errors.firstByRule('postalCode', 'regex')"
+        >Postal Code is invalid.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('phone') }">
+        <label for="phone">Phone</label>
+        <md-input
+          name="phone"
+          v-model="contact.phone"
+          :disabled="sending"
+          v-validate="{ required: true, regex: getPhoneRegex() }"
+        />
+        <span class="md-error" v-if="errors.firstByRule('phone', 'required')">Phone is required.</span>
+        <span class="md-error" v-if="errors.firstByRule('phone', 'regex')">Phone is invalid.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('gender') }">
+        <label for="gender">Gender</label>
+        <md-select
+          name="gender"
+          v-model="contact.gender"
+          md-dense
+          :disabled="sending"
+          v-validate.continues="'required'"
+        >
+          <md-option value="male">Male</md-option>
+          <md-option value="female">Female</md-option>
+        </md-select>
+        <span class="md-error" v-if="errors.firstByRule('gender', 'required')">Gender is required.</span>
+      </md-field><br /><md-field :class="{ 'md-invalid': errors.has('age') }">
+        <label for="age">Age</label>
+        <md-input
+          type="number"
+          id="age"
+          name="age"
+          autocomplete="age"
+          v-model="contact.age"
+          :disabled="sending"
+          v-validate="'required|between:0,200'"
+        />
+        <span class="md-error" v-if="errors.firstByRule('age', 'required')">Age is required.</span>
+        <span class="md-error" v-if="errors.firstByRule('age', 'between')">Age must be 0 and 200.</span>
+      </md-field><br />
+      <md-field :class="{ 'md-invalid': errors.has('email') }">
+        <label for="email">Email</label>
+        <md-input
+          type="email"
+          name="email"
+          autocomplete="email"
+          v-model="contact.email"
+          :disabled="sending"
+          v-validate="'required|email'"
+        />
+        <span class="md-error" v-if="errors.firstByRule('email', 'required')">Email is required.</span>
+        <span class="md-error" v-if="errors.firstByRule('email', 'email')">Email is invalid.</span>
+      </md-field><md-progress-bar md-mode="indeterminate" v-if="sending" /><md-button type="submit" class="md-raised">{{editing ? 'Edit':'Create'}} Contact</md-button>
+    </form>
+  </div>
+</template><script>
+import { COUNTRIES } from "@/helpers/exports";
+import { contactMixin } from "@/mixins/contactMixin";export default {
+  name: "ContactForm",
+  mixins: [contactMixin],
+  props: {
+    editing: Boolean,
+    contactId: Number
+  },
+  computed: {
+    isFormDirty() {
+      return Object.keys(this.fields).some(key => this.fields[key].dirty);
+    },
+    contacts() {
+      return this.$store.state.contacts;
+    }
+  },
+  data() {
+    return {
+      sending: false,
+      contact: {},
+      countries: COUNTRIES.map(c => c.name)
+    };
+  },  beforeMount() {
+    this.contact = this.contacts.find(c => c.id == this.contactId) || {};
+  },  methods: {
+    async save(evt) {
+      evt.preventDefault();
+      try {
+        const result = await this.$validator.validateAll();
+        if (!result) {
+          return;
+        }
+        if (this.editing) {
+          await this.updateContact(this.contact, this.contactId);
+          await this.getAllContacts();
+          this.$emit("contactSaved");
+        } else {
+          await this.addContact(this.contact);
+          await this.getAllContacts();
+          this.$router.push("/");
+        }
+      } catch (ex) {
+        console.log(ex);
+      }
+    },  async getAllContacts() {
+      try {
+        const response = await this.getContacts();
+        this.$store.commit("setContacts", response.data);
+      } catch (ex) {
+        console.log(ex);
+      }
+    },  getPostalCodeRegex() {
+      if (this.contact.country == "United States") {
+        return /^[0-9]{5}(?:-[0-9]{4})?$/;
+      } else if (this.contact.country == "Canada") {
+        return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+      }
+      return /./;
+    },  getPhoneRegex() {
+      if (["United States", "Canada"].includes(this.contact.country)) {
+        return /^[2-9]\d{2}[2-9]\d{2}\d{4}$/;
+      }
+      return /./;
+    }
+  }
+};
+</script><!-- Add "scoped" attribute to limit CSS to this component only -->
+<style scoped lang="scss">
+.contact-form {
+  margin: 0 auto;
+  width: 90%;
+}
+</style>
+----
+
+У наведеному вище файлі ми маємо контактну форму для додавання та оновлення контактів у нашій адресній книзі - там, де найбільше використовується Vee-Validate. Зауважте, що у більшості елементів керування введенням у тезі `form` ми підтримуємо `v-validate`.
+
+Тут ми визначаємо, який вхід приймає елемент керування.
+
+`required` означає, що поле форми обов'язкове.
+
+`regex` означає, що ми підтверджуємо заданий регулярний вираз.
+
+Це дозволяє власну перевірку форми, коли немає вбудованих правил для Vee-Validate або коли вам потрібно перевірити поле по-іншому, залежно від значення іншого поля.
+
+Наприклад, для телефонного номера у нас є така функція:
+
+[source,js]
+----
+getPhoneRegex() {
+  if (["United States", "Canada"].includes(this.contact.country)){
+    return /^[2-9]\d{2}[2-9]\d{2}\d{4}$/;
+  }
+  return /./;
+}
+----
+
+Це дозволяє нам перевірити номер, щоб побачити, чи він відповідає північноамериканському телефонному формату, коли ми входимо до США чи Канади. Інакше ми дозволяємо людям входити все, що вони хочуть.
+
+Аналогічно для поштового індексу ми маємо:
+
+[source,js]
+----
+getPostalCodeRegex() {
+  if (this.contact.country == "United States") {
+    return /^[0-9]{5}(?:-[0-9]{4})?$/;
+  } else if (this.contact.country == "Canada") {
+    return /^[A-Za-z]\d[A-Za-z][ -]?\d[A-Za-z]\d$/;
+  }
+  return /./;
+}
+----
+
+
+Це дозволяє перевірити наявність поштових індексів США та Канади.
+
+Щоб відобразити помилки, ми можемо перевірити, чи існують помилки для форми форми, а потім відобразити їх. Наприклад, для імені ми маємо:
+
+[source,html]
+----
+<span class="md-error" v-if="errors.has('firstName')">First Name is required.</span>
+----
+
+`errors.has(‘firstName’)` перевіряє, чи відповідає поле ім'я вказаним критеріям перевірки. Оскільки ми перевіряємо, чи вона заповнена, існує лише одна можлива помилка, тож ми можемо відобразити єдину помилку, коли `errors.has(‘firstName’)` повертає `true`.
+
+Для чогось більш складного, як номер телефону, ми маємо:
+
+[source,html]
+----
+<span class="md-error" v-if="errors.firstByRule('phone', 'required')">Phone is required.</span>
+<span class="md-error" v-if="errors.firstByRule('phone', 'regex')">Phone is invalid.</span>
+----
+
+Це дозволяє перевірити кожне правило перевірки окремо. У полі номера телефону ми маємо перевірити, чи воно заповнене та чи має має правильний формат. Функція `error.firstByRule` дозволяє нам це робити.
+
+`errors.firstByRule(‘phone’, ‘required’)` повертає `true`, якщо поле не заповнене, або `false`.
+
+`errors.firstByRule(‘phone’, ‘regex’)` повертає `true`, якщо формат номера телефону заповнений неправильно, в іншому випадку `false`.
+
+Vee-Validate надає вашому компоненту об'єкт `this.fields`. Тож ми можемо перевірити, чи поля брудні, тобто маніпулювали ними чи ні, додавши:
+
+[source,js]
+----
+Object.keys(this.fields).some(key => this.fields[key].dirty)
+----
+
+Кожна властивість - це поле форми, і кожна властивість `this.fields` має властивість `dirty`, тому ми можемо перевірити, чи полями маніпулюють чи ні.
+
+У функції збереження об'єкта методів ми маємо:
+
+[source,js]
+----
+async save(evt) {
+  evt.preventDefault();
+  try {
+    const result = await this.$validator.validateAll();
+    if (!result) {
+      return;
+    }
+    if (this.editing) {
+      await this.updateContact(this.contact, this.contactId);
+      await this.getAllContacts();
+      this.$emit("contactSaved");
+    } else {
+      await this.addContact(this.contact);
+      await this.getAllContacts();
+      this.$router.push("/");
+    }
+  } catch (ex) {
+    console.log(ex);
+  }
+},
+----
+
+Нам потрібен `evt.preventDefault()`, щоб зупинити подання форми у звичайний спосіб, тобто без виклику коду Ajax нижче.
+
+`this.$validator.validateAll()` перевіряє форму.
+
+`this.$validator` - це об'єкт, наданий Vee-Validate.
+
+Він повертає обіцянку, тому нам потрібна функція `async`, і нам потрібно чекати перед викликом функції.
+
+Якщо результат хибний, перевірка форми не вдалася, тому ми запускаємо `return`, щоб зупинити виконання решти функції. Нарешті, якщо всі поля форми дійсні, ми можемо надіслати результат. Оскільки ця форма використовується як для додавання, так і для редагування контактів, ми повинні перевірити, які дії ми робимо. Якщо ми редагуємо, то ми викликаємо `await this.updateContact(this.contact);` щоб оновити наш контакт. В іншому випадку ми додаємо контакт, тому ми викликаємо `await this.updateContact(this.contact);`
+
+У будь-якому випадку ми викликаємо `await this.getAllContacts();` щоб оновити наші контакти та розмістити їх у сховищі. Якщо ми додаємо, то в кінці ми переспрямовуємо на головну сторінку, викликаючи  `this.$router.push(“/”);`. `this.updateContact`, `this.addContact`, та `this.getAllContacts` - це все з нашого `contactMixin`, який ми незабаром напишемо.
+
+Далі ми пишемо якийсь помічник коду.
+
+Створіть папку під назвою `helpers` та створіть у ній файл під назвою `export.js` - поставте наступне:
+
+[source,js]
+----
+export const COUNTRIES = [
+    { "name": "Afghanistan", "code": "AF" },
+    { "name": "Aland Islands", "code": "AX" },
+    { "name": "Albania", "code": "AL" },
+    { "name": "Algeria", "code": "DZ" },
+    { "name": "American Samoa", "code": "AS" },
+    { "name": "AndorrA", "code": "AD" },
+    { "name": "Angola", "code": "AO" },
+    { "name": "Anguilla", "code": "AI" },
+    { "name": "Antarctica", "code": "AQ" },
+    { "name": "Antigua and Barbuda", "code": "AG" },
+    { "name": "Argentina", "code": "AR" },
+    { "name": "Armenia", "code": "AM" },
+    { "name": "Aruba", "code": "AW" },
+    { "name": "Australia", "code": "AU" },
+    { "name": "Austria", "code": "AT" },
+    { "name": "Azerbaijan", "code": "AZ" },
+    { "name": "Bahamas", "code": "BS" },
+    { "name": "Bahrain", "code": "BH" },
+    { "name": "Bangladesh", "code": "BD" },
+    { "name": "Barbados", "code": "BB" },
+    { "name": "Belarus", "code": "BY" },
+    { "name": "Belgium", "code": "BE" },
+    { "name": "Belize", "code": "BZ" },
+    { "name": "Benin", "code": "BJ" },
+    { "name": "Bermuda", "code": "BM" },
+    { "name": "Bhutan", "code": "BT" },
+    { "name": "Bolivia", "code": "BO" },
+    { "name": "Bosnia and Herzegovina", "code": "BA" },
+    { "name": "Botswana", "code": "BW" },
+    { "name": "Bouvet Island", "code": "BV" },
+    { "name": "Brazil", "code": "BR" },
+    { "name": "British Indian Ocean Territory", "code": "IO" },
+    { "name": "Brunei Darussalam", "code": "BN" },
+    { "name": "Bulgaria", "code": "BG" },
+    { "name": "Burkina Faso", "code": "BF" },
+    { "name": "Burundi", "code": "BI" },
+    { "name": "Cambodia", "code": "KH" },
+    { "name": "Cameroon", "code": "CM" },
+    { "name": "Canada", "code": "CA" },
+    { "name": "Cape Verde", "code": "CV" },
+    { "name": "Cayman Islands", "code": "KY" },
+    { "name": "Central African Republic", "code": "CF" },
+    { "name": "Chad", "code": "TD" },
+    { "name": "Chile", "code": "CL" },
+    { "name": "China", "code": "CN" },
+    { "name": "Christmas Island", "code": "CX" },
+    { "name": "Cocos (Keeling) Islands", "code": "CC" },
+    { "name": "Colombia", "code": "CO" },
+    { "name": "Comoros", "code": "KM" },
+    { "name": "Congo", "code": "CG" },
+    { "name": "Congo, The Democratic Republic of the", "code": "CD" },
+    { "name": "Cook Islands", "code": "CK" },
+    { "name": "Costa Rica", "code": "CR" },
+    {
+        "name": "Cote D\"Ivoire", "code": "CI"
+    },
+    { "name": "Croatia", "code": "HR" },
+    { "name": "Cuba", "code": "CU" },
+    { "name": "Cyprus", "code": "CY" },
+    { "name": "Czech Republic", "code": "CZ" },
+    { "name": "Denmark", "code": "DK" },
+    { "name": "Djibouti", "code": "DJ" },
+    { "name": "Dominica", "code": "DM" },
+    { "name": "Dominican Republic", "code": "DO" },
+    { "name": "Ecuador", "code": "EC" },
+    { "name": "Egypt", "code": "EG" },
+    { "name": "El Salvador", "code": "SV" },
+    { "name": "Equatorial Guinea", "code": "GQ" },
+    { "name": "Eritrea", "code": "ER" },
+    { "name": "Estonia", "code": "EE" },
+    { "name": "Ethiopia", "code": "ET" },
+    { "name": "Falkland Islands (Malvinas)", "code": "FK" },
+    { "name": "Faroe Islands", "code": "FO" },
+    { "name": "Fiji", "code": "FJ" },
+    { "name": "Finland", "code": "FI" },
+    { "name": "France", "code": "FR" },
+    { "name": "French Guiana", "code": "GF" },
+    { "name": "French Polynesia", "code": "PF" },
+    { "name": "French Southern Territories", "code": "TF" },
+    { "name": "Gabon", "code": "GA" },
+    { "name": "Gambia", "code": "GM" },
+    { "name": "Georgia", "code": "GE" },
+    { "name": "Germany", "code": "DE" },
+    { "name": "Ghana", "code": "GH" },
+    { "name": "Gibraltar", "code": "GI" },
+    { "name": "Greece", "code": "GR" },
+    { "name": "Greenland", "code": "GL" },
+    { "name": "Grenada", "code": "GD" },
+    { "name": "Guadeloupe", "code": "GP" },
+    { "name": "Guam", "code": "GU" },
+    { "name": "Guatemala", "code": "GT" },
+    { "name": "Guernsey", "code": "GG" },
+    { "name": "Guinea", "code": "GN" },
+    { "name": "Guinea-Bissau", "code": "GW" },
+    { "name": "Guyana", "code": "GY" },
+    { "name": "Haiti", "code": "HT" },
+    { "name": "Heard Island and Mcdonald Islands", "code": "HM" },
+    { "name": "Holy See (Vatican City State)", "code": "VA" },
+    { "name": "Honduras", "code": "HN" },
+    { "name": "Hong Kong", "code": "HK" },
+    { "name": "Hungary", "code": "HU" },
+    { "name": "Iceland", "code": "IS" },
+    { "name": "India", "code": "IN" },
+    { "name": "Indonesia", "code": "ID" },
+    { "name": "Iran, Islamic Republic Of", "code": "IR" },
+    { "name": "Iraq", "code": "IQ" },
+    { "name": "Ireland", "code": "IE" },
+    { "name": "Isle of Man", "code": "IM" },
+    { "name": "Israel", "code": "IL" },
+    { "name": "Italy", "code": "IT" },
+    { "name": "Jamaica", "code": "JM" },
+    { "name": "Japan", "code": "JP" },
+    { "name": "Jersey", "code": "JE" },
+    { "name": "Jordan", "code": "JO" },
+    { "name": "Kazakhstan", "code": "KZ" },
+    { "name": "Kenya", "code": "KE" },
+    { "name": "Kiribati", "code": "KI" },
+    {
+        "name": "Korea, Democratic People\"S Republic of", "code": "KP"
+    },
+    { "name": "Korea, Republic of", "code": "KR" },
+    { "name": "Kuwait", "code": "KW" },
+    { "name": "Kyrgyzstan", "code": "KG" },
+    {
+        "name": "Lao People\"S Democratic Republic", "code": "LA"
+    },
+    { "name": "Latvia", "code": "LV" },
+    { "name": "Lebanon", "code": "LB" },
+    { "name": "Lesotho", "code": "LS" },
+    { "name": "Liberia", "code": "LR" },
+    { "name": "Libyan Arab Jamahiriya", "code": "LY" },
+    { "name": "Liechtenstein", "code": "LI" },
+    { "name": "Lithuania", "code": "LT" },
+    { "name": "Luxembourg", "code": "LU" },
+    { "name": "Macao", "code": "MO" },
+    { "name": "Macedonia, The Former Yugoslav Republic of", "code": "MK" },
+    { "name": "Madagascar", "code": "MG" },
+    { "name": "Malawi", "code": "MW" },
+    { "name": "Malaysia", "code": "MY" },
+    { "name": "Maldives", "code": "MV" },
+    { "name": "Mali", "code": "ML" },
+    { "name": "Malta", "code": "MT" },
+    { "name": "Marshall Islands", "code": "MH" },
+    { "name": "Martinique", "code": "MQ" },
+    { "name": "Mauritania", "code": "MR" },
+    { "name": "Mauritius", "code": "MU" },
+    { "name": "Mayotte", "code": "YT" },
+    { "name": "Mexico", "code": "MX" },
+    { "name": "Micronesia, Federated States of", "code": "FM" },
+    { "name": "Moldova, Republic of", "code": "MD" },
+    { "name": "Monaco", "code": "MC" },
+    { "name": "Mongolia", "code": "MN" },
+    { "name": "Montenegro", "code": "ME" },
+    { "name": "Montserrat", "code": "MS" },
+    { "name": "Morocco", "code": "MA" },
+    { "name": "Mozambique", "code": "MZ" },
+    { "name": "Myanmar", "code": "MM" },
+    { "name": "Namibia", "code": "NA" },
+    { "name": "Nauru", "code": "NR" },
+    { "name": "Nepal", "code": "NP" },
+    { "name": "Netherlands", "code": "NL" },
+    { "name": "Netherlands Antilles", "code": "AN" },
+    { "name": "New Caledonia", "code": "NC" },
+    { "name": "New Zealand", "code": "NZ" },
+    { "name": "Nicaragua", "code": "NI" },
+    { "name": "Niger", "code": "NE" },
+    { "name": "Nigeria", "code": "NG" },
+    { "name": "Niue", "code": "NU" },
+    { "name": "Norfolk Island", "code": "NF" },
+    { "name": "Northern Mariana Islands", "code": "MP" },
+    { "name": "Norway", "code": "NO" },
+    { "name": "Oman", "code": "OM" },
+    { "name": "Pakistan", "code": "PK" },
+    { "name": "Palau", "code": "PW" },
+    { "name": "Palestinian Territory, Occupied", "code": "PS" },
+    { "name": "Panama", "code": "PA" },
+    { "name": "Papua New Guinea", "code": "PG" },
+    { "name": "Paraguay", "code": "PY" },
+    { "name": "Peru", "code": "PE" },
+    { "name": "Philippines", "code": "PH" },
+    { "name": "Pitcairn", "code": "PN" },
+    { "name": "Poland", "code": "PL" },
+    { "name": "Portugal", "code": "PT" },
+    { "name": "Puerto Rico", "code": "PR" },
+    { "name": "Qatar", "code": "QA" },
+    { "name": "Reunion", "code": "RE" },
+    { "name": "Romania", "code": "RO" },
+    { "name": "Russian Federation", "code": "RU" },
+    { "name": "RWANDA", "code": "RW" },
+    { "name": "Saint Helena", "code": "SH" },
+    { "name": "Saint Kitts and Nevis", "code": "KN" },
+    { "name": "Saint Lucia", "code": "LC" },
+    { "name": "Saint Pierre and Miquelon", "code": "PM" },
+    { "name": "Saint Vincent and the Grenadines", "code": "VC" },
+    { "name": "Samoa", "code": "WS" },
+    { "name": "San Marino", "code": "SM" },
+    { "name": "Sao Tome and Principe", "code": "ST" },
+    { "name": "Saudi Arabia", "code": "SA" },
+    { "name": "Senegal", "code": "SN" },
+    { "name": "Serbia", "code": "RS" },
+    { "name": "Seychelles", "code": "SC" },
+    { "name": "Sierra Leone", "code": "SL" },
+    { "name": "Singapore", "code": "SG" },
+    { "name": "Slovakia", "code": "SK" },
+    { "name": "Slovenia", "code": "SI" },
+    { "name": "Solomon Islands", "code": "SB" },
+    { "name": "Somalia", "code": "SO" },
+    { "name": "South Africa", "code": "ZA" },
+    { "name": "South Georgia and the South Sandwich Islands", "code": "GS" },
+    { "name": "Spain", "code": "ES" },
+    { "name": "Sri Lanka", "code": "LK" },
+    { "name": "Sudan", "code": "SD" },
+    { "name": "Suriname", "code": "SR" },
+    { "name": "Svalbard and Jan Mayen", "code": "SJ" },
+    { "name": "Swaziland", "code": "SZ" },
+    { "name": "Sweden", "code": "SE" },
+    { "name": "Switzerland", "code": "CH" },
+    { "name": "Syrian Arab Republic", "code": "SY" },
+    { "name": "Taiwan, Province of China", "code": "TW" },
+    { "name": "Tajikistan", "code": "TJ" },
+    { "name": "Tanzania, United Republic of", "code": "TZ" },
+    { "name": "Thailand", "code": "TH" },
+    { "name": "Timor-Leste", "code": "TL" },
+    { "name": "Togo", "code": "TG" },
+    { "name": "Tokelau", "code": "TK" },
+    { "name": "Tonga", "code": "TO" },
+    { "name": "Trinidad and Tobago", "code": "TT" },
+    { "name": "Tunisia", "code": "TN" },
+    { "name": "Turkey", "code": "TR" },
+    { "name": "Turkmenistan", "code": "TM" },
+    { "name": "Turks and Caicos Islands", "code": "TC" },
+    { "name": "Tuvalu", "code": "TV" },
+    { "name": "Uganda", "code": "UG" },
+    { "name": "Ukraine", "code": "UA" },
+    { "name": "United Arab Emirates", "code": "AE" },
+    { "name": "United Kingdom", "code": "GB" },
+    { "name": "United States", "code": "US" },
+    { "name": "United States Minor Outlying Islands", "code": "UM" },
+    { "name": "Uruguay", "code": "UY" },
+    { "name": "Uzbekistan", "code": "UZ" },
+    { "name": "Vanuatu", "code": "VU" },
+    { "name": "Venezuela", "code": "VE" },
+    { "name": "Viet Nam", "code": "VN" },
+    { "name": "Virgin Islands, British", "code": "VG" },
+    { "name": "Virgin Islands, U.S.", "code": "VI" },
+    { "name": "Wallis and Futuna", "code": "WF" },
+    { "name": "Western Sahara", "code": "EH" },
+    { "name": "Yemen", "code": "YE" },
+    { "name": "Zambia", "code": "ZM" },
+    { "name": "Zimbabwe", "code": "ZW" }
+]
+----
+
+Це перелік країн, на які ми посилаємось у `ContactForm.vue`.
+
+Далі ми додаємо наш міксин, щоб маніпулювати нашими контактами, спілкуючись із нашим задньою частиною. Ми робимо `mixins` для виклику папки і створюємо в ній файл, який називається `contactMixin.js`.
+
+У файл ми поміщаємо:
+
+[source,js]
+----
+const axios = require('axios');
+const apiUrl = 'http://localhost:3000';
+
+export const contactMixin = {
+    methods: {
+        getContacts() {
+            return axios.get(`${apiUrl}/contacts`);
+        },        addContact(data) {
+            return axios.post(`${apiUrl}/contacts`, data);
+        },        updateContact(data, id) {
+            return axios.put(`${apiUrl}/contacts/${id}`, data);
+        },        deleteContact(id) {
+            return axios.delete(`${apiUrl}/contacts/${id}`);
+        }
+    }
+}
+----
+
+
+Це дозволить нам включити наші функції в об'єкт `methods` об'єкта компонента, до якого ми включаємо або змішуємо, помістивши його в масив `mixins` нашого компонентного об'єкта.
+
+Потім ми додаємо наші сторінки. Для цього створіть папку `views`, якщо вона ще не існує, і додайте `ContactFormPage.vue`.
+
+Туди покладіть:
+
+[source,js]
+----
+<template>
+  <div class="about">
+    <ContactForm :edit="false" />
+  </div>
+</template>
+<script>
+// @ is an alias to /src
+import ContactForm from "@/components/ContactForm.vue";
+export default {
+  name: "ContactFormPage",
+  components: {
+    ContactForm
+  }
+};
+</script>
+----
+
+Це просто відображає створений нами компонент `ContactForm`. Ми встановимо `:edit` як `false`, щоб вона додала наш контакт замість редагування.
+
+Далі ми додаємо нашу домашню сторінку для відображення списку контактів. У папку переглядів ми додаємо файл під назвою `Home.vue`, якщо він ще не існує. Туди ми поклали:
+
+[source,js]
+----
+<template>
+  <div class="home">
+    <div class="center">
+      <h1>Address Book Home</h1>
+    </div>
+    <md-table>
+      <md-table-row>
+        <md-table-head md-numeric>ID</md-table-head>
+        <md-table-head>First Name</md-table-head>
+        <md-table-head>Last Name</md-table-head>
+        <md-table-head>Address Line 1</md-table-head>
+        <md-table-head>Address Line 2</md-table-head>
+        <md-table-head>City</md-table-head>
+        <md-table-head>Country</md-table-head>
+        <md-table-head>Postal Code</md-table-head>
+        <md-table-head>Gender</md-table-head>
+        <md-table-head>Age</md-table-head>
+        <md-table-head>Email</md-table-head>
+        <md-table-head></md-table-head>
+        <md-table-head></md-table-head>
+      </md-table-row><md-table-row v-for="c in contacts" :key="c.id">
+        <md-table-cell md-numeric>{{c.id}}</md-table-cell>
+        <md-table-cell>{{c.firstName}}</md-table-cell>
+        <md-table-cell>{{c.lastName}}</md-table-cell>
+        <md-table-cell>{{c.addressLineOne}}</md-table-cell>
+        <md-table-cell>{{c.addressLineTwo}}</md-table-cell>
+        <md-table-cell>{{c.city}}</md-table-cell>
+        <md-table-cell>{{c.country}}</md-table-cell>
+        <md-table-cell>{{c.postalCode}}</md-table-cell>
+        <md-table-cell>{{c.gender}}</md-table-cell>
+        <md-table-cell md-numeric>{{c.age}}</md-table-cell>
+        <md-table-cell>{{c.email}}</md-table-cell>
+        <md-table-cell>
+          <md-button class="md-primary" @click="selectedContactId = c.id; showDialog = true">Edit</md-button>
+        </md-table-cell>
+        <md-table-cell>
+          <md-button class="md-accent" @click="removeContact(c.id)">Delete</md-button>
+        </md-table-cell>
+      </md-table-row>
+    </md-table><md-dialog :md-active.sync="showDialog">
+      <md-dialog-content>
+        <ContactForm
+          :editing="true"
+          :contactId="selectedContactId"
+          @contactSaved="selectedContactId = undefined; showDialog = false"
+        />
+      </md-dialog-content>
+    </md-dialog>
+  </div>
+</template><script>
+import { contactMixin } from "@/mixins/contactMixin";
+import ContactForm from "@/components/ContactForm.vue";export default {
+  name: "HomePage",
+  mixins: [contactMixin],
+  components: {
+    ContactForm
+  },
+  props: {
+    editing: Boolean,
+    id: Number
+  },
+  computed: {
+    contacts() {
+      return this.$store.state.contacts;
+    }
+  },
+  data() {
+    return {
+      showDialog: false,
+      selectedContactId: undefined
+    };
+  },  beforeMount() {
+    this.getAllContacts();
+  },  methods: {
+    async getAllContacts() {
+      try {
+        const response = await this.getContacts();
+        this.$store.commit("setContacts", response.data);
+      } catch (ex) {
+        console.log(ex);
+      }
+    },    async removeContact(id) {
+      try {
+        await this.deleteContact(id);
+        await this.getAllContacts();
+      } catch (ex) {
+        console.log(ex);
+      }
+    }
+  }
+};
+</script><style scoped>
+.md-dialog-container {
+  padding: 20px;
+}.md-content.md-table.md-theme-default {
+  width: 95%;
+  margin: 0 auto;
+}
+</style>
+----
+
+Ми отримуємо наші контакти під час завантаження сторінки, викликаючи функцію `this.getAllContacts` у функції `beforeMount`. Зверніть увагу, що ми маємо функцію `this.getContacts` від нашого міксину. Міксіни дозволяють нам повторно використовувати код.
+
+Код в нашому mixinx не може мати те саме ім'я, що і функції в об'єктах наших методів в наших компонентах, оскільки функції mixin з'єднуються прямо в наші методи, оскільки ми експортували об'єкт з полями методів у наш код Mixin.
+
+У `App.vue` ми додаємо меню та верхню панель, додаючи наступне:
+
+[source,js]
+----
+<template>
+  <div id="app">
+    <md-toolbar class="md-accent">
+      <md-button class="md-icon-button" @click="showNavigation = true">
+        <md-icon>menu</md-icon>
+      </md-button>
+      <h3 class="md-title">Vee Validate Address Book App</h3>
+    </md-toolbar>
+    <md-drawer :md-active.sync="showNavigation" md-swipeable>
+      <md-toolbar class="md-transparent" md-elevation="0">
+        <span class="md-title">Vee Validate Address Book App</span>
+      </md-toolbar><md-list>
+        <md-list-item>
+          <router-link to="/">
+            <span class="md-list-item-text">Home</span>
+          </router-link>
+        </md-list-item><md-list-item>
+          <router-link to="/contact">
+            <span class="md-list-item-text">Add Contact</span>
+          </router-link>
+        </md-list-item>
+      </md-list>
+    </md-drawer><router-view />
+  </div>
+</template><script>
+export default {
+  name: "app",
+  data: () => {
+    return {
+      showNavigation: false
+    };
+  }
+};
+</script><style lang="scss">
+.center {
+  text-align: center;
+}
+</style>
+----
+
+У `main.js` ми додаємо код, щоб включити Vue Material і Vee-Validate у наш додаток:
+
+[source,js]
+----
+import Vue from 'vue'
+import App from './App.vue'
+import router from './router'
+import store from './store'
+import VueMaterial from 'vue-material'
+import 'vue-material/dist/vue-material.min.css'
+import VeeValidate from 'vee-validate';
+
+Vue.use(VeeValidate);
+Vue.use(VueMaterial);Vue.config.productionTip = falsenew Vue({
+  router,
+  store,
+  render: h => h(App)
+}).$mount('#app')
+----
+
+У `router.js` ми додаємо наші маршрути, щоб ми могли бачити наші сторінки:
+
+[source,js]
+----
+import Vue from 'vue'
+import Router from 'vue-router'
+import HomePage from './views/HomePage.vue'
+import ContactFormPage from './views/ContactFormPage.vue'
+
+Vue.use(Router)
+
+export default new Router({
+  mode: 'history',
+  base: process.env.BASE_URL,
+  routes: [
+    {
+      path: '/',
+      name: 'home',
+      component: HomePage
+    },
+    {
+      path: '/contact',
+      name: 'contact',
+      component: ContactFormPage
+    }
+  ]
+})
+----
+
+У `store.js` ми ставимо:
+
+[source,js]
+----
+import Vue from 'vue'
+import Vuex from 'vuex'
+
+Vue.use(Vuex)
+
+export default new Vuex.Store({
+  state: {
+    contacts: []
+  },
+  mutations: {
+    setContacts(state, payload) {
+      state.contacts = payload;
+    }
+  },
+  actions: {}
+})
+----
+
+щоб зберігати наш контакт у місці, де всі компоненти можуть отримати доступ. У сховищі використовується бібліотека Vuex, щоб у нас був цей об'єкт `this.$store`, щоб викликати мутації через функцію `this.$store.commit` і отримувати останні дані зі сховища через очислювану властивість нашого об'єкта компонента:
+
+[source,js]
+----
+contacts() {
+  return this.$store.state.contacts;
+}
+----
+
+Нарешті, в `index.html`, ми ставимо:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html lang="en"><head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="icon" href="<%= BASE_URL %>favicon.ico">
+  <link rel="stylesheet" href="//fonts.googleapis.com/css?family=Roboto:400,500,700,400italic|Material+Icons">
+  <link rel="stylesheet" href="https://unpkg.com/vue-material/dist/vue-material.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/vue-material/dist/theme/default.css">
+  <title>Address Book App</title>
+</head><body>
+  <noscript>
+    <strong>We're sorry but vee-validate-tutorial-app doesn't work properly without JavaScript enabled. Please enable it
+      to continue.</strong>
+  </noscript>
+  <div id="app"></div>
+  <!-- built files will be auto injected -->
+</body></html>
+----
+
+щоб додати шрифт Roboto та Material icons до нашого додатку.
+
+Тепер ми готові запустити наш сервер JSON. Перейдіть до нашої папки проекту та запустіть `json-server -w db.json`, щоб запустити сервер. Це дозволить нам викликати ці маршрути без будь-якої конфігурації:
+
+----
+
+GET    /contacts
+POST   /contacts
+PUT    /contacts/1
+DELETE /contacts/1
+----
+
+Це всі потрібні нам маршрути. Дані будуть збережені у `db.json` папки, в якій ми перебуваємо, яка повинна бути папкою проекту нашої програми.
+
+Нарешті, ми маємо наступне:

@@ -1,0 +1,162 @@
+include::headers.adoc[]
+
+== VueJS PWA та IndexedDB
+
+https://medium.com/@mario.brendel1990/vuejs-pwa-and-indexeddb-74e6b9699cef[Mario Brendel]
+Feb 7, 2019 · 6 min read
+
+image::nbook.jpeg[]
+Тож у своєму останньому записі в блозі я розповідав про те, як можна створити pwa за допомогою плагіна vue-pwa і на що слід звернути увагу. Тепер ми додамо indexedDb до нашого середовища, щоб ми могли подати результати з кешу, якщо будь-який запит не вдасться.
+
+=== Ініціалізуємо indexedDB
+
+Спочатку я рекомендую вам встановити невелику бібліотеку під назвою idb.
+
+[source,bash]
+----
+npm install idb
+----
+
+Оскільки ця бібліотека працює з обіцянками і огортає IDBRequest, я можу лише рекомендувати її використовувати. Але звичайно ви все ще можете використовувати indexedDB, наданий браузерами.
+
+Потім ви створюєте файл під назвою `schemasync.js`
+
+[source,js]
+----
+import {openDb} from 'idb';
+
+export const SchemaSyncHandler = {
+    sync() {
+        openDb('VueApp', 1, upgradeDB => {
+            upgradeDB.createObjectStore('todos', {keyPath: 'id'});
+        });
+    }
+};
+----
+
+і ви вбудовуєте його у свій `main.js`
+
+[source,js]
+----
+import {SchemaSyncHandler} from './components/db/schemasync';
+
+SchemaSyncHandler.sync();
+----
+
+Таким чином ви гарантуєте, що indexedDb завжди буде оновлений після оновлення програми користувачем.
+
+Отже, що насправді робить операція `sync()`? Вона намагається забезпечити, щоб майбутні запити до вашої бази даних вже інстанціювали таблиці. Крім того, ви надаєте вашій базі номер версії, і синхронізація схеми буде застосована лише в тому випадку, коли версія зростає. Таким чином ви маєте чіткий контроль над таблицями, стовпцями, індексами тощо за версією.
+
+Ініціалізуйте PWA
+
+If you are interested in this topic please check out my latest blog entry. I won’t go into detail how to setup PWA in this article.
+Combine PWA with IndexedDB
+
+So the fun part begins. As you’ve seen in my last blog entry the google workbox provides a couple of cache strategies out of the box. We won’t use them here since these strategies heavily rely on the api cache and since we want to use the indexedDB there is no place for them.
+
+So how can we still achieve caching with our indexedDb? For that we take a look at the workbox routing diagram
+Source: https://developers.google.com/web/tools/workbox/modules/workbox-routing
+
+As we can see if we have a route matched but there was no handler we have the possiblity to react with a fetch listener. To accomplish this we add these lines to our service-worker.js
+
+self.__precacheManifest = [].concat(self.__precacheManifest || []);
+workbox.precaching.suppressWarnings();
+workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
+
+workbox.routing.registerRoute('https://jsonplaceholder.typicode.com/todos/1', ({url, event, params}) => {
+    return fetch(event.request)
+        .then(response => {
+            let clonedResponse = response.clone();
+            clonedResponse.json().then( body => {
+                self.idb.openDb('VueApp', 1).then(db => {
+                    db.transaction('todos', "readwrite")
+                      .objectStore('todos').put(body);
+                });
+            });
+            return response;
+        }).catch(err => {
+            return self.idb.openDb('VueApp', 1).then(db => {
+                return db.transaction('todos')
+                         .objectStore('todos').getAll()
+                         .then(values => 
+                           new Response(JSON.stringify(values), 
+                            { "status" : 200 , 
+                            "statusText" : "MyCustomResponse!" }));
+            });
+        });
+});
+
+Ok… wow that is a lot of code for just handling a fetch. But don’t be scared I’ve already added all indexedDb logic you need ;). So lets break down this snippet line by line.
+
+workbox.routing.registerRoute('https://jsonplaceholder.typicode.com/todos/1', ({url, event, params}) => {
+    return fetch(event.request)
+
+Instead of working with cache strategy we explicitly define a fetch for this route. If you look at the picture above you will see that this fetch will be called if no handler was registered. To get more informations about the parameters please look here.
+
+.then(response => {
+            let clonedResponse = response.clone();
+            clonedResponse.json().then( body => {
+                self.idb.openDb('VueApp', 1).then(db => {
+                    db.transaction('todos', "readwrite")
+                      .objectStore('todos').put(body);
+                });
+            });
+            return response;
+        })
+
+Afterwards we handle the sucess event of the fetch. In this case we want to store the response within our indexedDB. To achieve we first clone the response since you can only read once from the response stream and later uses of the response object would fail. Now we try to get the body informations of the response (the actual data) and store them within the indexedDb via a put (also adds if no entry was found). Lets look a little bit closer at this:
+
+self.idb.openDb('VueApp', 1).then(db => {
+                    db.transaction('todos', "readwrite")
+                      .objectStore('todos').put(body);
+                });
+
+As you can see I use a variable called self. I’ll get to that in a minute — but before that I like to talk about the actual put. As you can see I still use the idb library. The idb library itself works with promises and lets us create a transaction which is in the “readwrite” mode to actually store values. The put function then searches for the defined keyPath (id of our requested object) and stores the response body in the indexedDb if it wasn’t found.
+
+Our catch block now tries to serve the response body if the network isn’t available.
+
+.catch(err => {
+            return self.idb.openDb('VueApp', 1).then(db => {
+                return db.transaction('todos')
+                         .objectStore('todos').getAll()
+                         .then(values => 
+                           new Response(JSON.stringify(values), 
+                            { "status" : 200 , 
+                            "statusText" : "MyCustomResponse!" }));
+            });
+        });
+
+Luckily the catch block takes either a response or a promise as a return value so that we can return our open promise from the indexedDb. As you can see the call itself is actually pretty similar to our ‘then block’. The only difference is that we call the getAll() method on the transaction and wrap the content into a promise.
+
+So there is only one question left. How was I able to use idb within my service-worker. Sadly the service worker won’t be compiled with webpack as you can see here. So there are only 2 options left. Generating the service-worker.js in a seperate project where it then will be compiled with webpack or a little workaround. I’ve decided to use the second choice since it is easier to get going. But I would recommend you to use the first choice for larger projects. So here is how I’ve done it.
+
+At first changed the vue.config.js a little bit
+
+...
+workboxOptions: {
+    swSrc: 'src/service-worker.js',
+    importScripts: ['idb.js']
+}
+...
+
+As you can see I’ve added the importScripts option where I’ve defined that the service worker has to import the idb.js script when compiled. After that I’ve downloaded the idb.js from the github repository and added it to my public directory. This way the idb.js will also be available within my dist directory.
+
+If now the importScripts will be called within the compiled service-worker.js you have access to the idb Object via the self object of the service worker (this is where all imported script objects will be registered).
+
+And thats it — as you see it isn’t that hard to add indexedDb possibilites if you know where to look :).
+Drawbacks of connecting IndexedDb with service worker
+
+To be honest most of the times you should rely on the caches provided by the workbox strategies. You don’t really gain anything by using indexedDb instead of the caches. Furthermore you might introduce unexpected behavior into your app since another developer might see at first that results will be delivered by the indexedDb.
+
+In my opinion you should use the indexedDb for your actual Http requests. i.e.
+
+axios.get("https://jsonplaceholder.typicode.com/todos/1")
+    .then(e => console.log(e))
+    .catch(e => console.log("load indexedDb data here"));
+
+This way it is perfectly clear whats happening if the request fails.
+When it is useful to connect IndexedDb with the service worker
+
+There are still reasons why you might want to use the indexedDb within your service worker. The main reason might be that you have js files from a third party(still under your domain) that are taking requests where you can’t handle the responses. If you now manipulate the responses via the service worker and you can provide data via the indexedDb it is a perfectly good reason to use this approach.
+
+So I hope you have learned a little bit today :).
