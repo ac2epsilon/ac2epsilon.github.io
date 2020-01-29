@@ -1448,4 +1448,171 @@ RSVP.js
     <span class="c1">// на масив обіцянок глави json</span>
     <span class="n">story</span><span class="o">.</span><span class="n">chapterUrls</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">getJSON</span><span class="o">)</span>
   <span class="o">);</span>
-<span class="o">}).
+<span class="o">}).</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">chapters</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// Тепер ми маємо розділи jsons по порядку! Проведіть цикл ...</span>
+  <span class="n">chapters</span><span class="o">.</span><span class="n">forEach</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">chapter</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// і додати на сторінку</span>
+    <span class="n">addHtmlToPage</span><span class="o">(</span><span class="n">chapter</span><span class="o">.</span><span class="n">html</span><span class="o">);</span>
+  <span class="o">});</span>
+  <span class="n">addTextToPage</span><span class="o">(</span><span class="s">&quot;All done&quot;</span><span class="o">);</span>
+<span class="o">}).</span><span class="k">catch</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">err</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// зловити будь-яку помилку, що сталася до цього часу</span>
+  <span class="n">addTextToPage</span><span class="o">(</span><span class="s">&quot;Argh, broken: &quot;</span> <span class="o">+</span> <span class="n">err</span><span class="o">.</span><span class="n">message</span><span class="o">);</span>
+<span class="o">}).</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">()</span> <span class="o">{</span>
+  <span class="n">document</span><span class="o">.</span><span class="n">querySelector</span><span class="o">(</span><span class="err">&#39;</span><span class="o">.</span><span class="n">spinner</span><span class="err">&#39;</span><span class="o">).</span><span class="n">style</span><span class="o">.</span><span class="n">display</span> <span class="k">=</span> <span class=" -Symbol">&#39;none</span><span class="err">&#39;</span><span class="o">;</span>
+<span class="o">})</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Залежно від з'єднання, це може бути на секунду швидше, ніж завантаження по одному (див.код), і це менше коду, ніж наша перша спроба. Глави можуть завантажуватися в будь-якому порядку, але вони відображаються на екрані в потрібному порядку.</p></div>
+<div class="paragraph"><p>Однак ми можемо вдосконалити сприйняті результати. Коли прийде перша глава, ми повинні додати її на сторінку. Це дозволяє користувачеві почати читати до того, як залишилися інші глави. Коли прийде третій розділ, ми не додамо його до сторінки, оскільки користувач може не зрозуміти, що глава 2 відсутня. Коли прийде друга глава, ми можемо додати глави другу і три і т.д. і т.д.</p></div>
+<div class="paragraph"><p>Для цього ми отримуємо JSON одночасно для всіх наших розділів, а потім створюємо послідовність, щоб додати їх до документа:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">getJSON</span><span class="o">(</span><span class=" -Symbol">&#39;story</span><span class="o">.</span><span class="n">json</span><span class="err">&#39;</span><span class="o">).</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">story</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">addHtmlToPage</span><span class="o">(</span><span class="n">story</span><span class="o">.</span><span class="n">heading</span><span class="o">);</span>
+
+<span class="c1">// Мапа нашого масиву URL-адрес глав</span>
+<span class="c1">// на масив обіцянок глав json.</span>
+<span class="c1">// Це гарантує, що всі вони завантажуються паралельно.</span>
+  <span class="k">return</span> <span class="n">story</span><span class="o">.</span><span class="n">chapterUrls</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">getJSON</span><span class="o">)</span>
+    <span class="o">.</span><span class="n">reduce</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">sequence</span><span class="o">,</span> <span class="n">chapterPromise</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// Використовуйте reduce для ланцюга обіцянок разом,</span>
+      <span class="c1">// додавання вмісту до сторінки для кожної глави</span>
+      <span class="k">return</span> <span class="n">sequence</span><span class="o">.</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">()</span> <span class="o">{</span>
+        <span class="c1">// Зачекайте, поки все в послідовності,</span>
+        <span class="c1">// тоді зачекайте, поки ця глава надійде.</span>
+        <span class="k">return</span> <span class="n">chapterPromise</span><span class="o">;</span>
+      <span class="o">}).</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">chapter</span><span class="o">)</span> <span class="o">{</span>
+        <span class="n">addHtmlToPage</span><span class="o">(</span><span class="n">chapter</span><span class="o">.</span><span class="n">html</span><span class="o">);</span>
+      <span class="o">});</span>
+    <span class="o">},</span> <span class="nc">Promise</span><span class="o">.</span><span class="n">resolve</span><span class="o">());</span>
+<span class="o">}).</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">()</span> <span class="o">{</span>
+  <span class="n">addTextToPage</span><span class="o">(</span><span class="s">&quot;All done&quot;</span><span class="o">);</span>
+<span class="o">}).</span><span class="k">catch</span><span class="o">(</span><span class="n">function</span><span class="o">(</span><span class="n">err</span><span class="o">)</span> <span class="o">{</span>
+  <span class="c1">// зловити будь-яку помилку, яка сталася по дорозі</span>
+  <span class="n">addTextToPage</span><span class="o">(</span><span class="s">&quot;Argh, broken: &quot;</span> <span class="o">+</span> <span class="n">err</span><span class="o">.</span><span class="n">message</span><span class="o">);</span>
+<span class="o">}).</span><span class="n">then</span><span class="o">(</span><span class="n">function</span><span class="o">()</span> <span class="o">{</span>
+  <span class="n">document</span><span class="o">.</span><span class="n">querySelector</span><span class="o">(</span><span class="err">&#39;</span><span class="o">.</span><span class="n">spinner</span><span class="err">&#39;</span><span class="o">).</span><span class="n">style</span><span class="o">.</span><span class="n">display</span> <span class="k">=</span> <span class=" -Symbol">&#39;none</span><span class="err">&#39;</span><span class="o">;</span>
+<span class="o">})</span>
+</pre></div></div></div>
+<div class="paragraph"><p>І ми їдемо (див.код), найкраще з обох! Щоб доставити весь вміст, потрібна однакова кількість часу, але користувач швидше отримує перший шматочок вмісту.</p></div>
+<div class="paragraph"><p>У цьому тривіальному прикладі всі глави надходять приблизно в один і той же час, але користь відображення однієї за одною буде збільшена з більшими, більшими главами.</p></div>
+<div class="paragraph"><p>Зробити вищезазначене за допомогою зворотних викликів або подій у стилі Node.js - це приблизно вдвічі більше коду, але що ще важливіше не так просто прослідкувати. Однак, це не є кінцем історії для обіцянок, коли в поєднанні з іншими функціями ES6 вони стають ще простішими.</p></div>
+</div>
+<div class="sect2">
+<h3 id="______2">Бонусний раунд: обіцянки та генератори</h3>
+<div class="paragraph"><p>Цей наступний біт включає цілу купу нових функцій ES6, але це не те, що вам потрібно зрозуміти, щоб використовувати обіцянки у своєму коді сьогодні. Ставтесь до цього як до трейлеру фільму щодо деяких майбутніх функцій блокбастера.</p></div>
+<div class="paragraph"><p>ES6 також дає нам генератори, які дозволяють функціям виходити в певній точці, наприклад "повернутися", але пізніше відновити з тієї ж точки і стану, наприклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">function</span> <span class="o">*</span><span class="n">addGenerator</span><span class="o">()</span> <span class="o">{</span>
+  <span class="k">var</span> <span class="n">i</span> <span class="k">=</span> <span class="mi">0</span><span class="o">;</span>
+  <span class="k">while</span> <span class="o">(</span><span class="kc">true</span><span class="o">)</span> <span class="o">{</span>
+    <span class="n">i</span> <span class="o">+=</span> <span class="k">yield</span> <span class="n">i</span><span class="o">;</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Notice the star before the function name, this makes it a generator. The yield keyword is our return/resume point. We can use it like this:
+Помітьте зірку перед назвою функції, це зробить її генератором. Ключове слово <code>yield</code> - це наша точка повернення / відновлення. Ми можемо використовувати його так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">var</span> <span class="n">adder</span> <span class="k">=</span> <span class="n">addGenerator</span><span class="o">();</span>
+<span class="n">adder</span><span class="o">.</span><span class="n">next</span><span class="o">().</span><span class="n">value</span><span class="o">;</span> <span class="c1">// 0</span>
+<span class="n">adder</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="mi">5</span><span class="o">).</span><span class="n">value</span><span class="o">;</span> <span class="c1">// 5</span>
+<span class="n">adder</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="mi">5</span><span class="o">).</span><span class="n">value</span><span class="o">;</span> <span class="c1">// 10</span>
+<span class="n">adder</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="mi">5</span><span class="o">).</span><span class="n">value</span><span class="o">;</span> <span class="c1">// 15</span>
+<span class="n">adder</span><span class="o">.</span><span class="n">next</span><span class="o">(</span><span class="mi">50</span><span class="o">).</span><span class="n">value</span><span class="o">;</span> <span class="c1">// 65</span>
+</pre></div></div></div>
+<div class="paragraph"><p>But what does this mean for promises? Well, you can use this return/resume behaviour to write async code that looks like (and is as easy to follow as) synchronous code. Don&#8217;t worry too much about understanding it line-for-line, but here&#8217;s a helper function that lets us use yield to wait for promises to settle:
+Але що це означає для обіцянок? Ну, ви можете використовувати цю функцію повернення / відновлення для написання асинхронного коду, який виглядає як синхронний (і його так само просто слідувати). Не надто переживайте про розуміння кожного рядка, але ось функція помічника, яка дозволяє нам використовувати врожай, щоб чекати, коли обіцянки вирішаться:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">function</span> <span class="n">spawn</span><span class="o">(</span><span class="n">generatorFunc</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">function</span> <span class="n">continuer</span><span class="o">(</span><span class="n">verb</span><span class="o">,</span> <span class="n">arg</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">var</span> <span class="n">result</span><span class="o">;</span>
+    <span class="k">try</span> <span class="o">{</span>
+      <span class="n">result</span> <span class="k">=</span> <span class="n">generator</span><span class="o">[</span><span class="kt">verb</span><span class="o">](</span><span class="n">arg</span><span class="o">);</span>
+    <span class="o">}</span> <span class="k">catch</span> <span class="o">(</span><span class="n">err</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="nc">Promise</span><span class="o">.</span><span class="n">reject</span><span class="o">(</span><span class="n">err</span><span class="o">);</span>
+    <span class="o">}</span>
+    <span class="k">if</span> <span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="n">done</span><span class="o">)</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="o">;</span>
+    <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+      <span class="k">return</span> <span class="nc">Promise</span><span class="o">.</span><span class="n">resolve</span><span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="o">).</span><span class="n">then</span><span class="o">(</span><span class="n">onFulfilled</span><span class="o">,</span> <span class="n">onRejected</span><span class="o">);</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+  <span class="k">var</span> <span class="n">generator</span> <span class="k">=</span> <span class="n">generatorFunc</span><span class="o">();</span>
+  <span class="k">var</span> <span class="n">onFulfilled</span> <span class="k">=</span> <span class="n">continuer</span><span class="o">.</span><span class="n">bind</span><span class="o">(</span><span class="n">continuer</span><span class="o">,</span> <span class="s">&quot;next&quot;</span><span class="o">);</span>
+  <span class="k">var</span> <span class="n">onRejected</span> <span class="k">=</span> <span class="n">continuer</span><span class="o">.</span><span class="n">bind</span><span class="o">(</span><span class="n">continuer</span><span class="o">,</span> <span class="s">&quot;throw&quot;</span><span class="o">);</span>
+  <span class="k">return</span> <span class="n">onFulfilled</span><span class="o">();</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="olist lowerroman"><ol class="lowerroman">
+<li>
+<p>
+який я досить сильно підсилив версією дослівного <code>fromQ</code>, але пристосований для обіцянок JavaScript. З цим ми можемо взяти наш останній приклад найкращого випадку, змішати його з вантажем нового добра ES6 і перетворити його на:
+</p>
+</li>
+</ol></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">spawn</span><span class="o">(</span><span class="n">function</span> <span class="o">*()</span> <span class="o">{</span>
+  <span class="k">try</span> <span class="o">{</span>
+    <span class="c1">// &#39;yield&#39; ефективно робить асинхронічне очікування,</span>
+    <span class="c1">// повертаючи  результат обіцянки</span>
+    <span class="n">let</span> <span class="n">story</span> <span class="k">=</span> <span class="k">yield</span> <span class="n">getJSON</span><span class="o">(</span><span class=" -Symbol">&#39;story</span><span class="o">.</span><span class="n">json</span><span class="err">&#39;</span><span class="o">);</span>
+    <span class="n">addHtmlToPage</span><span class="o">(</span><span class="n">story</span><span class="o">.</span><span class="n">heading</span><span class="o">);</span>
+
+    <span class="c1">// Мапа нашого масиву URL-адрес глави</span>
+    <span class="c1">// на масив обіцянок глав json.</span>
+    <span class="c1">// Це гарантує, що всі вони завантажуються паралельно.</span>
+    <span class="n">let</span> <span class="n">chapterPromises</span> <span class="k">=</span> <span class="n">story</span><span class="o">.</span><span class="n">chapterUrls</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">getJSON</span><span class="o">);</span>
+
+    <span class="k">for</span> <span class="o">(</span><span class="n">let</span> <span class="n">chapterPromise</span> <span class="n">of</span> <span class="n">chapterPromises</span><span class="o">)</span> <span class="o">{</span>
+      <span class="c1">// Дочекайтеся готовності кожної глави, а потім додайте її на сторінку</span>
+      <span class="n">let</span> <span class="n">chapter</span> <span class="k">=</span> <span class="k">yield</span> <span class="n">chapterPromise</span><span class="o">;</span>
+      <span class="n">addHtmlToPage</span><span class="o">(</span><span class="n">chapter</span><span class="o">.</span><span class="n">html</span><span class="o">);</span>
+    <span class="o">}</span>
+
+    <span class="n">addTextToPage</span><span class="o">(</span><span class="s">&quot;All done&quot;</span><span class="o">);</span>
+  <span class="o">}</span>
+  <span class="k">catch</span> <span class="o">(</span><span class="n">err</span><span class="o">)</span> <span class="o">{</span>
+    <span class="c1">// try/catch просто працює, сюди кидаються відхилені обіцянки</span>
+    <span class="n">addTextToPage</span><span class="o">(</span><span class="s">&quot;Argh, broken: &quot;</span> <span class="o">+</span> <span class="n">err</span><span class="o">.</span><span class="n">message</span><span class="o">);</span>
+  <span class="o">}</span>
+  <span class="n">document</span><span class="o">.</span><span class="n">querySelector</span><span class="o">(</span><span class="err">&#39;</span><span class="o">.</span><span class="n">spinner</span><span class="err">&#39;</span><span class="o">).</span><span class="n">style</span><span class="o">.</span><span class="n">display</span> <span class="k">=</span> <span class=" -Symbol">&#39;none</span><span class="err">&#39;</span><span class="o">;</span>
+<span class="o">})</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Це працює точно так само, як і раніше, але так набагато простіше читати. Це працює в Chrome і Opera сьогодні (див. Код) і працює в Microsoft Edge, перейшовши до пункту <code>aabout:flags</code> та увімкнувши налаштування <code>Enable experimental JavaScript features</code>. Це буде включено за замовчуванням у наступній версії.</p></div>
+<div class="paragraph"><p>Це об'єднує багато нового ES6: обіцянки, генератори, <code>let</code>, <code>for-of</code>. Коли ми даємо обіцянку, помічник <code>spawn</code> чекає, коли обіцянка вирішиться, і поверне остаточне значення. Якщо обіцянка відхиляється, <code>spawn</code> призводить до того, що наше твердження <code>yield</code> кидає виняток, який ми можемо зловити за допомогою звичайного JavaScript <code>try/catch</code>. Дивовижно просте асинхронне кодування!</p></div>
+<div class="paragraph"><p>Ця модель є настільки корисною, вона надходить до ES7 у вигляді функції <code>async</code>. Це майже так само, як вище, але немає необхідності в методі <code>spawn</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___promise_api">Посилання на Promise API</h3>
+<div class="paragraph"><p>Усі методи працюють у Chrome, Opera, Firefox, Microsoft Edge та Safari, якщо не зазначено інше. Поліфайл надає нижче для всіх браузерів.</p></div>
+<div class="paragraph"><p><code>Promise.resolve(promise);</code>     Повертає обіцянку (лише у випадку, якщо <code>promise.constructor == Promise</code>)
+<code>Promise.resolve(thenable);</code> Робить нову обіцянку від thenable. <code>Thenable</code> є подібне до обіцянок, наскільки воно має метод <code>then()</code>.
+<code>Promise.resolve(obj);</code> Створює обіцянку, яка виконує obj. у цій ситуації.
+<code>Promise.reject(obj);</code> Створює обіцянку, яка відхиляє obj. Для послідовності та налагодження (наприклад, сліди стека), obj повинен бути екземпляром помилки.
+<code>Promise.all(array);</code>   Створює обіцянку, яка виконується, коли кожен елемент масиву виконується, і відхиляє, якщо (і коли) будь-який елемент відхиляє. Кожен елемент масиву передається <code>Promise.resolve</code>, тому масив може бути сумішшю об'єктів, що нагадують обіцянки та інших об'єктів. Значення виконання - це масив (по порядку) значень виконання. Значення відхилення - це перше значення відхилення.
+<code>Promise.race(array);</code> Створює обіцянку, яка виконується, як тільки будь-який елемент виконується, або відхиляє, як тільки будь-який елемент відхиляє, що б не трапилося спочатку. Примітка: я не переконаний у корисності <code>Promise.race</code>; Я вважаю за краще протилежний <code>Promise.all</code>, який відхиляє лише, якщо всі елементи відхиляються.</p></div>
+<div class="paragraph"><p>Конструктор</p></div>
+<div class="paragraph"><p><code>new Promise(function(resolve, reject) {});</code></p></div>
+<div class="paragraph"><p><code>resolve(thenable)</code>
+Ваша обіцянка буде виконана/відхилена з результатом thenable</p></div>
+<div class="paragraph"><p><code>resolve(obj)</code>
+Ваша обіцянка виконується з obj</p></div>
+<div class="paragraph"><p><code>reject(obj)</code>
+Ваша обіцянка відхиляється з <code>obj</code>. Для послідовності та налагодження (наприклад, сліди стека), <code>obj</code> повинен бути екземпляром помилки. Будь-які помилки, викинуті у зворотний виклик конструктора, будуть неявно передані для <code>reject()</code>.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___6">Методи екземпляра</h3>
+<div class="paragraph"><p><code>promise.then(onFulfilled, onRejected)</code> <code>onFulfilled</code> викликається, коли / якщо обіцянка вирішується. <code>onRejected</code> викликається, коли/якщо обіцянка відхиляється. Обидва є необов'язковими, якщо будь-який/обидва опущені, наступний <code>onFulfilled/onRejected</code> у ланцюзі викликається. Обидва зворотні виклики мають один параметр, значення виконання або причину відхилення. <code>then()</code> повертає нову обіцянку, еквівалентну значенню, яке ви повертаєте з програми <code>onFulfilled/onRejected</code> після проходження через <code>Promise.resolve</code>. Якщо в зворотному виклику видано помилку, повернута обіцянка відхиляється з цією помилкою.</p></div>
+<div class="paragraph"><p><code>promis.catch (onRejected)</code> Цукор для <code>promise.then(undefined, onRejected)</code></p></div>
+</div>
+</div>
+</div>
+</div>
+<div id="footnotes"><hr /></div>
+<div id="footer">
+<div id="footer-text">
+Last updated
+ 2020-01-29 03:41:33 EET
+</div>
+</div>
+</body>
+</html>
