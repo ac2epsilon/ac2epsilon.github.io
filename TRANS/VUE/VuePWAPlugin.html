@@ -848,7 +848,7 @@ Feb 6, 2019 · 5 min read</p></div>
 http-server dist -p <span class="m">8081</span> -a localhost
 </pre></div></div></div>
 <div class="paragraph"><p>Якщо зараз відкрити вкладку мережі у веб-переглядачі, ви побачите, що файли js та css завантажуватиме службовий працівник.</p></div>
-<div class="paragraph"><p>Але, можливо, ви не хочете кешувати файли, а лише 1. Спосіб для цього - це налаштувати <code>vue.config.js</code> (розташований у корені проекту). Якщо додати рядки</p></div>
+<div class="paragraph"><p>Але, можливо, ви не хочете кешувати файли, а лише один. Спосіб для цього - це налаштувати <code>vue.config.js</code> (розташований у корені проекту). Якщо додати рядки</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="err">pwa:</span> <span class="p">{</span>
     <span class="err">workboxPluginMode:</span> <span class="err">&#39;InjectManifest&#39;,</span>
@@ -857,55 +857,76 @@ http-server dist -p <span class="m">8081</span> -a localhost
     <span class="p">}</span>
 <span class="err">}</span>
 </pre></div></div></div>
-<div class="paragraph"><p>ви можете створити власний файл <code>service-worker.js</code> у вашому каталозі <code>src</code>. <code>"InjectManifest"</code> гарантує, що <code>precache-manifest.js</code> також буде імпортований у ваш власний файл. Але поки ми лише що завантажимо 1 файл. Додайте це до свого <code>src/service-worker.js</code></p></div>
+<div class="paragraph"><p>ви можете створити власний файл <code>service-worker.js</code> у вашому каталозі <code>src</code>. <code>"InjectManifest"</code> гарантує, що <code>precache-manifest.js</code> також буде імпортований у ваш власний файл. Але поки ми лише що завантажимо один файл. Додайте це до свого <code>src/service-worker.js</code></p></div>
 <div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="err">workbox.precaching.precacheAndRoute(</span><span class="p">[{</span>
-    <span class="nt">&quot;revision&quot;</span><span class="p">:</span> <span class="s2">&quot;17ecfaee522eaf5b3ad9c9aa1b2973cc&quot;</span><span class="p">,</span>
-    <span class="nt">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;/manifest.json&quot;</span>
-<span class="p">}]</span><span class="err">);</span>
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">workbox</span><span class="p">.</span><span class="nx">precaching</span><span class="p">.</span><span class="nx">precacheAndRoute</span><span class="p">([{</span>
+    <span class="s2">&quot;revision&quot;</span><span class="o">:</span> <span class="s2">&quot;17ecfaee522eaf5b3ad9c9aa1b2973cc&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;url&quot;</span><span class="o">:</span> <span class="s2">&quot;/manifest.json&quot;</span>
+<span class="p">}]);</span>
 </pre></div></div></div>
-<div class="paragraph"><p>and now build your project again. Now you might want to unregister your service worker within the application tab within your browsers(chrome) dev tools. Afterwards you refresh the page 2 times and you will see that the manifest will indeed be served by the service worker.</p></div>
-<div class="paragraph"><p>But since the most important files are already precached it might be more useful for you to exclude some files. To achieve this we will at first configure our service-worker.js so that precache-manifest.js will be loaded again. For this add:</p></div>
-<div class="paragraph"><p>self.<em>precacheManifest = [].concat(self.</em>precacheManifest || []);
-workbox.precaching.suppressWarnings();
-workbox.precaching.precacheAndRoute(self.__precacheManifest, {});</p></div>
-<div class="paragraph"><p>to your service-worker.js. Now open your vue.config.js and exclude the files you want:</p></div>
-<div class="paragraph"><p>&#8230;
-workboxOptions: {
-    swSrc: <em>public/service-worker.js</em>,
-    exclude: /\.js$/
-}
-&#8230;</p></div>
-<div class="paragraph"><p>Afterwards you can open your precache-manifest.js within the dist directory and you’ll see that there are no js files anymore. For more options like include etc. see: workbox-options.</p></div>
-<div class="paragraph"><p>If you want to see what files got actually cached you can either look them up within the indexeddb (application tab in browser dev tools) or within the cache storage.
-Configure API Caching</p></div>
-<div class="paragraph"><p>Now that we’ve got our precaching we may want to cache some api calls or even manipulate some api calls. To do this we’ll first create a custom call to an api of your choice that doesn’t have cors restrictions. I’ll use this url:</p></div>
-<div class="paragraph"><p><a href="https://jsonplaceholder.typicode.com/todos/1">https://jsonplaceholder.typicode.com/todos/1</a></p></div>
-<div class="paragraph"><p>To create the request I’ll also use axios — but you can of course use any client you want. My call now looks like this:</p></div>
-<div class="paragraph"><p>axios.get("https://jsonplaceholder.typicode.com/todos/1")
-    .then(e &#8658; console.log(e))
-    .catch(e &#8658; console.log(e));</p></div>
-<div class="paragraph"><p>If you still have the exclude entry for your workbox it might be good to remove this for now. You also might want to use a guest window(user) every time you change something with the service-worker.js</p></div>
-<div class="paragraph"><p>One of the easiest ways to support caching is to use the caching strategies from workbox (if you want to know the difference between the strategies feel free to write me :)). In our example we will use the cache first approach — which means that the cache will be evaluated first and only if the cache is empty the network will be used. To achieve this we’ll add these lines to our service-worker.js</p></div>
-<div class="paragraph"><p>workbox.routing.registerRoute(<em>https://jsonplaceholder.typicode.com/todos/1</em>, workbox.strategies.cacheFirst({
-    cacheName: <em>placeholder-cache</em>,
-}));</p></div>
-<div class="paragraph"><p>Whats happening here is that we say for the given route we want to use the cache first strategy with the cache placeholder-cache. If you now open your browser and refresh 2 times you’ll see this response:</p></div>
-<div class="paragraph"><p>Since Workbox provides really good messages you can see step by step whats happening and if you want to see the response that is used you can look for that within the application tab of your browsers dev tools. There you’ll find a cache with the given name.</p></div>
-<div class="paragraph"><p>But you may want to add your own logic if the network fails. For this you can evaluate the promise of the strategy like this:</p></div>
-<div class="paragraph"><p>const placeholderHandler = workbox.strategies.cacheFirst({
-    cacheName: <em>placeholder-cache</em>,
-});</p></div>
-<div class="paragraph"><p>workbox.routing.registerRoute(<em>https://jsonplaceholder.typicode.com/todos/1</em>, args &#8658; {
-    return placeholderHandler.handle(args).then(response &#8658; {
-        console.log("Online: Fetch was called successful");
-        return response;
-    }).catch(err &#8658; {
-        console.log("no cache data");
-    });
-});</p></div>
-<div class="paragraph"><p>Here you have the possibility to change response values. This will be it for now.</p></div>
-<div class="paragraph"><p>In my next blog entry I’ll go a little bit deeper with workbox and how you can connect it with indexeddb.</p></div>
+<div class="paragraph"><p>і тепер знову побудуйте свій проект. Тепер ви, можливо, захочете скасувати реєстрацію свого сервісного працівника на вкладці програми в межах своїх веб-переглядачів (chrome). Після цього ви двічі оновите сторінку, і ви побачите, що маніфест справді буде обслуговуватись сервісним працівником.</p></div>
+<div class="paragraph"><p>Але оскільки найважливіші файли вже є пре-кешованими, вам може бути корисніше виключити деякі файли. Для цього ми спочатку налаштуємо наш <code>service-worker.js</code> так, щоб <code>precache-manifest.js</code> буде завантажений знову. Для цього додайте:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">self</span><span class="p">.</span><span class="nx">__precacheManifest</span> <span class="o">=</span> <span class="p">[].</span><span class="nx">concat</span><span class="p">(</span><span class="nx">self</span><span class="p">.</span><span class="nx">__precacheManifest</span> <span class="o">||</span> <span class="p">[]);</span>
+<span class="nx">workbox</span><span class="p">.</span><span class="nx">precaching</span><span class="p">.</span><span class="nx">suppressWarnings</span><span class="p">();</span>
+<span class="nx">workbox</span><span class="p">.</span><span class="nx">precaching</span><span class="p">.</span><span class="nx">precacheAndRoute</span><span class="p">(</span><span class="nx">self</span><span class="p">.</span><span class="nx">__precacheManifest</span><span class="p">,</span> <span class="p">{});</span>
+</pre></div></div></div>
+<div class="paragraph"><p>до вашого <code>service-worker.js</code>. Тепер відкрийте свій <code>vue.config.js</code> і виключіть потрібні файли:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="p">...</span>
+<span class="nx">workboxOptions</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">swSrc</span><span class="o">:</span> <span class="s1">&#39;public/service-worker.js&#39;</span><span class="p">,</span>
+    <span class="nx">exclude</span><span class="o">:</span> <span class="sr">/\.js$/</span>
+<span class="p">}</span>
+<span class="p">...</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Після цього ви можете відкрити свій <code>precache-manifest.js</code> в каталозі  <code>dist</code>, і ви побачите, що файлів js більше немає. Про більш детальні варіанти, як <code>include</code> тощо, див. [workbox-options].</p></div>
+<div class="paragraph"><p>Якщо ви хочете побачити, які файли насправді є кешованими, ви можете їх шукати в <code>indexeddb</code> (вкладка програми в інструментах для розробників браузера) або в сховищі кешу.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__api_">Налаштування API кешування</h3>
+<div class="paragraph"><p>Тепер, коли у нас є попереднє кешування, ми можемо захотіти кешувати деякі виклики api або навіть маніпулювати деякими api-викликами. Для цього спершу створимо корвласний виклик до програми на вибір, яка не має CORS обмежень. Я буду використовувати цей URL:</p></div>
+<div class="listingblock">
+<div class="content">
+<pre><code>https://jsonplaceholder.typicode.com/todos/1</code></pre>
+</div></div>
+<div class="paragraph"><p>Для створення запиту я також використаю <code>axios</code>, але ви, звичайно, можете використовувати будь-якого клієнта, якого ви хочете. Зараз мій виклик виглядає так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">axios</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s2">&quot;https://jsonplaceholder.typicode.com/todos/1&quot;</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">e</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">))</span>
+    <span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">));</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо у вас все ще є запис про виключення для вашої робочої скриньки, можливо, було б добре вилучити це. Ви також можете використовувати гостьове вікно (користувача) кожного разу, коли ви щось міняєте за допомогою <code>service-worker.js</code>.</p></div>
+<div class="paragraph"><p>Один із найпростіших способів підтримки кешування - це використання стратегій кешування з <code>workbox</code> (якщо ви хочете знати різницю між стратегіями, пишіть мені :)). У нашому прикладі ми використаємо перший підхід кеша - це означає, що кеш буде оцінено спочатку і лише у тому випадку, якщо кеш порожній, буде використовуватися мережа. Для цього ми додамо ці рядки до нашого <code>service-worker.js</code></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">workbox</span><span class="p">.</span><span class="nx">routing</span><span class="p">.</span><span class="nx">registerRoute</span><span class="p">(</span><span class="s1">&#39;https://jsonplaceholder.typicode.com/todos/1&#39;</span><span class="p">,</span> <span class="nx">workbox</span><span class="p">.</span><span class="nx">strategies</span><span class="p">.</span><span class="nx">cacheFirst</span><span class="p">({</span>
+    <span class="nx">cacheName</span><span class="o">:</span> <span class="s1">&#39;placeholder-cache&#39;</span><span class="p">,</span>
+<span class="p">}));</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Що відбувається тут, це те, що ми кажемо, що для даного маршруту ми хочемо використовувати кеш-стратегію спочатку з кешем <code>placeholder-cache</code>. Якщо зараз відкрити веб-переглядач та оновити його 2 рази, ви побачите цю відповідь:</p></div>
+<div class="imageblock">
+<div class="content">
+<img src="cachedapi.png" alt="cachedapi.png" />
+</div>
+</div>
+<div class="paragraph"><p>Оскільки <code>Workbox</code> надає справді хороші повідомлення, ви можете покроково побачити, що відбувається, і якщо ви хочете побачити відповідь, що використовується, ви можете шукати це на вкладці програми ваших інструментів розробки в браузері. Там ви знайдете кеш із вказаним іменем.</p></div>
+<div class="paragraph"><p>Але ви можете додати свою власну логіку, якщо мережа не працює. Для цього можна оцінити обіцянку стратегії так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="kr">const</span> <span class="nx">placeholderHandler</span> <span class="o">=</span> <span class="nx">workbox</span><span class="p">.</span><span class="nx">strategies</span><span class="p">.</span><span class="nx">cacheFirst</span><span class="p">({</span>
+    <span class="nx">cacheName</span><span class="o">:</span> <span class="s1">&#39;placeholder-cache&#39;</span><span class="p">,</span>
+<span class="p">});</span>
+
+<span class="nx">workbox</span><span class="p">.</span><span class="nx">routing</span><span class="p">.</span><span class="nx">registerRoute</span><span class="p">(</span><span class="s1">&#39;https://jsonplaceholder.typicode.com/todos/1&#39;</span><span class="p">,</span> <span class="nx">args</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">placeholderHandler</span><span class="p">.</span><span class="nx">handle</span><span class="p">(</span><span class="nx">args</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">response</span> <span class="p">=&gt;</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;Online: Fetch was called successful&quot;</span><span class="p">);</span>
+        <span class="k">return</span> <span class="nx">response</span><span class="p">;</span>
+    <span class="p">}).</span><span class="k">catch</span><span class="p">(</span><span class="nx">err</span> <span class="p">=&gt;</span> <span class="p">{</span>
+        <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;no cache data&quot;</span><span class="p">);</span>
+    <span class="p">});</span>
+<span class="p">});</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут у вас є можливість змінити значення відповіді. Цього буде наразі досить.</p></div>
+<div class="paragraph"><p>У своєму наступному записі в блозі я детальніше заглиблююсь у <code>workbox</code> і як ви можете з’єднати його з <code>indexeddb</code>.</p></div>
 </div>
 </div>
 </div>
@@ -914,7 +935,7 @@ Configure API Caching</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-01-28 12:41:49 EET
+ 2020-02-01 19:42:53 EET
 </div>
 </div>
 </body>

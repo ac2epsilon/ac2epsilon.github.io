@@ -19,7 +19,7 @@ npm install idb
 
 Оскільки ця бібліотека працює з обіцянками і огортає IDBRequest, я можу лише рекомендувати її використовувати. Але звичайно ви все ще можете використовувати indexedDB, наданий браузерами.
 
-Потім ви створюєте файл під назвою `schemasync.js`
+Потім ви створюєте файл під назвою `schemasync.js` (увага! показаний код застарів - зробіть фікс в якості домашнього завдання. прим.перекл.)
 
 [source,js]
 ----
@@ -43,22 +43,28 @@ import {SchemaSyncHandler} from './components/db/schemasync';
 SchemaSyncHandler.sync();
 ----
 
-Таким чином ви гарантуєте, що indexedDb завжди буде оновлений після оновлення програми користувачем.
+Таким чином ви гарантуєте, що `indexedDb` завжди буде оновлений після оновлення програми користувачем.
 
 Отже, що насправді робить операція `sync()`? Вона намагається забезпечити, щоб майбутні запити до вашої бази даних вже інстанціювали таблиці. Крім того, ви надаєте вашій базі номер версії, і синхронізація схеми буде застосована лише в тому випадку, коли версія зростає. Таким чином ви маєте чіткий контроль над таблицями, стовпцями, індексами тощо за версією.
 
-Ініціалізуйте PWA
+=== Ініціалізуйте PWA
 
-If you are interested in this topic please check out my latest blog entry. I won’t go into detail how to setup PWA in this article.
-Combine PWA with IndexedDB
+Якщо вас цікавить ця тема, будь ласка, ознайомтеся з моєю останньою записом у блозі. Я не буду детально описувати, як налаштувати PWA в цій статті.
 
-So the fun part begins. As you’ve seen in my last blog entry the google workbox provides a couple of cache strategies out of the box. We won’t use them here since these strategies heavily rely on the api cache and since we want to use the indexedDB there is no place for them.
+=== Комбінуйте PWA з IndexedDB
 
-So how can we still achieve caching with our indexedDb? For that we take a look at the workbox routing diagram
+Тут починається весела частина. Як ви бачили в моєму останньому записі в блозі, `google workbox` надає кілька стратегій кешування з коробки. Ми не будемо їх використовувати тут, оскільки ці стратегії сильно покладаються на кеш api, і оскільки ми хочемо використовувати `indexedDB`, їм немає місця.
+
+Тож як ми все ще можемо досягти кешування з `indexedDb`? Для цього ми розглянемо схему маршрутизації робочої скриньки
+
+image::worboxroute.png[]
+
 Source: https://developers.google.com/web/tools/workbox/modules/workbox-routing
 
-As we can see if we have a route matched but there was no handler we have the possiblity to react with a fetch listener. To accomplish this we add these lines to our service-worker.js
+Як ми можемо побачити, якщо у нас збігається маршрут, але обробника не було, ми маємо можливість реагувати зі `fetch` слухачем. Для цього ми додаємо ці рядки до нашого `service-worker.js` (увага! показаний код застарів - зробіть фікс в якості домашнього завдання. прим.перекл.)
 
+[source,js]
+----
 self.__precacheManifest = [].concat(self.__precacheManifest || []);
 workbox.precaching.suppressWarnings();
 workbox.precaching.precacheAndRoute(self.__precacheManifest, {});
@@ -85,14 +91,21 @@ workbox.routing.registerRoute('https://jsonplaceholder.typicode.com/todos/1', ({
             });
         });
 });
+----
 
 Ok… wow that is a lot of code for just handling a fetch. But don’t be scared I’ve already added all indexedDb logic you need ;). So lets break down this snippet line by line.
+Гаразд ... вау, що це багато коду для простого оброблення `fetch`. Але не бійтеся, я вже додав всю необхідну логіку `indexedDb` ;). Тож давайте розбивати цей фрагмент по рядку.
 
+[source,js]
+----
 workbox.routing.registerRoute('https://jsonplaceholder.typicode.com/todos/1', ({url, event, params}) => {
     return fetch(event.request)
+----
 
-Instead of working with cache strategy we explicitly define a fetch for this route. If you look at the picture above you will see that this fetch will be called if no handler was registered. To get more informations about the parameters please look here.
+Замість того, щоб працювати зі стратегією кешу, ми чітко визначаємо `fetch` для цього маршруту. Якщо ви подивитесь на малюнок вище, ви побачите, що цей `fetch` буде викликаний, якщо не було зареєстровано жодного обробника. Щоб отримати більше інформації про параметри, будь ласка, дивіться https://developers.google.com/web/tools/workbox/modules/workbox-routing[тут].
 
+[source,js]
+----
 .then(response => {
             let clonedResponse = response.clone();
             clonedResponse.json().then( body => {
@@ -103,18 +116,24 @@ Instead of working with cache strategy we explicitly define a fetch for this rou
             });
             return response;
         })
+----
 
-Afterwards we handle the sucess event of the fetch. In this case we want to store the response within our indexedDB. To achieve we first clone the response since you can only read once from the response stream and later uses of the response object would fail. Now we try to get the body informations of the response (the actual data) and store them within the indexedDb via a put (also adds if no entry was found). Lets look a little bit closer at this:
+Згодом ми обробляємо успіх події `fetch`. У цьому випадку ми хочемо зберегти відповідь у нашому `indexedDB`. Для досягнення цього ми спочатку клонуємо відповідь, оскільки ви можете прочитати лише один раз з потоку відповідей, і пізніше використання об'єкта відповіді не вдасться. Тепер ми намагаємося отримати тільну інформацію про відповідь (фактичні дані) та зберігати їх у `indexedDb` через `put` (також додає, якщо запису не знайдено). Розглянемо трохи ближче цей момент:
 
+[source,js]
+----
 self.idb.openDb('VueApp', 1).then(db => {
                     db.transaction('todos', "readwrite")
                       .objectStore('todos').put(body);
                 });
+----
 
-As you can see I use a variable called self. I’ll get to that in a minute — but before that I like to talk about the actual put. As you can see I still use the idb library. The idb library itself works with promises and lets us create a transaction which is in the “readwrite” mode to actually store values. The put function then searches for the defined keyPath (id of our requested object) and stores the response body in the indexedDb if it wasn’t found.
+Як ви бачите, я використовую змінну під назвою `self`. Я дістанусь до цього через хвилину - але перед цим мені подобається поговорити про фактичну роботу. Як ви бачите, я все ще використовую бібліотеку `idb`. Бібліотека `idb` сама працює з обіцянками і дозволяє нам створити транзакцію, яка перебуває в режимі `"readwrite"`, щоб фактично зберігати значення. Потім функція `put` шукає визначений `keyPath` (ідентифікатор нашого запитуваного об'єкта) і зберігає тіло відповіді у `indexedDb`, якщо його не було знайдено.
 
-Our catch block now tries to serve the response body if the network isn’t available.
+Зараз наш блок блоку намагається обслуговувати тіло відповіді, якщо мережа недоступна.
 
+[source,js]
+----
 .catch(err => {
             return self.idb.openDb('VueApp', 1).then(db => {
                 return db.transaction('todos')
@@ -125,38 +144,45 @@ Our catch block now tries to serve the response body if the network isn’t avai
                             "statusText" : "MyCustomResponse!" }));
             });
         });
+----
 
-Luckily the catch block takes either a response or a promise as a return value so that we can return our open promise from the indexedDb. As you can see the call itself is actually pretty similar to our ‘then block’. The only difference is that we call the getAll() method on the transaction and wrap the content into a promise.
+На щастя, блок `catch` приймає відповідь або обіцянку як повернене значення, щоб ми могли повернути свою відкриту обіцянку з `indexedDb`. Як ви бачите, сам виклик насправді дуже схожий на наш блок `then`. Єдина відмінність полягає в тому, що ми визиваємо метод `getAll()` на транзакції і обертаємо вміст обіцянкою.
 
-So there is only one question left. How was I able to use idb within my service-worker. Sadly the service worker won’t be compiled with webpack as you can see here. So there are only 2 options left. Generating the service-worker.js in a seperate project where it then will be compiled with webpack or a little workaround. I’ve decided to use the second choice since it is easier to get going. But I would recommend you to use the first choice for larger projects. So here is how I’ve done it.
+Отже, залишилося лише одне питання. Як мені вдалося використовувати `idb` у своєму `service-worker`. На жаль, сервісний працівник не буде зкокомпільовано з `webpack`, як ви можете тут бачити. Тож залишилося лише 2 варіанти. Створення `service-worker.js` в окремому проекті, де він буде зкокомпільованй за допомогою `webpack`, чи невеликого обхідного маневру. Я вирішив скористатись другим способом, оскільки це легше провернути. Але я б рекомендував вам використовувати перший вибір для великих проектів. Отже ось як я це зробив.
 
-At first changed the vue.config.js a little bit
+Спочатку трохи змінив `vue.config.js`
 
-...
+[source,js]
+----
 workboxOptions: {
     swSrc: 'src/service-worker.js',
     importScripts: ['idb.js']
 }
-...
+----
 
-As you can see I’ve added the importScripts option where I’ve defined that the service worker has to import the idb.js script when compiled. After that I’ve downloaded the idb.js from the github repository and added it to my public directory. This way the idb.js will also be available within my dist directory.
+Як ви бачите, я додав параметр `importScripts`, де я визначив, що службовий працівник повинен імпортувати скрипт `idb.js` під час компіляції. Після цього я завантажив `idb.js` з сховища github і додав його до свого каталогу `public`. Таким чином `idb.js` також буде доступний у моєму каталозі `dist`.
 
-If now the importScripts will be called within the compiled service-worker.js you have access to the idb Object via the self object of the service worker (this is where all imported script objects will be registered).
+Якщо тепер викликається імпорт `importScripts` в скомпільованому `service-worker.js`, ви маєте доступ до об’єкта `idb` через власний об'єкт службового працівника (саме тут будуть зареєстровані всі імпортовані об'єкти сценарію).
 
 And thats it — as you see it isn’t that hard to add indexedDb possibilites if you know where to look :).
-Drawbacks of connecting IndexedDb with service worker
 
-To be honest most of the times you should rely on the caches provided by the workbox strategies. You don’t really gain anything by using indexedDb instead of the caches. Furthermore you might introduce unexpected behavior into your app since another developer might see at first that results will be delivered by the indexedDb.
+==== Недоліки підключення IndexedDb через service worker 
 
-In my opinion you should use the indexedDb for your actual Http requests. i.e.
+Якщо чесно, то в більшості випадків слід покладатися на кеші, передбачені стратегіями `workbox`. Ви нічого не отримуєте, використовуючи `indexedDb` замість кешів. Крім того, ви можете ввести несподівану поведінку у свою програму, оскільки інший розробник може спочатку побачити, що результати буде показано `indexedDb`.
 
+На мою думку, ви повинні використовувати indexedDb для своїх фактичних `Http` запитів. тобто
+
+[source,js]
+----
 axios.get("https://jsonplaceholder.typicode.com/todos/1")
     .then(e => console.log(e))
     .catch(e => console.log("load indexedDb data here"));
+----
 
-This way it is perfectly clear whats happening if the request fails.
-When it is useful to connect IndexedDb with the service worker
+Таким чином, цілком зрозуміло, що відбувається, якщо запит не вдасться.
 
-There are still reasons why you might want to use the indexedDb within your service worker. The main reason might be that you have js files from a third party(still under your domain) that are taking requests where you can’t handle the responses. If you now manipulate the responses via the service worker and you can provide data via the indexedDb it is a perfectly good reason to use this approach.
+==== Коли корисно з'єднати IndexedDb зі службовим працівником
 
-So I hope you have learned a little bit today :).
+Є ще причини, чому ви можете використовувати `indexedDb` у своєму сервісному працівникові. Основна причина може полягати в тому, що у вас є js-файли від третьої сторони (все ще під вашим доменом), яка приймає запити, коли ви не можете впоратися з відповідями. Якщо ви зараз маніпулюєте відповідями через сервісного працівника і ви можете надати дані через `indexedDb`, це цілком хороший привід використовувати цей підхід.
+
+Тож сподіваюся, ви сьогодні трохи навчились :).

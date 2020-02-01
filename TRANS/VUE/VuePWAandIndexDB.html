@@ -816,7 +816,7 @@ Feb 7, 2019 · 6 min read</p></div>
 <div class="content"><div class="highlight"><pre><span></span>npm install idb
 </pre></div></div></div>
 <div class="paragraph"><p>Оскільки ця бібліотека працює з обіцянками і огортає IDBRequest, я можу лише рекомендувати її використовувати. Але звичайно ви все ще можете використовувати indexedDB, наданий браузерами.</p></div>
-<div class="paragraph"><p>Потім ви створюєте файл під назвою <code>schemasync.js</code></p></div>
+<div class="paragraph"><p>Потім ви створюєте файл під назвою <code>schemasync.js</code> (увага! показаний код застарів - зробіть фікс в якості домашнього завдання. прим.перекл.)</p></div>
 <div class="listingblock">
 <div class="content"><div class="highlight"><pre><span></span><span class="kr">import</span> <span class="p">{</span><span class="nx">openDb</span><span class="p">}</span> <span class="nx">from</span> <span class="s1">&#39;idb&#39;</span><span class="p">;</span>
 
@@ -834,99 +834,120 @@ Feb 7, 2019 · 6 min read</p></div>
 
 <span class="nx">SchemaSyncHandler</span><span class="p">.</span><span class="nx">sync</span><span class="p">();</span>
 </pre></div></div></div>
-<div class="paragraph"><p>Таким чином ви гарантуєте, що indexedDb завжди буде оновлений після оновлення програми користувачем.</p></div>
+<div class="paragraph"><p>Таким чином ви гарантуєте, що <code>indexedDb</code> завжди буде оновлений після оновлення програми користувачем.</p></div>
 <div class="paragraph"><p>Отже, що насправді робить операція <code>sync()</code>? Вона намагається забезпечити, щоб майбутні запити до вашої бази даних вже інстанціювали таблиці. Крім того, ви надаєте вашій базі номер версії, і синхронізація схеми буде застосована лише в тому випадку, коли версія зростає. Таким чином ви маєте чіткий контроль над таблицями, стовпцями, індексами тощо за версією.</p></div>
-<div class="paragraph"><p>Ініціалізуйте PWA</p></div>
-<div class="paragraph"><p>If you are interested in this topic please check out my latest blog entry. I won’t go into detail how to setup PWA in this article.
-Combine PWA with IndexedDB</p></div>
-<div class="paragraph"><p>So the fun part begins. As you’ve seen in my last blog entry the google workbox provides a couple of cache strategies out of the box. We won’t use them here since these strategies heavily rely on the api cache and since we want to use the indexedDB there is no place for them.</p></div>
-<div class="paragraph"><p>So how can we still achieve caching with our indexedDb? For that we take a look at the workbox routing diagram
-Source: <a href="https://developers.google.com/web/tools/workbox/modules/workbox-routing">https://developers.google.com/web/tools/workbox/modules/workbox-routing</a></p></div>
-<div class="paragraph"><p>As we can see if we have a route matched but there was no handler we have the possiblity to react with a fetch listener. To accomplish this we add these lines to our service-worker.js</p></div>
-<div class="paragraph"><p>self.<em>precacheManifest = [].concat(self.</em>precacheManifest || []);
-workbox.precaching.suppressWarnings();
-workbox.precaching.precacheAndRoute(self.__precacheManifest, {});</p></div>
-<div class="paragraph"><p>workbox.routing.registerRoute(<em>https://jsonplaceholder.typicode.com/todos/1</em>, ({url, event, params}) &#8658; {
-    return fetch(event.request)
-        .then(response &#8658; {
-            let clonedResponse = response.clone();
-            clonedResponse.json().then( body &#8658; {
-                self.idb.openDb(<em>VueApp</em>, 1).then(db &#8658; {
-                    db.transaction(<em>todos</em>, "readwrite")
-                      .objectStore(<em>todos</em>).put(body);
-                });
-            });
-            return response;
-        }).catch(err &#8658; {
-            return self.idb.openDb(<em>VueApp</em>, 1).then(db &#8658; {
-                return db.transaction(<em>todos</em>)
-                         .objectStore(<em>todos</em>).getAll()
-                         .then(values &#8658;
-                           new Response(JSON.stringify(values),
-                            { "status" : 200 ,
-                            "statusText" : "MyCustomResponse!" }));
-            });
-        });
-});</p></div>
-<div class="paragraph"><p>Ok… wow that is a lot of code for just handling a fetch. But don’t be scared I’ve already added all indexedDb logic you need ;). So lets break down this snippet line by line.</p></div>
-<div class="paragraph"><p>workbox.routing.registerRoute(<em>https://jsonplaceholder.typicode.com/todos/1</em>, ({url, event, params}) &#8658; {
-    return fetch(event.request)</p></div>
-<div class="paragraph"><p>Instead of working with cache strategy we explicitly define a fetch for this route. If you look at the picture above you will see that this fetch will be called if no handler was registered. To get more informations about the parameters please look here.</p></div>
-<div class="literalblock">
-<div class="title">then(response &#8658; {</div>
+</div>
+<div class="sect2">
+<h3 id="__pwa">Ініціалізуйте PWA</h3>
+<div class="paragraph"><p>Якщо вас цікавить ця тема, будь ласка, ознайомтеся з моєю останньою записом у блозі. Я не буду детально описувати, як налаштувати PWA в цій статті.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__pwa__indexeddb">Комбінуйте PWA з IndexedDB</h3>
+<div class="paragraph"><p>Тут починається весела частина. Як ви бачили в моєму останньому записі в блозі, <code>google workbox</code> надає кілька стратегій кешування з коробки. Ми не будемо їх використовувати тут, оскільки ці стратегії сильно покладаються на кеш api, і оскільки ми хочемо використовувати <code>indexedDB</code>, їм немає місця.</p></div>
+<div class="paragraph"><p>Тож як ми все ще можемо досягти кешування з <code>indexedDb</code>? Для цього ми розглянемо схему маршрутизації робочої скриньки</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>    let clonedResponse = response.clone();
-    clonedResponse.json().then( body =&gt; {
-        self.idb.openDb('VueApp', 1).then(db =&gt; {
-            db.transaction('todos', "readwrite")
-              .objectStore('todos').put(body);
-        });
-    });
-    return response;
-})</code></pre>
-</div></div>
-<div class="paragraph"><p>Afterwards we handle the sucess event of the fetch. In this case we want to store the response within our indexedDB. To achieve we first clone the response since you can only read once from the response stream and later uses of the response object would fail. Now we try to get the body informations of the response (the actual data) and store them within the indexedDb via a put (also adds if no entry was found). Lets look a little bit closer at this:</p></div>
-<div class="paragraph"><p>self.idb.openDb(<em>VueApp</em>, 1).then(db &#8658; {
-                    db.transaction(<em>todos</em>, "readwrite")
-                      .objectStore(<em>todos</em>).put(body);
-                });</p></div>
-<div class="paragraph"><p>As you can see I use a variable called self. I’ll get to that in a minute — but before that I like to talk about the actual put. As you can see I still use the idb library. The idb library itself works with promises and lets us create a transaction which is in the “readwrite” mode to actually store values. The put function then searches for the defined keyPath (id of our requested object) and stores the response body in the indexedDb if it wasn’t found.</p></div>
-<div class="paragraph"><p>Our catch block now tries to serve the response body if the network isn’t available.</p></div>
-<div class="literalblock">
-<div class="title">catch(err &#8658; {</div>
-<div class="content">
-<pre><code>    return self.idb.openDb('VueApp', 1).then(db =&gt; {
-        return db.transaction('todos')
-                 .objectStore('todos').getAll()
-                 .then(values =&gt;
-                   new Response(JSON.stringify(values),
-                    { "status" : 200 ,
-                    "statusText" : "MyCustomResponse!" }));
-    });
-});</code></pre>
-</div></div>
-<div class="paragraph"><p>Luckily the catch block takes either a response or a promise as a return value so that we can return our open promise from the indexedDb. As you can see the call itself is actually pretty similar to our ‘then block’. The only difference is that we call the getAll() method on the transaction and wrap the content into a promise.</p></div>
-<div class="paragraph"><p>So there is only one question left. How was I able to use idb within my service-worker. Sadly the service worker won’t be compiled with webpack as you can see here. So there are only 2 options left. Generating the service-worker.js in a seperate project where it then will be compiled with webpack or a little workaround. I’ve decided to use the second choice since it is easier to get going. But I would recommend you to use the first choice for larger projects. So here is how I’ve done it.</p></div>
-<div class="paragraph"><p>At first changed the vue.config.js a little bit</p></div>
-<div class="paragraph"><p>&#8230;
-workboxOptions: {
-    swSrc: <em>src/service-worker.js</em>,
-    importScripts: [<em>idb.js</em>]
-}
-&#8230;</p></div>
-<div class="paragraph"><p>As you can see I’ve added the importScripts option where I’ve defined that the service worker has to import the idb.js script when compiled. After that I’ve downloaded the idb.js from the github repository and added it to my public directory. This way the idb.js will also be available within my dist directory.</p></div>
-<div class="paragraph"><p>If now the importScripts will be called within the compiled service-worker.js you have access to the idb Object via the self object of the service worker (this is where all imported script objects will be registered).</p></div>
-<div class="paragraph"><p>And thats it — as you see it isn’t that hard to add indexedDb possibilites if you know where to look :).
-Drawbacks of connecting IndexedDb with service worker</p></div>
-<div class="paragraph"><p>To be honest most of the times you should rely on the caches provided by the workbox strategies. You don’t really gain anything by using indexedDb instead of the caches. Furthermore you might introduce unexpected behavior into your app since another developer might see at first that results will be delivered by the indexedDb.</p></div>
-<div class="paragraph"><p>In my opinion you should use the indexedDb for your actual Http requests. i.e.</p></div>
-<div class="paragraph"><p>axios.get("https://jsonplaceholder.typicode.com/todos/1")
-    .then(e &#8658; console.log(e))
-    .catch(e &#8658; console.log("load indexedDb data here"));</p></div>
-<div class="paragraph"><p>This way it is perfectly clear whats happening if the request fails.
-When it is useful to connect IndexedDb with the service worker</p></div>
-<div class="paragraph"><p>There are still reasons why you might want to use the indexedDb within your service worker. The main reason might be that you have js files from a third party(still under your domain) that are taking requests where you can’t handle the responses. If you now manipulate the responses via the service worker and you can provide data via the indexedDb it is a perfectly good reason to use this approach.</p></div>
-<div class="paragraph"><p>So I hope you have learned a little bit today :).</p></div>
+<img src="worboxroute.png" alt="worboxroute.png" />
+</div>
+</div>
+<div class="paragraph"><p>Source: <a href="https://developers.google.com/web/tools/workbox/modules/workbox-routing">https://developers.google.com/web/tools/workbox/modules/workbox-routing</a></p></div>
+<div class="paragraph"><p>Як ми можемо побачити, якщо у нас збігається маршрут, але обробника не було, ми маємо можливість реагувати зі <code>fetch</code> слухачем. Для цього ми додаємо ці рядки до нашого <code>service-worker.js</code> (увага! показаний код застарів - зробіть фікс в якості домашнього завдання. прим.перекл.)</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">self</span><span class="p">.</span><span class="nx">__precacheManifest</span> <span class="o">=</span> <span class="p">[].</span><span class="nx">concat</span><span class="p">(</span><span class="nx">self</span><span class="p">.</span><span class="nx">__precacheManifest</span> <span class="o">||</span> <span class="p">[]);</span>
+<span class="nx">workbox</span><span class="p">.</span><span class="nx">precaching</span><span class="p">.</span><span class="nx">suppressWarnings</span><span class="p">();</span>
+<span class="nx">workbox</span><span class="p">.</span><span class="nx">precaching</span><span class="p">.</span><span class="nx">precacheAndRoute</span><span class="p">(</span><span class="nx">self</span><span class="p">.</span><span class="nx">__precacheManifest</span><span class="p">,</span> <span class="p">{});</span>
+
+<span class="nx">workbox</span><span class="p">.</span><span class="nx">routing</span><span class="p">.</span><span class="nx">registerRoute</span><span class="p">(</span><span class="s1">&#39;https://jsonplaceholder.typicode.com/todos/1&#39;</span><span class="p">,</span> <span class="p">({</span><span class="nx">url</span><span class="p">,</span> <span class="nx">event</span><span class="p">,</span> <span class="nx">params</span><span class="p">})</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">fetch</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">)</span>
+        <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">response</span> <span class="p">=&gt;</span> <span class="p">{</span>
+            <span class="kd">let</span> <span class="nx">clonedResponse</span> <span class="o">=</span> <span class="nx">response</span><span class="p">.</span><span class="nx">clone</span><span class="p">();</span>
+            <span class="nx">clonedResponse</span><span class="p">.</span><span class="nx">json</span><span class="p">().</span><span class="nx">then</span><span class="p">(</span> <span class="nx">body</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                <span class="nx">self</span><span class="p">.</span><span class="nx">idb</span><span class="p">.</span><span class="nx">openDb</span><span class="p">(</span><span class="s1">&#39;VueApp&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">db</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                    <span class="nx">db</span><span class="p">.</span><span class="nx">transaction</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">,</span> <span class="s2">&quot;readwrite&quot;</span><span class="p">)</span>
+                      <span class="p">.</span><span class="nx">objectStore</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">).</span><span class="nx">put</span><span class="p">(</span><span class="nx">body</span><span class="p">);</span>
+                <span class="p">});</span>
+            <span class="p">});</span>
+            <span class="k">return</span> <span class="nx">response</span><span class="p">;</span>
+        <span class="p">}).</span><span class="k">catch</span><span class="p">(</span><span class="nx">err</span> <span class="p">=&gt;</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">self</span><span class="p">.</span><span class="nx">idb</span><span class="p">.</span><span class="nx">openDb</span><span class="p">(</span><span class="s1">&#39;VueApp&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">db</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="nx">db</span><span class="p">.</span><span class="nx">transaction</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">)</span>
+                         <span class="p">.</span><span class="nx">objectStore</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">).</span><span class="nx">getAll</span><span class="p">()</span>
+                         <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">values</span> <span class="p">=&gt;</span>
+                           <span class="k">new</span> <span class="nx">Response</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">values</span><span class="p">),</span>
+                            <span class="p">{</span> <span class="s2">&quot;status&quot;</span> <span class="o">:</span> <span class="mi">200</span> <span class="p">,</span>
+                            <span class="s2">&quot;statusText&quot;</span> <span class="o">:</span> <span class="s2">&quot;MyCustomResponse!&quot;</span> <span class="p">}));</span>
+            <span class="p">});</span>
+        <span class="p">});</span>
+<span class="p">});</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ok… wow that is a lot of code for just handling a fetch. But don’t be scared I’ve already added all indexedDb logic you need ;). So lets break down this snippet line by line.
+Гаразд &#8230; вау, що це багато коду для простого оброблення <code>fetch</code>. Але не бійтеся, я вже додав всю необхідну логіку <code>indexedDb</code> ;). Тож давайте розбивати цей фрагмент по рядку.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">workbox</span><span class="p">.</span><span class="nx">routing</span><span class="p">.</span><span class="nx">registerRoute</span><span class="p">(</span><span class="s1">&#39;https://jsonplaceholder.typicode.com/todos/1&#39;</span><span class="p">,</span> <span class="p">({</span><span class="nx">url</span><span class="p">,</span> <span class="nx">event</span><span class="p">,</span> <span class="nx">params</span><span class="p">})</span> <span class="p">=&gt;</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">fetch</span><span class="p">(</span><span class="nx">event</span><span class="p">.</span><span class="nx">request</span><span class="p">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Замість того, щоб працювати зі стратегією кешу, ми чітко визначаємо <code>fetch</code> для цього маршруту. Якщо ви подивитесь на малюнок вище, ви побачите, що цей <code>fetch</code> буде викликаний, якщо не було зареєстровано жодного обробника. Щоб отримати більше інформації про параметри, будь ласка, дивіться <a href="https://developers.google.com/web/tools/workbox/modules/workbox-routing">тут</a>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">response</span> <span class="p">=&gt;</span> <span class="p">{</span>
+            <span class="kd">let</span> <span class="nx">clonedResponse</span> <span class="o">=</span> <span class="nx">response</span><span class="p">.</span><span class="nx">clone</span><span class="p">();</span>
+            <span class="nx">clonedResponse</span><span class="p">.</span><span class="nx">json</span><span class="p">().</span><span class="nx">then</span><span class="p">(</span> <span class="nx">body</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                <span class="nx">self</span><span class="p">.</span><span class="nx">idb</span><span class="p">.</span><span class="nx">openDb</span><span class="p">(</span><span class="s1">&#39;VueApp&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">db</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                    <span class="nx">db</span><span class="p">.</span><span class="nx">transaction</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">,</span> <span class="s2">&quot;readwrite&quot;</span><span class="p">)</span>
+                      <span class="p">.</span><span class="nx">objectStore</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">).</span><span class="nx">put</span><span class="p">(</span><span class="nx">body</span><span class="p">);</span>
+                <span class="p">});</span>
+            <span class="p">});</span>
+            <span class="k">return</span> <span class="nx">response</span><span class="p">;</span>
+        <span class="p">})</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Згодом ми обробляємо успіх події <code>fetch</code>. У цьому випадку ми хочемо зберегти відповідь у нашому <code>indexedDB</code>. Для досягнення цього ми спочатку клонуємо відповідь, оскільки ви можете прочитати лише один раз з потоку відповідей, і пізніше використання об'єкта відповіді не вдасться. Тепер ми намагаємося отримати тільну інформацію про відповідь (фактичні дані) та зберігати їх у <code>indexedDb</code> через <code>put</code> (також додає, якщо запису не знайдено). Розглянемо трохи ближче цей момент:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">self</span><span class="p">.</span><span class="nx">idb</span><span class="p">.</span><span class="nx">openDb</span><span class="p">(</span><span class="s1">&#39;VueApp&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">db</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                    <span class="nx">db</span><span class="p">.</span><span class="nx">transaction</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">,</span> <span class="s2">&quot;readwrite&quot;</span><span class="p">)</span>
+                      <span class="p">.</span><span class="nx">objectStore</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">).</span><span class="nx">put</span><span class="p">(</span><span class="nx">body</span><span class="p">);</span>
+                <span class="p">});</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як ви бачите, я використовую змінну під назвою <code>self</code>. Я дістанусь до цього через хвилину - але перед цим мені подобається поговорити про фактичну роботу. Як ви бачите, я все ще використовую бібліотеку <code>idb</code>. Бібліотека <code>idb</code> сама працює з обіцянками і дозволяє нам створити транзакцію, яка перебуває в режимі <code>"readwrite"</code>, щоб фактично зберігати значення. Потім функція <code>put</code> шукає визначений <code>keyPath</code> (ідентифікатор нашого запитуваного об'єкта) і зберігає тіло відповіді у <code>indexedDb</code>, якщо його не було знайдено.</p></div>
+<div class="paragraph"><p>Зараз наш блок блоку намагається обслуговувати тіло відповіді, якщо мережа недоступна.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">err</span> <span class="p">=&gt;</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">self</span><span class="p">.</span><span class="nx">idb</span><span class="p">.</span><span class="nx">openDb</span><span class="p">(</span><span class="s1">&#39;VueApp&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">).</span><span class="nx">then</span><span class="p">(</span><span class="nx">db</span> <span class="p">=&gt;</span> <span class="p">{</span>
+                <span class="k">return</span> <span class="nx">db</span><span class="p">.</span><span class="nx">transaction</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">)</span>
+                         <span class="p">.</span><span class="nx">objectStore</span><span class="p">(</span><span class="s1">&#39;todos&#39;</span><span class="p">).</span><span class="nx">getAll</span><span class="p">()</span>
+                         <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">values</span> <span class="p">=&gt;</span>
+                           <span class="k">new</span> <span class="nx">Response</span><span class="p">(</span><span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">values</span><span class="p">),</span>
+                            <span class="p">{</span> <span class="s2">&quot;status&quot;</span> <span class="o">:</span> <span class="mi">200</span> <span class="p">,</span>
+                            <span class="s2">&quot;statusText&quot;</span> <span class="o">:</span> <span class="s2">&quot;MyCustomResponse!&quot;</span> <span class="p">}));</span>
+            <span class="p">});</span>
+        <span class="p">});</span>
+</pre></div></div></div>
+<div class="paragraph"><p>На щастя, блок <code>catch</code> приймає відповідь або обіцянку як повернене значення, щоб ми могли повернути свою відкриту обіцянку з <code>indexedDb</code>. Як ви бачите, сам виклик насправді дуже схожий на наш блок <code>then</code>. Єдина відмінність полягає в тому, що ми визиваємо метод <code>getAll()</code> на транзакції і обертаємо вміст обіцянкою.</p></div>
+<div class="paragraph"><p>Отже, залишилося лише одне питання. Як мені вдалося використовувати <code>idb</code> у своєму <code>service-worker</code>. На жаль, сервісний працівник не буде зкокомпільовано з <code>webpack</code>, як ви можете тут бачити. Тож залишилося лише 2 варіанти. Створення <code>service-worker.js</code> в окремому проекті, де він буде зкокомпільованй за допомогою <code>webpack</code>, чи невеликого обхідного маневру. Я вирішив скористатись другим способом, оскільки це легше провернути. Але я б рекомендував вам використовувати перший вибір для великих проектів. Отже ось як я це зробив.</p></div>
+<div class="paragraph"><p>Спочатку трохи змінив <code>vue.config.js</code></p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">workboxOptions</span><span class="o">:</span> <span class="p">{</span>
+    <span class="nx">swSrc</span><span class="o">:</span> <span class="s1">&#39;src/service-worker.js&#39;</span><span class="p">,</span>
+    <span class="nx">importScripts</span><span class="o">:</span> <span class="p">[</span><span class="s1">&#39;idb.js&#39;</span><span class="p">]</span>
+<span class="p">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Як ви бачите, я додав параметр <code>importScripts</code>, де я визначив, що службовий працівник повинен імпортувати скрипт <code>idb.js</code> під час компіляції. Після цього я завантажив <code>idb.js</code> з сховища github і додав його до свого каталогу <code>public</code>. Таким чином <code>idb.js</code> також буде доступний у моєму каталозі <code>dist</code>.</p></div>
+<div class="paragraph"><p>Якщо тепер викликається імпорт <code>importScripts</code> в скомпільованому <code>service-worker.js</code>, ви маєте доступ до об’єкта <code>idb</code> через власний об'єкт службового працівника (саме тут будуть зареєстровані всі імпортовані об'єкти сценарію).</p></div>
+<div class="paragraph"><p>And thats it — as you see it isn’t that hard to add indexedDb possibilites if you know where to look :).</p></div>
+<div class="sect3">
+<h4 id="___indexeddb__service_worker">Недоліки підключення IndexedDb через service worker</h4>
+<div class="paragraph"><p>Якщо чесно, то в більшості випадків слід покладатися на кеші, передбачені стратегіями <code>workbox</code>. Ви нічого не отримуєте, використовуючи <code>indexedDb</code> замість кешів. Крім того, ви можете ввести несподівану поведінку у свою програму, оскільки інший розробник може спочатку побачити, що результати буде показано <code>indexedDb</code>.</p></div>
+<div class="paragraph"><p>На мою думку, ви повинні використовувати indexedDb для своїх фактичних <code>Http</code> запитів. тобто</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="nx">axios</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s2">&quot;https://jsonplaceholder.typicode.com/todos/1&quot;</span><span class="p">)</span>
+    <span class="p">.</span><span class="nx">then</span><span class="p">(</span><span class="nx">e</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">e</span><span class="p">))</span>
+    <span class="p">.</span><span class="k">catch</span><span class="p">(</span><span class="nx">e</span> <span class="p">=&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="s2">&quot;load indexedDb data here&quot;</span><span class="p">));</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Таким чином, цілком зрозуміло, що відбувається, якщо запит не вдасться.</p></div>
+</div>
+<div class="sect3">
+<h4 id="_____indexeddb___">Коли корисно з'єднати IndexedDb зі службовим працівником</h4>
+<div class="paragraph"><p>Є ще причини, чому ви можете використовувати <code>indexedDb</code> у своєму сервісному працівникові. Основна причина може полягати в тому, що у вас є js-файли від третьої сторони (все ще під вашим доменом), яка приймає запити, коли ви не можете впоратися з відповідями. Якщо ви зараз маніпулюєте відповідями через сервісного працівника і ви можете надати дані через <code>indexedDb</code>, це цілком хороший привід використовувати цей підхід.</p></div>
+<div class="paragraph"><p>Тож сподіваюся, ви сьогодні трохи навчились :).</p></div>
+</div>
 </div>
 </div>
 </div>
@@ -935,7 +956,7 @@ When it is useful to connect IndexedDb with the service worker</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-01-28 10:36:01 EET
+ 2020-02-02 00:18:43 EET
 </div>
 </div>
 </body>
