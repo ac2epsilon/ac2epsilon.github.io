@@ -1,0 +1,335 @@
+:ascii-ids:
+:doctype: book
+:source-highlighter: pygments
+:icons: font
+
+== Асинхронні функції - робимо обіцянки дружніми
+https://developers.google.com/web/fundamentals/primers/async-functions[Jake Archibald]
+Людський хлопчик працює над веб-стандартами в Google
+
+Асинхронні функції у Chrome 55 увімкнено за замовчуванням, і вони відверто чудові. Вони дозволяють писати код на основі обіцянок так, ніби він був синхронним, але не блокуючи основний потік. Вони роблять ваш асинхронний код менш "розумним" і читабельнішим.
+
+Асинхронні функції асинхронізації працюють так:
+
+[source,scala]
+----
+async function myFirstAsyncFunction() {
+  try {
+    const fulfilledValue = await promise;
+  }
+  catch (rejectedValue) {
+    // …
+  }
+}
+----
+
+Якщо ви використовуєте ключове слово `async` перед визначенням функції, ви можете використовувати функцію `await` в межах функції. Коли ви чекаєте обіцянки, функція призупиняється не блокуючим способом, поки обіцянка не виповниться. Якщо обіцянка виконана, ви отримаєте назад значення. Якщо обіцянка відкидається, закидається відхилене значення.
+
+Зауваження. Якщо ви не обізнані з обіцянками, перегляньте наш http://./JavaScriptPromises.html[посібник з обіцянок].
+
+=== Приклад: Реєстрація завантаження
+
+Скажімо, ми хотіли отримати URL-адресу та записати відповідь як текст. Ось як це виглядає з використанням обіцянок:
+
+[source,scala]
+----
+function logFetch(url) {
+  return fetch(url)
+    .then(response => response.text())
+    .then(text => {
+      console.log(text);
+    }).catch(err => {
+      console.error('fetch failed', err);
+    });
+}
+----
+
+І ось те саме, що використовує функції асинхронізації:
+
+[source,scala]
+----
+async function logFetch(url) {
+  try {
+    const response = await fetch(url);
+    console.log(await response.text());
+  }
+  catch (err) {
+    console.log('fetch failed', err);
+  }
+}
+----
+
+Це однакова кількість рядків, але всі зворотні виклики вже відсутні. Це полегшує читання, особливо тим, хто менш обізнаний з обіцянками.
+
+Примітка. Все, що ви чекаєте, передається через `Promise.resolve()`, тож ви можете сміливо чекати не-нативні обіцянки.
+
+=== Зворотні значення async
+
+Функції `async` завжди повертають обіцянку, незалежно від того, використовуєте ви функцію `await` чи ні. Ця обіцянка вирішується з тим, що повертається функція асинхронізації, або відхиляється з того, що кидає функція асинхронізації. Так, якщо маємо:
+
+[source,scala]
+----
+// wait ms milliseconds
+function wait(ms) {
+  return new Promise(r => setTimeout(r, ms));
+}
+
+async function hello() {
+  await wait(500);
+  return 'world';
+}
+----
+
+... виклик `hello()` повертає обіцянку, яка формує "world".
+
+[source,scala]
+----
+async function foo() {
+  await wait(500);
+  throw Error('bar');
+}
+----
+
+... виклик `foo()` повертає обіцянку, яка відхиляє з `Error('bar')`.
+
+=== Приклад: Потокове реагування
+
+Користь асинхронних функцій збільшується в більш складних прикладах. Скажімо, ми хотіли б журналювати потік відповіді з фрагментів і повертати остаточний розмір.
+
+Примітка. Фраза "журналювання фрагменти" тисне мені в роті.
+
+Ось це з обіцянками:
+
+[source,scala]
+----
+function getResponseSize(url) {
+  return fetch(url).then(response => {
+    const reader = response.body.getReader();
+    let total = 0;
+
+    return reader.read().then(function processResult(result) {
+      if (result.done) return total;
+
+      const value = result.value;
+      total += value.length;
+      console.log('Received chunk', value);
+
+      return reader.read().then(processResult);
+    })
+  });
+}
+----
+
+Перевірте мене, Джейк "володар обіцянок" Арчібальд. Подивіться, як я викликаю `processResult` всередині себе, щоб налаштувати асинхронний цикл? Писати таке змусило мене почуватися дуже розумним. Але, як і більшість "розумних" кодів, вам доведеться дивитись на нього століттями, щоб зрозуміти, що це робить, як одну з цих чарівних картин з 90-х.
+
+Спробуємо ще раз з `async` функціями:
+
+[source,scala]
+----
+async function getResponseSize(url) {
+  const response = await fetch(url);
+  const reader = response.body.getReader();
+  let result = await reader.read();
+  let total = 0;
+
+  while (!result.done) {
+    const value = result.value;
+    total += value.length;
+    console.log('Received chunk', value);
+    // get the next result
+    result = await reader.read();
+  }
+
+  return total;
+}
+----
+
+Усього "розумного" вже немає. Асинхронний цикл, який змусив мене почувати себе самовдоволеним, замінюється на надійний та нудний `while` цикл. Значно краще. Надалі ми отримаємо асинхронні ітератори, які замінять цикл while на цикл `for-of`, роблячи його ще акуратнішим.
+
+Примітка: Я начебто закоханий у потоки. Якщо ви не знайомі з потоковою передачею, перегляньте https://jakearchibald.com/2016/streams-ftw/#streams-the-fetch-api[мій путівник].
+
+=== Інший синтаксис async функції
+
+Ми вже бачили `async function () {}`, але ключове слово `async` може використовуватися з іншим синтаксисом функції:
+
+==== Функції стрілки
+
+[source,scala]
+----
+// відобразити кілька URL-адрес на json-обіцянки
+const jsonPromises = urls.map(async url => {
+  const response = await fetch(url);
+  return response.json();
+});
+----
+
+Примітка: `array.map (func)` байдуже, що я надав йому `async` функцію, він просто сприймає це як функцію, яка повертає обіцянку. Він не чекатиме завершення першої функції перед викликом другої.
+
+==== Об'єктні методи
+
+[source,scala]
+----
+const storage = {
+  async getAvatar(name) {
+    const cache = await caches.open('avatars');
+    return cache.match(`/avatars/${name}.jpg`);
+  }
+};
+storage.getAvatar('jaffathecake').then(…);
+----
+
+==== Методи класів
+
+[source,scala]
+----
+class Storage {
+  constructor() {
+    this.cachePromise = caches.open('avatars');
+  }
+
+  async getAvatar(name) {
+    const cache = await this.cachePromise;
+    return cache.match(`/avatars/${name}.jpg`);
+  }
+}
+
+const storage = new Storage();
+storage.getAvatar('jaffathecake').then(…);
+----
+
+Примітка: Конструктори класів та геттери / сетери не можуть бути асинхронізовані.
+
+=== Обережно! Уникайте занадто послідовних дій
+
+Хоча ви пишете код, який виглядає синхронно, не забудьте про можливість робити щось паралельно.
+
+[source,scala]
+----
+async function series() {
+  await wait(500); // Чекайте 500ms...
+  await wait(500); // ... і потім ще 500ms.
+  return "done!";
+}
+----
+
+Наведене вище займає 1000 мс, тоді як:
+
+[source,scala]
+----
+async function parallel() {
+  const wait1 = wait(500); // Start a 500ms timer asynchronously…
+  const wait2 = wait(500); // …meaning this timer happens in parallel.
+  await wait1; // Wait 500ms for the first timer…
+  await wait2; // …by which time this timer has already finished.
+  return "done!";
+}
+----
+
+... вищезазначене займає 500 мс для завершення, тому що обидва очікування відбуваються одночасно. Давайте розглянемо практичний приклад ...
+
+=== Приклад: Виведення отриманих послідовностей
+
+Скажімо, ми хотіли отримати URL-адреси ряду та записати їх якнайшвидше, у правильному порядку.
+
+Глибокий вдих - ось як це виглядає з обіцянками:
+
+[source,scala]
+----
+function logInOrder(urls) {
+  // підтягуємо всі URLs
+  const textPromises = urls.map(url => {
+    return fetch(url).then(response => response.text());
+  });
+
+  // журналюємо впорядковано
+  textPromises.reduce((chain, textPromise) => {
+    return chain.then(() => textPromise)
+      .then(text => console.log(text));
+  }, Promise.resolve());
+}
+----
+
+Так, саме так, я використовую `reduce` для ланцюга послідовностей обіцянок. Я такий розумний. Але це трохи настільки розумне кодування, що нам буде краще без цього.
+
+Однак, перетворюючи вищезазначене в `async` функцію, спокусливо йти занадто послідовно:
+
+Не рекомендується - занадто послідовно
+
+[source,scala]
+----
+async function logInOrder(urls) {
+  for (const url of urls) {
+    const response = await fetch(url);
+    console.log(await response.text());
+  }
+}
+----
+
+Виглядає набагато акуратніше, але мій другий `fetch` не починається, поки мій перший `fetch` не буде повністю прочитаний тощо. Це набагато повільніше, ніж приклад обіцянок, який виконує `fetchfetch` паралельно. На щастя, є ідеальна середина:
+
+Рекомендовано - приємно і паралельно
+
+[source,scala]
+----
+async function logInOrder(urls) {
+  // підтягуємо всі URL одночасно
+  const textPromises = urls.map(async url => {
+    const response = await fetch(url);
+    return response.text();
+  });
+
+  // журналюємо їх послідовно
+  for (const textPromise of textPromises) {
+    console.log(await textPromise);
+  }
+}
+----
+
+У цьому прикладі URL-адреси виймаються та читаються паралельно, але "розумний" біт `reduce` замінюється стандартним, нудним, читабельним `for`-циклом.
+
+=== Підтримка веб-переглядача та обхідні шляхи
+
+На момент написання функції функції асинхронізації за замовчуванням увімкнено в Chrome, Edge, Firefox та Safari.
+
+==== Обхід - генератори
+
+Якщо ви орієнтуєтесь на веб-переглядачі, які підтримують генератори (що включає останню версію кожного головного браузера), ви можете зробити деякий поліфілл для функції асинхронізації.
+
+Babel зробить це для вас, ось приклад за допомогою REPL Babel - зауважте, наскільки схожий на трансльований. Ця трансформація є частиною пресету Babel's es2017.
+
+Примітка: Babel REPL - це прикольно навіть сказати. Спробуй це.
+
+Я рекомендую підхід транспіляції, оскільки ви можете просто вимкнути його, як тільки ваші цільові браузери підтримують функції асинхронізації, але якщо ви дійсно не хочете використовувати транспілятор, ви можете взяти поліфайл Babel і використовувати його самостійно. Замість:
+
+[source,scala]
+----
+async function slowEcho(val) {
+  await wait(1000);
+  return val;
+}
+----
+
+Ви включите поліфілл і напишіть:
+
+[source,scala]
+----
+const slowEcho = createAsyncFunction(function*(val) {
+  yield wait(1000);
+  return val;
+});
+----
+
+Зауважте, що вам потрібно передати генератор `(function*)` до `createAsyncFunction` і використовувати `yield`, замість `await`. Крім цього це працює так само.
+
+==== Обхід - регенератор
+
+If you're targeting older browsers, Babel can also transpile generators, allowing you to use async functions all the way down to IE8. To do this you need Babel's es2017 preset and the es2015 preset.
+Якщо ви орієнтовані на старі браузери, Babel також може транспілювати генератори, що дозволяє використовувати функції асинхронізації аж до IE8. Для цього вам знадобиться пресет Babel es2017 та пресет es2015.
+
+The output is not as pretty, so watch out for code-bloat.
+
+=== Асинхронізуйте всі речі!
+
+Once async functions land across all browsers, use them on every promise-returning function! Not only do they make your code tidier, but it makes sure that function will always return a promise.
+
+I got really excited about async functions back in 2014, and it's great to see them land, for real, in browsers. Whoop!
