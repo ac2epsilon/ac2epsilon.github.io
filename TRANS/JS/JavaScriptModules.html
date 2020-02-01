@@ -798,295 +798,185 @@ asciidoc.install();
 <div id="header">
 </div>
 <div id="content">
-<div class="paragraph"><p>JavaScript modules
-Published 18 June 2018 · tagged with ECMAScript ES2015</p></div>
-<div class="paragraph"><p>JavaScript modules are now supported in all major browsers!</p></div>
-<div class="paragraph"><p>This article explains how to use JS modules, how to deploy them responsibly, and how the Chrome team is working to make modules even better in the future.</p></div>
 <div class="sect1">
-<h2 id="_____">Асинхронні функції - робимо обіцянки дружніми</h2>
+<h2 id="__javascript">Модулі JavaScript</h2>
 <div class="sectionbody">
-<div class="paragraph"><p><a href="https://developers.google.com/web/fundamentals/primers/async-functions">Jake Archibald</a>
-Людський хлопчик працює над веб-стандартами в Google</p></div>
-<div class="paragraph"><p>Асинхронні функції у Chrome 55 увімкнено за замовчуванням, і вони відверто чудові. Вони дозволяють писати код на основі обіцянок так, ніби він був синхронним, але не блокуючи основний потік. Вони роблять ваш асинхронний код менш "розумним" і читабельнішим.</p></div>
-<div class="paragraph"><p>Асинхронні функції асинхронізації працюють так:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">myFirstAsyncFunction</span><span class="o">()</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">fulfilledValue</span> <span class="k">=</span> <span class="n">await</span> <span class="n">promise</span><span class="o">;</span>
-  <span class="o">}</span>
-  <span class="k">catch</span> <span class="o">(</span><span class="n">rejectedValue</span><span class="o">)</span> <span class="o">{</span>
-    <span class="c1">// …</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Якщо ви використовуєте ключове слово <code>async</code> перед визначенням функції, ви можете використовувати функцію <code>await</code> в межах функції. Коли ви чекаєте обіцянки, функція призупиняється не блокуючим способом, поки обіцянка не виповниться. Якщо обіцянка виконана, ви отримаєте назад значення. Якщо обіцянка відкидається, закидається відхилене значення.</p></div>
-<div class="paragraph"><p>Зауваження. Якщо ви не обізнані з обіцянками, перегляньте наш <a href="http://./JavaScriptPromises.html">посібник з обіцянок</a>.</p></div>
+<div class="paragraph"><p>Тепер модулі JavaScript підтримуються у всіх основних браузерах!</p></div>
+<div class="paragraph"><p>Ця стаття пояснює, як користуватися модулями JS, як відповідально їх розгортати та як працює команда Chrome, щоб зробити модулі ще кращими в майбутньому.</p></div>
 <div class="sect2">
-<h3 id="___">Приклад: Реєстрація завантаження</h3>
-<div class="paragraph"><p>Скажімо, ми хотіли отримати URL-адресу та записати відповідь як текст. Ось як це виглядає з використанням обіцянок:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">function</span> <span class="n">logFetch</span><span class="o">(</span><span class="n">url</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">return</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">)</span>
-    <span class="o">.</span><span class="n">then</span><span class="o">(</span><span class="n">response</span> <span class="k">=&gt;</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">())</span>
-    <span class="o">.</span><span class="n">then</span><span class="o">(</span><span class="n">text</span> <span class="k">=&gt;</span> <span class="o">{</span>
-      <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">text</span><span class="o">);</span>
-    <span class="o">}).</span><span class="k">catch</span><span class="o">(</span><span class="n">err</span> <span class="k">=&gt;</span> <span class="o">{</span>
-      <span class="n">console</span><span class="o">.</span><span class="n">error</span><span class="o">(</span><span class=" -Symbol">&#39;fetch</span> <span class="n">failed</span><span class="err">&#39;</span><span class="o">,</span> <span class="n">err</span><span class="o">);</span>
-    <span class="o">});</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>І ось те саме, що використовує функції асинхронізації:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">logFetch</span><span class="o">(</span><span class="n">url</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">try</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">response</span> <span class="k">=</span> <span class="n">await</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">);</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">await</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">());</span>
-  <span class="o">}</span>
-  <span class="k">catch</span> <span class="o">(</span><span class="n">err</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class=" -Symbol">&#39;fetch</span> <span class="n">failed</span><span class="err">&#39;</span><span class="o">,</span> <span class="n">err</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Це однакова кількість рядків, але всі зворотні виклики вже відсутні. Це полегшує читання, особливо тим, хто менш обізнаний з обіцянками.</p></div>
-<div class="paragraph"><p>Примітка. Все, що ви чекаєте, передається через <code>Promise.resolve()</code>, тож ви можете сміливо чекати не-нативні обіцянки.</p></div>
-</div>
-<div class="sect2">
-<h3 id="___async">Зворотні значення async</h3>
-<div class="paragraph"><p>Функції <code>async</code> завжди повертають обіцянку, незалежно від того, використовуєте ви функцію <code>await</code> чи ні. Ця обіцянка вирішується з тим, що повертається функція асинхронізації, або відхиляється з того, що кидає функція асинхронізації. Так, якщо маємо:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="c1">// wait ms milliseconds</span>
-<span class="n">function</span> <span class="n">wait</span><span class="o">(</span><span class="n">ms</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">return</span> <span class="k">new</span> <span class="nc">Promise</span><span class="o">(</span><span class="n">r</span> <span class="k">=&gt;</span> <span class="n">setTimeout</span><span class="o">(</span><span class="n">r</span><span class="o">,</span> <span class="n">ms</span><span class="o">));</span>
-<span class="o">}</span>
+<h3 id="____js">Що таке модулі JS?</h3>
+<div class="paragraph"><p>JS modules (also known as “ES modules” or “ECMAScript modules”) are a major new feature, or rather a collection of new features. You may have used a userland JavaScript module system in the past. Maybe you used CommonJS like in Node.js, or maybe AMD, or maybe something else. All of these module systems have one thing in common: they allow you to import and export stuff.</p></div>
+<div class="paragraph"><p>JavaScript now has standardized syntax for exactly that. Within a module, you can use the export keyword to export just about anything. You can export a const, a function, or any other variable binding or declaration. Just prefix the variable statement or declaration with export and you’re all set:</p></div>
+<div class="paragraph"><p>export const repeat = (string) &#8658; <code>${string} ${string}</code>;
+export function shout(string) {
+  return <code>${string.toUpperCase()}!</code>;
+}
+You can then use the import keyword to import the module from another module. Here, we’re importing the repeat and shout functionality from the lib module, and using it in our main module:</p></div>
+<div class="paragraph"><p>import {repeat, shout} from <em>./lib.mjs</em>;
+repeat(<em>hello</em>);
 
-<span class="n">async</span> <span class="n">function</span> <span class="n">hello</span><span class="o">()</span> <span class="o">{</span>
-  <span class="n">await</span> <span class="n">wait</span><span class="o">(</span><span class="mi">500</span><span class="o">);</span>
-  <span class="k">return</span> <span class=" -Symbol">&#39;world</span><span class="err">&#39;</span><span class="o">;</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="olist lowerroman"><ol class="lowerroman">
-<li>
-<p>
-виклик <code>hello()</code> повертає обіцянку, яка формує "world".
-</p>
-</li>
-</ol></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">foo</span><span class="o">()</span> <span class="o">{</span>
-  <span class="n">await</span> <span class="n">wait</span><span class="o">(</span><span class="mi">500</span><span class="o">);</span>
-  <span class="k">throw</span> <span class="nc">Error</span><span class="o">(</span><span class=" -Symbol">&#39;bar</span><span class="err">&#39;</span><span class="o">);</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="olist lowerroman"><ol class="lowerroman">
-<li>
-<p>
-виклик <code>foo()</code> повертає обіцянку, яка відхиляє з <code>Error('bar')</code>.
-</p>
-</li>
-</ol></div>
-</div>
-<div class="sect2">
-<h3 id="____2">Приклад: Потокове реагування</h3>
-<div class="paragraph"><p>Користь асинхронних функцій збільшується в більш складних прикладах. Скажімо, ми хотіли б журналювати потік відповіді з фрагментів і повертати остаточний розмір.</p></div>
-<div class="paragraph"><p>Примітка. Фраза "журналювання фрагменти" тисне мені в роті.</p></div>
-<div class="paragraph"><p>Ось це з обіцянками:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">function</span> <span class="n">getResponseSize</span><span class="o">(</span><span class="n">url</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">return</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">).</span><span class="n">then</span><span class="o">(</span><span class="n">response</span> <span class="k">=&gt;</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">reader</span> <span class="k">=</span> <span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">getReader</span><span class="o">();</span>
-    <span class="n">let</span> <span class="n">total</span> <span class="k">=</span> <span class="mi">0</span><span class="o">;</span>
+shout(<em>Modules in action</em>);
 
-    <span class="k">return</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="o">().</span><span class="n">then</span><span class="o">(</span><span class="n">function</span> <span class="n">processResult</span><span class="o">(</span><span class="n">result</span><span class="o">)</span> <span class="o">{</span>
-      <span class="k">if</span> <span class="o">(</span><span class="n">result</span><span class="o">.</span><span class="n">done</span><span class="o">)</span> <span class="k">return</span> <span class="n">total</span><span class="o">;</span>
+You could also export a default value from a module:</p></div>
+<div class="paragraph"><p>export default function(string) {
+  return <code>${string.toUpperCase()}!</code>;
+}
+Such default exports can be imported using any name:</p></div>
+<div class="paragraph"><p>import shout from <em>./lib.mjs</em>;
 
-      <span class="n">const</span> <span class="n">value</span> <span class="k">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="o">;</span>
-      <span class="n">total</span> <span class="o">+=</span> <span class="n">value</span><span class="o">.</span><span class="n">length</span><span class="o">;</span>
-      <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class=" -Symbol">&#39;Received</span> <span class="n">chunk</span><span class="err">&#39;</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
+Modules are a little different from classic scripts:</p></div>
+<div class="paragraph"><p>Modules have strict mode enabled by default.</p></div>
+<div class="paragraph"><p>HTML-style comment syntax is not supported in modules, although it works in classic scripts.</p></div>
+<div class="paragraph"><p>const x = 42; &lt;!-- TODO: Rename x to y.
 
-      <span class="k">return</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="o">().</span><span class="n">then</span><span class="o">(</span><span class="n">processResult</span><span class="o">);</span>
-    <span class="o">})</span>
-  <span class="o">});</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Перевірте мене, Джейк "володар обіцянок" Арчібальд. Подивіться, як я викликаю <code>processResult</code> всередині себе, щоб налаштувати асинхронний цикл? Писати таке змусило мене почуватися дуже розумним. Але, як і більшість "розумних" кодів, вам доведеться дивитись на нього століттями, щоб зрозуміти, що це робить, як одну з цих чарівних картин з 90-х.</p></div>
-<div class="paragraph"><p>Спробуємо ще раз з <code>async</code> функціями:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">getResponseSize</span><span class="o">(</span><span class="n">url</span><span class="o">)</span> <span class="o">{</span>
-  <span class="n">const</span> <span class="n">response</span> <span class="k">=</span> <span class="n">await</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">);</span>
-  <span class="n">const</span> <span class="n">reader</span> <span class="k">=</span> <span class="n">response</span><span class="o">.</span><span class="n">body</span><span class="o">.</span><span class="n">getReader</span><span class="o">();</span>
-  <span class="n">let</span> <span class="n">result</span> <span class="k">=</span> <span class="n">await</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="o">();</span>
-  <span class="n">let</span> <span class="n">total</span> <span class="k">=</span> <span class="mi">0</span><span class="o">;</span>
-
-  <span class="k">while</span> <span class="o">(!</span><span class="n">result</span><span class="o">.</span><span class="n">done</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">value</span> <span class="k">=</span> <span class="n">result</span><span class="o">.</span><span class="n">value</span><span class="o">;</span>
-    <span class="n">total</span> <span class="o">+=</span> <span class="n">value</span><span class="o">.</span><span class="n">length</span><span class="o">;</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class=" -Symbol">&#39;Received</span> <span class="n">chunk</span><span class="err">&#39;</span><span class="o">,</span> <span class="n">value</span><span class="o">);</span>
-    <span class="c1">// get the next result</span>
-    <span class="n">result</span> <span class="k">=</span> <span class="n">await</span> <span class="n">reader</span><span class="o">.</span><span class="n">read</span><span class="o">();</span>
-  <span class="o">}</span>
-
-  <span class="k">return</span> <span class="n">total</span><span class="o">;</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Усього "розумного" вже немає. Асинхронний цикл, який змусив мене почувати себе самовдоволеним, замінюється на надійний та нудний <code>while</code> цикл. Значно краще. Надалі ми отримаємо асинхронні ітератори, які замінять цикл while на цикл <code>for-of</code>, роблячи його ще акуратнішим.</p></div>
-<div class="paragraph"><p>Примітка: Я начебто закоханий у потоки. Якщо ви не знайомі з потоковою передачею, перегляньте <a href="https://jakearchibald.com/2016/streams-ftw/#streams-the-fetch-api">мій путівник</a>.</p></div>
-</div>
-<div class="sect2">
-<h3 id="___async_">Інший синтаксис async функції</h3>
-<div class="paragraph"><p>Ми вже бачили <code>async function () {}</code>, але ключове слово <code>async</code> може використовуватися з іншим синтаксисом функції:</p></div>
-<div class="sect3">
-<h4 id="__">Функції стрілки</h4>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="c1">// відобразити кілька URL-адрес на json-обіцянки</span>
-<span class="n">const</span> <span class="n">jsonPromises</span> <span class="k">=</span> <span class="n">urls</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">async</span> <span class="n">url</span> <span class="k">=&gt;</span> <span class="o">{</span>
-  <span class="n">const</span> <span class="n">response</span> <span class="k">=</span> <span class="n">await</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">);</span>
-  <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">json</span><span class="o">();</span>
-<span class="o">});</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Примітка: <code>array.map (func)</code> байдуже, що я надав йому <code>async</code> функцію, він просто сприймає це як функцію, яка повертає обіцянку. Він не чекатиме завершення першої функції перед викликом другої.</p></div>
-</div>
-<div class="sect3">
-<h4 id="____3">Об'єктні методи</h4>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">const</span> <span class="n">storage</span> <span class="k">=</span> <span class="o">{</span>
-  <span class="n">async</span> <span class="n">getAvatar</span><span class="o">(</span><span class="n">name</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">cache</span> <span class="k">=</span> <span class="n">await</span> <span class="n">caches</span><span class="o">.</span><span class="n">open</span><span class="o">(</span><span class=" -Symbol">&#39;avatars</span><span class="err">&#39;</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">cache</span><span class="o">.</span><span class="k">match</span><span class="o">(</span><span class="n">`/avatars/${name}.jpg`</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">};</span>
-<span class="n">storage</span><span class="o">.</span><span class="n">getAvatar</span><span class="o">(</span><span class=" -Symbol">&#39;jaffathecake</span><span class="err">&#39;</span><span class="o">).</span><span class="n">then</span><span class="o">(</span><span class="err">…</span><span class="o">);</span>
-</pre></div></div></div>
-</div>
-<div class="sect3">
-<h4 id="___2">Методи класів</h4>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">Storage</span> <span class="o">{</span>
-  <span class="n">constructor</span><span class="o">()</span> <span class="o">{</span>
-    <span class="k">this</span><span class="o">.</span><span class="n">cachePromise</span> <span class="k">=</span> <span class="n">caches</span><span class="o">.</span><span class="n">open</span><span class="o">(</span><span class=" -Symbol">&#39;avatars</span><span class="err">&#39;</span><span class="o">);</span>
-  <span class="o">}</span>
-
-  <span class="n">async</span> <span class="n">getAvatar</span><span class="o">(</span><span class="n">name</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">cache</span> <span class="k">=</span> <span class="n">await</span> <span class="k">this</span><span class="o">.</span><span class="n">cachePromise</span><span class="o">;</span>
-    <span class="k">return</span> <span class="n">cache</span><span class="o">.</span><span class="k">match</span><span class="o">(</span><span class="n">`/avatars/${name}.jpg`</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-
-<span class="n">const</span> <span class="n">storage</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Storage</span><span class="o">();</span>
-<span class="n">storage</span><span class="o">.</span><span class="n">getAvatar</span><span class="o">(</span><span class=" -Symbol">&#39;jaffathecake</span><span class="err">&#39;</span><span class="o">).</span><span class="n">then</span><span class="o">(</span><span class="err">…</span><span class="o">);</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Примітка: Конструктори класів та геттери / сетери не можуть бути асинхронізовані.</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="______2">Обережно! Уникайте занадто послідовних дій</h3>
-<div class="paragraph"><p>Хоча ви пишете код, який виглядає синхронно, не забудьте про можливість робити щось паралельно.</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">series</span><span class="o">()</span> <span class="o">{</span>
-  <span class="n">await</span> <span class="n">wait</span><span class="o">(</span><span class="mi">500</span><span class="o">);</span> <span class="c1">// Чекайте 500ms...</span>
-  <span class="n">await</span> <span class="n">wait</span><span class="o">(</span><span class="mi">500</span><span class="o">);</span> <span class="c1">// ... і потім ще 500ms.</span>
-  <span class="k">return</span> <span class="s">&quot;done!&quot;</span><span class="o">;</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Наведене вище займає 1000 мс, тоді як:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">parallel</span><span class="o">()</span> <span class="o">{</span>
-  <span class="n">const</span> <span class="n">wait1</span> <span class="k">=</span> <span class="n">wait</span><span class="o">(</span><span class="mi">500</span><span class="o">);</span> <span class="c1">// Start a 500ms timer asynchronously…</span>
-  <span class="n">const</span> <span class="n">wait2</span> <span class="k">=</span> <span class="n">wait</span><span class="o">(</span><span class="mi">500</span><span class="o">);</span> <span class="c1">// …meaning this timer happens in parallel.</span>
-  <span class="n">await</span> <span class="n">wait1</span><span class="o">;</span> <span class="c1">// Wait 500ms for the first timer…</span>
-  <span class="n">await</span> <span class="n">wait2</span><span class="o">;</span> <span class="c1">// …by which time this timer has already finished.</span>
-  <span class="k">return</span> <span class="s">&quot;done!&quot;</span><span class="o">;</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="olist lowerroman"><ol class="lowerroman">
-<li>
-<p>
-вищезазначене займає 500 мс для завершення, тому що обидва очікування відбуваються одночасно. Давайте розглянемо практичний приклад &#8230;
-</p>
-</li>
-</ol></div>
-</div>
-<div class="sect2">
-<h3 id="____">Приклад: Виведення отриманих послідовностей</h3>
-<div class="paragraph"><p>Скажімо, ми хотіли отримати URL-адреси ряду та записати їх якнайшвидше, у правильному порядку.</p></div>
-<div class="paragraph"><p>Глибокий вдих - ось як це виглядає з обіцянками:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">function</span> <span class="n">logInOrder</span><span class="o">(</span><span class="n">urls</span><span class="o">)</span> <span class="o">{</span>
-  <span class="c1">// підтягуємо всі URLs</span>
-  <span class="n">const</span> <span class="n">textPromises</span> <span class="k">=</span> <span class="n">urls</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">url</span> <span class="k">=&gt;</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">).</span><span class="n">then</span><span class="o">(</span><span class="n">response</span> <span class="k">=&gt;</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">());</span>
-  <span class="o">});</span>
-
-  <span class="c1">// журналюємо впорядковано</span>
-  <span class="n">textPromises</span><span class="o">.</span><span class="n">reduce</span><span class="o">((</span><span class="n">chain</span><span class="o">,</span> <span class="n">textPromise</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="o">{</span>
-    <span class="k">return</span> <span class="n">chain</span><span class="o">.</span><span class="n">then</span><span class="o">(()</span> <span class="k">=&gt;</span> <span class="n">textPromise</span><span class="o">)</span>
-      <span class="o">.</span><span class="n">then</span><span class="o">(</span><span class="n">text</span> <span class="k">=&gt;</span> <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">text</span><span class="o">));</span>
-  <span class="o">},</span> <span class="nc">Promise</span><span class="o">.</span><span class="n">resolve</span><span class="o">());</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Так, саме так, я використовую <code>reduce</code> для ланцюга послідовностей обіцянок. Я такий розумний. Але це трохи настільки розумне кодування, що нам буде краще без цього.</p></div>
-<div class="paragraph"><p>Однак, перетворюючи вищезазначене в <code>async</code> функцію, спокусливо йти занадто послідовно:</p></div>
-<div class="paragraph"><p>Не рекомендується - занадто послідовно</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">logInOrder</span><span class="o">(</span><span class="n">urls</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">for</span> <span class="o">(</span><span class="n">const</span> <span class="n">url</span> <span class="n">of</span> <span class="n">urls</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">response</span> <span class="k">=</span> <span class="n">await</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">);</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">await</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">());</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Виглядає набагато акуратніше, але мій другий <code>fetch</code> не починається, поки мій перший <code>fetch</code> не буде повністю прочитаний тощо. Це набагато повільніше, ніж приклад обіцянок, який виконує <code>fetchfetch</code> паралельно. На щастя, є ідеальна середина:</p></div>
-<div class="paragraph"><p>Рекомендовано - приємно і паралельно</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">logInOrder</span><span class="o">(</span><span class="n">urls</span><span class="o">)</span> <span class="o">{</span>
-  <span class="c1">// підтягуємо всі URL одночасно</span>
-  <span class="n">const</span> <span class="n">textPromises</span> <span class="k">=</span> <span class="n">urls</span><span class="o">.</span><span class="n">map</span><span class="o">(</span><span class="n">async</span> <span class="n">url</span> <span class="k">=&gt;</span> <span class="o">{</span>
-    <span class="n">const</span> <span class="n">response</span> <span class="k">=</span> <span class="n">await</span> <span class="n">fetch</span><span class="o">(</span><span class="n">url</span><span class="o">);</span>
-    <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">text</span><span class="o">();</span>
-  <span class="o">});</span>
-
-  <span class="c1">// журналюємо їх послідовно</span>
-  <span class="k">for</span> <span class="o">(</span><span class="n">const</span> <span class="n">textPromise</span> <span class="n">of</span> <span class="n">textPromises</span><span class="o">)</span> <span class="o">{</span>
-    <span class="n">console</span><span class="o">.</span><span class="n">log</span><span class="o">(</span><span class="n">await</span> <span class="n">textPromise</span><span class="o">);</span>
-  <span class="o">}</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>У цьому прикладі URL-адреси виймаються та читаються паралельно, але "розумний" біт <code>reduce</code> замінюється стандартним, нудним, читабельним <code>for</code>-циклом.</p></div>
-</div>
-<div class="sect2">
-<h3 id="______">Підтримка веб-переглядача та обхідні шляхи</h3>
-<div class="paragraph"><p>На момент написання функції функції асинхронізації за замовчуванням увімкнено в Chrome, Edge, Firefox та Safari.</p></div>
-<div class="sect3">
-<h4 id="___3">Обхід - генератори</h4>
-<div class="paragraph"><p>Якщо ви орієнтуєтесь на веб-переглядачі, які підтримують генератори (що включає останню версію кожного головного браузера), ви можете зробити деякий поліфілл для функції асинхронізації.</p></div>
-<div class="paragraph"><p>Babel зробить це для вас, ось приклад за допомогою REPL Babel - зауважте, наскільки схожий на трансльований. Ця трансформація є частиною пресету Babel&#8217;s es2017.</p></div>
-<div class="paragraph"><p>Примітка: Babel REPL - це прикольно навіть сказати. Спробуй це.</p></div>
-<div class="paragraph"><p>Я рекомендую підхід транспіляції, оскільки ви можете просто вимкнути його, як тільки ваші цільові браузери підтримують функції асинхронізації, але якщо ви дійсно не хочете використовувати транспілятор, ви можете взяти поліфайл Babel і використовувати його самостійно. Замість:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">async</span> <span class="n">function</span> <span class="n">slowEcho</span><span class="o">(</span><span class="k">val</span><span class="o">)</span> <span class="o">{</span>
-  <span class="n">await</span> <span class="n">wait</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>
-  <span class="k">return</span> <span class="k">val</span><span class="o">;</span>
-<span class="o">}</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Ви включите поліфілл і напишіть:</p></div>
-<div class="listingblock">
-<div class="content"><div class="highlight"><pre><span></span><span class="n">const</span> <span class="n">slowEcho</span> <span class="k">=</span> <span class="n">createAsyncFunction</span><span class="o">(</span><span class="n">function</span><span class="o">*(</span><span class="k">val</span><span class="o">)</span> <span class="o">{</span>
-  <span class="k">yield</span> <span class="n">wait</span><span class="o">(</span><span class="mi">1000</span><span class="o">);</span>
-  <span class="k">return</span> <span class="k">val</span><span class="o">;</span>
-<span class="o">});</span>
-</pre></div></div></div>
-<div class="paragraph"><p>Зауважте, що вам потрібно передати генератор <code>(function*)</code> до <code>createAsyncFunction</code> і використовувати <code>yield</code>, замість <code>await</code>. Крім цього це працює так само.</p></div>
-</div>
-<div class="sect3">
-<h4 id="___4">Обхід - регенератор</h4>
-<div class="paragraph"><p>Якщо ви орієнтовані на старі браузери, Babel також може транспілювати генератори, що дозволяє використовувати функції асинхронізації аж до IE8. Для цього вам знадобиться пресет Babel es2017 та пресет es2015.</p></div>
-<div class="paragraph"><p>The output is not as pretty, so watch out for code-bloat.
-Вихід не такий вже й гарний, тому стежте за роздутим кодом.</p></div>
-</div>
-</div>
-<div class="sect2">
-<h3 id="____4">Асинхронізуйте всі речі!</h3>
-<div class="paragraph"><p>Як тільки функції асинхронізації приземляться у всіх браузерах, використовуйте їх у кожній функції, що повертається! Вони не тільки роблять ваш код стрункішим, але і гарантують, що функція завжди поверне обіцянку.</p></div>
-<div class="paragraph"><p>Я насправді захопився функціями асинхронізації ще в 2014 році, і це чудово бачити, як вони реально перебувають у браузерах. Так!</p></div>
+const x = 42; // TODO: Rename x to y.
+Modules have a lexical top-level scope. This means that for example, running var foo = 42; within a module does not create a global variable named foo, accessible through window.foo in a browser, although that would be the case in a classic script.</p></div>
+<div class="paragraph"><p>Similarly, the this within modules does not refer to the global this, and instead is undefined. (Use globalThis if you need access to the global this.)</p></div>
+<div class="paragraph"><p>The new static import and export syntax is only available within modules — it doesn’t work in classic scripts.</p></div>
+<div class="paragraph"><p>Top-level await is available in modules, but not in classic scripts. Relatedly, await cannot be used as a variable name anywhere in a module, although variables in classic scripts can be named await outside of async functions.</p></div>
+<div class="paragraph"><p>Because of these differences, the same JavaScript code might behave differently when treated as a module vs. a classic script. As such, the JavaScript runtime needs to know which scripts are modules.</p></div>
+<div class="paragraph"><p>Using JS modules in the browser
+On the web, you can tell browsers to treat a &lt;script&gt; element as a module by setting the type attribute to module.</p></div>
+<div class="paragraph"><p>&lt;script type="module" src="main.mjs"&gt;&lt;/script&gt;
+&lt;script nomodule src="fallback.js"&gt;&lt;/script&gt;
+Browsers that understand type="module" ignore scripts with a nomodule attribute. This means you can serve a module-based payload to module-supporting browsers while providing a fallback to other browsers. The ability to make this distinction is amazing, if only for performance! Think about it: only modern browsers support modules. If a browser understands your module code, it also supports features that were around before modules, such as arrow functions or async-await. You don’t have to transpile those features in your module bundle anymore! You can serve smaller and largely untranspiled module-based payloads to modern browsers. Only legacy browsers get the nomodule payload.</p></div>
+<div class="paragraph"><p>Since modules are deferred by default, you may want to load the nomodule script in a deferred fashion as well:</p></div>
+<div class="paragraph"><p>&lt;script type="module" src="main.mjs"&gt;&lt;/script&gt;
+&lt;script nomodule defer src="fallback.js"&gt;&lt;/script&gt;
+Browser-specific differences between modules and classic scripts
+As you now know, modules are different from classic scripts. On top of the platform-agnostic differences we’ve outlined above, there are some differences that are specific to browsers.</p></div>
+<div class="paragraph"><p>For example, modules are evaluated only once, while classic scripts are evaluated however many times you add them to the DOM.</p></div>
+<div class="paragraph"><p>&lt;script src="classic.js"&gt;&lt;/script&gt;
+&lt;script src="classic.js"&gt;&lt;/script&gt;
+&lt;!-- classic.js executes multiple times. -&#8594;</p></div>
+<div class="paragraph"><p>&lt;script type="module" src="module.mjs"&gt;&lt;/script&gt;
+&lt;script type="module" src="module.mjs"&gt;&lt;/script&gt;
+&lt;script type="module"&gt;import <em>./module.mjs</em>;&lt;/script&gt;
+&lt;!-- module.mjs executes only once. -&#8594;
+Also, module scripts and their dependencies are fetched with CORS. This means that any cross-origin module scripts must be served with the proper headers, such as Access-Control-Allow-Origin: *. This is not true for classic scripts.</p></div>
+<div class="paragraph"><p>Another difference relates to the async attribute, which causes the script to download without blocking the HTML parser (like defer) except it also executes the script as soon as possible, with no guaranteed order, and without waiting for HTML parsing to finish. The async attribute does not work for inline classic scripts, but it does work for inline &lt;script type="module"&gt;.</p></div>
+<div class="paragraph"><p>A note on file extensions
+You may have noticed we’re using the .mjs file extension for modules. On the Web, the file extension doesn’t really matter, as long as the file is served with the JavaScript MIME type text/javascript. The browser knows it’s a module because of the type attribute on the script element.</p></div>
+<div class="paragraph"><p>Still, we recommend using the .mjs extension for modules, for two reasons:</p></div>
+<div class="paragraph"><p>During development, the .mjs extension makes it crystal clear to you and anyone else looking at your project that the file is a module as opposed to a classic script. (It’s not always possible to tell just by looking at the code.) As mentioned before, modules are treated differently than classic scripts, so the difference is hugely important!
+It ensures that your file is parsed as a module by runtimes such as Node.js and d8, and build tools such as Babel. While these environments and tools each have proprietary ways via configuration to interpret files with other extensions as modules, the .mjs extension is the cross-compatible way to ensure that files are treated as modules.
+Note: To deploy .mjs on the web, your web server needs to be configured to serve files with this extension using the appropriate Content-Type: text/javascript header, as mentioned above. Additionally, you may want to configure your editor to treat .mjs files as .js files to get syntax highlighting. Most modern editors already do this by default.</p></div>
+<div class="paragraph"><p>Module specifiers
+When importing modules, the string that specifies the location of the module is called the “module specifier” or the “import specifier”. In our earlier example, the module specifier is <em>./lib.mjs</em>:</p></div>
+<div class="paragraph"><p>Some restrictions apply to module specifiers in browsers. So-called “bare” module specifiers are currently not supported. This restriction is specified so that in the future, browsers can allow custom module loaders to give special meaning to bare module specifiers like the following:</p></div>
+<div class="paragraph"><p>On the other hand, the following examples are all supported:</p></div>
+<div class="paragraph"><p>For now, module specifiers must be full URLs, or relative URLs starting with /, ./, or ../.</p></div>
+<div class="paragraph"><p>Modules are deferred by default
+Classic &lt;script&gt;s block the HTML parser by default. You can work around it by adding the defer attribute, which ensures that the script download happens in parallel with HTML parsing.</p></div>
+<div class="paragraph"><p>Module scripts are deferred by default. As such, there is no need to add defer to your &lt;script type="module"&gt; tags! Not only does the download for the main module happen in parallel with HTML parsing, the same goes for all the dependency modules!</p></div>
+<div class="paragraph"><p>Other module features
+Dynamic import()
+So far we’ve only used static import. With static import, your entire module graph needs to be downloaded and executed before your main code can run. Sometimes, you don’t want to load a module up-front, but rather on-demand, only when you need it — when the user clicks a link or a button, for example. This improves the initial load-time performance. Dynamic import() makes this possible!</p></div>
+<div class="paragraph"><p>&lt;script type="module"&gt;
+  (async () &#8658; {
+    const moduleSpecifier = <em>./lib.mjs</em>;
+    const {repeat, shout} = await import(moduleSpecifier);
+    repeat(<em>hello</em>);
+    // → <em>hello hello</em>
+    shout(<em>Dynamic import in action</em>);
+    // → <em>DYNAMIC IMPORT IN ACTION!</em>
+  })();
+&lt;/script&gt;
+Unlike static import, dynamic import() can be used from within regular scripts. It’s an easy way to incrementally start using modules in your existing code base. For more details, see our article on dynamic import().</p></div>
+<div class="paragraph"><p>Note: webpack has its own version of import() that cleverly splits the imported module into its own chunk, separate from the main bundle.</p></div>
+<div class="paragraph"><p>import.meta
+Another new module-related feature is import.meta, which gives you metadata about the current module. The exact metadata you get is not specified as part of ECMAScript; it depends on the host environment. In a browser, you might get different metadata than in Node.js, for example.</p></div>
+<div class="paragraph"><p>Here’s an example of import.meta on the web. By default, images are loaded relative to the current URL in HTML documents. import.meta.url makes it possible to load an image relative to the current module instead.</p></div>
+<div class="paragraph"><p>function loadThumbnail(relativePath) {
+  const url = new URL(relativePath, import.meta.url);
+  const image = new Image();
+  image.src = url;
+  return image;
+}</p></div>
+<div class="paragraph"><p>const thumbnail = loadThumbnail(<em>../img/thumbnail.png</em>);
+container.append(thumbnail);
+Performance recommendations
+Keep bundling
+With modules, it becomes possible to develop websites without using bundlers such as webpack, Rollup, or Parcel. It’s fine to use native JS modules directly in the following scenarios:</p></div>
+<div class="paragraph"><p>during local development
+in production for small web apps with less than 100 modules in total and with a relatively shallow dependency tree (i.e. a maximum depth less than 5)
+However, as we learned during our bottleneck analysis of Chrome’s loading pipeline when loading a modularized library composed of ~300 modules, the loading performance of bundled applications is better than unbundled ones.</p></div>
+<div class="paragraph"><p>One reason for this is that the static import/export syntax is statically analyzable, and it can thus help bundler tools optimize your code by eliminating unused exports. Static import and export are more than just syntax; they are a critical tooling feature!</p></div>
+<div class="paragraph"><p>Our general recommendation is to continue using bundlers before deploying modules to production. In a way, bundling is a similar optimization to minifying your code: it results in a performance benefit, because you end up shipping less code. Bundling has the same effect! Keep bundling.</p></div>
+<div class="paragraph"><p>As always, the DevTools Code Coverage feature can help you identify if you are pushing unnecessary code to users. We also recommend the use of code splitting to split bundles and to defer loading of non-First-Meaningful-Paint critical scripts.</p></div>
+<div class="paragraph"><p>Trade-offs of bundling vs. shipping unbundled modules
+As usual in web development, everything is a trade-off. Shipping unbundled modules might decrease initial load performance (cold cache), but could actually improve load performance for subsequent visits (warm cache) compared to shipping a single bundle without code splitting. For a 200 KB code base, changing a single fine-grained module and having that be the only fetch from the server for subsequent visits is way better than having to re-fetch the whole bundle.</p></div>
+<div class="paragraph"><p>If you’re more concerned with the experience of visitors with warm caches than first-visit performance and have a site with less than a few hundred fine-grained modules, you could experiment with shipping unbundled modules, measure the performance impact for both cold and warm loads, and then make a data-driven decision!</p></div>
+<div class="paragraph"><p>Browser engineers are working hard on improving the performance of modules out-of-the-box. Over time, we expect shipping unbundled modules to become feasible in more situations.</p></div>
+<div class="paragraph"><p>Use fine-grained modules
+Get into the habit of writing your code using small, fine-grained modules. During development, it’s generally better to have just a few exports per module than it is to manually combine lots of exports into a single file.</p></div>
+<div class="paragraph"><p>Consider a module named ./util.mjs that exports three functions named drop, pluck, and zip:</p></div>
+<div class="paragraph"><p>export function drop() { /* … <strong>/ }
+export function pluck() { /</strong> … <strong>/ }
+export function zip() { /</strong> … */ }
+If your code base only really needs the pluck functionality, you’d probably import it as follows:</p></div>
+<div class="paragraph"><p>In this case, (without a build-time bundling step) the browser still ends up having to download, parse, and compile the entire ./util.mjs module even though it only really needs that one export. That’s wasteful!</p></div>
+<div class="paragraph"><p>If pluck doesn’t share any code with drop and zip, it’d be better to move it to its own fine-grained module, e.g. ./pluck.mjs.</p></div>
+<div class="paragraph"><p>export function pluck() { /* … */ }
+We can then import pluck without the overhead of dealing with drop and zip:</p></div>
+<div class="paragraph"><p>Note: You could use a default export instead of a named export here, depending on your personal preference.</p></div>
+<div class="paragraph"><p>Not only does this keep your source code nice and simple, it also reduces the need for dead-code elimination as performed by bundlers. If one of the modules in your source tree is unused, then it never gets imported, and so the browser never downloads it. The modules that do get used can be individually code-cached by the browser. (The infrastructure to make this happen already landed in V8, and work is underway to enable it in Chrome as well.)</p></div>
+<div class="paragraph"><p>Using small, fine-grained modules helps prepare your code base for the future where a native bundling solution might be available.</p></div>
+<div class="paragraph"><p>Preload modules
+You can optimize the delivery of your modules further by using &lt;link rel="modulepreload"&gt;. This way, browsers can preload and even preparse and precompile modules and their dependencies.</p></div>
+<div class="paragraph"><p>&lt;link rel="modulepreload" href="lib.mjs"&gt;
+&lt;link rel="modulepreload" href="main.mjs"&gt;
+&lt;script type="module" src="main.mjs"&gt;&lt;/script&gt;
+&lt;script nomodule src="fallback.js"&gt;&lt;/script&gt;
+This is especially important for larger dependency trees. Without rel="modulepreload", the browser needs to perform multiple HTTP requests to figure out the full dependency tree. However, if you declare the full list of dependent module scripts with rel="modulepreload", the browser doesn’t have to discover these dependencies progressively.</p></div>
+<div class="paragraph"><p>Use HTTP/2
+Using HTTP/2 where possible is always good performance advice, if only for its multiplexing support. With HTTP/2 multiplexing, multiple request and response messages can be in flight at the same time, which is beneficial for loading module trees.</p></div>
+<div class="paragraph"><p>The Chrome team investigated if another HTTP/2 feature, specifically HTTP/2 server push, could be a practical solution for deploying highly-modularized apps. Unfortunately, HTTP/2 server push is tricky to get right, and web servers’ and browsers’ implementations are not currently optimized towards highly-modularized web app use cases. It’s hard to only push the resources that the user doesn’t already have cached, for example, and solving that by communicating the entire cache state of an origin to the server is a privacy risk.</p></div>
+<div class="paragraph"><p>So by all means, go ahead and use HTTP/2! Just keep in mind that HTTP/2 server push is (unfortunately) not a silver bullet.</p></div>
+<div class="paragraph"><p>Web adoption of JS modules
+JS modules are slowly gaining adoption on the web. Our usage counters show that 0.08% of all page loads currently use &lt;script type="module"&gt;. Note that this number excludes other entry points such as dynamic import() or worklets.</p></div>
+<div class="paragraph"><p>What’s next for JS modules?
+The Chrome team is working on improving the development-time experience with JS modules in various ways. Let’s discuss some of them.</p></div>
+<div class="paragraph"><p>Faster and deterministic module resolution algorithm
+We proposed a change to the module resolution algorithm that addressed a deficiency in speed and determinism. The new algorithm is now live in both the HTML specification and the ECMAScript specification, and is implemented in Chrome 63. Expect this improvement to land in more browsers soon!</p></div>
+<div class="paragraph"><p>The new algorithm is much more efficient and faster. The computational complexity of the old algorithm was quadratic, i.e. 𝒪(n²), in the size of the dependency graph, and so was Chrome’s implementation at the time. The new algorithm is linear, i.e. 𝒪(n).</p></div>
+<div class="paragraph"><p>Moreover, the new algorithm reports resolution errors in a deterministic way. Given a graph containing multiple errors, different runs of the old algorithm could report different errors as being responsible for the resolution failure. This made debugging unnecessarily difficult. The new algorithm is guaranteed to report the same error every time.</p></div>
+<div class="paragraph"><p>Worklets and web workers
+Chrome now implements worklets, which allow web developers to customize hard-coded logic in the “low-level parts” of web browsers. With worklets, web developers can feed an JS module into the rendering pipeline or the audio processing pipeline (and possibly more pipelines in the future!).</p></div>
+<div class="paragraph"><p>Chrome 65 supports PaintWorklet (a.k.a. the CSS Paint API) to control how a DOM element is painted.</p></div>
+<div class="paragraph"><p>const result = await css.paintWorklet.addModule(<em>paint-worklet.mjs</em>);
+Chrome 66 supports AudioWorklet, which allows you to control audio processing with your own code. The same Chrome version started an OriginTrial for AnimationWorklet, which enables creating scroll-linked and other high-performance procedural animations.</p></div>
+<div class="paragraph"><p>Finally, LayoutWorklet (a.k.a. the CSS Layout API) is now implemented in Chrome 67.</p></div>
+<div class="paragraph"><p>We’re working on adding support for using JS modules with dedicated web workers in Chrome. You can already try this feature with chrome://flags/#enable-experimental-web-platform-features enabled.</p></div>
+<div class="paragraph"><p>const worker = new Worker(<em>worker.mjs</em>, { type: <em>module</em> });
+JS module support for shared workers and service workers is coming soon:</p></div>
+<div class="paragraph"><p>const worker = new SharedWorker(<em>worker.mjs</em>, { type: <em>module</em> });
+const registration = await navigator.serviceWorker.register(<em>worker.mjs</em>, { type: <em>module</em> });
+Import maps
+In Node.js/npm, it’s common to import JS modules by their “package name”. For example:</p></div>
+<div class="paragraph"><p>import moment from <em>moment</em>;
+Currently, per the HTML spec, such “bare import specifiers” throw an exception. Our import maps proposal allows such code to work on the web, including in production apps. An import map is a JSON resource that helps the browser convert bare import specifiers into full URLs.</p></div>
+<div class="paragraph"><p>Import maps are still in the proposal stage. Although we’ve thought a lot about how they address various use cases, we’re still engaging with the community, and haven’t yet written up a full specification. Feedback is welcome!</p></div>
+<div class="paragraph"><p>Web packaging: native bundles
+The Chrome loading team is currently exploring a native web packaging format as a new way to distribute web apps. The core features of web packaging are:</p></div>
+<div class="paragraph"><p>Signed HTTP Exchanges that allow a browser to trust that a single HTTP request/response pair was generated by the origin it claims; Bundled HTTP Exchanges, that is, a collection of exchanges, each of which could be signed or unsigned, with some metadata describing how to interpret the bundle as a whole.</p></div>
+<div class="paragraph"><p>Combined, such a web packaging format would enable multiple same-origin resources to be securely embedded in a single HTTP GET response.</p></div>
+<div class="paragraph"><p>Existing bundling tools such as webpack, Rollup, or Parcel currently emit a single JavaScript bundle, in which the semantics of the original separate modules and assets are lost. With native bundles, browsers could unbundle the resources back to their original form. In simplified terms, you can imagine a Bundled HTTP Exchange as a bundle of resources that can be accessed in any order via a table of contents (manifest), and where the contained resources can be efficiently stored and labeled according to their relative importance, all while maintaining the notion of individual files. Because of this, native bundles could improve the debugging experience. When viewing assets in the DevTools, browsers could pinpoint the original module without the need for complex source-maps.</p></div>
+<div class="paragraph"><p>The native bundle format’s transparency opens up various optimization opportunities. For example, if a browser already has part of a native bundle cached locally, it could communicate that to the web server and then only download the missing parts.</p></div>
+<div class="paragraph"><p>Chrome already supports a part of the proposal (SignedExchanges), but the bundling format itself as well as its application to highly-modularized apps are still in exploratory phase. Your feedback is highly welcome on the repository or via email to <a href="mailto:loading-dev@chromium.org">loading-dev@chromium.org</a>!</p></div>
+<div class="paragraph"><p>Layered APIs
+Shipping new features and web APIs incurs an ongoing maintenance and runtime cost — every new feature pollutes the browser namespace, increases startup costs, and represents a new surface to introduce bugs throughout the codebase. Layered APIs are an effort to implement and ship higher-level APIs with web browsers in a more scalable way. JS modules are a key enabling technology for layered APIs:</p></div>
+<div class="paragraph"><p>Since modules are explicitly imported, requiring layered APIs to be exposed via modules ensures that developers only pay for the layered APIs they use.
+Because module loading is configurable, layered APIs can have a built-in mechanism for automatically loading polyfills in browsers that don’t support layered APIs.
+The details of how modules and layered APIs work together are still being worked out, but the current proposal looks something like this:</p></div>
+<div class="paragraph"><p>&lt;script
+  type="module"
+  src="std:virtual-scroller|https://example.com/virtual-scroller.mjs"
+&gt;&lt;/script&gt;
+The &lt;script&gt; element loads the virtual-scroller API either from the browser’s built-in set of layered APIs (std:virtual-scroller) or from a fallback URL pointing to a polyfill. This API can do anything JS modules can do in web browsers. One example would be defining a custom &lt;virtual-scroller&gt; element, so that the following HTML is progressively enhanced as desired:</p></div>
+<div class="paragraph"><p>&lt;virtual-scroller&gt;
+  &lt;!-- Content goes here. -&#8594;
+&lt;/virtual-scroller&gt;</p></div>
 </div>
 </div>
 </div>
@@ -1095,7 +985,7 @@ Published 18 June 2018 · tagged with ECMAScript ES2015</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-02-02 00:31:20 EET
+ 2020-02-02 00:46:37 EET
 </div>
 </div>
 </body>
