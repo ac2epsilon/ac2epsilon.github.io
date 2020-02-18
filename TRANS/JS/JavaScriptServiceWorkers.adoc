@@ -1,0 +1,293 @@
+:ascii-ids:
+:doctype: book
+:source-highlighter: pygments
+:icons: font
+
+== Сервісні працівники: вступ
+
+https://developers.google.com/web/fundamentals/primers/service-workers[Matt Gaunt] WebFundamentals
+
+Багатий досвід в режимі офлайн, періодичні фонові синхронізації, push-сповіщення - функціональність, яка зазвичай вимагає нативної програми, приходить у веб. Сервісні працівники забезпечують технічну основу, на яку покладаються всі ці функції.
+
+=== Що таке сервісний працівник
+
+Сервісний працівник - це сценарій, який ваш браузер виконує у фоновому режимі, окремо від веб-сторінки, відкриваючи двері для функцій, які не потребують веб-сторінки чи взаємодії з користувачем. Сьогодні вони вже включають такі функції, як push-сповіщення та фонова синхронізація. В майбутньому сервісні працівники можуть підтримувати інші речі, такі як періодична синхронізація чи географічне обмеження. Основна особливість, обговорювана в цьому підручнику, - це можливість перехоплення та обробки мережевих запитів, включаючи програмне керування кешем відповідей.
+
+Причина цього такого захоплюючого API полягає в тому, що він дозволяє підтримувати офлайн-досвід, надаючи розробникам повний контроль над цим досвідом.
+
+До виникнення сервісних працівників існував ще один API, який надав користувачам офлайн-досвід в Інтернеті під назвою AppCache. З API AppCache існує ряд проблем, яких мали уникнути сервісні працівники.
+
+Що слід зазначити про сервісного працівника:
+
+* Це JavaScript Worker, тому він не може отримати доступ до DOM безпосередньо. Натомість сервісний працівник може спілкуватися зі сторінками, якими він керує, відповідаючи на повідомлення, що надсилаються через інтерфейс `postMessage`, і ці сторінки можуть маніпулювати DOM за потреби.
+* Сервісний працівник - це програмований мережевий проксі, який дозволяє вам контролювати обробку мережевих запитів на вашій сторінці.
+* Він припиняється, коли не використовується, і перезапускається при наступномій необхідності, тому ви не можете розраховувати на глобальний стан в обробниках `onfetch` і `onmessage`. Якщо є інформація, яку потрібно зберігати та використовувати повторно при перезапуску, сервісні працівники мають доступ до API IndexedDB.
+* Сервісні працівники широко використовують обіцянки, тож якщо ви не розумієте обіцянок, тоді вам слід припинити читати це та ознайомитись із обіцянками.
+
+=== Життєвий цикл сервісних працівників
+
+У сервісного працівника життєвий цикл повністю відокремлений від вашої веб-сторінки.
+
+Щоб встановити сервісного працівника для вашого сайту, вам потрібно зареєструвати його, що ви робите в JavaScript на своїй сторінці. Реєстрація сервісного працівника призведе до того, що браузер запустить крок встановлення сервісного працівника у фоновому режимі.
+
+Зазвичай під час кроку встановлення вам потрібно виконати кешування деяких статичних об’єктів. Якщо всі файли успішно кешовано, сервісний працівник встановлюється. Якщо будь-який з файлів не завантажується і кешується, то етап встановлення не вдасться і сервіс-працівник не активується (тобто не буде встановлений). Якщо це трапиться, не хвилюйтесь, він спробує повторити наступного разу. Але це означає, що якщо робітник встановиться, ви знаєте, що у вас є ці статичні активи в кеші.
+
+Після встановлення буде слідувати крок активації, і це чудова можливість для обробки управління будь-якими старими кешами. Ми розглядаємо це в розділі оновлення службового працівника.
+
+Після кроку активації сервісний працівник контролюватиме всі сторінки, які потрапляють в його поле зору, хоча сторінка, яка зареєструвала службового службовця вперше, не буде контролюватися, поки не буде завантажена знову. Після того, як сервісний працівник отриимує контроль, він опиниться в одному з двох станів: або сервісний працівник припиняється для збереження пам’яті, або він буде обробляти події отримання та повідомлення, які виникають, коли з вашої сторінки виробляється мережевий запит чи повідомлення.
+
+Нижче представлена ​​надмірно спрощена версія життєвого циклу сервісного працівника при його першому встановленні.
+
+image::sw-lifecycle.png[service worker lifecycle, height=792, width=685]  
+
+=== Передумови
+
+==== Підтримка браузера
+
+Browser options are growing. Service workers are supported by Chrome, Firefox and Opera. Microsoft Edge is now showing public support. Even Safari has dropped hints of future development. You can follow the progress of all the browsers at Jake Archibald's is Serviceworker ready site.
+Вибір браузерів зростає. Сервісні працівники підтримують Chrome, Firefox та Opera. Microsoft Edge тепер демонструє відкриту підтримку. Навіть Safari кинув натяки на майбутню розробку. Ви можете слідкувати за ходом роботи всіх браузерів на веб-сайті готовності до Serviceworker, який веде Jake Archibald.
+
+==== Вам потрібен HTTPS
+
+Під час розробки ви зможете використовувати сервісного працівника через localhost, але для розгортання його на сайті вам потрібно буде встановити HTTPS на вашому сервері.
+
+За допомогою сервісного працівника ви можете перехопити з'єднання, виготовити та фільтрувати відповіді. Потужні речі. Хоча ми б використовували ці повноваження в благих намірах, людина-посередник можливо ні. Щоб уникнути цього, ви можете реєструвати лише службовців на сторінках, що надходять через HTTPS. Тому ми знаємо, що сервісний працівник, який отримує браузер, не підроблявся під час його подорожі по мережі.
+
+Сторінки GitHub обслуговуються через HTTPS, тому вони є прекрасним місцем для розміщення демонстраційних версій.
+
+Якщо ви хочете додати HTTPS до свого сервера, вам потрібно буде отримати сертифікат TLS та встановити його для свого сервера. Це залежить від налаштувань, тому перевірте документацію вашого сервера та переконайтеся, що використовуєте генератор конфігурацій Mozilla SSL.
+
+==== Зареєструйте сервісного працівника
+
+Щоб встановити сервісного працівника, потрібно розпочати процес, зареєструвавши його на своїй сторінці. Це повідомляє веб-переглядачу, де живе файл JavaScript вашого службового працівника.
+
+[source,js]
+----
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('/sw.js').then(function(registration) {
+      // Реєстрація пройшла успішно
+      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+    }, function(err) {
+      // реєстрація не вдалася :(
+      console.log('ServiceWorker registration failed: ', err);
+    });
+  });
+}
+----
+
+Цей код перевіряє, чи доступний API сервісного працівника, і якщо він є, сервісний працівник в /sw.js реєструється після завантаження сторінки.
+
+Ви можете викликати `register()` щоразу, коли сторінка завантажується без побоювання; браузер з’ясує, чи вже зареєстрований сервісний працівник чи ні, і обробляє це відповідно.
+
+Однією тонкістю методу `register()` є розташування файлу сервісного працівника. Ви помітите в цьому випадку, що файл сервісного працівника знаходиться в корені домену. Це означає, що сфера діяльності службовця буде весь origin. Іншими словами, цей сервісний працівник отримуватиме події для всього цього домену. Якщо ми зареєструємо файл сервісного працівника за адресою `/example/sw.js`, то службовий сервіс побачить лише події для сторінок, URL-адреси яких починаються з `/example/` (тобто `/example/page1/`, `/example/page2/`).
+
+Тепер ви можете переконатися, що сервісний працівник увімкнено, перейшовши до пункту `chrome://inspect/#service-workers` та переглянувши ваш сайт.
+
+Коли вперше реалізується сервісний працівник, ви також можете переглядати деталі свого сервісного працівника через 
+`chrome://serviceworker-internals`. Це може бути корисним, лише щоб дізнатися про життєвий цикл сервісних працівників, але не дивуйтеся, якщо згодом його повністю замінить `chrome://inspect/#service-workers`.
+
+Вам може бути корисно протестувати свого сервісного працівника у вікні анонімного перегляду Incognito, щоб ви могли закрити і знову відкрити, знаючи, що попередній сервісний працівник не вплине на нове вікно. Будь-які реєстрації та кеші, створені з вікна інкогніто, будуть очищені, коли це вікно буде закрите.
+
+=== Встановлення сервісного працівника
+
+Після того, як контрольована сторінка розпочне процес реєстрації, перейдемо до точки зору сценарію службового працівника, який обробляє події `install`.
+
+Для найосновнішого прикладу потрібно визначити зворотний виклик події `install` та визначити, які файли потрібно кешувати.
+
+[source,js]
+----
+self.addEventListener('install', function(event) {
+    // Виконайте етапи встановлення
+});
+----
+
+Всередині нашого зворотного виклику `install` нам потрібно зробити наступні кроки:
+
+1. Відкрийте кеш.
+2. Кешуйте наші файли.
+3. Підтвердіть, кешовані всі необхідні активи чи ні.
+
+[source,js]
+----
+var CACHE_NAME = 'my-site-cache-v1';
+var urlsToCache = [
+  '/',
+  '/styles/main.css',
+  '/script/main.js'
+];
+
+self.addEventListener('install', function(event) {
+  // Виконайте етапи встановлення
+  event.waitUntil(
+    caches.open(CACHE_NAME)
+      .then(function(cache) {
+        console.log('Opened cache');
+        return cache.addAll(urlsToCache);
+      })
+  );
+});
+----
+
+Тут ви бачите, що ми викликаємо `caches.open()` з нашим потрібним іменем кешу, після чого ми викликаємо `cache.addAll()` і передаємо в наш масив файлів. Це ланцюжок обіцянок (`caches.open()` та `cache.addAll()`). Метод `event.waitUntil()` приймає обіцянку і використовує її, щоб знати, як триває установка, і вдалася вона чи ні.
+
+Якщо всі файли успішно кешовано, сервісний працівник буде встановлений. Якщо будь-який з файлів не завантажується, то крок встановлення не вдасться. Це дозволяє розраховувати на наявність усіх визначених вами активів, але це означає, що вам потрібно бути обережними зі списком файлів, які ви вирішите кешувати на кроці встановлення. Визначення довгого списку файлів збільшить ймовірність того, що один файл може не вдатися кешувати, що призведе до того, що ваш сервісний працівник не буде встановлений.
+
+Це лише один приклад: ви можете виконувати інші завдання в події встановлення або взагалі уникати встановлення слухача події `install`.
+
+=== Кеш і повернення запитів
+
+Тепер, коли ви встановили сервісного працівника, ви, ймовірно, хочете повернути одну із кешованих відповідей, правда?
+
+Після того, як сервісний працівник встановлений і користувач перейде на іншу сторінку або оновиться, сервісний працівник почне отримувати події для отримання даних, приклад яких наведено нижче.
+
+[source,js]
+----
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request)
+      .then(function(response) {
+        // Кеш-хіт - повертаємо відповідь
+        if (response) {
+          return response;
+        }
+        return fetch(event.request);
+      }
+    )
+  );
+});
+----
+
+Тут ми визначили нашу подію `fetch` і в рамках `event.respoWith()` ми передаємо обіцянку від `caches.match()`. Цей метод розглядає запит і знаходить будь-які кешовані результати з будь-якого кешу, створеного вашим службовим працівником.
+
+Якщо у нас є співпадаючі відповіді, ми повертаємо кешоване значення, інакше повертаємо результат виклику для `fetch`, який зробить мережевий запит і поверне дані, якщо щось можна буде отримати з мережі. Це простий приклад і використовує будь-які кешовані активи, які ми кешували під час кроку встановлення.
+
+If we want to cache new requests cumulatively, we can do so by handling the response of the fetch request and then adding it to the cache, like below.
+
+self.addEventListener('fetch', function(event) {
+  event.respondWith(
+    caches.match(event.request)
+      .then(function(response) {
+        // Cache hit - return response
+        if (response) {
+          return response;
+        }
+
+        return fetch(event.request).then(
+          function(response) {
+            // Check if we received a valid response
+            if(!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
+
+            // IMPORTANT: Clone the response. A response is a stream
+            // and because we want the browser to consume the response
+            // as well as the cache consuming the response, we need
+            // to clone it so we have two streams.
+            var responseToCache = response.clone();
+
+            caches.open(CACHE_NAME)
+              .then(function(cache) {
+                cache.put(event.request, responseToCache);
+              });
+
+            return response;
+          }
+        );
+      })
+    );
+});
+
+What we are doing is this:
+
+Add a callback to .then() on the fetch request.
+Once we get a response, we perform the following checks:
+Ensure the response is valid.
+Check the status is 200 on the response.
+Make sure the response type is basic, which indicates that it's a request from our origin. This means that requests to third party assets aren't cached as well.
+If we pass the checks, we clone the response. The reason for this is that because the response is a Stream, the body can only be consumed once. Since we want to return the response for the browser to use, as well as pass it to the cache to use, we need to clone it so we can send one to the browser and one to the cache.
+Update a service worker
+There will be a point in time where your service worker will need updating. When that time comes, you'll need to follow these steps:
+
+Update your service worker JavaScript file. When the user navigates to your site, the browser tries to redownload the script file that defined the service worker in the background. If there is even a byte's difference in the service worker file compared to what it currently has, it considers it new.
+Your new service worker will be started and the install event will be fired.
+At this point the old service worker is still controlling the current pages so the new service worker will enter a waiting state.
+When the currently open pages of your site are closed, the old service worker will be killed and the new service worker will take control.
+Once your new service worker takes control, its activate event will be fired.
+One common task that will occur in the activate callback is cache management. The reason you'll want to do this in the activate callback is because if you were to wipe out any old caches in the install step, any old service worker, which keeps control of all the current pages, will suddenly stop being able to serve files from that cache.
+
+Let's say we have one cache called 'my-site-cache-v1', and we find that we want to split this out into one cache for pages and one cache for blog posts. This means in the install step we'd create two caches, 'pages-cache-v1' and 'blog-posts-cache-v1' and in the activate step we'd want to delete our older 'my-site-cache-v1'.
+
+The following code would do this by looping through all of the caches in the service worker and deleting any caches that aren't defined in the cache whitelist.
+
+self.addEventListener('activate', function(event) {
+
+  var cacheWhitelist = ['pages-cache-v1', 'blog-posts-cache-v1'];
+
+  event.waitUntil(
+    caches.keys().then(function(cacheNames) {
+      return Promise.all(
+        cacheNames.map(function(cacheName) {
+          if (cacheWhitelist.indexOf(cacheName) === -1) {
+            return caches.delete(cacheName);
+          }
+        })
+      );
+    })
+  );
+});
+
+Rough edges and gotchas
+This stuff is really new. Here's a collection of issues that get in the way. Hopefully this section can be deleted soon, but for now these are worth being mindful of.
+
+If installation fails, we're not so good at telling you about it
+If a worker registers, but then doesn't appear in chrome://inspect/#service-workers or chrome://serviceworker-internals, it's likely failed to install due to an error being thrown, or a rejected promise being passed to event.waitUntil().
+
+To work around this, go to chrome://serviceworker-internals and check "Open DevTools window and pause JavaScript execution on service worker startup for debugging", and put a debugger statement at the start of your install event. This, along with Pause on uncaught exceptions, should reveal the issue.
+
+The defaults of fetch()
+No credentials by default
+When you use fetch, by default, requests won't contain credentials such as cookies. If you want credentials, instead call:
+
+fetch(url, {
+  credentials: 'include'
+})
+
+This behaviour is on purpose, and is arguably better than XHR's more complex default of sending credentials if the URL is same-origin, but omitting them otherwise. Fetch's behaviour is more like other CORS requests, such as <img crossorigin>, which never sends cookies unless you opt-in with <img crossorigin="use-credentials">.
+
+Non-CORS fail by default
+By default, fetching a resource from a third party URL will fail if it doesn't support CORS. You can add a no-CORS option to the Request to overcome this, although this will cause an 'opaque' response, which means you won't be able to tell if the response was successful or not.
+
+cache.addAll(urlsToPrefetch.map(function(urlToPrefetch) {
+  return new Request(urlToPrefetch, { mode: 'no-cors' });
+})).then(function() {
+  console.log('All resources have been fetched and cached.');
+});
+
+Handling responsive images
+The srcset attribute or the <picture> element will select the most appropriate image asset at run time and make a network request.
+
+For service worker, if you wanted to cache an image during the install step, you have a few options:
+
+Install all the images that the <picture> element and the srcset attribute will request.
+Install a single low-res version of the image.
+Install a single high-res version of the image.
+Realistically you should be picking option 2 or 3 since downloading all of the images would be a waste of storage space.
+
+Let's assume you go for the low res version at install time and you want to try and retrieve higher res images from the network when the page is loaded, but if the high res images fail, fallback to the low res version. This is fine and dandy to do but there is one problem.
+
+If we have the following two images:
+
+Screen Density	Width	Height
+1x	400	400
+2x	800	800
+In a srcset image, we'd have some markup like this:
+
+<img src="image-src.png" srcset="image-src.png 1x, image-2x.png 2x" />
+
+If we are on a 2x display, then the browser will opt to download image-2x.png, if we are offline you could .catch() this request and return image-src.png instead if it's cached, however the browser will expect an image that takes into account the extra pixels on a 2x screen, so the image will appear as 200x200 CSS pixels instead of 400x400 CSS pixels. The only way around this is to set a fixed height and width on the image.
+
+<img src="image-src.png" srcset="image-src.png 1x, image-2x.png 2x"
+ style="width:400px; height: 400px;" />
+
+For <picture> elements being used for art direction, this becomes considerably more difficult and will depend heavily on how your images are created and used, but you may be able to use a similar approach to srcset.
