@@ -178,27 +178,84 @@ export default {
 
 Спочатку ми ініціалізуємо наш API з ендпоінтом. Потім ми запитуємо API, щоб повернути нашу публікацію в блозі. Ми можемо вказати мову та тип документа.
 
-The Prismic API is promise based, which means we can call the API and chain promises. Hurray for promises. We can also use the async/await syntax to resolve promises.
-Prismic response
+API Prismic заснований на обіцянках, а це означає, що ми можемо викликати API та ланцюжки обіцянок. Ура за обіцянками. Ми також можемо використовувати синтаксис асинхрон/очікування для вирішення обіцянок.
 
-All we need to do is render the markup now.
+image::prismicresp.png[]
 
-There you go. We’ve successfully fetched our blog post from the Prismic API.
+Все, що нам потрібно зробити зараз, - це зробити розмітку.
 
-To apply the styles — grab a copy and place it in the style section of the Vue component:
+[source,js]
+----
+<template>
+  <section class="blog-post">
+    <h1 class="title">{{ header }}</h1>
+    <p class="paragraph">{{ content }}</p>
+  </section>
+</template>
 
-If we open our app, this is what we should see.
-End result
+<script>
+import Prismic from "prismic-javascript";
+import PrismicDom from "prismic-dom" //importing the Dom
+import PrismicConfig from "./../prismic.config.js";
+export default {
+  async asyncData() {
+    const api = await Prismic.getApi(PrismicConfig.apiEndpoint);
+    let blog_post = {};
+    const results = await api.query(
+      Prismic.Predicates.at("document.type", "blog-post"),
+      { lang: "en-us" } //This is a Prismic query option
+    );
+    blog_post = results.results[0];
+    const header = PrismicDom.RichText.asText(blog_post.data.blog_post_title);
+    const content = PrismicDom.RichText.asText(blog_post.data.blog_content);
+    return { 
+        blog_post,
+        header,
+        content
+    };
+  }
+};
+</script>
+----
 
-Voilà! We have a modern server-side rendered blog, built with Nuxt and Prismic.
+Ось так. Ми успішно дістали нашу публікацію в блозі з API Prismic.
 
-We barely scratched the surface. We can do a lot more with Nuxt and Prismic. My favorite Prismic features are Slices and Live Preview. I encourage you to check them out!
+Щоб застосувати стилі - візьміть копію та розмістіть її у розділі стилю компонента Vue:
 
-Slices will allow you to create dynamic pages with richer content, and Live preview will allow you to instantly preview your edits on your webpage.
-Slices
+[source,js]
+----
+<style scoped>
+.blog-post {
+  margin: 25px 0;
+  padding: 0 100px;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+.title {
+  margin: 50px 0;
+}
+p {
+  color: #000;
+  margin: 15px 0 5px;
+  max-width: 450px;
+  line-height: 1.44;
+}
+</style>
+----
 
-For example, in this project, we worked on only one post. If we had created lots of posts in Prismic, however, then one really great thing about Nuxt.js is that it automatically creates routes for you.
+Якщо ми відкриємо наш додаток, це ми повинні бачити.
 
-Behind the scenes, it still uses Vue Router for this, but you don’t need to create a route config manually anymore. Instead, you create your routing using a folder structure — inside the pages folder. But you can read all about that in the official docs on routing in Nuxt.js.
+Вуаля! У нас є сучасний блог на серверній основі, створений на основі Nuxt і Prismic.
 
-If you’re thinking about launching your blog, the “Master Content Strategy” book helped me tremendously with putting together a solid blogging 
+Ми ледве почухали поверхню. Ми можемо зробити набагато більше за допомогою Nuxt і Prismic. Мої улюблені функції призми - "Slices" та "Live Preview" Я закликаю вас перевірити їх!
+
+Фрагменти дозволять створювати динамічні сторінки з більш насиченим вмістом, а попередній перегляд у прямому ефірі дозволить вам негайно переглянути свої зміни на веб-сторінці.
+
+Наприклад, у цьому проекті ми працювали лише над одним постом. Якщо ми створили багато публікацій у Prismic, то одна із справді чудових справ про Nuxt.js - це те, що він автоматично створює маршрути для вас.
+
+За лаштунками він все ще використовує Vue Router для цього, але вам більше не потрібно створювати конфігурацію маршруту вручну. Натомість ви створюєте маршрутизацію за допомогою структури папок - всередині папки `pages`. Але ви можете прочитати все про це в офіційних документах про маршрутизацію в Nuxt.js.
+
+Якщо ви думаєте про запуск свого блогу, книга "Master Content Strategy" дуже допомогла мені зібрати міцний блог.

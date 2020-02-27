@@ -985,20 +985,76 @@ blog_content</code></pre>
 <span class="o">&lt;</span><span class="err">/script&gt;</span>
 </pre></div></div></div>
 <div class="paragraph"><p>Спочатку ми ініціалізуємо наш API з ендпоінтом. Потім ми запитуємо API, щоб повернути нашу публікацію в блозі. Ми можемо вказати мову та тип документа.</p></div>
-<div class="paragraph"><p>The Prismic API is promise based, which means we can call the API and chain promises. Hurray for promises. We can also use the async/await syntax to resolve promises.
-Prismic response</p></div>
-<div class="paragraph"><p>All we need to do is render the markup now.</p></div>
-<div class="paragraph"><p>There you go. We’ve successfully fetched our blog post from the Prismic API.</p></div>
-<div class="paragraph"><p>To apply the styles — grab a copy and place it in the style section of the Vue component:</p></div>
-<div class="paragraph"><p>If we open our app, this is what we should see.
-End result</p></div>
-<div class="paragraph"><p>Voilà! We have a modern server-side rendered blog, built with Nuxt and Prismic.</p></div>
-<div class="paragraph"><p>We barely scratched the surface. We can do a lot more with Nuxt and Prismic. My favorite Prismic features are Slices and Live Preview. I encourage you to check them out!</p></div>
-<div class="paragraph"><p>Slices will allow you to create dynamic pages with richer content, and Live preview will allow you to instantly preview your edits on your webpage.
-Slices</p></div>
-<div class="paragraph"><p>For example, in this project, we worked on only one post. If we had created lots of posts in Prismic, however, then one really great thing about Nuxt.js is that it automatically creates routes for you.</p></div>
-<div class="paragraph"><p>Behind the scenes, it still uses Vue Router for this, but you don’t need to create a route config manually anymore. Instead, you create your routing using a folder structure — inside the pages folder. But you can read all about that in the official docs on routing in Nuxt.js.</p></div>
-<div class="paragraph"><p>If you’re thinking about launching your blog, the “Master Content Strategy” book helped me tremendously with putting together a solid blogging</p></div>
+<div class="paragraph"><p>API Prismic заснований на обіцянках, а це означає, що ми можемо викликати API та ланцюжки обіцянок. Ура за обіцянками. Ми також можемо використовувати синтаксис асинхрон/очікування для вирішення обіцянок.</p></div>
+<div class="imageblock">
+<div class="content">
+<img src="prismicresp.png" alt="prismicresp.png" />
+</div>
+</div>
+<div class="paragraph"><p>Все, що нам потрібно зробити зараз, - це зробити розмітку.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="nx">template</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="nx">section</span> <span class="kr">class</span><span class="o">=</span><span class="s2">&quot;blog-post&quot;</span><span class="o">&gt;</span>
+    <span class="o">&lt;</span><span class="nx">h1</span> <span class="kr">class</span><span class="o">=</span><span class="s2">&quot;title&quot;</span><span class="o">&gt;</span><span class="p">{{</span> <span class="nx">header</span> <span class="p">}}</span><span class="o">&lt;</span><span class="err">/h1&gt;</span>
+    <span class="o">&lt;</span><span class="nx">p</span> <span class="kr">class</span><span class="o">=</span><span class="s2">&quot;paragraph&quot;</span><span class="o">&gt;</span><span class="p">{{</span> <span class="nx">content</span> <span class="p">}}</span><span class="o">&lt;</span><span class="err">/p&gt;</span>
+  <span class="o">&lt;</span><span class="err">/section&gt;</span>
+<span class="o">&lt;</span><span class="err">/template&gt;</span>
+
+<span class="o">&lt;</span><span class="nx">script</span><span class="o">&gt;</span>
+<span class="kr">import</span> <span class="nx">Prismic</span> <span class="nx">from</span> <span class="s2">&quot;prismic-javascript&quot;</span><span class="p">;</span>
+<span class="kr">import</span> <span class="nx">PrismicDom</span> <span class="nx">from</span> <span class="s2">&quot;prismic-dom&quot;</span> <span class="c1">//importing the Dom</span>
+<span class="kr">import</span> <span class="nx">PrismicConfig</span> <span class="nx">from</span> <span class="s2">&quot;./../prismic.config.js&quot;</span><span class="p">;</span>
+<span class="kr">export</span> <span class="k">default</span> <span class="p">{</span>
+  <span class="nx">async</span> <span class="nx">asyncData</span><span class="p">()</span> <span class="p">{</span>
+    <span class="kr">const</span> <span class="nx">api</span> <span class="o">=</span> <span class="nx">await</span> <span class="nx">Prismic</span><span class="p">.</span><span class="nx">getApi</span><span class="p">(</span><span class="nx">PrismicConfig</span><span class="p">.</span><span class="nx">apiEndpoint</span><span class="p">);</span>
+    <span class="kd">let</span> <span class="nx">blog_post</span> <span class="o">=</span> <span class="p">{};</span>
+    <span class="kr">const</span> <span class="nx">results</span> <span class="o">=</span> <span class="nx">await</span> <span class="nx">api</span><span class="p">.</span><span class="nx">query</span><span class="p">(</span>
+      <span class="nx">Prismic</span><span class="p">.</span><span class="nx">Predicates</span><span class="p">.</span><span class="nx">at</span><span class="p">(</span><span class="s2">&quot;document.type&quot;</span><span class="p">,</span> <span class="s2">&quot;blog-post&quot;</span><span class="p">),</span>
+      <span class="p">{</span> <span class="nx">lang</span><span class="o">:</span> <span class="s2">&quot;en-us&quot;</span> <span class="p">}</span> <span class="c1">//This is a Prismic query option</span>
+    <span class="p">);</span>
+    <span class="nx">blog_post</span> <span class="o">=</span> <span class="nx">results</span><span class="p">.</span><span class="nx">results</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+    <span class="kr">const</span> <span class="nx">header</span> <span class="o">=</span> <span class="nx">PrismicDom</span><span class="p">.</span><span class="nx">RichText</span><span class="p">.</span><span class="nx">asText</span><span class="p">(</span><span class="nx">blog_post</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">blog_post_title</span><span class="p">);</span>
+    <span class="kr">const</span> <span class="nx">content</span> <span class="o">=</span> <span class="nx">PrismicDom</span><span class="p">.</span><span class="nx">RichText</span><span class="p">.</span><span class="nx">asText</span><span class="p">(</span><span class="nx">blog_post</span><span class="p">.</span><span class="nx">data</span><span class="p">.</span><span class="nx">blog_content</span><span class="p">);</span>
+    <span class="k">return</span> <span class="p">{</span>
+        <span class="nx">blog_post</span><span class="p">,</span>
+        <span class="nx">header</span><span class="p">,</span>
+        <span class="nx">content</span>
+    <span class="p">};</span>
+  <span class="p">}</span>
+<span class="p">};</span>
+<span class="o">&lt;</span><span class="err">/script&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ось так. Ми успішно дістали нашу публікацію в блозі з API Prismic.</p></div>
+<div class="paragraph"><p>Щоб застосувати стилі - візьміть копію та розмістіть її у розділі стилю компонента Vue:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="o">&lt;</span><span class="nx">style</span> <span class="nx">scoped</span><span class="o">&gt;</span>
+<span class="p">.</span><span class="nx">blog</span><span class="o">-</span><span class="nx">post</span> <span class="p">{</span>
+  <span class="nx">margin</span><span class="o">:</span> <span class="mi">25</span><span class="nx">px</span> <span class="mi">0</span><span class="p">;</span>
+  <span class="nx">padding</span><span class="o">:</span> <span class="mi">0</span> <span class="mi">100</span><span class="nx">px</span><span class="p">;</span>
+  <span class="nx">width</span><span class="o">:</span> <span class="mi">100</span><span class="o">%</span><span class="p">;</span>
+  <span class="nx">display</span><span class="o">:</span> <span class="nx">flex</span><span class="p">;</span>
+  <span class="nx">justify</span><span class="o">-</span><span class="nx">content</span><span class="o">:</span> <span class="nx">center</span><span class="p">;</span>
+  <span class="nx">flex</span><span class="o">-</span><span class="nx">direction</span><span class="o">:</span> <span class="nx">column</span><span class="p">;</span>
+  <span class="nx">align</span><span class="o">-</span><span class="nx">items</span><span class="o">:</span> <span class="nx">center</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="p">.</span><span class="nx">title</span> <span class="p">{</span>
+  <span class="nx">margin</span><span class="o">:</span> <span class="mi">50</span><span class="nx">px</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="nx">p</span> <span class="p">{</span>
+  <span class="nx">color</span><span class="o">:</span> <span class="err">#</span><span class="mi">000</span><span class="p">;</span>
+  <span class="nx">margin</span><span class="o">:</span> <span class="mi">15</span><span class="nx">px</span> <span class="mi">0</span> <span class="mi">5</span><span class="nx">px</span><span class="p">;</span>
+  <span class="nx">max</span><span class="o">-</span><span class="nx">width</span><span class="o">:</span> <span class="mi">450</span><span class="nx">px</span><span class="p">;</span>
+  <span class="nx">line</span><span class="o">-</span><span class="nx">height</span><span class="o">:</span> <span class="mf">1.44</span><span class="p">;</span>
+<span class="p">}</span>
+<span class="o">&lt;</span><span class="err">/style&gt;</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Якщо ми відкриємо наш додаток, це ми повинні бачити.</p></div>
+<div class="paragraph"><p>Вуаля! У нас є сучасний блог на серверній основі, створений на основі Nuxt і Prismic.</p></div>
+<div class="paragraph"><p>Ми ледве почухали поверхню. Ми можемо зробити набагато більше за допомогою Nuxt і Prismic. Мої улюблені функції призми - "Slices" та "Live Preview" Я закликаю вас перевірити їх!</p></div>
+<div class="paragraph"><p>Фрагменти дозволять створювати динамічні сторінки з більш насиченим вмістом, а попередній перегляд у прямому ефірі дозволить вам негайно переглянути свої зміни на веб-сторінці.</p></div>
+<div class="paragraph"><p>Наприклад, у цьому проекті ми працювали лише над одним постом. Якщо ми створили багато публікацій у Prismic, то одна із справді чудових справ про Nuxt.js - це те, що він автоматично створює маршрути для вас.</p></div>
+<div class="paragraph"><p>За лаштунками він все ще використовує Vue Router для цього, але вам більше не потрібно створювати конфігурацію маршруту вручну. Натомість ви створюєте маршрутизацію за допомогою структури папок - всередині папки <code>pages</code>. Але ви можете прочитати все про це в офіційних документах про маршрутизацію в Nuxt.js.</p></div>
+<div class="paragraph"><p>Якщо ви думаєте про запуск свого блогу, книга "Master Content Strategy" дуже допомогла мені зібрати міцний блог.</p></div>
 </div>
 </div>
 </div>
@@ -1007,7 +1063,7 @@ Slices</p></div>
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-02-18 21:21:00 EET
+ 2020-02-19 00:18:22 EET
 </div>
 </div>
 </body>
