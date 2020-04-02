@@ -1,0 +1,283 @@
+include::headers.adoc[]
+
+== Компоненти Vue.js - слухачі, посилання та шаблони
+https://filmix.co/play/59305[John Au-Yeung]
+Mar 29 · 4 min read
+
+Vue.js - це простий у користуванні веб-фреймвок, який ми можемо використовувати для розробки інтерактивних фронтенд додатків.
+
+У цій статті ми розглянемо слухачів програмних подій, рекурсії, кругові посилання та альтернативні способи визначення шаблонів.
+
+=== Слухачі програмних подій
+
+Окрім випромінювання подій в `$emit` та прослуховування їх за допомогою `v-on`, Vue також пропонує інші методи у своєму інтерфейсі подій. Доступні наступні функції:
+
+* Слухати події за допомогою `$on(eventName, eventHandler)`
+* Слухати події лише один раз `$once(eventName, eventHandler)`
+* Перестани слухати подію з `$off(eventName, eventHandler)`
+
+Вони доступні для випадків, коли нам потрібно програмно слухати події.
+
+Ми можемо використовувати його наступним чином:
+
+.src/index.js:
+[source,js]
+----
+Vue.component("foo-button", {
+  template: `<button @click='$root.$emit("toggleFoo")'>Toggle Foo</button>`
+});
+new Vue({
+  el: "#app",
+  data: {
+    foo: ""
+  },
+  mounted() {
+    this.$root.$on("toggleFoo", function() {
+      this.foo = this.foo === "foo" ? "" : "foo";
+    });
+  }
+});
+----
+
+.index.html :
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>App</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <foo-button></foo-button>
+      {{foo}}
+    </div>
+    <script src="src/index.js"></script>
+  </body>
+</html>
+----
+
+У наведеному вище коді ми викликали `$root.$emit`, щоб передавати подію в екземплярі `root` Vue. Тоді кореневий екземпляр Vue може прослухати подію, коли він встановлений `this.$root.$on`, як у нас вище.
+
+Зрештою, коли ми натискаємо кнопку `Toggle Foo`, ми бачимо, як слово `foo` включається і вимикається, коли ми натискаємо кнопку.
+
+Система подій Vue відрізняється від API цільової події веб-переглядача. Однак вони все ще працюють аналогічно.
+
+`$emit`, `$on` і `$off` не є псевдонімами для `dispatchEvent`, `addEventListener` та removeEvent`L`istener.
+
+=== Циклічні посилання
+
+==== Рекурсивні компоненти
+
+Ми можемо рекурсивно посилатися на компоненти, додавши властивість `name` до нашого компонента.
+
+Наприклад, ми можемо записати наступне для відображення даних від рекурсивно вкладеного об'єкта:
+
+.src/index.js:
+[source,js]
+----
+Vue.component("foo-box", {
+  name: "foo-box",
+  props: ["foo"],
+  template: `
+    <div>
+      <p>{{foo.val}}</p>      
+      <foo-box v-if='foo.foo' :foo='foo.foo'></foo-box>
+    </div>
+  `
+});
+new Vue({
+  el: "#app",
+  data: {
+    foo: {
+      val: "foo",
+      foo: {
+        val: "foo",
+        foo: {
+          val: "foo"
+        }
+      }
+    }
+  }
+});
+----
+
+.index.html :
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>App</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js">
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <foo-box :foo="foo"></foo-box>
+    </div>
+    <script src="src/index.js"></script>
+  </body>
+</html>
+----
+
+Тоді ми бачимо:
+
+----
+foofoofoo
+----
+
+відображається на екрані.
+
+Ми повинні переконатися, що у нас є `v-if` або інша умова, щоб припинити рекурсивне відображення в якийсь момент. В іншому випадку ми отримаємо нескінченний цикл і це призведе до того, що "максимальний розмір стека буде перевищений з помилкою".
+
+==== Циклічні посилання між компонентами
+
+`Vue.component` автоматично вирішує кругові посилання на компоненти.
+
+Якщо ми використовуємо модульну систему, тоді нам потрібно `require` або імпортувати її явно в гачку `beforeCreate`.
+
+Щоб зробити `require`, ми можемо написати:
+
+[source,js]
+----
+beforeCreate() {
+  this.$options.components.TreeFolderContents = require('./tree-folder-contents.vue').default
+}
+----
+
+Якщо ми використовуємо імпорт Webpack, ми можемо написати щось на зразок:
+
+[source,js]
+----
+components: {
+  TreeFolderContents: () => import('./tree-folder-contents.vue')
+}
+----
+
+Для компонентів, визначених за допомогою `Vue.components`, ми можемо використовувати їх без будь-яких змін:
+
+.src/index.js:
+[source,js]
+----
+Vue.component("tree-folder-contents", {
+  props: ["children"],
+  template: `
+    <ul>
+      <li v-for="child in children">
+        <tree-folder v-if="child.children" :folder="child"/>
+        <span v-else>{{ child.name }}</span>
+      </li>
+    </ul>
+  `
+});
+Vue.component("tree-folder", {
+  props: ["folder"],
+  template: `
+    <p>
+      <span>{{ folder.name }}</span>
+      <tree-folder-contents :children="folder.children"/>
+    </p>
+  `
+});
+new Vue({
+  el: "#app",
+  data: {
+    folder: {
+      name: "folder",
+      children: [{ name: "folder2" }]
+    }
+  }
+});
+----
+
+.index.html :
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>App</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <tree-folder :folder="folder"></tree-folder>
+    </div>
+    <script src="src/index.js"></script>
+  </body>
+</html>
+----
+
+We’ll see both tree-folder-contents and tree-folder as parents of some tree-folder and tree-folder-contents components respectively.
+Ми бачимо, як `tree-folder-contents`, так і `tree-folder` як батьки деяких компонентів `tree-folder` та компонентів `tree-folder-contents` відповідно.
+
+=== Вбудовані шаблони
+
+Коли атрибут вбудованого шаблону присутній на дочірньому компоненті, компонент буде використовувати свій внутрішній вміст як шаблон, а не трактувати його як розподілений вміст.
+
+Однак обсяг даних, доступних всередині, буде заплутаним, оскільки ми маємо доступ до області дочірнього компонента замість батьківського тегу.
+
+Наприклад, якщо у нас є:
+
+.src/index.js :
+[source,js]
+----
+Vue.component("bar", {
+  data() {
+    return {
+      baz: "bar"
+    };
+  },
+  template: `
+    <p></p>
+  `
+});
+new Vue({
+  el: "#app",
+  data: {
+    foo: "foo"
+  }
+});
+----
+
+.index.js :
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>App</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js">
+    </script>
+  </head>
+  <body>
+    <div id="app">
+      <bar inline-template>
+        <div>
+          {{baz}}
+        </div>
+      </bar>
+    </div>
+    <script src="src/index.js"></script>
+  </body>
+</html>
+----
+
+Then {{bar}} is referencing baz from the bar component. It also overrides the template that we defined in bar .
+Тоді `{{bar}}` посилається на `baz` з компонентного рядка. Він також перекриває шаблон, який ми визначили інлайн.
+
+=== Висновок
+
+Ми можемо визначити слухачів подій програмно з `$on`, `$off` і `$once`.
+
+Для рекурсивного посилання на компонент ми повинні додати атрибут `name` до компонента. Ми повинні бути обережними, щоб не створити нескінченну рекурсію.
+
+Циклічні посилання вирішуються автоматично, якщо ми використовуємо Vue.component для визначення наших компонентів. Однак якщо ми використовуємо однофайлові компоненти, нам потрібно імпортувати їх залежно від інструменту збирання, який ми використовуємо.
+
+Ми можемо визначити шаблони в компоненті з атрибутом вбудованого шаблону `inline-template`.

@@ -21,8 +21,10 @@ image::todolist.gif[]
 
 === Hapijs
 
-Hapi is a Node.js server framework that’s used by great companies such as Lob, Stitch Labs and Auth0. To get started generate a project with npm init and use this as your main server file:
+Hapi - серверний фреймворк Node.js, який використовується великими компаніями, такими як Lob, Stitch Labs та Auth0. Для початку створіть проект з `npm init` і використовуйте це як свій основний файл сервера:
 
+[source,js]
+----
 const Hapi     = require('hapi');
 const routes   = require('./routes');require('./utils/database');const server = Hapi.server({
   port: 3000,
@@ -38,41 +40,51 @@ const routes   = require('./routes');require('./utils/database');const server = 
     console.error(err);
   }
 };startServer();module.exports = server;
+----
 
-If you’re familiar with express this looks pretty similar to an express app. We can see clearly though we’re using async / await functions. This is a new feature of recent Node.js version and a great addition to the Javascript language. Essentially the function, prefixed with “async” can hold execution until the await promise call is returned. Async functions return promises.
+Якщо ви знайомі з `express`, це схоже на додаток `express`. Ми чітко бачимо, що ми використовуємо функції `async`/ `await`. Це нова функція останньої версії Node.js та чудове доповнення до мови Javascript. По суті, функція з префіксом `async` може затримати виконання, поки не буде повернуто виклик `await`. Функції `async` повертають обіцянки.
 
-We’re configuring cors here with a default Hapi option and connecting to the database through a require statement.
-MongoDB and Mongoose
+Ми налаштовуємо `cors` опцією Hapi за замовчуванням і підключаємося до бази даних через оператор `require`.
 
-To connect an d query MongoDB we’re going to use an ORM called Mongoose that’s for querying and writing to Mongo.
+=== MongoDB та Mongoose
 
+Для підключення та запиту MongoDB ми будемо використовувати ORM під назвою Mongoose, який призначений для запиту та запису до Mongo.
+
+[source,js]
+----
 const mongoose = require('mongoose');require('../models');mongoose.connect('mongodb://localhost/task-app-backend', {
   useNewUrlParser: true
 }, (err) => {
   if (err) throw err;
 });
+----
 
-That connects to the MongoDB database (you might need to have mongod running in a separate tab on your local machine).
+Це підключається до бази даних MongoDB (можливо, вам потрібно буде працючий `mongod` на окремій вкладці на локальній машині).
 
-With MongoDB there are no database migrations. The ORM wrapper has a concept of models that we can take advantage. Since this is a task app we’ll create a Task model.
+В MongoDB немає міграцій баз даних. Обертка ORM має концепцію моделей, якими ми можемо скористатися. Оскільки це додаток із завданнями, ми створимо модель завдань `Task`.
 
+[source,js]
+----
 const mongoose = require('mongoose');const taskModel = mongoose.Schema({
   name: {type: String, required: '{PATH} is required!'},
   description: {type: String},
 }, {
   timestamps: true
 });module.exports = mongoose.model('Task', taskModel);
+----
 
-This sets up a MongoDB collection for us, which is basically a table shaped like a big old Javascript object. They use something called BSON that they wrote a white paper about at MongoDB.
-MongoDB stock price.
+Це створює для нас колекцію MongoDB, яка в основному являє собою таблицю у формі великого старого об’єкта Javascript. Вони використовують щось, що називається BSON, про що вони написали  документ-специфікацію у MongoDB.
 
-In contrast, Mongoose is an open source npm package.
+На відміну від них, Mongoose - це пакет з відкритим кодом `npm`.
 
-We can define our routes as a Javascript array of objects that each have “method”, “path” and “handler” properties. There’s an optional “options” property you can also include that we’ll tie to the api/index.js file.
+Ми можемо визначити наші маршрути як масив Javascript об'єктів, кожен з яких має властивості `method`, `path` та `handler`. Існує необов’язкова властивість `options`, яке також можна включити до того, що ми будемо прив’язані до файлу `api/index.js`.
 
-    Hapi routing docs
+==== Документи маршрутизації Hapi
 
-const api = require('./api');const routes = [
+[source,js]
+----
+const api = require('./api');
+const routes = [
   {
     method: 'GET',
     path: '/',
@@ -112,10 +124,14 @@ const api = require('./api');const routes = [
     path: '/api/task/{task}',
     options: api.task.remove
   },
-];module.exports = routes;
+];
+module.exports = routes;
+----
 
-Finally for the CRUD endpoints this is what I have:
+Нарешті, для ендпоінтів CRUD я маю таке:
 
+[source,js]
+----
 const {Task} = require('./../models');
 const Boom = require('boom');const taskApi = {
   all: {
@@ -166,20 +182,22 @@ const Boom = require('boom');const taskApi = {
         }
     }
   }
-};module.exports = taskApi;
+};
+module.exports = taskApi;
+----
 
-This file uses Mongoose to fetch our records from the database. The await calls resolve promises and block execution while the promise resolves. The request object comes from our Vue.js application, which will be housed in a separate repo.
-Vue.js
+Цей файл використовує Mongoose для отримання наших записів із бази даних. Виклики `await`, що очікують, вирішують обіцянки та блокують виконання, поки обіцянка вирішується. Об'єкт запиту походить від нашого додатку Vue.js, який розміститься в окремому репозитарії.
 
-This is a framework comparison of Vue, React, Lindsay Lohan and Taylor Swift.
+=== Vue.js
 
-It looks like Google is predicting big things from Taylor in the coming weeks.
-Taylor swift is clear winner of the framework comparison from the graph above. Sorry React.
+Це порівняння фреймворків Vue, React, Lindsay Lohan та Taylor Swift. Схоже, Google прогнозує великі речі від Тейлора в найближчі тижні. Taylor Swift є явним переможцем порівняння рамок із наведеного вище графіка. Вибачай, React.
 
-Anyways, the front end source code is here. It uses a handy app generator called vue-webpack-simple that’s maintained by the Vue.js core team.
+У будь-якому випадку, тут знаходиться вихідний код. Він використовує зручний генератор додатків під назвою `vue-webpack-simple`, який підтримує основна команда Vue.js.
 
-One funky bit I learned about while building this is there’s a transition and transition-group component that you can use to queue up animations with CSS. The HTML for the component be like:
+Один цікавий біт, про який я дізнався, будуючи це, є компонент переходу та черги перехідних груп, який можна використовувати для встановлення черги на анімацію за допомогою CSS. HTML для компонента буде таким:
 
+[source,html]
+----
 <transition-group name="task-list">    
   <div class="row mb-2" v-for="(task, index) in tasks" :key="task._id">       
     <div class="col-sm-4">          
@@ -192,11 +210,14 @@ One funky bit I learned about while building this is there’s a transition and 
     </div>    
   </div> 
 </transition-group>
+----
 
-There’s great starter sample code for a lot of different use cases on the Vue.js homepage for documentation: Enter/Leave & List Transitions.
+На домашній сторінці Vue.js є чудовий зразковий код для початківців для документації: Enter/Leave & List Transitions.
 
-Vue.js applies special classes when enter and leave transitions happen. By giving the TransitionGroup a name of “task-list” task-list gets appended to the special Vue.js event class names:
+Vue.js застосовує спеціальні класи, коли трапляються переходи входу та виходу. Надаючи `TransitionGroup` назву списку завдань, список завдань додається до спеціальних назв класів подій Vue.js:
 
+[source,css]
+----
 .task-list-item {
    display: inline-block;
    margin-right: 10px;
@@ -207,7 +228,8 @@ Vue.js applies special classes when enter and leave transitions happen. By givin
 .task-list-enter, .task-list-leave-to {
    opacity: 0;
 }
+----
 
-The Vue.js events in conjunction with the transition CSS property are responsible for the fades when we add and delete tasks. (Video at the top.)
+Події Vue.js у поєднанні з властивістю CSS переходу є відповідальними за згасання при додаванні та видаленні завдань. (Відео вгорі.)
 
-That’s about it! The open source code links are below:
+І все про це! Посилання з відкритим кодом наведено на початку.
