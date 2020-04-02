@@ -2290,15 +2290,17 @@ public class Test : GLib.Object {
 
 Цей клас визначає два методи, коли обом потрібно змінити значення `a`. Якби тут не було записів про блокування, вказівки в цих методах могли б переплестись, і отримана зміна на `а` була б фактично випадковою. Оскільки тут є заяви про блокування, Vala гарантує, що якщо одна нитка заблокувала `a`, інший потік, який потребує такого ж блокування, повинен буде дочекатися своєї черги.
 
-У Vala можна лише заблокувати членів об'єкта, який виконує код. Це може здатися головним обмеженням, але насправді стандартне використання цієї методики повинно включати класи, які індивідуально відповідають за управління ресурсом, і тому все блокування дійсно буде внутрішнім для класу. Так само, у наведеному вище прикладі всі звернення до `а` інкапсульовані у класі.
+У Vala можна лише заблокувати члени об'єкта, який виконує код. Це може здатися головним обмеженням, але насправді стандартне використання цієї методики повинно включати класи, які індивідуально відповідають за управління ресурсом, і тому все блокування дійсно буде внутрішнім для класу. Так само, у наведеному вище прикладі всі звернення до `а` інкапсульовані у класі.
 
 === Основний цикл
 
-GLib includes a system for running an event loop, in the classes around MainLoop. The purpose of this system is to allow you to write a program that waits for events and responds to them, instead of having to constantly check conditions. This is the model that GTK+ uses, so that a program can wait for user interaction without having to have any currently running code.
+GLib включає систему для запуску циклу подій у класах навколо `MainLoop`. Призачення цієї системи - дозволити вам написати програму, яка чекає подій та реагує на них, замість того, щоб постійно перевіряти умови. Це модель, яку використовує GTK +, щоб програма могла чекати взаємодії з користувачем, не виконуючи жодного поточного коду.
 
-The following program creates and starts a MainLoop, and then attaches a source of events to it. In this case the source is a simple timer, that will execute the given method after 2000ms. The method will in fact just stop the main loop, which will in this case exit the program.
+Наступна програма створює та запускає `MainLoop`, а потім додає до нього джерело подій. У цьому випадку джерелом є простий таймер, який виконає даний метод через 2000 мс. Метод насправді просто зупинить основний цикл, який у цьому випадку вийде з програми.
 
 
+[source,scala]
+----
 void main() {
 
     var loop = new MainLoop();
@@ -2314,9 +2316,12 @@ void main() {
 
     loop.run();
 }
-When using GTK+, a main loop will be created automatically, and will be started when you call the `Gtk.main()' method. This marks the point where the program is ready to run and start accepting events from the user or elsewhere. The code in GTK+ is equivalent to the short example above, and so you may add event sources in much the same way, although of course you need to use the GTK+ methods to control the main loop.
+----
 
+При використанні GTK + основний цикл буде створений автоматично, і він буде запущений при виклику методу `Gtk.main()`. Це означає, що програма готова запуститись і почати приймати події від користувача чи з іншого джерела. Код в GTK + еквівалентний короткому прикладу, наведеному вище, і тому ви можете додавати джерела подій приблизно так само, хоча, звичайно, вам потрібно використовувати методи GTK+ для управління основним циклом.
 
+[source,scala]
+----
 void main(string[] args) {
 
     Gtk.init(ref args);
@@ -2332,119 +2337,161 @@ void main(string[] args) {
 
     Gtk.main();
 }
-A common requirement in GUI programs is to execute some code as soon as possible, but only when it will not disturb the user. For this, you use IdleSource instances. These send events to the programs main loop, but request they only be dealt with when there is nothing more important to do.
+----
 
-For more information about event loops, see the GLib and GTK+ documentation.
+Поширена вимога програм GUI полягає в тому, щоб виконувати якийсь код якомога швидше, але лише тоді, коли він не заважатиме користувачеві. Для цього ви використовуєте екземпляри `IdleSource`. Вони надсилають події в основний цикл програм, але вимагають, щоб з вони розглядалися лише тоді, коли нема нічого важливішого.
 
-Asynchronous Methods
-Asynchronous methods are methods whose execution can be paused and resumed under the control of the programmer. They are often used in the main thread of an application where a method needs to wait for an external slow task to complete, but must not stop other processing from happening. (For example, one slow operation must not freeze the whole GUI). When the method has to wait, it gives control of the CPU back to its caller (i.e. it yields), but it arranges to be called back to resume execution when data becomes ready. External slow tasks that async methods might wait for include: waiting for data from a remote server, or waiting for calculations in another thread to complete, or waiting for data to load from a disk drive.
+Для отримання додаткової інформації про циклі подій див. Документацію GLib та GTK+.
 
-Asynchronous methods are normally used with a GLib main loop running, because idle callbacks are used to handle some of the internal callbacks. However under certain conditions async may be used without the GLib main loop, for example if the async methods always yield and Idle.add() is never used. (FIXME: Check what are the exact conditions.)
+=== Асинхронні методи
 
-Asynchronous methods are designed for interleaving the processing of many different long-lived operations within a single thread. They do not by themselves spread the load out over different threads. However, an async method may be used to control a background thread and to wait for it to complete, or to queue operations for a background thread to process.
+Асинхронні методи - це методи, виконання яких можна призупинити та відновити під контролем програміста. Вони часто використовуються в головному потоці програми, де методу потрібно чекати, коли зовнішнє повільне завдання завершиться, але не повинно перешкоджати іншій обробці. (Наприклад, одна повільна робота не повинна заморожувати весь графічний інтерфейс). Коли методу доводиться чекати, він повертає керування процесором назад своєму абоненту (тобто він поступається), але він впорядковує виклик для відновлення виконання, коли дані стануть готовими. Зовнішні повільні завдання, які можуть чекати методи асинхронізації, включають: очікування даних з віддаленого сервера або очікування завершення обчислень в іншому потоці або очікування завантаження даних з дискового прикладу.
 
-Async methods in Vala use the GIO library to handle the callbacks, so must be built with the --pkg=gio-2.0 option.
+Асинхронні методи, як правило, використовуються для основного циклу GLib, оскільки зворотні виклики використовуються для обробки деяких внутрішніх зворотних викликів. Однак за певних умов `async` може використовуватися без основного циклу GLib, наприклад, якщо методи асинхронізації завжди поступаються, а `Idle.add()` ніколи не використовується. (FIXME: Перевірте, які точні умови).
 
-An asynchronous method is defined with the async keyword. For example:
+Асинхронні методи призначені для переплетення обробки багатьох різних довготривалих операцій у межах однієї нитки. Вони самі по собі не розподіляють навантаження на різні нитки. Однак метод асинхронізації може бути використаний для керування фоновою ниткою та дочекання її завершення або для виконання операцій черги для обробки фонового потоку.
 
+Методи асинхронізації у Vala використовують бібліотеку GIO для обробки зворотних викликів, тому повинні бути побудовані за допомогою параметра `--pkg = gio-2.0`.
 
+Асинхронний метод визначається за допомогою ключового слова `async`. Наприклад:
+
+[source,scala]
+----
   async void display_jpeg(string fnam) {
-     // Load JPEG in a background thread and display it when loaded
+// Завантажте JPEG у фонову нитку та відображайте його при завантаженні
      [...]
   }
-or:
+----
 
+або:
 
+[source,scala]
+----
   async int fetch_webpage(string url, out string text) throws IOError {
-     // Fetch a webpage asynchronously and when ready return the 
-     // HTTP status code and put the page contents in 'text'
+// Виберіть веб-сторінку асинхронно, і коли будете готові, поверніть
+// код статусу HTTP та вміст сторінки помістіть у "текст"
      [...]
      text = result;
      return status;
   }
-The method may take arguments and return a value like any other method. It may use a yield statement at any time to give control of the CPU back to its caller.
+----
 
-An async method may be called with either of these two forms:
+Метод може приймати аргументи і повертати значення, як і будь-який інший метод. Він може в будь-який час використовувати `yield`, щоб повернути керування процесором своєму абоненту.
 
+Метод `async` може бути викликаний будь-якою з цих двох форм:
 
+[source,scala]
+----
   display_jpeg.begin("test.jpg");
   display_jpeg.begin("test.jpg", (obj, res) => {
       display_jpeg.end(res);
   });
-Both forms starts the async method running with the given arguments. The second form in addition registers an AsyncReadyCallback which is executed when the method finishes. The callback takes a source object, obj, and an instance of GAyncResult, res, as arguments. In the callback the .end() method should be called to receive the return value of the asynchronous method if it has one. If the async method can throw an exception, the .end() call is where the exception arrives and must be caught. If the method has out arguments, then these should be omitted from the .begin() call and added to the .end() call instead.
+----
 
-For example:
+Обидві форми запускають метод асинхронізації, що працює із заданими аргументами. Крім того, друга форма реєструє `AsyncReadyCallback`, який виконується після завершення методу. Зворотний виклик бере в якості аргументів вихідний об'єкт, `obj`, та екземпляр `GAyncResult`, `res`. У зворотному виклику повинен бути викликаний метод `.end()`, щоб отримати значення повернення асинхронного методу, якщо він має його. Якщо метод асинхронізації може кинути виняток, виклик `.end()` - це місце, де виняток надходить, і його потрібно спіймати. Якщо у методу є `out` аргументи, їх слід опустити з виклику `.begin()` і замість цього додати до виклику `.end()`.
 
+Наприклад:
 
+[source,scala]
+----
   fetch_webpage.begin("http://www.example.com/", (obj, res) => {
       try {
           string text;
           var status = fetch_webpage.end(res, out text);
-          // Result of call is in 'text' and 'status' ...
+// Результат виклику в тексті та в статусі ...
       } catch (IOError e) {
-          // Problem ...
+// Проблема ...
       }
   });
-When an asynchronous method starts running, it takes control of the CPU until it reaches its first yield statement, at which point it returns to the caller. When the method is resumed, it continues execution immediately after that yield statement. There are several common ways to use yield:
+----
 
-This form gives up control, but arranges for the GLib main loop to resume the method when there are no more events to process:
+Коли асинхронний метод починає працювати, він бере контроль над процесором до тих пір, поки не досягне своєї першої заяви `yield` про вихід, після чого повертається до абонента. Коли метод відновлено, він продовжує виконання відразу після цього твердження про вихід. Існує кілька загальних способів використання `yield`:
 
+Ця форма відмовляється від контролю, але впорядковує, щоб основний цикл GLib відновив метод, коли немає більше подій для обробки:
 
+[source,scala]
+----
   Idle.add(fetch_webpage.callback);
   yield;
-This form gives up control, and stores the callback details for some other code to use to resume the method's execution:
+----
 
+Ця форма відмовляється від керування та зберігає дані про зворотний виклик для іншого коду, який слід використовувати для відновлення виконання методу:
 
+[source,scala]
+----
   SourceFunc callback = fetch_webpage.callback;
   [... store 'callback' somewhere ...]
   yield;
-Some code elsewhere must now call the stored SourceFunc in order for the method to be resumed. This could be done by scheduling the GLib main loop to run it:
+----
 
+Деякий код в іншому місці тепер повинен викликати збережений `SourceFunc`, щоб метод відновився. Це можна зробити, запланувавши основний цикл GLib для його запуску:
 
+[source,scala]
+----
   Idle.add((owned) callback);
-or alternatively a direct call may be made if the caller is running in the main thread:
+----
 
+або альтернативно, може здійснюватися прямий виклик, якщо абонент працює в основному потоці:
 
+[source,scala]
+----
   callback();
-If the direct call above is used, then the resumed asynchronous method takes control of the CPU immediately and runs until its next yield before returning to the code that executed callback(). The Idle.add() method is useful if the callback must be made from a background thread, e.g. to resume the async method after completion of some background processing. (The (owned) cast is necessary to avoid a warning about copying delegates.)
+----
 
-The third common way of using yield is when calling another asynchronous method, for example:
+Якщо використовується прямий виклик, зазначений вище, то відновлений асинхронний метод негайно приймає контроль над процесором і працює до наступного виходу `yield`, перш ніж повернутися до коду, який виконував `callback()`. Метод `Idle.add()` корисний, якщо зворотний виклик повинен здійснюватися з фонового потоку, наприклад відновити метод асинхронізації після завершення деякої фонової обробки. (Твердження `(owned)` необхідне, щоб уникнути попередження про копіювання делегатів).
 
+Третій поширений спосіб використання `yield` - це виклик іншого асинхронного методу, наприклад:
 
+[source,scala]
+----
   yield display_jpeg(fnam);
-or
+----
 
+або
 
+[source,scala]
+----
   var status = yield fetch_webpage(url, out text);
-In both cases, the calling method gives up control of the CPU and does not resume until the called method completes. The yield statement automatically registers a callback with the called method to make sure that the caller resumes correctly. The automatic callback also collects the return value from the called method.
+----
 
-When this yield statement executes, control of the CPU first passes to the called method which runs until its first yield and then drops back to the calling method, which completes the yield statement itself, and then gives back control to its own caller.
+В обох випадках метод виклику відмовляється від управління процесором і не поновлюється до завершення викликаного методу. Твердження `yield` автоматично реєструє зворотний виклик методом виклику, щоб переконатися, що абонент поновлюється правильно. Автоматичний зворотний виклик також отримує повернене значення від викликаного методу.
 
-Examples
-See Async Method Samples for examples of different ways that async may be used.
+Коли цей оператор `yield` виконується, керування процесором спочатку переходить до викликаного методу, який працює до його першого `yield`, а потім переходить до виклику методу, який сам завершує `yield`, а потім повертає управління власному виклику.
 
-Weak References
-Vala's memory management is based on automatic reference counting. Each time an object is assigned to a variable its internal reference count is increased by 1, each time a variable referencing an object goes out of scope its internal reference count is decreased by 1. If the reference count reaches 0 the object will be freed.
+==== Приклади
 
-However, it is possible to form a reference cycle with your data structures. For example, with a tree data structure where a child node holds a reference to its parent and vice versa, or a doubly-linked list where each element holds a reference to its predecessor and the predecessor holds a reference to its successor.
+Див. https://wiki.gnome.org/Projects/Vala/AsyncSamples[Зразки методів асинхронізації] для прикладів різних способів використання `async`.
 
-In these cases objects could keep themselves alive simply by referencing to each other, even though they should be freed. To break such a reference cycle you can use the weak modifier for one of the references:
+=== Слабкі посилання
 
+Управління пам'яттю Vala засноване на автоматичному підрахунку посилань. Кожного разу, коли об'єкт присвоюється змінній, його внутрішній лічильник посилань збільшується на 1, кожен раз, коли змінна, що посилається на об'єкт, виходить за межі, його внутрішній лічильник посилання зменшується на 1. Якщо число посилань досягає 0, об'єкт буде звільнений.
 
+Однак можна створити циклічні посилання зі своїми структурами даних. Наприклад, зі структурою даних дерев, де дочірній вузол містить посилання на його батьківський і навпаки, або подвійно пов'язаний список, де кожен елемент містить посилання на свого попередника, а попередник містить посилання на свого наступника.
+
+У цих випадках об'єкти можуть залишатися живими, просто посилаючись один на одного, хоча вони повинні бути звільнені. Для розірвання такого циклу посилань можна використовувати модифікатор `weak` для однієї з посилань:
+
+[source,scala]
+----
 class Node {
     public weak Node prev;
     public Node next;
 }
-This topic is explained in detail on this page: Vala's Memory Management Explained.
+----
 
-Ownership
-Unowned References
-Normally when creating an object in Vala you are returned a reference to it. Specifically this means that as well as being passed a pointer to the object in memory, it is also recorded in the object itself that this pointer exists. Similarly, whenever another reference to the object is created, this is also recorded. As an object knows how many references there are to it, it can automatically be removed when needed. This is the basis of Vala's memory management.
+Ця тема детально пояснена на цій сторінці: https://wiki.gnome.org/Projects/Vala/ReferenceHandling[Пояснення управління пам’яттю Vala].
 
-Methods ownership
-Unowned references conversely are not recorded in the object they reference. This allows the object to be removed when it logically should be, regardless of the fact that there might be still references to it. The usual way to achieve this is with a method defined to return an unowned reference, e.g.:
+=== Власність
 
+==== Нічийні посилання
 
+Зазвичай при створенні об'єкта у Vala вам повертається посилання на нього. Зокрема, це означає, що, незважаючи на те, що він передається вказівником на об'єкт в пам'яті, він також записує в самому об'єкті, що цей покажчик існує. Аналогічно, щоразу, коли створюється інше посилання на об'єкт, це також записується. Оскільки об’єкт знає, скільки посилань на нього є, він може бути автоматично видалений при необхідності. Це основа управління пам’яттю Vala.
+
+==== Власність методів
+
+Нічийні посилання навпаки не реєструються в об'єкті, на який вони посилаються. Це дозволяє вилучити об'єкт, коли це буде логічно, незалежно від того, що на нього все ще можуть бути посилання. Звичайний спосіб досягти цього - це метод, визначений для повернення нічийного посилання, наприклад:
+
+[source,scala]
+----
 class Test {
     private Object o;
 
@@ -2453,89 +2500,131 @@ class Test {
         return this.o;
     }
 }
-When calling this method, in order to collect a reference to the returned object, you must expect to receive a weak reference:
+----
 
+Для виклику цього методу, щоб отримати посилання на повернутий об'єкт, потрібно очікувати отримання слабкої посилання:
 
+[source,scala]
+----
 unowned Object o = get_unowned_ref();
-The reason for this seemingly over complicated example because of the concept of ownership.
+----
 
-If the Object "o" was not stored in the class, then when the method "get_unowned_ref" returned, "o" would become unowned (i.e. there would be no references to it). If this were the case, the object would be deleted and the method would never return a valid reference.
-If the return value was not defined as unowned, the ownership would pass to the calling code. The calling code is, however, expecting an unowned reference, which cannot receive the ownership.
-If the calling code is written as
+Причина цього, здавалося б, складного прикладу через концепцію власності.
 
+Якщо `Object o` не зберігався у класі, тоді, коли метод `get_unowned_ref` повернувся, `o` стане нічийним (тобто на нього не було б посилань). Якби це було так, об’єкт буде видалено, і метод ніколи не повертав дійсне посилання.
+
+Якщо значення повернення не було визначено як `unowned`, право власності перейшло б до коду виклику. Однак код виклику очікує `unowned` посилання, яке не може отримати право власності.
+
+Якщо код виклику записаний як
+
+[source,scala]
+----
 Object o = get_unowned_ref();
-Vala will try to either obtain a reference of or a duplicate of the instance the unowned reference pointing to.
+----
 
-Properties ownership
-In contrast to normal methods, properties always have unowned return value. That means you can't return a new object created within the get method. That also means, you can't use an owned return value from a method call. The somewhat irritating fact is because of that a property value is owned by the object that HAS this property. A call to obtain this property value should not steal or reproduce (by duplicating, or increasing the reference count of) the value from the object side.
+Vala намагатиметься отримати посилання або копію екземпляра, на яку вказує `unowned` посилання.
 
-As such, the following example will result in a compilation error
+==== Власності на властивості 
 
+На відміну від звичайних методів властивості завжди мають `unowned` значення повернення. Це означає, що ви не можете повернути новий об’єкт, створений у методі `get`. Це також означає, що ви не можете використовувати `owned` повернене значення з виклику методу. Дещо дратівливий факт пояснюється тим, що значення властивості належить об'єкту, який має цю власність. Виклик для отримання цього значення властивості не повинен красти або відтворювати (шляхом дублювання або збільшення опорного числа) значення з боку об'єкта.
 
+Наступний приклад призведе до помилки компіляції
+
+[source,scala]
+----
 public Object property {
     get {
-        return new Object();   // WRONG: property returns an unowned reference,
-                               // the newly created object will be deleted when
-                               // the getter scope ends the caller of the
-                               // getter ends up receiving an invalid reference
-                               // to a deleted object.
+        return new Object();   
+// НЕВІРНО: властивість повертає unowned посилання,
+// новостворений об’єкт буде видалено, коли
+// область геттера закінчує виклик
+// геттера матиме отримання недійсного посилання
+// до видаленого об’єкта.
     }
 }
-nor can you do this
+----
 
+і також не можна робити цього
 
+[source,scala]
+----
 public string property {
     get {
-        return getter_method();   // WRONG: for the same reason above.
+        return getter_method();   
+// НЕВІРНО: з тієї ж причини вище.
     }
 }
 
 public string getter_method() {
-    return "some text"; // "some text" is duplicated and returned at this point.
+    return "some text"; 
+// "some text" дублюється і повертається в цей момент.
 }
-on the other hand, this is perfectly fine
+----
 
+з іншого боку, це цілком добре
 
+[source,scala]
+----
 public string property {
     get {
-        return getter_method();   // GOOD: getter_method returns an unowned value
+        return getter_method();   
+// ГАРНО: getter_method повертає unowned значення
     }
 }
 
 public unowned string getter_method() {
     return "some text";
-    // Don't be alarmed that the text is not assigned to any strong variable.
-    // Literal strings in Vala are always owned by the program module itself,
-    // and exist as long as the module is in memory
+// Не турбуйтеся, що текст не присвоєний жодній сильній змінній.
+// Літеральні рядки у Vala завжди належать самому програмному модулю,
+// і існують до тих пір, поки модуль знаходиться в пам'яті
 }
-The unowned modifier can be used to make automatic property's storage unowned. That means
+----
 
+Модифікатор `unowned` можна використовувати для автоматичного зберігання сховища власності. Це означає
 
+[source,scala]
+----
 public unowned Object property { get; private set; }
-is identical to
+----
 
+тотожне
 
+[source,scala]
+----
 private unowned Object _property;
 
 public Object property {
     get { return _property; }
 }
-The keyword owned can be used to specifically ask a property to return a owned reference of the value, therefore causing the property value be reproduced in the object side. Think twice before adding the owned keyword. Is it a property or simply a get_xxx method? There may also be problems in your design. Anyways, the following code is a correct segment,
+----
 
+Ключове слово `owned` може бути використане для конкретного запиту властивості для повернення власного посилання на значення, внаслідок чого значення властивості відтворюється на стороні об'єкта. Подумайте двічі, перш ніж додавати ключове слово `owned`. Це властивість чи просто метод `get_xxx`? Також можуть виникнути проблеми у вашому дизайні. У будь-якому разі наступний код - це коректний сегмент,
 
+[source,scala]
+----
 public owned Object property { owned get { return new Object(); } }
-Unowned references play a similar role to pointers which are described later. They are however much simpler to use than pointers, as they can be easily converted to normal references. However, in general they should not be widely used in the programs unless you know what you are doing.
+----
 
-Ownership Transfer
-The keyword owned is used to transfer ownership.
+`Unowned` посилання грають схожу роль на покажчики, описані раніше. Однак вони набагато простіші у використанні, ніж покажчики, оскільки їх можна легко перетворити на звичайні посилання. Однак в цілому вони не повинні широко використовуватися в програмах, якщо ви не знаєте, що робите.
 
-As a prefix of a parameter type, it means that ownership of the object is transferred into this code context.
-As an type conversion operator, it can be used to avoid duplicating non-reference counting classes, which is usually impossible in Vala. For example,
+==== Передача власності
 
+Ключове слово `owned` використовується для передачі права власності.
+
+Як префікс типу параметра він означає, що право власності на об'єкт передається в цей контекст коду.
+
+Як оператор перетворення типів, його можна використовувати, щоб уникнути дублювання нереференційних класів підрахунку, що, як правило, у Vala неможливо. Наприклад,
+
+[source,scala]
+----
 Foo foo = (owned) bar;
-This means that bar will be set to null and foo inherits the reference/ownership of the object bar references.
+----
 
-Variable-Length Argument Lists
+This means that bar will be set to null and foo inherits the reference/ownership of the object bar references.
+Це означає, що `bar` буде встановлено на `null`, а `foo` успадковує посилання/право власності на посилання об'єкта `bar`.
+
+=== Списки аргументів змінної довжини
+
 Vala supports C-style variable-length argument lists ("varargs") for methods. They are declared with an ellipsis ("...") in the method signature. A method with varargs requires at least one fixed argument:
 
 

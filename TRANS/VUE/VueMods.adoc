@@ -1,0 +1,290 @@
+include::headers.adoc[]
+
+== Шаблони Vue: Моди і скорочення
+
+Ми подивимось на модифікатори та скорочення директив
+
+https://medium.com/better-programming/vue-js-templates-modifiers-and-shorthands-6fbd6c483678[John Au-Yeung]
+Feb 18 · 3 min read
+
+Vue.js - це простий у користуванні веб фреймворк, який ми можемо використовувати для розробки інтерактивних прикладних програм.
+
+У цій статті ми розглянемо модифікатори директив та деякі корисні скорочення шаблонів.
+
+=== Модифікатори
+
+Модифікатори використовуються для прив'язки директиви особливим чином.
+
+==== Модифікатори подій
+
+Наприклад, модифікатор `.prevent` для директиви `v-on` автоматично запустить `event.preventDefault` у функції обробника подій, яка встановлена ​​як значення.
+
+Модифікатор `.prevent` можна використовувати наступним чином:
+
+[source,html]
+----
+<form v-on:submit.prevent="onSubmit"> ... </form>
+----
+
+Тепер, коли спрацьовує обробник `onSubmit`, буде запущено `event.preventDefault()` - ще до того, як буде виконано решту коду для `onSubmit`.
+
+Інші модифікатори подій включають:
+
+[source,js]
+----
+    .stop
+    .capture
+    .self
+    .once
+    .passive
+----
+
+`.stop` запускає `event.stopPropagation()` перед запуском решти коду обробника події.
+
+`.capture` дозволяє нам захопити подію. Тобто, коли ми запускаємо обробник подій у внутрішньому елементі, то той самий обробник подій також буде працювати у зовнішніх елементах.
+
+For example, if we have the following in src/index.js:
+Наприклад, якщо у `src/index.js` є наступне:
+
+[source,js]
+----
+new Vue({
+  el: "#app",
+  data: {},
+  methods: {
+    onClick() {
+      alert("clicked");
+    }
+  }
+});
+----
+
+І наступне в `index.html`:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div>
+        <a v-on:click.capture="onClick"> Натисни </a>
+      </div>
+    </div>
+    <script src="./src/index.js"></script>
+  </body>
+</html>
+----
+
+Тепер, натискаючи кнопку "Натисни", ми побачимо `clicked` у вікні попередження, оскільки обробник `onClick` викликається батьківським елементом `div`.
+
+`.self` запустить обробник подій, лише якщо `event.target` є самим елементом.
+
+`.once` запустить обробник подій не більше одного разу.
+
+Наприклад, якщо в `src/index.js` є наступне:
+
+[source,js]
+----
+new Vue({
+  el: "#app",
+  data: {},
+  methods: {
+    onClick() {
+      alert("clicked");
+    }
+  }
+});
+----
+
+І наступне в `index.html`:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <div>
+        <a v-on:click.once="onClick"> Клацніть </a>
+      </div>
+    </div>
+    <script src="./src/index.js"></script>
+  </body>
+</html>
+----
+
+Тоді ми побачимо вікно попередження `clicked` лише один раз, хоча ми клацаємо "Клацніть" декілька разів.
+
+`.passive` встановить опцію `passive` для `addEventListener` в `true`. `passive` встановлений `true` означає, що зауваження ніколи не буде викликано.
+
+Він використовується для підвищення продуктивності на мобільних пристроях.
+
+=== Модифікатори моделі
+
+`v-model` має модифікатори. Вони:
+
+[source,js]
+----
+    .lazy
+    .number
+    .trim
+----
+
+Модифікатор `.lazy` змусить синхронізувати модель після події `change` замість події `input`.
+
+Наприклад, коли у нас є `src/index.js`:
+
+[source,js]
+----
+new Vue({
+  el: "#app",
+  data: { msg: "" }
+});
+----
+
+І напишемо в `index.html` наступне:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <input v-model.lazy="msg" />
+      <p>{{msg}}</p>
+    </div>
+    <script src="./src/index.js"></script>
+  </body>
+</html>
+----
+
+Тоді ми бачимо `msg`, виданий лише тоді, коли ми пересуваємєо фокус від вводу.
+
+Модифікатор `.number` автоматично перетворить все, що вводиться, на число.
+
+Наприклад, якщо у `src/index.js` є наступне:
+
+[source,js]
+----
+new Vue({
+  el: "#app",
+  data: { num: 0 }
+});
+----
+
+І наступне в `index.html`:
+
+[source,html]
+----
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Hello</title>
+    <meta charset="UTF-8" />
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <input v-model.number="num" type="number" />
+      <p>{{num}}</p>
+    </div>
+    <script src="./src/index.js"></script>
+  </body>
+</html>
+----
+
+Тоді ми отримаємо число для `num`.
+
+Модифікатор `.trim` буде відкидати пробіл від уведеного.
+
+Ми можемо використовувати його наступним чином:
+
+[source,html]
+----
+<input v-model.trim="msg" type="number" />
+----
+
+=== Скорочення
+
+Існують скорочення деяких директив.
+
+`v-bind`
+
+Ми можемо скоротити `v-bind:` to `:`. Наприклад, ми можемо переписати:
+
+[source,html]
+----
+<a v-bind:href="url">Link</a>
+----
+
+To:
+
+[source,html]
+----
+<a :href="url">Link</a>
+----
+
+Ми також можемо ввести динамічний аргумент, якщо використовувати Vue 2.6.0 або новішу версію:
+
+[source,html]
+----
+<a :[key]="url">Link</a>
+----
+
+`v-on`
+
+Ми можемо скоротити `v-on:` до `@`.
+
+Наприклад, ми можемо скоротити:
+
+[source,js]
+----
+<a v-on:click="onClick">Click me</a>
+----
+
+До:
+
+[source,js]
+----
+<a @click="onClick">Click me</a>
+----
+
+
+Починаючи з Vue 2.6.0, ми також можемо використовувати динамічні аргументи наступним чином:
+
+[source,js]
+----
+<a @[event]="onClick">Click me</a>
+----
+
+
+`z` і `@` - дійсні символи. Крім того, вони не відображатимуться в остаточній розмітці. Скорочення зовсім необов’язкові. Але ми будемо їм вдячні, коли нам доведеться вводити їх багато.
+
+=== Висновок
+
+Деякі директиви мають модифікатори, пов'язані з ними.
+
+Директива `v-on` має кілька модифікаторів для управління тим, як викликаються обробники подій.
+
+Крім того, директива `v-model` має деякі модифікатори, які дозволяють нам автоматично перетворювати введення в числа або обрізати пробіли з входів.
+
+v-on and v-bind also have shorthands. v-on: can be shortened to @, and v-bind: can be shortened to :.
+`v-on` і `v-bind` також мають скорочення. `v-on:` може бути скорочено до `@`, а `v-bind:` може бути скорочено до `:`.
+
+Аргументи директиви також працюють зі скороченням.

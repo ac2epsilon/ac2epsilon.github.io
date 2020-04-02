@@ -1,0 +1,132 @@
+include::headers.adoc[]
+
+== VueJS PWA: зачищення кешу
+https://medium.com/js-dojo/vuejs-pwa-cache-busting-8d09edd22a31[Gerard Lamusse]
+May 14, 2019 · 3 min read
+
+
+Створити PWA стало набагато простіше за допомогою плагінів і бібліотек, таких як `@vue/cli-plugin-pwa`, але вони створюють службового працівника і файл маніфесту, і не обробляють оновлення так добре.
+
+Причиною цього є те, що кеш не очищений належним чином, коли новий сайт створений і встановлений, і те, що я можу сказати, все має відношення до того, що сервіс-працівник не бачить різниці між різними версіями вашого PWA.
+
+=== Створюємо версію
+
+Якщо припустити, що ви використовували вищезгаданий плагін `@vue/cli-plugin-pwa`, нам потрібно оновити три файли, щоб кеш припинив роботу.
+
+==== Service-worker.js
+
+Перший файл - це власне сервісний працівник, розташований зазвичай в корені вашого pwa, наприклад. `/service-worker.js`. Ми оновимо його наступним чином:
+
+[source,js]
+----
+// service-worker.js
+
+workbox.core.setCacheNameDetails({ prefix: 'd4' })
+// Змінюйте це значення кожного разу, перш ніж будувати
+const LATEST_VERSION = 'v1.5'
+self.addEventListener('activate', (event) => {
+  console.log(`%c ${LATEST_VERSION} `, 'background: #ddd; color: #0000ff')
+  if (caches) {
+    caches.keys().then((arr) => {
+      arr.forEach((key) => {
+        if (key.indexOf('d4-precache') < -1) {
+          caches.delete(key).then(() => console.log(`%c Cleared ${key}`, 'background: #333; color: #ff0000'))
+        } else {
+          caches.open(key).then((cache) => {
+            cache.match('version').then((res) => {
+              if (!res) {
+                cache.put('version', new Response(LATEST_VERSION, { status: 200, statusText: LATEST_VERSION }))
+              } else if (res.statusText !== LATEST_VERSION) {
+                caches.delete(key).then(() => console.log(`%c Cleared Cache ${LATEST_VERSION}`, 'background: #333; color: #ff0000'))
+              } else console.log(`%c Great you have the latest version ${LATEST_VERSION}`, 'background: #333; color: #00ff00')
+            })
+          })
+        }
+      })
+    })
+  }
+})
+
+workbox.skipWaiting()
+workbox.clientsClaim()
+
+self.__precacheManifest = [].concat(self.__precacheManifest || [])
+workbox.precaching.suppressWarnings()
+workbox.precaching.precacheAndRoute(self.__precacheManifest, {})
+----
+
+По суті, це є версія кожного створеного вами сервісного працівника. Наступного разу, коли користувач відвідує ваш сайт, він перевіряє номери версій, щоб побачити, чи відповідають вони, та очищає весь кеш.
+
+Важливо зазначити, що це спрацює, лише якщо ви пам’ятаєте оновлювати значення LATEST_VERSION кожного разу, коли ви створюєте та розгортаєте нову версію pwa.
+
+==== registerServiceWorker.js
+
+The second file is a small change to src/registerServiceWorker.js. All we want to do is reload the page once the service-worker has been updated.
+
+[source,js]
+----
+import { register } from 'register-service-worker'
+
+if (process.env.NODE_ENV === 'production') {
+  register(`${process.env.BASE_URL}service-worker.js`, {
+    ready () {
+      console.log('Site is ready')
+    },
+    cached () {
+      console.log('Content has been cached for offline use.')
+    },
+    updatefound () {
+      console.log('New content is downloading.')
+    },
+    updated () { // -  -  -  - цікава частина
+      console.log('New content is available; Refresh...')
+      setTimeout(() => {
+        window.location.reload(true)
+      }, 1000)
+    },           // -  -  -  -  
+    offline () {
+      console.log('No internet connection found. App is running in offline mode.')
+    },
+    error (error) {
+      console.error('Error during service worker registration:', error)
+    },
+  })
+}
+----
+
+Я виділив важливу частину. Причина тайм-ауту - це просто приділити достатньо часу активізації сервісного працівника, інакше ви застрягнете в циклі перезавантаження, оскільки він викликає `updated`, а потім намагається активувати, але потім перезавантажує.
+
+==== vue.config.js
+
+І останнє, але не менш важливе, ми маємо оновити параметри плагіна для використання нашого сервісного працівника замість створення нового.
+
+[source,js]
+----
+const manifestJSON = require('./public/manifest.json')
+module.exports = {
+  pwa: {
+    themeColor: manifestJSON.theme_color,
+    name: manifestJSON.short_name,
+    msTileColor: manifestJSON.background_color,
+    appleMobileWebAppCapable: 'yes',
+    appleMobileWebAppStatusBarStyle: 'black',
+    workboxPluginMode: 'InjectManifest', // -  -  -  - цікава частина
+    workboxOptions: {
+      swSrc: 'service-worker.js',
+    },                                  // -  -  -  - 
+  },
+…
+----
+
+The part in bold is the important required part.
+Once you’ve made these changes you can build your app remembering to change the version every time you do a new build.
+If you open the console after pushing a new version, you’ll see the app clearing and updating before automatically reloading the page.
+NOTE: It is important to note that if you already have a live app, then this won’t work unless the user does a full refresh which 99% is not going to happen. So your best option would be to add a small script to your index.html that uninstalls all service-workers for a week/month.
+if(window.navigator && navigator.serviceWorker) {
+  navigator.serviceWorker.getRegistrations()
+  .then(function(registrations) {
+    for(let registration of registrations) {
+      registration.unregister();
+    }
+  });
+}
