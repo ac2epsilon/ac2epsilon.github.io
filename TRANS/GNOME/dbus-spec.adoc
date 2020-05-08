@@ -3,7 +3,7 @@
 :source-highlighter: pygments
 :icons: font
 
-== .D-Bus Specification
+== D-Bus Specification
 
 === Вступ
 
@@ -178,81 +178,84 @@ A single complete type is a sequence of type codes that fully describes one type
 | reserved    |	(reserved)  |  64 (ASCII '@'), 38 (ASCII '&'), 94 (ASCII '^') |Зарезервовано для внутрішнього використання шляхом прив'язки/реалізації та не повинно відображатися у підписах, що використовуються на D-Bus. GVariant використовує ці типи кодів для кодування умовних викликів.
 |=====
 
-=== Маршалінг (дротовий формат)
+== Маршалінг (дротовий формат)
 
-D-Bus defines a marshalling format for its type system, which is used in D-Bus messages. This is not the only possible marshalling format for the type system: for instance, GVariant (part of GLib) re-uses the D-Bus type system but implements an alternative marshalling format.
+D-Bus визначає маршовий формат для своєї системи типів, який використовується у повідомленнях D-Bus. Це не єдиний можливий формат маршалінгу для системи типів: наприклад, `GVariant` (частина GLib) повторно використовує систему типів D-Bus, але реалізує альтернативний формат маршалінгу.
 
-Byte order and alignment
-Given a type signature, a block of bytes can be converted into typed values. This section describes the format of the block of bytes. Byte order and alignment issues are handled uniformly for all D-Bus types.
+=== Порядок байт та вирівнювання
 
-A block of bytes has an associated byte order. The byte order has to be discovered in some way; for D-Bus messages, the byte order is part of the message header as described in the section called “Message Format”. For now, assume that the byte order is known to be either little endian or big endian.
+Беручи підпис типу, блок байтів може бути перетворений в типізовані значення. У цьому розділі описано формат блоку байтів. Проблеми з порядком і вирівнюванням байтів обробляються однаково для всіх типів D-Bus.
 
-Each value in a block of bytes is aligned "naturally," for example 4-byte values are aligned to a 4-byte boundary, and 8-byte values to an 8-byte boundary. Boundaries are calculated globally, with respect to the first byte in the message. To properly align a value, alignment padding may be necessary before the value. The alignment padding must always be the minimum required padding to properly align the following value; and it must always be made up of nul bytes. The alignment padding must not be left uninitialized (it can't contain garbage), and more padding than required must not be used.
+Блок байтів має пов'язаний порядок байт. Порядок байтів повинен бути виявлений якимось чином; для повідомлень D-Bus порядок байтів є частиною заголовка повідомлення, як описано в розділі під назвою "Формат повідомлення". Поки припустимо, що байтовий порядок є відомий як біг- або літл-ендіан.
 
-As an exception to natural alignment, STRUCT and DICT_ENTRY values are always aligned to an 8-byte boundary, regardless of the alignments of their contents.
+Кожне значення в блоці байтів вирівнюється "природним чином", наприклад, 4-байтні значення вирівнюються до 4-байтної межі, а 8-байтові - до 8-байтової межі. Межі обчислюються в глобальному масштабі щодо першого байту повідомлення. Для правильного вирівнювання значення може знадобитися прокладка вирівнювання перед значенням. Підкладка вирівнювання завжди повинна бути мінімально необхідною прокладкою, щоб правильно вирівняти наступне значення; і вона завжди повинна складатися з нульових байтів. Прокладка вирівнювання не повинна залишатися неініціалізованою (вона не може містити сміття), і не слід використовувати більше прокладки, ніж потрібно.
 
-Marshalling basic types
-To marshal and unmarshal fixed types, you simply read one value from the data block corresponding to each type code in the signature. All signed integer values are encoded in two's complement, DOUBLE values are IEEE 754 double-precision floating-point, and BOOLEAN values are encoded in 32 bits (of which only the least significant bit is used).
+Як виняток від природного вирівнювання, значення `STRUCT` та `DICT_ENTRY` завжди вирівнюються до 8-байтової межі, незалежно від вирівнювання їх вмісту.
 
-The string-like types (STRING, OBJECT_PATH and SIGNATURE) are all marshalled as a fixed-length unsigned integer n giving the length of the variable part, followed by n nonzero bytes of UTF-8 text, followed by a single zero (nul) byte which is not considered to be part of the text. The alignment of the string-like type is the same as the alignment of n: any padding required for n appears immediately before n itself. There is never any alignment padding between n and the string text, or between the string text and the trailing nul. The alignment padding for the next value in the message (if there is one) starts after the trailing nul.
+=== Маршалінг основних типів
 
-For the STRING and OBJECT_PATH types, n is encoded in 4 bytes (a UINT32), leading to 4-byte alignment. For the SIGNATURE type, n is encoded as a single byte (a UINT8). As a result, alignment padding is never required before a SIGNATURE.
+Для маршалінгу та демаршалінгу фіксованих типів ви просто зчитуєте одне значення з блоку даних, що відповідає кожному коду типу в підписі. Всі підписані цілі значення кодуються в доповнення двох, значення `DOUBLE` - IEEE 754 з плаваючою точкою подвійної точності, а значення `BOOLEAN` кодуються в 32 біти (з яких використовується лише найменш значущий біт).
 
-For example, if the current position is a multiple of 8 bytes from the beginning of a little-endian message, strings ‘foo’, ‘+’ and ‘bar’ would be serialized in sequence as follows:
+Рядкоподібні типи (`STRING`, `OBJECT_PATH` і `SIGNATURE`) усі розміщуються як беззнакове ціле фіксованої довжини `n`, що дає довжину змінної частини, а потім `n` ненульових байтів тексту UTF-8, а потім один нульовий байт (`nul`) байт, який не вважається частиною тексту. Вирівнювання рядкового типу є таким же, як і вирівнювання `n`: будь-яка прокладка, необхідна для `n`, з'являється безпосередньо перед самим `n`. Ніколи не існує жодного вирівнювання між `n` та текстом рядка, або між текстом рядка та кінцевим нулем. Вирівнювання наступного значення в повідомленні (якщо воно є) починається після кінцевого нуля.
 
-                                          no padding required, we are already at a multiple of 4
-0x03 0x00 0x00 0x00                       length of ‘foo’ = 3
-                    0x66 0x6f 0x6f        ‘foo’
-                                   0x00   trailing nul
+Для типів `STRING` і `OBJECT_PATH` `n` кодується в 4 байти (`UINT32`), що веде до 4-байтового вирівнювання. Для типу `SIGNATURE` `n` кодується як один байт (`UINT8`). В результаті вирівнювання прокладки ніколи не потрібно перед `SIGNATURE`.
 
-                                          no padding required, we are already at a multiple of 4
-0x01 0x00 0x00 0x00                       length of ‘+’ = 1
-                    0x2b                  ‘+’
-                         0x00             trailing nul
+Наприклад, якщо поточне положення є кратним 8 байтів від початку повідомлення літл-ендіван повідомлення, рядки `"foo"`, `"+"` і `"bar"` будуть серіалізовані в послідовності наступним чином:
 
-                               0x00 0x00  2 bytes of padding to reach next multiple of 4
-0x03 0x00 0x00 0x00                       length of ‘bar’ = 3
-                    0x62 0x61 0x72        ‘bar’
-                                    0x00  trailing nul
+0x03 0x00 0x00 0x00   кратне 4, вирівнювання не потрібне, довжина ‘foo’ = 3
+0x66 0x6f 0x6f        ‘foo’
+0x00                  заключний nul
+0x01 0x00 0x00 0x00   кратне 4, вирівнювання не потрібне, довжина ‘+’ = 1
+0x2b                  ‘+’
+0x00                  заключний nul
+0x00 0x00             2 байти вирівнювання
+0x03 0x00 0x00 0x00   довжина ‘bar’ = 3
+0x62 0x61 0x72        ‘bar’
+0x00                  заключний nul
         
-Marshalling containers
-Arrays are marshalled as a UINT32 n giving the length of the array data in bytes, followed by alignment padding to the alignment boundary of the array element type, followed by the n bytes of the array elements marshalled in sequence. n does not include the padding after the length, or any padding after the last element. i.e. n should be divisible by the number of elements in the array.
+=== Контейнери маршалінга
 
-For instance, if the current position in the message is a multiple of 8 bytes and the byte-order is big-endian, an array containing only the 64-bit integer 5 would be marshalled as:
+Масиви розташовуються як `UINT32 n`, що задає довжину даних масиву в байтах з подальшим вирівнюванням до межі вирівнювання типу масиву з подальшими `n` байтами елементів масиву, маршованих послідовно. `n` не включає прокладку після довжини або будь-яку прокладку після останнього елемента, тобто `n` слід ділити на кількість елементів у масиві.
 
-00 00 00 08               n = 8 bytes of data
-00 00 00 00               padding to 8-byte boundary
-00 00 00 00  00 00 00 05  first element = 5
+Наприклад, якщо поточне положення в повідомленні кратне 8 байтам, а порядок байтів є біг-ендіан, масив, що містить лише 64-бітове ціле число 5, буде розміщено як:
+
+00 00 00 08               n = 8 байт даних
+00 00 00 00               вирівнювання на межу 8 байтів
+00 00 00 00  00 00 00 05  перший елемент = 5
         
-Arrays have a maximum length defined to be 2 to the 26th power or 67108864 (64 MiB). Implementations must not send or accept arrays exceeding this length.
+Масиви мають максимальну довжину, визначену як 2 в 26-й ступені, 67108864 (64 МБ). Впровадження не повинно надсилати або приймати масиви, що перевищують цю довжину.
 
-Structs and dict entries are marshalled in the same way as their contents, but their alignment is always to an 8-byte boundary, even if their contents would normally be less strictly aligned.
+Структури та записи мап розміщуються так само, як і їхній вміст, але їх вирівнювання завжди до 8-байтової межі, навіть якщо їх вміст, як правило, менш суворо вирівняний.
 
-Variants are marshalled as the SIGNATURE of the contents (which must be a single complete type), followed by a marshalled value with the type given by that signature. The variant has the same 1-byte alignment as the signature, which means that alignment padding before a variant is never needed. Use of variants must not cause a total message depth to be larger than 64, including other container types such as structures. (See Valid Signatures.)
+Варіанти маршируються як `SIGNATURE` вмісту (який повинен бути єдиним завершеним типом), а потім слідує маршальоване значення з типом, заданим цим підписом. Варіант має те ж однобайтове вирівнювання, що і підпис, що означає, що вирівнювання перед варіантом ніколи не потрібне. Використання варіантів не повинно призводити до того, що загальна глибина повідомлення не перевищує 64, включаючи інші типи контейнерів, такі як структури. (Див. Дійсні підписи).
 
-Summary of D-Bus marshalling
-Given all this, the types are marshaled on the wire as follows:
+Враховуючи все це, типи розміщуються на дроті наступним чином:
 
-Conventional Name	Encoding	Alignment
-INVALID	Not applicable; cannot be marshaled.	N/A
-BYTE	A single 8-bit byte.	1
-BOOLEAN	As for UINT32, but only 0 and 1 are valid values.	4
-INT16	16-bit signed integer in the message's byte order.	2
-UINT16	16-bit unsigned integer in the message's byte order.	2
-INT32	32-bit signed integer in the message's byte order.	4
-UINT32	32-bit unsigned integer in the message's byte order.	4
-INT64	64-bit signed integer in the message's byte order.	8
-UINT64	64-bit unsigned integer in the message's byte order.	8
-DOUBLE	64-bit IEEE 754 double in the message's byte order.	8
-STRING	A UINT32 indicating the string's length in bytes excluding its terminating nul, followed by non-nul string data of the given length, followed by a terminating nul byte.	4 (for the length)
-OBJECT_PATH	Exactly the same as STRING except the content must be a valid object path (see above).	4 (for the length)
-SIGNATURE	The same as STRING except the length is a single byte (thus signatures have a maximum length of 255) and the content must be a valid signature (see above).	1
-ARRAY	A UINT32 giving the length of the array data in bytes, followed by alignment padding to the alignment boundary of the array element type, followed by each array element.	4 (for the length)
-STRUCT	A struct must start on an 8-byte boundary regardless of the type of the struct fields. The struct value consists of each field marshaled in sequence starting from that 8-byte alignment boundary.	8
-VARIANT	The marshaled SIGNATURE of a single complete type, followed by a marshaled value with the type given in the signature.	1 (alignment of the signature)
-DICT_ENTRY	Identical to STRUCT.	8
-UNIX_FD	32-bit unsigned integer in the message's byte order. The actual file descriptors need to be transferred out-of-band via some platform specific mechanism. On the wire, values of this type store the index to the file descriptor in the array of file descriptors that accompany the message.	4
-Message Protocol
+.Короткий огляд маршалінгу D-Bus
+[width="80%",cols="3,6,2",options="header"]
+|=====
+| Звичайна назва | Кодування | вирівнювання
+| INVALID | Не маршулюється          | N/A
+| BYTE	  | Поодинокий 8-бітний байт | 1
+| BOOLEAN	| Як для UINT32, але значення лише 0 та 1 |	4
+| INT16   |	16-бітне знакове ціле в відповідному порядку байт | 2
+| UINT16	| 16-бітне беззнакове ціле в відповідному порядку байт | 2
+| INT32	  | 32-бітне знакове ціле в відповідному порядку байт | 4
+| UINT32	| 32-бітне беззнакове ціле в відповідному порядку байт | 4
+| INT64	  | 64-бітне знакове ціле в відповідному порядку байт | 8
+| UINT64	| 64-бітне беззнакове ціле в відповідному порядку байт | 8
+| DOUBLE	| 64-бітове IEEE 754 подвійної точності | 8
+| STRING	| UINT32 в якості довжини рядка в байтах, виключаючи завершальний nul, за яким ідуть дані вказаної довжини і заключиний байт nul |4 (для довжини)
+| OBJECT_PATH |	Те саме, що STRING, за виключенням того, що рядок має бути валідним шляхом(див вище) | 4 (для довжини)
+| SIGNATURE   |	Те саме, що STRING, за виключнням того, що довжина складає один байт (тобто сигнатура має максимальну довжину 255), і вміст має бути валідним підписом (див вище) |	1
+| ARRAY	      | UINT32, що дає довжину масива даних в байтах, за яким іде вирівнювання до межі згідно елементам типу, за яким ідуть самі елементи |	4 (для довожини)
+| STRUCT	    | Структура має починатись з 8-байтової межі, безвідносно до полів. Значення структури складається з кожного з полів, маршальованих послідовно, починаючи з цієї 8-бітної межі | 8
+| VARIANT	    | Маршальована SIGNATURE єдиного повного типу, за яким іде значення типу, вказаноого в сигнатурі |	1 (вирівнювання сигнатури)
+| DICT_ENTRY	| Ідентично до STRUCT |	8
+| UNIX_FD	    | 32-бітне беззнакове ціле в відповідному порядку байт. Справжні дескриптори файлів мають передавати по іншим каналам, специфічним для платформи. На дроті значення цього типу зберігають індекс файлового дескриптора в масиві дескрипторів, що супроводжує повідомлення | 4
+
+== Протокол повідомлення
+
 A message consists of a header and a body. If you think of a message as a package, the header is the address, and the body contains the package contents. The message delivery system uses the header information to figure out where to send the message and how to interpret it; the recipient interprets the body of the message.
 
 The body of the message is made up of zero or more arguments, which are typed values, such as an integer or a byte array.
