@@ -1,0 +1,1411 @@
+:ascii-ids:
+:doctype: book
+:source-highlighter: pygments
+:icons: font
+
+= Препроцесор C
+
+Востаннє переглянуто липень 1992 року для версії 2 GCC
+Richard M. Stallman
+
+Ця брошура, зрештою, призначена для формування першої глави посібника з мови GNU C.
+
+Copyright c 1987, 1989, 1991, 1992, 1993, 1994, 1995 Free Software Foundation, Inc.
+
+Надання дозволу на виготовлення та розповсюдження дослівних копій цього посібника за умови, що це повідомлення про авторські права та це повідомлення про дозвіл зберігаються на всіх примірниках.
+
+Дозвіл надається для копіювання та розповсюдження модифікованих версій цього посібника в умовах дословного копіювання, за умови, що вся отримана робота поширюється за умовами повідомлення про дозвіл, ідентичне цьому.
+
+Permission is granted to copy and distribute translations of this manual into another language, under the above conditions for modied versions.
+
+Chapter 1: The C Preprocessor 1
+1 The C Preprocessor
+The C preprocessor is a macro processor that is used automatically by the C compiler to
+transform your program before actual compilation. It is called a macro processor because
+it allows you to dene macros, which are brief abbreviations for longer constructs.
+The C preprocessor provides four separate facilities that you can use as you see t:  Inclusion of header les. These are les of declarations that can be substituted into
+your program.  Macro expansion. You can dene macros, which are abbreviations for arbitrary fragments of C code, and then the C preprocessor will replace the macros with their de-
+nitions throughout the program.  Conditional compilation. Using special preprocessing directives, you can include or
+exclude parts of the program according to various conditions.  Line control. If you use a program to combine or rearrange source les into an intermediate le which is then compiled, you can use line control to inform the compiler of
+where each source line originally came from.
+C preprocessors vary in some details. This manual discusses the GNU C preprocessor,
+the C Compatible Compiler Preprocessor. The GNU C preprocessor provides a superset of
+the features of ANSI Standard C.
+ANSI Standard C requires the rejection of many harmless constructs commonly used by
+today's C programs. Such incompatibility would be inconvenient for users, so the GNU C
+preprocessor is congured to accept these constructs by default. Strictly speaking, to get
+ANSI Standard C, you must use the options `-trigraphs', `-undef' and `-pedantic', but
+in practice the consequences of having strict ANSI Standard C make it undesirable to do
+this. See Section 1.9 [Invocation], page 31.
+1.1 Transformations Made Globally
+Most C preprocessor features are inactive unless you give specic directives to request
+their use. (Preprocessing directives are lines starting with `#'; see Section 1.2 [Directives],
+page 2). But there are three transformations that the preprocessor always makes on all the
+input it receives, even in the absence of directives.  All C comments are replaced with single spaces.  Backslash-Newline sequences are deleted, no matter where. This feature allows you to
+break long lines for cosmetic purposes without changing their meaning.  Predened macro names are replaced with their expansions (see Section 1.4.3 [Prede-
+ned], page 10).
+The rst two transformations are done before nearly all other parsing and before preprocessing directives are recognized. Thus, for example, you can split a line cosmetically
+with Backslash-Newline anywhere (except when trigraphs are in use; see below).
+/*
+*/ # /*
+*/ defi\
+2 The C Preprocessor
+ne FO\
+O 10\
+20
+is equivalent into `#define FOO 1020'. You can split even an escape sequence with
+Backslash-Newline. For example, you can split "foo\bar" between the `\' and the `b'
+to get
+"foo\\
+bar"
+This behavior is unclean: in all other contexts, a Backslash can be inserted in a string constant as an ordinary character by writing a double Backslash, and this creates an exception.
+But the ANSI C standard requires it. (Strict ANSI C does not allow Newlines in string
+constants, so they do not consider this a problem.)
+But there are a few exceptions to all three transformations.  C comments and predened macro names are not recognized inside a `#include' directive in which the le name is delimited with `<' and `>'.  C comments and predened macro names are never recognized within a character or
+string constant. (Strictly speaking, this is the rule, not an exception, but it is worth
+noting here anyway.)  Backslash-Newline may not safely be used within an ANSI \trigraph". Trigraphs are
+converted before Backslash-Newline is deleted. If you write what looks like a trigraph
+with a Backslash-Newline inside, the Backslash-Newline is deleted as usual, but it is
+then too late to recognize the trigraph.
+This exception is relevant only if you use the `-trigraphs' option to enable trigraph
+processing. See Section 1.9 [Invocation], page 31.
+1.2 Preprocessing Directives
+Most preprocessor features are active only if you use preprocessing directives to request
+their use.
+Preprocessing directives are lines in your program that start with `#'. The `#' is followed
+by an identier that is the directive name. For example, `#define' is the directive that
+denes a macro. Whitespace is also allowed before and after the `#'.
+The set of valid directive names is xed. Programs cannot dene new preprocessing
+directives.
+Some directive names require arguments; these make up the rest of the directive line and
+must be separated from the directive name by whitespace. For example, `#define' must
+be followed by a macro name and the intended expansion of the macro. See Section 1.4.1
+[Simple Macros], page 7.
+A preprocessing directive cannot be more than one line in normal circumstances. It
+may be split cosmetically with Backslash-Newline, but that has no eect on its meaning. Comments containing Newlines can also divide the directive into multiple lines, but
+the comments are changed to Spaces before the directive is interpreted. The only way a
+signicant Newline can occur in a preprocessing directive is within a string constant or
+Chapter 1: The C Preprocessor 3
+character constant. Note that most C compilers that might be applied to the output from
+the preprocessor do not accept string or character constants containing Newlines.
+The `#' and the directive name cannot come from a macro expansion. For example,
+if `foo' is dened as a macro expanding to `define', that does not make `#foo' a valid
+preprocessing directive.
+1.3 Header Files
+A header le is a le containing C declarations and macro denitions (see Section 1.4
+[Macros], page 7) to be shared between several source les. You request the use of a header
+le in your program with the C preprocessing directive `#include'.
+1.3.1 Uses of Header Files
+Header les serve two kinds of purposes.  System header les declare the interfaces to parts of the operating system. You include
+them in your program to supply the denitions and declarations you need to invoke
+system calls and libraries.  Your own header les contain declarations for interfaces between the source les of your
+program. Each time you have a group of related declarations and macro denitions all
+or most of which are needed in several dierent source les, it is a good idea to create
+a header le for them.
+Including a header le produces the same results in C compilation as copying the header
+le into each source le that needs it. But such copying would be time-consuming and
+error-prone. With a header le, the related declarations appear in only one place. If they
+need to be changed, they can be changed in one place, and programs that include the header
+le will automatically use the new version when next recompiled. The header le eliminates
+the labor of nding and changing all the copies as well as the risk that a failure to nd one
+copy will result in inconsistencies within a program.
+The usual convention is to give header les names that end with `.h'. Avoid unusual
+characters in header le names, as they reduce portability. 1.3.2 The `#include' Directive
+Both user and system header les are included using the preprocessing directive
+`#include'. It has three variants:
+#include <le>
+This variant is used for system header les. It searches for a le named le in a
+list of directories specied by you, then in a standard list of system directories.
+You specify directories to search for header les with the command option
+`-I' (see Section 1.9 [Invocation], page 31). The option `-nostdinc' inhibits
+searching the standard system directories; in this case only the directories you
+specify are searched.
+The parsing of this form of `#include' is slightly special because comments are
+not recognized within the `<:::>'. Thus, in `#include <x/*y>' the `/*' does
+4 The C Preprocessor
+not start a comment and the directive species inclusion of a system header le
+named `x/*y'. Of course, a header le with such a name is unlikely to exist on
+Unix, where shell wildcard features would make it hard to manipulate.
+The argument le may not contain a `>' character. It may, however, contain a
+`<' character.
+#include "le"
+This variant is used for header les of your own program. It searches for a le
+named le rst in the current directory, then in the same directories used for
+system header les. The current directory is the directory of the current input
+le. It is tried rst because it is presumed to be the location of the les that the
+current input le refers to. (If the `-I-' option is used, the special treatment
+of the current directory is inhibited.)
+The argument le may not contain `"' characters. If backslashes occur within
+le, they are considered ordinary text characters, not escape characters. None
+of the character escape sequences appropriate to string constants in C are processed. Thus, `#include "x\n\\y"' species a lename containing three backslashes. It is not clear why this behavior is ever useful, but the ANSI standard
+species it.
+#include anything else
+This variant is called a computed #include. Any `#include' directive whose
+argument does not t the above two forms is a computed include. The text
+anything else is checked for macro calls, which are expanded (see Section 1.4
+[Macros], page 7). When this is done, the result must t one of the above two
+variants|in particular, the expanded text must in the end be surrounded by
+either quotes or angle braces.
+This feature allows you to dene a macro which controls the le name to be used
+at a later point in the program. One application of this is to allow a site-specic
+conguration le for your program to specify the names of the system include
+les to be used. This can help in porting the program to various operating
+systems in which the necessary system header les are found in dierent places.
+1.3.3 How `#include' Works
+The `#include' directive works by directing the C preprocessor to scan the specied le
+as input before continuing with the rest of the current le. The output from the preprocessor
+contains the output already generated, followed by the output resulting from the included
+le, followed by the output that comes from the text after the `#include' directive. For
+example, given a header le `header.h' as follows,
+char *test ();
+and a main program called `program.c' that uses the header le, like this,
+int x;
+#include "header.h"
+main ()
+{
+Chapter 1: The C Preprocessor 5
+printf (test ());
+}
+the output generated by the C preprocessor for `program.c' as input would be
+int x;
+char *test ();
+main ()
+{
+printf (test ());
+}
+Included les are not limited to declarations and macro denitions; those are merely the
+typical uses. Any fragment of a C program can be included from another le. The include
+le could even contain the beginning of a statement that is concluded in the containing le,
+or the end of a statement that was started in the including le. However, a comment or a
+string or character constant may not start in the included le and nish in the including
+le. An unterminated comment, string constant or character constant in an included le is
+considered to end (with an error message) at the end of the le.
+It is possible for a header le to begin or end a syntactic unit such as a function denition,
+but that would be very confusing, so don't do it.
+The line following the `#include' directive is always treated as a separate line by the C
+preprocessor even if the included le lacks a nal newline.
+1.3.4 Once-Only Include Files
+Very often, one header le includes another. It can easily result that a certain header
+le is included more than once. This may lead to errors, if the header le denes structure
+types or typedefs, and is certainly wasteful. Therefore, we often wish to prevent multiple
+inclusion of a header le.
+The standard way to do this is to enclose the entire real contents of the le in a conditional, like this:
+#ifndef FILE_FOO_SEEN
+#define FILE_FOO_SEEN
+the entire le
+#endif /* FILE_FOO_SEEN */
+The macro FILE_FOO_SEEN indicates that the le has been included once already. In a
+user header le, the macro name should not begin with `_'. In a system header le, this
+name should begin with `__' to avoid conicts with user programs. In any kind of header
+le, the macro name should contain the name of the le and some additional text, to avoid
+conicts with other header les.
+The GNU C preprocessor is programmed to notice when a header le uses this particular
+construct and handle it eciently. If a header le is contained entirely in a `#ifndef'
+conditional, then it records that fact. If a subsequent `#include' species the same le,
+6 The C Preprocessor
+and the macro in the `#ifndef' is already dened, then the le is entirely skipped, without
+even reading it.
+There is also an explicit directive to tell the preprocessor that it need not include a le
+more than once. This is called `#pragma once', and was used in addition to the `#ifndef'
+conditional around the contents of the header le. `#pragma once' is now obsolete and
+should not be used at all.
+In the Ob jective C language, there is a variant of `#include' called `#import' which
+includes a le, but does so at most once. If you use `#import' instead of `#include', then
+you don't need the conditionals inside the header le to prevent multiple execution of the
+contents.
+`#import' is obsolete because it is not a well designed feature. It requires the users of a
+header le|the applications programmers|to know that a certain header le should only
+be included once. It is much better for the header le's implementor to write the le so
+that users don't need to know this. Using `#ifndef' accomplishes this goal.
+1.3.5 Inheritance and Header Files
+Inheritance is what happens when one ob ject or le derives some of its contents by
+virtual copying from another ob ject or le. In the case of C header les, inheritance means
+that one header le includes another header le and then replaces or adds something.
+If the inheriting header le and the base header le have dierent names, then inheritance
+is straightforward: simply write `#include "base"' in the inheriting le.
+Sometimes it is necessary to give the inheriting le the same name as the base le. This
+is less straightforward.
+For example, suppose an application program uses the system header le `sys/signal.h',
+but the version of `/usr/include/sys/signal.h' on a particular system doesn't do what
+the application program expects. It might be convenient to dene a \local" version, perhaps under the name `/usr/local/include/sys/signal.h', to override or add to the one
+supplied by the system.
+You can do this by using the option `-I.' for compilation, and writing a le `sys/signal.h'
+that does what the application program expects. But making this le include the standard
+`sys/signal.h' is not so easy|writing `#include <sys/signal.h>' in that le doesn't
+work, because it includes your own version of the le, not the standard system version.
+Used in that le itself, this leads to an innite recursion and a fatal error in compilation.
+`#include </usr/include/sys/signal.h>' would nd the proper le, but that is not
+clean, since it makes an assumption about where the system header le is found. This is
+bad for maintenance, since it means that any change in where the system's header les are
+kept requires a change somewhere else.
+The clean way to solve this problem is to use `#include_next', which means, \Include
+the next le with this name." This directive works like `#include' except in searching for
+the specied le: it starts searching the list of header le directories after the directory in
+which the current le was found.
+Suppose you specify `-I /usr/local/include', and the list of directories to search
+also includes `/usr/include'; and suppose that both directories contain a le named
+Chapter 1: The C Preprocessor 7
+`sys/signal.h'. Ordinary `#include <sys/signal.h>' nds the le under `/usr/local/include'.
+If that le contains `#include_next <sys/signal.h>', it starts searching after that directory, and nds the le in `/usr/include'.
+1.4 Macros
+A macro is a sort of abbreviation which you can dene once and then use later. There
+are many complicated features associated with macros in the C preprocessor.
+1.4.1 Simple Macros
+A simple macro is a kind of abbreviation. It is a name which stands for a fragment of
+code. Some people refer to these as manifest constants. Before you can use a macro, you must dene it explicitly with the `#define' directive. `#define' is followed by the name of the macro and then the code it should be an
+abbreviation for. For example,
+#define BUFFER_SIZE 1020
+denes a macro named `BUFFER_SIZE' as an abbreviation for the text `1020'. If somewhere
+after this `#define' directive there comes a C statement of the form
+foo = (char *) xmalloc (BUFFER_SIZE);
+then the C preprocessor will recognize and expand the macro `BUFFER_SIZE', resulting in
+foo = (char *) xmalloc (1020);
+The use of all upper case for macro names is a standard convention. Programs are easier
+to read when it is possible to tell at a glance which names are macros.
+Normally, a macro denition must be a single line, like all C preprocessing directives.
+(You can split a long macro denition cosmetically with Backslash-Newline.) There is one
+exception: Newlines can be included in the macro denition if within a string or character
+constant. This is because it is not possible for a macro denition to contain an unbalanced
+quote character; the denition automatically extends to include the matching quote character that ends the string or character constant. Comments within a macro denition may
+contain Newlines, which make no dierence since the comments are entirely replaced with
+Spaces regardless of their contents.
+Aside from the above, there is no restriction on what can go in a macro body. Parentheses
+need not balance. The body need not resemble valid C code. (But if it does not, you may
+get error messages from the C compiler when you use the macro.)
+The C preprocessor scans your program sequentially, so macro denitions take eect at
+the place you write them. Therefore, the following input to the C preprocessor
+foo = X;
+#define X 4
+bar = X;
+produces as output
+foo = X;
+bar = 4;
+8 The C Preprocessor
+After the preprocessor expands a macro name, the macro's denition body is appended
+to the front of the remaining input, and the check for macro calls continues. Therefore, the
+macro body can contain calls to other macros. For example, after
+#define BUFSIZE 1020
+#define TABLESIZE BUFSIZE
+the name `TABLESIZE' when used in the program would go through two stages of expansion,
+resulting ultimately in `1020'.
+This is not at all the same as dening `TABLESIZE' to be `1020'. The `#define' for
+`TABLESIZE' uses exactly the body you specify|in this case, `BUFSIZE'|and does not check
+to see whether it too is the name of a macro. It's only when you use `TABLESIZE' that the
+result of its expansion is checked for more macro names. See Section 1.4.8.7 [Cascaded
+Macros], page 22.
+1.4.2 Macros with Arguments
+A simple macro always stands for exactly the same text, each time it is used. Macros can
+be more exible when they accept arguments. Arguments are fragments of code that you
+supply each time the macro is used. These fragments are included in the expansion of the
+macro according to the directions in the macro denition. A macro that accepts arguments
+is called a function-like macro because the syntax for using it looks like a function call.
+To dene a macro that uses arguments, you write a `#define' directive with a list of
+argument names in parentheses after the name of the macro. The argument names may
+be any valid C identiers, separated by commas and optionally whitespace. The openparenthesis must follow the macro name immediately, with no space in between.
+For example, here is a macro that computes the minimum of two numeric values, as it
+is dened in many C programs:
+#define min(X, Y) ((X) < (Y) ? (X) : (Y))
+(This is not the best way to dene a \minimum" macro in GNU C. See Section 1.4.8.4 [Side
+Eects], page 19, for more information.)
+To use a macro that expects arguments, you write the name of the macro followed by
+a list of actual arguments in parentheses, separated by commas. The number of actual
+arguments you give must match the number of arguments the macro expects. Examples of
+use of the macro `min' include `min (1, 2)' and `min (x + 28, *p)'.
+The expansion text of the macro depends on the arguments you use. Each of the argument names of the macro is replaced, throughout the macro denition, with the corresponding actual argument. Using the same macro `min' dened above, `min (1, 2)' expands
+into
+((1) < (2) ? (1) : (2))
+where `1' has been substituted for `X' and `2' for `Y'.
+Likewise, `min (x + 28, *p)' expands into
+((x + 28) < (*p) ? (x + 28) : (*p))
+Parentheses in the actual arguments must balance; a comma within parentheses does
+not end an argument. However, there is no requirement for brackets or braces to balance,
+and they do not prevent a comma from separating arguments. Thus,
+Chapter 1: The C Preprocessor 9
+macro (array[x = y, x + 1])
+passes two arguments to macro: `array[x = y' and `x + 1]'. If you want to supply `array[x
+= y, x + 1]' as an argument, you must write it as `array[(x = y, x + 1)]', which is equivalent C code.
+After the actual arguments are substituted into the macro body, the entire result is
+appended to the front of the remaining input, and the check for macro calls continues.
+Therefore, the actual arguments can contain calls to other macros, either with or without
+arguments, or even to the same macro. The macro body can also contain calls to other
+macros. For example, `min (min (a, b), c)' expands into this text:
+((((a) < (b) ? (a) : (b))) < (c)
+? (((a) < (b) ? (a) : (b)))
+: (c))
+(Line breaks shown here for clarity would not actually be generated.)
+If a macro foo takes one argument, and you want to supply an empty argument, you
+must write at least some whitespace between the parentheses, like this: `foo ( )'. Just `foo
+()' is providing no arguments, which is an error if foo expects an argument. But `foo0 ()'
+is the correct way to call a macro dened to take zero arguments, like this:
+#define foo0() ::: If you use the macro name followed by something other than an open-parenthesis (after
+ignoring any spaces, tabs and comments that follow), it is not a call to the macro, and the
+preprocessor does not change what you have written. Therefore, it is possible for the same
+name to be a variable or function in your program as well as a macro, and you can choose
+in each instance whether to refer to the macro (if an actual argument list follows) or the
+variable or function (if an argument list does not follow).
+Such dual use of one name could be confusing and should be avoided except when the
+two meanings are eectively synonymous: that is, when the name is both a macro and a
+function and the two have similar eects. You can think of the name simply as a function;
+use of the name for purposes other than calling it (such as, to take the address) will refer
+to the function, while calls will expand the macro and generate better but equivalent code.
+For example, you can use a function named `min' in the same source le that denes the
+macro. If you write `&min' with no argument list, you refer to the function. If you write
+`min (x, bb)', with an argument list, the macro is expanded. If you write `(min) (a, bb)',
+where the name `min' is not followed by an open-parenthesis, the macro is not expanded,
+so you wind up with a call to the function `min'.
+You may not dene the same name as both a simple macro and a macro with arguments.
+In the denition of a macro with arguments, the list of argument names must follow
+the macro name immediately with no space in between. If there is a space after the macro
+name, the macro is dened as taking no arguments, and all the rest of the line is taken to
+be the expansion. The reason for this is that it is often useful to dene a macro that takes
+no arguments and whose denition begins with an identier in parentheses. This rule about
+spaces makes it possible for you to do either this:
+#define FOO(x) - 1 / (x)
+(which denes `FOO' to take an argument and expand into minus the reciprocal of that
+argument) or this:
+10 The C Preprocessor
+#define BAR (x) - 1 / (x)
+(which denes `BAR' to take no argument and always expand into `(x) - 1 / (x)').
+Note that the uses of a macro with arguments can have spaces before the left parenthesis;
+it's the denition where it matters whether there is a space.
+1.4.3 Predened Macros
+Several simple macros are predened. You can use them without giving denitions for
+them. They fall into two classes: standard macros and system-specic macros.
+1.4.3.1 Standard Predened Macros
+The standard predened macros are available with the same meanings regardless of the
+machine or operating system on which you are using GNU C. Their names all start and
+end with double underscores. Those preceding __GNUC__ in this table are standardized by
+ANSI C; the rest are GNU C extensions.
+__FILE__ This macro expands to the name of the current input le, in the form of a C
+string constant. The precise name returned is the one that was specied in
+`#include' or as the input le name argument.
+__LINE__ This macro expands to the current input line number, in the form of a decimal
+integer constant. While we call it a predened macro, it's a pretty strange
+macro, since its \denition" changes with each new line of source code.
+This and `__FILE__' are useful in generating an error message to report an
+inconsistency detected by the program; the message can state the source line
+at which the inconsistency was detected. For example,
+fprintf (stderr, "Internal error: "
+"negative string length "
+"%d at %s, line %d.",
+length, __FILE__, __LINE__);
+A `#include' directive changes the expansions of `__FILE__' and `__LINE__' to
+correspond to the included le. At the end of that le, when processing resumes
+on the input le that contained the `#include' directive, the expansions of
+`__FILE__' and `__LINE__' revert to the values they had before the `#include'
+(but `__LINE__' is then incremented by one as processing moves to the line
+after the `#include').
+The expansions of both `__FILE__' and `__LINE__' are altered if a `#line'
+directive is used. See Section 1.6 [Combining Sources], page 29.
+__DATE__ This macro expands to a string constant that describes the date on which the
+preprocessor is being run. The string constant contains eleven characters and
+looks like `"Jan 29 1987"' or `"Apr 1 1905"'. __TIME__ This macro expands to a string constant that describes the time at which the
+preprocessor is being run. The string constant contains eight characters and
+looks like `"23:59:01"'.
+Chapter 1: The C Preprocessor 11
+__STDC__ This macro expands to the constant 1, to signify that this is ANSI Standard
+C. (Whether that is actually true depends on what C compiler will operate on
+the output from the preprocessor.)
+__STDC_VERSION__
+This macro expands to the C Standard's version number, a long integer constant of the form `yyyymmL' where yyyy and mm are the year and month of
+the Standard version. This signies which version of the C Standard the preprocessor conforms to. Like `__STDC__', whether this version number is accurate
+for the entire implementation depends on what C compiler will operate on the
+output from the preprocessor.
+__GNUC__ This macro is dened if and only if this is GNU C. This macro is dened
+only when the entire GNU C compiler is in use; if you invoke the preprocessor
+directly, `__GNUC__' is undened. The value identies the ma jor version number
+of GNU CC (`1' for GNU CC version 1, which is now obsolete, and `2' for version
+2).
+__GNUC_MINOR__
+The macro contains the minor version number of the compiler. This can be
+used to work around dierences between dierent releases of the compiler (for
+example, if gcc 2.6.3 is known to support a feature, you can test for __GNUC__ >
+2 || (__GNUC__ == 2 && __GNUC_MINOR__ >= 6)). The last number, `3' in the
+example above, denotes the bugx level of the compiler; no macro contains this
+value.
+__GNUG__ The GNU C compiler denes this when the compilation language is C++; use
+`__GNUG__' to distinguish between GNU C and GNU C++. __cplusplus
+The draft ANSI standard for C++ used to require predening this variable.
+Though it is no longer required, GNU C++ continues to dene it, as do other
+popular C++ compilers. You can use `__cplusplus' to test whether a header is
+compiled by a C compiler or a C++ compiler.
+__STRICT_ANSI__
+This macro is dened if and only if the `-ansi' switch was specied when GNU
+C was invoked. Its denition is the null string. This macro exists primarily to
+direct certain GNU header les not to dene certain traditional Unix constructs
+which are incompatible with ANSI C.
+__BASE_FILE__
+This macro expands to the name of the main input le, in the form of a C string
+constant. This is the source le that was specied as an argument when the C
+compiler was invoked.
+__INCLUDE_LEVEL__
+This macro expands to a decimal integer constant that represents the depth
+of nesting in include les. The value of this macro is incremented on every
+`#include' directive and decremented at every end of le. For input les specied by command line arguments, the nesting level is zero.
+12 The C Preprocessor
+__VERSION__
+This macro expands to a string which describes the version number of GNU
+C. The string is normally a sequence of decimal numbers separated by periods,
+such as `"2.6.0"'. The only reasonable use of this macro is to incorporate it
+into a string constant.
+__OPTIMIZE__
+This macro is dened in optimizing compilations. It causes certain GNU header
+les to dene alternative macro denitions for some system library functions.
+It is unwise to refer to or test the denition of this macro unless you make very
+sure that programs will execute with the same eect regardless.
+__CHAR_UNSIGNED__
+This macro is dened if and only if the data type char is unsigned on the target
+machine. It exists to cause the standard header le `limit.h' to work correctly. It is bad practice to refer to this macro yourself; instead, refer to the standard
+macros dened in `limit.h'. The preprocessor uses this macro to determine
+whether or not to sign-extend large character constants written in octal; see
+Section 1.5.2.1 [The `#if' Directive], page 24.
+__REGISTER_PREFIX__
+This macro expands to a string describing the prex applied to cpu registers in
+assembler code. It can be used to write assembler code that is usable in multiple
+environments. For example, in the `m68k-aout' environment it expands to the
+string `""', but in the `m68k-coff' environment it expands to the string `"%"'.
+__USER_LABEL_PREFIX__
+This macro expands to a string describing the prex applied to user generated
+labels in assembler code. It can be used to write assembler code that is usable
+in multiple environments. For example, in the `m68k-aout' environment it
+expands to the string `"_"', but in the `m68k-coff' environment it expands to
+the string `""'.
+1.4.3.2 Nonstandard Predened Macros
+The C preprocessor normally has several predened macros that vary between machines
+because their purpose is to indicate what type of system and machine is in use. This manual,
+being for all systems and machines, cannot tell you exactly what their names are; instead,
+we oer a list of some typical ones. You can use `cpp -dM' to see the values of predened
+macros; see Section 1.9 [Invocation], page 31.
+Some nonstandard predened macros describe the operating system in use, with more
+or less specicity. For example,
+unix `unix' is normally predened on all Unix systems.
+BSD `BSD' is predened on recent versions of Berkeley Unix (perhaps only in version
+4.3).
+Other nonstandard predened macros describe the kind of CPU, with more or less speci-
+city. For example,
+Chapter 1: The C Preprocessor 13
+vax `vax' is predened on Vax computers.
+mc68000 `mc68000' is predened on most computers whose CPU is a Motorola 68000,
+68010 or 68020.
+m68k `m68k' is also predened on most computers whose CPU is a 68000, 68010
+or 68020; however, some makers use `mc68000' and some use `m68k'. Some
+predene both names. What happens in GNU C depends on the system you
+are using it on.
+M68020 `M68020' has been observed to be predened on some systems that use 68020
+CPUs|in addition to `mc68000' and `m68k', which are less specic.
+_AM29K
+_AM29000 Both `_AM29K' and `_AM29000' are predened for the AMD 29000 CPU family. ns32000 `ns32000' is predened on computers which use the National Semiconductor
+32000 series CPU.
+Yet other nonstandard predened macros describe the manufacturer of the system. For
+example,
+sun `sun' is predened on all models of Sun computers.
+pyr `pyr' is predened on all models of Pyramid computers.
+sequent `sequent' is predened on all models of Sequent computers.
+These predened symbols are not only nonstandard, they are contrary to the ANSI
+standard because their names do not start with underscores. Therefore, the option `-ansi'
+inhibits the denition of these symbols.
+This tends to make `-ansi' useless, since many programs depend on the customary
+nonstandard predened symbols. Even system header les check them and will generate
+incorrect declarations if they do not nd the names that are expected. You might think
+that the header les supplied for the Uglix computer would not need to test what machine
+they are running on, because they can simply assume it is the Uglix; but often they do, and
+they do so using the customary names. As a result, very few C programs will compile with
+`-ansi'. We intend to avoid such problems on the GNU system.
+What, then, should you do in an ANSI C program to test the type of machine it will
+run on?
+GNU C oers a parallel series of symbols for this purpose, whose names are made from
+the customary ones by adding `__' at the beginning and end. Thus, the symbol __vax__
+would be available on a Vax, and so on.
+The set of nonstandard predened names in the GNU C preprocessor is controlled (when
+cpp is itself compiled) by the macro `CPP_PREDEFINES', which should be a string containing
+`-D' options, separated by spaces. For example, on the Sun 3, we use the following denition:
+#define CPP_PREDEFINES "-Dmc68000 -Dsun -Dunix -Dm68k"
+This macro is usually specied in `tm.h'.
+14 The C Preprocessor
+1.4.4 Stringication
+Stringication means turning a code fragment into a string constant whose contents are
+the text for the code fragment. For example, stringifying `foo (z)' results in `"foo (z)"'.
+In the C preprocessor, stringication is an option available when macro arguments are
+substituted into the macro denition. In the body of the denition, when an argument
+name appears, the character `#' before the name species stringication of the corresponding
+actual argument when it is substituted at that point in the denition. The same argument
+may be substituted in other places in the denition without stringication if the argument
+name appears in those places with no `#'.
+Here is an example of a macro denition that uses stringication:
+#define WARN_IF(EXP) \
+do { if (EXP) \
+fprintf (stderr, "Warning: " #EXP "\n"); } \
+while (0)
+Here the actual argument for `EXP' is substituted once as given, into the `if' statement, and
+once as stringied, into the argument to `fprintf'. The `do' and `while (0)' are a kludge
+to make it possible to write `WARN_IF (arg );', which the resemblance of `WARN_IF' to a
+function would make C programmers want to do; see Section 1.4.8.3 [Swallow Semicolon],
+page 18.
+The stringication feature is limited to transforming one macro argument into one string
+constant: there is no way to combine the argument with other text and then stringify it
+all together. But the example above shows how an equivalent result can be obtained in
+ANSI Standard C using the feature that adjacent string constants are concatenated as one
+string constant. The preprocessor stringies the actual value of `EXP' into a separate string
+constant, resulting in text like
+do { if (x == 0) \
+fprintf (stderr, "Warning: " "x == 0" "\n"); } \
+while (0)
+but the C compiler then sees three consecutive string constants and concatenates them into
+one, producing eectively
+do { if (x == 0) \
+fprintf (stderr, "Warning: x == 0\n"); } \
+while (0)
+Stringication in C involves more than putting doublequote characters around the fragment; it is necessary to put backslashes in front of all doublequote characters, and all backslashes in string and character constants, in order to get a valid C string constant with the
+proper contents. Thus, stringifying `p = "foo\n";' results in `"p = \"foo\\n\";"'. However, backslashes that are not inside of string or character constants are not duplicated:
+`\n' by itself stringies to `"\n"'.
+Whitespace (including comments) in the text being stringied is handled according to
+precise rules. All leading and trailing whitespace is ignored. Any sequence of whitespace in
+the middle of the text is converted to a single space in the stringied result.
+Chapter 1: The C Preprocessor 15
+1.4.5 Concatenation
+Concatenation means joining two strings into one. In the context of macro expansion,
+concatenation refers to joining two lexical units into one longer one. Specically, an actual
+argument to the macro can be concatenated with another actual argument or with xed
+text to produce a longer name. The longer name might be the name of a function, variable
+or type, or a C keyword; it might even be the name of another macro, in which case it will
+be expanded.
+When you dene a macro, you request concatenation with the special operator `##' in
+the macro body. When the macro is called, after actual arguments are substituted, all `##'
+operators are deleted, and so is any whitespace next to them (including whitespace that
+was part of an actual argument). The result is to concatenate the syntactic tokens on either
+side of the `##'.
+Consider a C program that interprets named commands. There probably needs to be a
+table of commands, perhaps an array of structures declared as follows:
+struct command
+{
+char *name;
+void (*function) ();
+};
+struct command commands[] =
+{
+{ "quit", quit_command},
+{ "help", help_command},
+::: };
+It would be cleaner not to have to give each command name twice, once in the string
+constant and once in the function name. A macro which takes the name of a command as
+an argument can make this unnecessary. The string constant can be created with stringi-
+cation, and the function name by concatenating the argument with `_command'. Here is
+how it is done:
+#define COMMAND(NAME) { #NAME, NAME ## _command }
+struct command commands[] =
+{
+COMMAND (quit),
+COMMAND (help),
+::: };
+The usual case of concatenation is concatenating two names (or a name and a number)
+into a longer name. But this isn't the only valid case. It is also possible to concatenate
+two numbers (or a number and a name, such as `1.5' and `e3') into a number. Also, multicharacter operators such as `+=' can be formed by concatenation. In some cases it is even
+possible to piece together a string constant. However, two pieces of text that don't together
+form a valid lexical unit cannot be concatenated. For example, concatenation with `x' on one
+16 The C Preprocessor
+side and `+' on the other is not meaningful because those two characters can't t together
+in any lexical unit of C. The ANSI standard says that such attempts at concatenation are
+undened, but in the GNU C preprocessor it is well dened: it puts the `x' and `+' side by
+side with no particular special results.
+Keep in mind that the C preprocessor converts comments to whitespace before macros
+are even considered. Therefore, you cannot create a comment by concatenating `/' and `*':
+the `/*' sequence that starts a comment is not a lexical unit, but rather the beginning of
+a \long" space character. Also, you can freely use comments next to a `##' in a macro
+denition, or in actual arguments that will be concatenated, because the comments will be
+converted to spaces at rst sight, and concatenation will later discard the spaces.
+1.4.6 Undening Macros
+To undene a macro means to cancel its denition. This is done with the `#undef'
+directive. `#undef' is followed by the macro name to be undened.
+Like denition, undenition occurs at a specic point in the source le, and it applies
+starting from that point. The name ceases to be a macro name, and from that point on it
+is treated by the preprocessor as if it had never been a macro name.
+For example,
+#define FOO 4
+x = FOO;
+#undef FOO
+x = FOO;
+expands into
+x = 4;
+x = FOO;
+In this example, `FOO' had better be a variable or function as well as (temporarily) a macro,
+in order for the result of the expansion to be valid C code.
+The same form of `#undef' directive will cancel denitions with arguments or denitions
+that don't expect arguments. The `#undef' directive has no eect when used on a name
+not currently dened as a macro.
+1.4.7 Redening Macros
+Redening a macro means dening (with `#define') a name that is already dened as
+a macro.
+A redenition is trivial if the new denition is transparently identical to the old one.
+You probably wouldn't deliberately write a trivial redenition, but they can happen automatically when a header le is included more than once (see Section 1.3 [Header Files],
+page 3), so they are accepted silently and without eect.
+Nontrivial redenition is considered likely to be an error, so it provokes a warning message
+from the preprocessor. However, sometimes it is useful to change the denition of a macro
+in mid-compilation. You can inhibit the warning by undening the macro with `#undef'
+before the second denition.
+Chapter 1: The C Preprocessor 17
+In order for a redenition to be trivial, the new denition must exactly match the one
+already in eect, with two possible exceptions:  Whitespace may be added or deleted at the beginning or the end.  Whitespace may be changed in the middle (but not inside strings). However, it may
+not be eliminated entirely, and it may not be added where there was no whitespace at
+all.
+Recall that a comment counts as whitespace.
+1.4.8 Pitfalls and Subtleties of Macros
+In this section we describe some special rules that apply to macros and macro expansion,
+and point out certain cases in which the rules have counterintuitive consequences that you
+must watch out for.
+1.4.8.1 Improperly Nested Constructs
+Recall that when a macro is called with arguments, the arguments are substituted into
+the macro body and the result is checked, together with the rest of the input le, for more
+macro calls.
+It is possible to piece together a macro call coming partially from the macro body and
+partially from the actual arguments. For example,
+#define double(x) (2*(x))
+#define call_with_1(x) x(1)
+would expand `call_with_1 (double)' into `(2*(1))'.
+Macro denitions do not have to have balanced parentheses. By writing an unbalanced
+open parenthesis in a macro body, it is possible to create a macro call that begins inside
+the macro body but ends outside of it. For example,
+#define strange(file) fprintf (file, "%s %d",
+::: strange(stderr) p, 35)
+This bizarre example expands to `fprintf (stderr, "%s %d", p, 35)'!
+1.4.8.2 Unintended Grouping of Arithmetic
+You may have noticed that in most of the macro denition examples shown above, each
+occurrence of a macro argument name had parentheses around it. In addition, another pair
+of parentheses usually surround the entire macro denition. Here is why it is best to write
+macros that way. Suppose you dene a macro as follows,
+#define ceil_div(x, y) (x + y - 1) / y
+whose purpose is to divide, rounding up. (One use for this operation is to compute how
+many `int' ob jects are needed to hold a certain number of `char' ob jects.) Then suppose
+it is used as follows:
+18 The C Preprocessor
+a = ceil_div (b & c, sizeof (int));
+This expands into
+a = (b & c + sizeof (int) - 1) / sizeof (int);
+which does not do what is intended. The operator-precedence rules of C make it equivalent
+to this:
+a = (b & (c + sizeof (int) - 1)) / sizeof (int);
+But what we want is this:
+a = ((b & c) + sizeof (int) - 1)) / sizeof (int);
+Dening the macro as
+#define ceil_div(x, y) ((x) + (y) - 1) / (y)
+provides the desired result.
+However, unintended grouping can result in another way. Consider `sizeof ceil_div(1,
+2)'. That has the appearance of a C expression that would compute the size of the type of
+`ceil_div (1, 2)', but in fact it means something very dierent. Here is what it expands
+to:
+sizeof ((1) + (2) - 1) / (2)
+This would take the size of an integer and divide it by two. The precedence rules have put
+the division outside the `sizeof' when it was intended to be inside.
+Parentheses around the entire macro denition can prevent such problems. Here, then,
+is the recommended way to dene `ceil_div':
+#define ceil_div(x, y) (((x) + (y) - 1) / (y))
+1.4.8.3 Swallowing the Semicolon
+Often it is desirable to dene a macro that expands into a compound statement. Consider, for example, the following macro, that advances a pointer (the argument `p' says
+where to nd it) across whitespace characters:
+#define SKIP_SPACES (p, limit) \
+{ register char *lim = (limit); \
+while (p != lim) { \
+if (*p++ != ' ') { \
+p--; break; }}}
+Here Backslash-Newline is used to split the macro denition, which must be a single line,
+so that it resembles the way such C code would be laid out if not part of a macro denition.
+A call to this macro might be `SKIP_SPACES (p, lim)'. Strictly speaking, the call expands to a compound statement, which is a complete statement with no need for a semicolon
+to end it. But it looks like a function call. So it minimizes confusion if you can use it like
+a function call, writing a semicolon afterward, as in `SKIP_SPACES (p, lim);'
+But this can cause trouble before `else' statements, because the semicolon is actually a
+null statement. Suppose you write
+if (*p != 0)
+SKIP_SPACES (p, lim);
+else :::
+Chapter 1: The C Preprocessor 19
+The presence of two statements|the compound statement and a null statement|in between
+the `if' condition and the `else' makes invalid C code.
+The denition of the macro `SKIP_SPACES' can be altered to solve this problem, using a
+`do ::: while' statement. Here is how:
+#define SKIP_SPACES (p, limit) \
+do { register char *lim = (limit); \
+while (p != lim) { \
+if (*p++ != ' ') { \
+p--; break; }}} \
+while (0)
+Now `SKIP_SPACES (p, lim);' expands into
+do {:::} while (0);
+which is one statement.
+1.4.8.4 Duplication of Side Eects
+Many C programs dene a macro `min', for \minimum", like this:
+#define min(X, Y) ((X) < (Y) ? (X) : (Y))
+When you use this macro with an argument containing a side eect, as shown here,
+next = min (x + y, foo (z));
+it expands as follows:
+next = ((x + y) < (foo (z)) ? (x + y) : (foo (z)));
+where `x+y' has been substituted for `X' and `foo (z)' for `Y'.
+The function `foo' is used only once in the statement as it appears in the program, but
+the expression `foo (z)' has been substituted twice into the macro expansion. As a result,
+`foo' might be called two times when the statement is executed. If it has side eects or if
+it takes a long time to compute, the results might not be what you intended. We say that
+`min' is an unsafe macro.
+The best solution to this problem is to dene `min' in a way that computes the value of
+`foo (z)' only once. The C language oers no standard way to do this, but it can be done
+with GNU C extensions as follows:
+#define min(X, Y) \
+({ typeof (X) __x = (X), __y = (Y); \
+(__x < __y) ? __x : __y; })
+If you do not wish to use GNU C extensions, the only solution is to be careful when
+using the macro `min'. For example, you can calculate the value of `foo (z)', save it in a
+variable, and use that variable in `min':
+#define min(X, Y) ((X) < (Y) ? (X) : (Y))
+::: {
+int tem = foo (z);
+next = min (x + y, tem);
+}
+(where we assume that `foo' returns type `int').
+20 The C Preprocessor
+1.4.8.5 Self-Referential Macros
+A self-referential macro is one whose name appears in its denition. A special feature of
+ANSI Standard C is that the self-reference is not considered a macro call. It is passed into
+the preprocessor output unchanged.
+Let's consider an example:
+#define foo (4 + foo)
+where `foo' is also a variable in your program.
+Following the ordinary rules, each reference to `foo' will expand into `(4 + foo)'; then
+this will be rescanned and will expand into `(4 + (4 + foo))'; and so on until it causes a
+fatal error (memory full) in the preprocessor.
+However, the special rule about self-reference cuts this process short after one step, at
+`(4 + foo)'. Therefore, this macro denition has the possibly useful eect of causing the
+program to add 4 to the value of `foo' wherever `foo' is referred to.
+In most cases, it is a bad idea to take advantage of this feature. A person reading the
+program who sees that `foo' is a variable will not expect that it is a macro as well. The
+reader will come across the identier `foo' in the program and think its value should be
+that of the variable `foo', whereas in fact the value is four greater.
+The special rule for self-reference applies also to indirect self-reference. This is the case
+where a macro x expands to use a macro `y', and the expansion of `y' refers to the macro
+`x'. The resulting reference to `x' comes indirectly from the expansion of `x', so it is a
+self-reference and is not further expanded. Thus, after
+#define x (4 + y)
+#define y (2 * x)
+`x' would expand into `(4 + (2 * x))'. Clear?
+But suppose `y' is used elsewhere, not from the denition of `x'. Then the use of `x'
+in the expansion of `y' is not a self-reference because `x' is not \in progress". So it does
+expand. However, the expansion of `x' contains a reference to `y', and that is an indirect
+self-reference now because `y' is \in progress". The result is that `y' expands to `(2 * (4 +
+y))'.
+It is not clear that this behavior would ever be useful, but it is specied by the ANSI C
+standard, so you may need to understand it.
+1.4.8.6 Separate Expansion of Macro Arguments
+We have explained that the expansion of a macro, including the substituted actual
+arguments, is scanned over again for macro calls to be expanded.
+What really happens is more subtle: rst each actual argument text is scanned separately
+for macro calls. Then the results of this are substituted into the macro body to produce
+the macro expansion, and the macro expansion is scanned again for macros to expand.
+The result is that the actual arguments are scanned twice to expand macro calls in them.
+Most of the time, this has no eect. If the actual argument contained any macro calls,
+they are expanded during the rst scan. The result therefore contains no macro calls, so the
+second scan does not change it. If the actual argument were substituted as given, with no
+Chapter 1: The C Preprocessor 21
+prescan, the single remaining scan would nd the same macro calls and produce the same
+results.
+You might expect the double scan to change the results when a self-referential macro is
+used in an actual argument of another macro (see Section 1.4.8.5 [Self-Reference], page 20):
+the self-referential macro would be expanded once in the rst scan, and a second time in
+the second scan. But this is not what happens. The self-references that do not expand in
+the rst scan are marked so that they will not expand in the second scan either.
+The prescan is not done when an argument is stringied or concatenated. Thus,
+#define str(s) #s
+#define foo 4
+str (foo)
+expands to `"foo"'. Once more, prescan has been prevented from having any noticeable
+eect.
+More precisely, stringication and concatenation use the argument as written, in unprescanned form. The same actual argument would be used in prescanned form if it is
+substituted elsewhere without stringication or concatenation.
+#define str(s) #s lose(s)
+#define foo 4
+str (foo)
+expands to `"foo" lose(4)'.
+You might now ask, \Why mention the prescan, if it makes no dierence? And why not
+skip it and make the preprocessor faster?" The answer is that the prescan does make a
+dierence in three special cases:  Nested calls to a macro.  Macros that call other macros that stringify or concatenate.  Macros whose expansions contain unshielded commas.
+We say that nested calls to a macro occur when a macro's actual argument contains a
+call to that very macro. For example, if `f' is a macro that expects one argument, `f (f
+(1))' is a nested pair of calls to `f'. The desired expansion is made by expanding `f (1)'
+and substituting that into the denition of `f'. The prescan causes the expected result to
+happen. Without the prescan, `f (1)' itself would be substituted as an actual argument,
+and the inner use of `f' would appear during the main scan as an indirect self-reference and
+would not be expanded. Here, the prescan cancels an undesirable side eect (in the medical,
+not computational, sense of the term) of the special rule for self-referential macros.
+But prescan causes trouble in certain other cases of nested macro calls. Here is an
+example:
+#define foo a,b
+#define bar(x) lose(x)
+#define lose(x) (1 + (x))
+bar(foo)
+We would like `bar(foo)' to turn into `(1 + (foo))', which would then turn into `(1 +
+(a,b))'. But instead, `bar(foo)' expands into `lose(a,b)', and you get an error because
+22 The C Preprocessor
+lose requires a single argument. In this case, the problem is easily solved by the same
+parentheses that ought to be used to prevent misnesting of arithmetic operations:
+#define foo (a,b)
+#define bar(x) lose((x))
+The problem is more serious when the operands of the macro are not expressions; for
+example, when they are statements. Then parentheses are unacceptable because they would
+make for invalid C code:
+#define foo { int a, b; ::: }
+In GNU C you can shield the commas using the `({:::})' construct which turns a compound
+statement into an expression:
+#define foo ({ int a, b; ::: })
+Or you can rewrite the macro denition to avoid such commas:
+#define foo { int a; int b; ::: }
+There is also one case where prescan is useful. It is possible to use prescan to expand
+an argument and then stringify it|if you use two levels of macros. Let's add a new macro
+`xstr' to the example shown above:
+#define xstr(s) str(s)
+#define str(s) #s
+#define foo 4
+xstr (foo)
+This expands into `"4"', not `"foo"'. The reason for the dierence is that the argument
+of `xstr' is expanded at prescan (because `xstr' does not specify stringication or concatenation of the argument). The result of prescan then forms the actual argument for `str'.
+`str' uses its argument without prescan because it performs stringication; but it cannot
+prevent or undo the prescanning already done by `xstr'.
+1.4.8.7 Cascaded Use of Macros
+A cascade of macros is when one macro's body contains a reference to another macro.
+This is very common practice. For example,
+#define BUFSIZE 1020
+#define TABLESIZE BUFSIZE
+This is not at all the same as dening `TABLESIZE' to be `1020'. The `#define' for
+`TABLESIZE' uses exactly the body you specify|in this case, `BUFSIZE'|and does not check
+to see whether it too is the name of a macro.
+It's only when you use `TABLESIZE' that the result of its expansion is checked for more
+macro names.
+This makes a dierence if you change the denition of `BUFSIZE' at some point in
+the source le. `TABLESIZE', dened as shown, will always expand using the denition
+of `BUFSIZE' that is currently in eect:
+#define BUFSIZE 1020
+#define TABLESIZE BUFSIZE
+#undef BUFSIZE
+#define BUFSIZE 37
+Chapter 1: The C Preprocessor 23
+Now `TABLESIZE' expands (in two stages) to `37'. (The `#undef' is to prevent any warning
+about the nontrivial redenition of BUFSIZE.)
+1.4.9 Newlines in Macro Arguments
+Traditional macro processing carries forward all newlines in macro arguments into the
+expansion of the macro. This means that, if some of the arguments are substituted more
+than once, or not at all, or out of order, newlines can be duplicated, lost, or moved around
+within the expansion. If the expansion consists of multiple statements, then the eect is
+to distort the line numbers of some of these statements. The result can be incorrect line
+numbers, in error messages or displayed in a debugger.
+The GNU C preprocessor operating in ANSI C mode adjusts appropriately for multiple
+use of an argument|the rst use expands all the newlines, and subsequent uses of the
+same argument produce no newlines. But even in this mode, it can produce incorrect line
+numbering if arguments are used out of order, or not used at all.
+Here is an example illustrating this problem:
+#define ignore_second_arg(a,b,c) a; c
+ignore_second_arg (foo (),
+ignored (),
+syntax error);
+The syntax error triggered by the tokens `syntax error' results in an error message citing
+line four, even though the statement text comes from line ve.
+1.5 Conditionals
+In a macro processor, a conditional is a directive that allows a part of the program to be
+ignored during compilation, on some conditions. In the C preprocessor, a conditional can
+test either an arithmetic expression or whether a name is dened as a macro.
+A conditional in the C preprocessor resembles in some ways an `if' statement in C, but it
+is important to understand the dierence between them. The condition in an `if' statement
+is tested during the execution of your program. Its purpose is to allow your program to
+behave dierently from run to run, depending on the data it is operating on. The condition
+in a preprocessing conditional directive is tested when your program is compiled. Its purpose
+is to allow dierent code to be included in the program depending on the situation at the
+time of compilation.
+1.5.1 Why Conditionals are Used
+Generally there are three kinds of reason to use a conditional.  A program may need to use dierent code depending on the machine or operating
+system it is to run on. In some cases the code for one operating system may be
+erroneous on another operating system; for example, it might refer to library routines
+that do not exist on the other system. When this happens, it is not enough to avoid
+executing the invalid code: merely having it in the program makes it impossible to link
+24 The C Preprocessor
+the program and run it. With a preprocessing conditional, the oending code can be
+eectively excised from the program when it is not valid.  You may want to be able to compile the same source le into two dierent programs. Sometimes the dierence between the programs is that one makes frequent
+time-consuming consistency checks on its intermediate data, or prints the values of
+those data for debugging, while the other does not.  A conditional whose condition is always false is a good way to exclude code from the
+program but keep it as a sort of comment for future reference.
+Most simple programs that are intended to run on only one machine will not need to
+use preprocessing conditionals.
+1.5.2 Syntax of Conditionals
+A conditional in the C preprocessor begins with a conditional directive: `#if', `#ifdef'
+or `#ifndef'. See Section 1.5.4 [Conditionals-Macros], page 26, for information on `#ifdef'
+and `#ifndef'; only `#if' is explained here.
+1.5.2.1 The `#if' Directive
+The `#if' directive in its simplest form consists of
+#if expression
+controlled text
+#endif /* expression */
+The comment following the `#endif' is not required, but it is a good practice because it
+helps people match the `#endif' to the corresponding `#if'. Such comments should always
+be used, except in short conditionals that are not nested. In fact, you can put anything at
+all after the `#endif' and it will be ignored by the GNU C preprocessor, but only comments
+are acceptable in ANSI Standard C.
+expression is a C expression of integer type, sub ject to stringent restrictions. It may
+contain
+ Integer constants, which are all regarded as long or unsigned long.  Character constants, which are interpreted according to the character set and conventions of the machine and operating system on which the preprocessor is running. The
+GNU C preprocessor uses the C data type `char' for these character constants; therefore, whether some character codes are negative is determined by the C compiler used
+to compile the preprocessor. If it treats `char' as signed, then character codes large
+enough to set the sign bit will be considered negative; otherwise, no character code is
+considered negative.  Arithmetic operators for addition, subtraction, multiplication, division, bitwise operations, shifts, comparisons, and logical operations (`&&' and `||').  Identiers that are not macros, which are all treated as zero(!).  Macro calls. All macro calls in the expression are expanded before actual computation
+of the expression's value begins.
+Chapter 1: The C Preprocessor 25
+Note that `sizeof' operators and enum-type values are not allowed. enum-type values,
+like all other identiers that are not taken as macro calls and expanded, are treated as zero.
+The controlled text inside of a conditional can include preprocessing directives. Then
+the directives inside the conditional are obeyed only if that branch of the conditional succeeds. The text can also contain other conditional groups. However, the `#if' and `#endif'
+directives must balance.
+1.5.2.2 The `#else' Directive
+The `#else' directive can be added to a conditional to provide alternative text to be
+used if the condition is false. This is what it looks like:
+#if expression
+text-if-true
+#else /* Not expression */
+text-if-false
+#endif /* Not expression */
+If expression is nonzero, and thus the text-if-true is active, then `#else' acts like a failing
+conditional and the text-if-false is ignored. Contrariwise, if the `#if' conditional fails, the
+text-if-false is considered included.
+1.5.2.3 The `#elif' Directive
+One common case of nested conditionals is used to check for more than two possible
+alternatives. For example, you might have
+#if X == 1
+::: #else /* X != 1 */
+#if X == 2
+::: #else /* X != 2 */
+::: #endif /* X != 2 */
+#endif /* X != 1 */
+Another conditional directive, `#elif', allows this to be abbreviated as follows:
+#if X == 1
+::: #elif X == 2
+::: #else /* X != 2 and X != 1*/
+::: #endif /* X != 2 and X != 1*/
+`#elif' stands for \else if". Like `#else', it goes in the middle of a `#if'-`#endif' pair
+and subdivides it; it does not require a matching `#endif' of its own. Like `#if', the `#elif'
+directive includes an expression to be tested.
+The text following the `#elif' is processed only if the original `#if'-condition failed and
+the `#elif' condition succeeds. More than one `#elif' can go in the same `#if'-`#endif'
+26 The C Preprocessor
+group. Then the text after each `#elif' is processed only if the `#elif' condition succeeds
+after the original `#if' and any previous `#elif' directives within it have failed. `#else' is
+equivalent to `#elif 1', and `#else' is allowed after any number of `#elif' directives, but
+`#elif' may not follow `#else'.
+1.5.3 Keeping Deleted Code for Future Reference
+If you replace or delete a part of the program but want to keep the old code around
+as a comment for future reference, the easy way to do this is to put `#if 0' before it and
+`#endif' after it. This is better than using comment delimiters `/*' and `*/' since those
+won't work if the code already contains comments (C comments do not nest).
+This works even if the code being turned o contains conditionals, but they must be
+entire conditionals (balanced `#if' and `#endif').
+Conversely, do not use `#if 0' for comments which are not C code. Use the comment
+delimiters `/*' and `*/' instead. The interior of `#if 0' must consist of complete tokens; in
+particular, singlequote characters must balance. But comments often contain unbalanced
+singlequote characters (known in English as apostrophes). These confuse `#if 0'. They do
+not confuse `/*'.
+1.5.4 Conditionals and Macros
+Conditionals are useful in connection with macros or assertions, because those are the
+only ways that an expression's value can vary from one compilation to another. A `#if'
+directive whose expression uses no macros or assertions is equivalent to `#if 1' or `#if 0';
+you might as well determine which one, by computing the value of the expression yourself,
+and then simplify the program.
+For example, here is a conditional that tests the expression `BUFSIZE == 1020', where
+`BUFSIZE' must be a macro.
+#if BUFSIZE == 1020
+printf ("Large buffers!\n");
+#endif /* BUFSIZE is large */
+(Programmers often wish they could test the size of a variable or data type in `#if', but
+this does not work. The preprocessor does not understand sizeof, or typedef names, or
+even the type keywords such as int.)
+The special operator `defined' is used in `#if' expressions to test whether a certain
+name is dened as a macro. Either `defined name' or `defined (name)' is an expression
+whose value is 1 if name is dened as macro at the current point in the program, and 0
+otherwise. For the `defined' operator it makes no dierence what the denition of the
+macro is; all that matters is whether there is a denition. Thus, for example,
+#if defined (vax) || defined (ns16000)
+would succeed if either of the names `vax' and `ns16000' is dened as a macro. You can
+test the same condition using assertions (see Section 1.5.5 [Assertions], page 27), like this:
+#if #cpu (vax) || #cpu (ns16000)
+Chapter 1: The C Preprocessor 27
+If a macro is dened and later undened with `#undef', subsequent use of the `defined'
+operator returns 0, because the name is no longer dened. If the macro is dened again
+with another `#define', `defined' will recommence returning 1.
+Conditionals that test whether just one name is dened are very common, so there are
+two special short conditional directives for this case.
+#ifdef name
+is equivalent to `#if defined (name)'.
+#ifndef name
+is equivalent to `#if ! defined (name)'.
+Macro denitions can vary between compilations for several reasons.  Some macros are predened on each kind of machine. For example, on a Vax, the name
+`vax' is a predened macro. On other machines, it would not be dened.  Many more macros are dened by system header les. Dierent systems and machines
+dene dierent macros, or give them dierent values. It is useful to test these macros
+with conditionals to avoid using a system feature on a machine where it is not implemented.  Macros are a common way of allowing users to customize a program for dierent machines or applications. For example, the macro `BUFSIZE' might be dened in a conguration le for your program that is included as a header le in each source le. You
+would use `BUFSIZE' in a preprocessing conditional in order to generate dierent code
+depending on the chosen conguration.  Macros can be dened or undened with `-D' and `-U' command options when you
+compile the program. You can arrange to compile the same source le into two dierent programs by choosing a macro name to specify which program you want, writing
+conditionals to test whether or how this macro is dened, and then controlling the state
+of the macro with compiler command options. See Section 1.9 [Invocation], page 31.
+1.5.5 Assertions
+Assertions are a more systematic alternative to macros in writing conditionals to test
+what sort of computer or system the compiled program will run on. Assertions are usually
+predened, but you can dene them with preprocessing directives or command-line options.
+The macros traditionally used to describe the type of target are not classied in any
+way according to which question they answer; they may indicate a hardware architecture,
+a particular hardware model, an operating system, a particular version of an operating
+system, or specic conguration options. These are jumbled together in a single namespace.
+In contrast, each assertion consists of a named question and an answer. The question is
+usually called the predicate. An assertion looks like this:
+#predicate (answer)
+You must use a properly formed identier for predicate. The value of answer can be any
+sequence of words; all characters are signicant except for leading and trailing whitespace,
+and dierences in internal whitespace sequences are ignored. Thus, `x+y' is dierent from
+`x+y' but equivalent to `x+y'. `)' is not allowed in an answer.
+28 The C Preprocessor
+Here is a conditional to test whether the answer answer is asserted for the predicate
+predicate:
+#if #predicate (answer)
+There may be more than one answer asserted for a given predicate. If you omit the answer,
+you can test whether any answer is asserted for predicate:
+#if #predicate
+Most of the time, the assertions you test will be predened assertions. GNU C provides
+three predened predicates: system, cpu, and machine. system is for assertions about the
+type of software, cpu describes the type of computer architecture, and machine gives more
+information about the computer. For example, on a GNU system, the following assertions
+would be true:
+#system (gnu)
+#system (mach)
+#system (mach 3)
+#system (mach 3.subversion)
+#system (hurd)
+#system (hurd version)
+and perhaps others. The alternatives with more or less version information let you ask more
+or less detailed questions about the type of system software.
+On a Unix system, you would nd #system (unix) and perhaps one of: #system (aix), #system (bsd), #system (hpux), #system (lynx), #system (mach), #system (posix), #system (svr3), #system (svr4), or #system (xpg4) with possible version numbers following.
+Other values for system are #system (mvs) and #system (vms). Portability note: Many Unix C compilers provide only one answer for the system assertion: #system (unix), if they support assertions at all. This is less than useful.
+An assertion with a multi-word answer is completely dierent from several assertions
+with individual single-word answers. For example, the presence of system (mach 3.0) does
+not mean that system (3.0) is true. It also does not directly imply system (mach), but
+in GNU C, that last will normally be asserted as well.
+The current list of possible assertion values for cpu is: #cpu (a29k), #cpu (alpha), #cpu (arm), #cpu (clipper), #cpu (convex), #cpu (elxsi), #cpu (tron), #cpu (h8300), #cpu (i370), #cpu (i386), #cpu (i860), #cpu (i960), #cpu (m68k), #cpu (m88k), #cpu
+(mips), #cpu (ns32k), #cpu (hppa), #cpu (pyr), #cpu (ibm032), #cpu (rs6000), #cpu
+(sh), #cpu (sparc), #cpu (spur), #cpu (tahoe), #cpu (vax), #cpu (we32000). You can create assertions within a C program using `#assert', like this:
+#assert predicate (answer)
+(Note the absence of a `#' before predicate.)
+Each time you do this, you assert a new true answer for predicate. Asserting one answer
+does not invalidate previously asserted answers; they all remain true. The only way to
+remove an assertion is with `#unassert'. `#unassert' has the same syntax as `#assert'.
+You can also remove all assertions about predicate like this:
+Chapter 1: The C Preprocessor 29
+#unassert predicate
+You can also add or cancel assertions using command options when you run gcc or cpp. See Section 1.9 [Invocation], page 31.
+1.5.6 The `#error' and `#warning' Directives
+The directive `#error' causes the preprocessor to report a fatal error. The rest of the
+line that follows `#error' is used as the error message.
+You would use `#error' inside of a conditional that detects a combination of parameters
+which you know the program does not properly support. For example, if you know that the
+program will not run properly on a Vax, you might write
+#ifdef __vax__
+#error Won't work on Vaxen. See comments at get_last_object.
+#endif
+See Section 1.4.3.2 [Nonstandard Predened], page 12, for why this works.
+If you have several conguration parameters that must be set up by the installation in
+a consistent way, you can use conditionals to detect an inconsistency and report it with
+`#error'. For example,
+#if HASH_TABLE_SIZE % 2 == 0 || HASH_TABLE_SIZE % 3 == 0 \
+|| HASH_TABLE_SIZE % 5 == 0
+#error HASH_TABLE_SIZE should not be divisible by a small prime
+#endif
+The directive `#warning' is like the directive `#error', but causes the preprocessor to
+issue a warning and continue preprocessing. The rest of the line that follows `#warning' is
+used as the warning message.
+You might use `#warning' in obsolete header les, with a message directing the user to
+the header le which should be used instead.
+1.6 Combining Source Files
+One of the jobs of the C preprocessor is to inform the C compiler of where each line of
+C code came from: which source le and which line number.
+C code can come from multiple source les if you use `#include'; both `#include' and
+the use of conditionals and macros can cause the line number of a line in the preprocessor
+output to be dierent from the line's number in the original source le. You will appreciate
+the value of making both the C compiler (in error messages) and symbolic debuggers such
+as GDB use the line numbers in your source le.
+The C preprocessor builds on this feature by oering a directive by which you can control
+the feature explicitly. This is useful when a le for input to the C preprocessor is the output
+from another program such as the bison parser generator, which operates on another le
+that is the true source le. Parts of the output from bison are generated from scratch,
+other parts come from a standard parser le. The rest are copied nearly verbatim from the
+source le, but their line numbers in the bison output are not the same as their original
+line numbers. Naturally you would like compiler error messages and symbolic debuggers to
+know the original source le and line number of each line in the bison input.
+30 The C Preprocessor
+bison arranges this by writing `#line' directives into the output le. `#line' is a
+directive that species the original line number and source le name for subsequent input
+in the current preprocessor input le. `#line' has three variants:
+#line linenum
+Here linenum is a decimal integer constant. This species that the line number
+of the following line of input, in its original source le, was linenum. #line linenum lename
+Here linenum is a decimal integer constant and lename is a string constant.
+This species that the following line of input came originally from source le
+lename and its line number there was linenum. Keep in mind that lename is
+not just a le name; it is surrounded by doublequote characters so that it looks
+like a string constant.
+#line anything else
+anything else is checked for macro calls, which are expanded. The result should
+be a decimal integer constant followed optionally by a string constant, as described above.
+`#line' directives alter the results of the `__FILE__' and `__LINE__' predened macros
+from that point on. See Section 1.4.3.1 [Standard Predened], page 10.
+The output of the preprocessor (which is the input for the rest of the compiler) contains
+directives that look much like `#line' directives. They start with just `#' instead of `#line',
+but this is followed by a line number and le name as in `#line'. See Section 1.8 [Output],
+page 31.
+1.7 Miscellaneous Preprocessing Directives
+This section describes three additional preprocessing directives. They are not very useful,
+but are mentioned for completeness.
+The null directive consists of a `#' followed by a Newline, with only whitespace (including
+comments) in between. A null directive is understood as a preprocessing directive but has
+no eect on the preprocessor output. The primary signicance of the existence of the null
+directive is that an input line consisting of just a `#' will produce no output, rather than a
+line of output containing just a `#'. Supposedly some old C programs contain such lines.
+The ANSI standard species that the `#pragma' directive has an arbitrary, implementationdened eect. In the GNU C preprocessor, `#pragma' directives are not used, except for
+`#pragma once' (see Section 1.3.4 [Once-Only], page 5). However, they are left in the
+preprocessor output, so they are available to the compilation pass.
+The `#ident' directive is supported for compatibility with certain other systems. It is
+followed by a line of text. On some systems, the text is copied into a special place in the
+ob ject le; on most systems, the text is ignored and this directive has no eect. Typically
+`#ident' is only used in header les supplied with those systems where it is meaningful.
+Chapter 1: The C Preprocessor 31
+1.8 C Preprocessor Output
+The output from the C preprocessor looks much like the input, except that all preprocessing directive lines have been replaced with blank lines and all comments with spaces.
+Whitespace within a line is not altered; however, a space is inserted after the expansions of
+most macro calls.
+Source le name and line number information is conveyed by lines of the form
+# linenum lename ags
+which are inserted as needed into the middle of the input (but never within a string or
+character constant). Such a line means that the following line originated in le lename at
+line linenum. After the le name comes zero or more ags, which are `1', `2', `3', or `4'. If there are
+multiple ags, spaces separate them. Here is what the ags mean:
+`1' This indicates the start of a new le.
+`2' This indicates returning to a le (after having included another le).
+`3' This indicates that the following text comes from a system header le, so certain
+warnings should be suppressed.
+`4' This indicates that the following text should be treated as C.
+1.9 Invoking the C Preprocessor
+Most often when you use the C preprocessor you will not have to invoke it explicitly:
+the C compiler will do so automatically. However, the preprocessor is sometimes useful on
+its own.
+The C preprocessor expects two le names as arguments, inle and outle. The preprocessor reads inle together with any other les it species with `#include'. All the output
+generated by the combined input les is written in outle. Either inle or outle may be `-', which as inle means to read from standard input
+and as outle means to write to standard output. Also, if outle or both le names are
+omitted, the standard output and standard input are used for the omitted le names.
+Here is a table of command options accepted by the C preprocessor. These options can
+also be given when compiling a C program; they are passed along automatically to the
+preprocessor when it is invoked by the compiler.
+`-P' Inhibit generation of `#'-lines with line-number information in the output from
+the preprocessor (see Section 1.8 [Output], page 31). This might be useful when
+running the preprocessor on something that is not C code and will be sent to a
+program which might be confused by the `#'-lines.
+`-C' Do not discard comments: pass them through to the output le. Comments
+appearing in arguments of a macro call will be copied to the output before the
+expansion of the macro call.
+`-traditional'
+Try to imitate the behavior of old-fashioned C, as opposed to ANSI C.
+32 The C Preprocessor
+ Traditional macro expansion pays no attention to singlequote or doublequote characters; macro argument symbols are replaced by the argument
+values even when they appear within apparent string or character constants.  Traditionally, it is permissible for a macro expansion to end in the middle
+of a string or character constant. The constant continues into the text
+surrounding the macro call.  However, traditionally the end of the line terminates a string or character
+constant, with no error.  In traditional C, a comment is equivalent to no text at all. (In ANSI C, a
+comment counts as whitespace.)  Traditional C does not have the concept of a \preprocessing number". It
+considers `1.0e+4' to be three tokens: `1.0e', `+', and `4'.  A macro is not suppressed within its own denition, in traditional C. Thus,
+any macro that is used recursively inevitably causes an error.  The character `#' has no special meaning within a macro denition in traditional C.  In traditional C, the text at the end of a macro expansion can run together
+with the text after the macro call, to produce a single token. (This is
+impossible in ANSI C.)  Traditionally, `\' inside a macro argument suppresses the syntactic signi-
+cance of the following character.
+`-trigraphs'
+Process ANSI standard trigraph sequences. These are three-character sequences, all starting with `??', that are dened by ANSI C to stand for single
+characters. For example, `??/' stands for `\', so `'??/n'' is a character constant
+for a newline. Strictly speaking, the GNU C preprocessor does not support
+all programs in ANSI Standard C unless `-trigraphs' is used, but if you ever
+notice the dierence it will be with relief.
+You don't want to know any more about trigraphs.
+`-pedantic'
+Issue warnings required by the ANSI C standard in certain cases such as when
+text other than a comment follows `#else' or `#endif'.
+`-pedantic-errors'
+Like `-pedantic', except that errors are produced rather than warnings.
+`-Wtrigraphs'
+Warn if any trigraphs are encountered (assuming they are enabled).
+`-Wcomment'
+Warn whenever a comment-start sequence `/*' appears in a comment.
+`-Wall' Requests both `-Wtrigraphs' and `-Wcomment' (but not `-Wtraditional').
+Chapter 1: The C Preprocessor 33
+`-Wtraditional'
+Warn about certain constructs that behave dierently in traditional and ANSI
+C.
+`-I directory'
+Add the directory directory to the head of the list of directories to be searched
+for header les (see Section 1.3.2 [Include Syntax], page 3). This can be used
+to override a system header le, substituting your own version, since these
+directories are searched before the system header le directories. If you use
+more than one `-I' option, the directories are scanned in left-to-right order; the
+standard system directories come after.
+`-I-' Any directories specied with `-I' options before the `-I-' option are searched
+only for the case of `#include "le"'; they are not searched for `#include
+<le>'.
+If additional directories are specied with `-I' options after the `-I-', these
+directories are searched for all `#include' directives.
+In addition, the `-I-' option inhibits the use of the current directory as the
+rst search directory for `#include "le"'. Therefore, the current directory is
+searched only if it is requested explicitly with `-I.'. Specifying both `-I-' and
+`-I.' allows you to control precisely which directories are searched before the
+current one and which are searched after.
+`-nostdinc'
+Do not search the standard system directories for header les. Only the directories you have specied with `-I' options (and the current directory, if
+appropriate) are searched.
+`-nostdinc++'
+Do not search for header les in the C++-specic standard directories, but do
+still search the other standard directories. (This option is used when building
+libg++.)
+`-D name' Predene name as a macro, with denition `1'.
+`-D name=denition'
+Predene name as a macro, with denition denition. There are no restrictions
+on the contents of denition, but if you are invoking the preprocessor from a
+shell or shell-like program you may need to use the shell's quoting syntax to
+protect characters such as spaces that have a meaning in the shell syntax. If
+you use more than one `-D' for the same name, the rightmost denition takes
+eect.
+`-U name' Do not predene name. If both `-U' and `-D' are specied for one name, the
+`-U' beats the `-D' and the name is not predened.
+`-undef' Do not predene any nonstandard macros.
+`-A predicate(answer)'
+Make an assertion with the predicate predicate and answer answer. See Section 1.5.5 [Assertions], page 27.
+34 The C Preprocessor
+You can use `-A-' to disable all predened assertions; it also undenes all predened macros that identify the type of target system.
+`-dM' Instead of outputting the result of preprocessing, output a list of `#define'
+directives for all the macros dened during the execution of the preprocessor,
+including predened macros. This gives you a way of nding out what is predened in your version of the preprocessor; assuming you have no le `foo.h',
+the command
+touch foo.h; cpp -dM foo.h
+will show the values of any predened macros.
+`-dD' Like `-dM' except in two respects: it does not include the predened macros,
+and it outputs both the `#define' directives and the result of preprocessing.
+Both kinds of output go to the standard output le.
+`-M [-MG]' Instead of outputting the result of preprocessing, output a rule suitable for make
+describing the dependencies of the main source le. The preprocessor outputs
+one make rule containing the ob ject le name for that source le, a colon, and
+the names of all the included les. If there are many included les then the rule
+is split into several lines using `\'-newline.
+`-MG' says to treat missing header les as generated les and assume they live
+in the same directory as the source le. It must be specied in addition to `-M'.
+This feature is used in automatic updating of makeles.
+`-MM [-MG]'
+Like `-M' but mention only the les included with `#include "le"'. System
+header les included with `#include <le>' are omitted.
+`-MD le' Like `-M' but the dependency information is written to le. This is in addition
+to compiling the le as specied|`-MD' does not inhibit ordinary compilation
+the way `-M' does.
+When invoking gcc, do not specify the le argument. Gcc will create le names
+made by replacing ".c" with ".d" at the end of the input le names.
+In Mach, you can use the utility md to merge multiple dependency les into a
+single dependency le suitable for using with the `make' command.
+`-MMD le' Like `-MD' except mention only user header les, not system header les.
+`-H' Print the name of each header le used, in addition to other normal activities.
+`-imacros le'
+Process le as input, discarding the resulting output, before processing the
+regular input le. Because the output generated from le is discarded, the only
+eect of `-imacros le' is to make the macros dened in le available for use
+in the main input.
+`-include le'
+Process le as input, and include all the resulting output, before processing the
+regular input le.
+Chapter 1: The C Preprocessor 35
+`-idirafter dir '
+Add the directory dir to the second include path. The directories on the second
+include path are searched when a header le is not found in any of the directories
+in the main include path (the one that `-I' adds to).
+`-iprefix prex'
+Specify prex as the prex for subsequent `-iwithprefix' options.
+`-iwithprefix dir '
+Add a directory to the second include path. The directory's name is made
+by concatenating prex and dir, where prex was specied previously with
+`-iprefix'.
+`-isystem dir '
+Add a directory to the beginning of the second include path, marking it as a
+system directory, so that it gets the same special treatment as is applied to the
+standard system directories.
+`-lang-c'
+`-lang-c89'
+`-lang-c++'
+`-lang-objc'
+`-lang-objc++'
+Specify the source language. `-lang-c' is the default; it allows recognition
+of C++ comments (comments that begin with `//' and end at end of line),
+since this is a common feature and it will most likely be in the next C standard. `-lang-c89' disables recognition of C++ comments. `-lang-c++' handles
+C++ comment syntax and includes extra default include directories for C++.
+`-lang-objc' enables the Ob jectiveC`#import' directive. `-lang-objc++' enables both C++ and Ob jective C extensions.
+These options are generated by the compiler driver gcc, but not passed from
+the `gcc' command line unless you use the driver's `-Wp' option.
+`-lint' Look for commands to the program checker lint embedded in comments,
+and emit them preceded by `#pragma lint'. For example, the comment `/*
+NOTREACHED */' becomes `#pragma lint NOTREACHED'.
+This option is available only when you call cpp directly; gcc will not pass it
+from its command line.
+`-$' Forbid the use of `$' in identiers. This is required for ANSI conformance. gcc
+automatically supplies this option to the preprocessor if you specify `-ansi',
+but gcc doesn't recognize the `-$' option itself|to use it without the other
+eects of `-ansi', you must call the preprocessor directly.
+36 The C Preprocessor
+Concept Index 37
+Concept Index
+(Index is nonexistent)
+38 The C Preprocessor
+Index of Directives, Macros and Options 39
+Index of Directives, Macros and Options
+(Index is nonexistent)
+40 The C Preprocessor
+i
+Table of Contents
+1 The C Preprocessor ........................ 1
+1.1 Transformations Made Globally .......................... 1
+1.2 Preprocessing Directives ................................. 2
+1.3 Header Files ............................................ 3
+1.3.1 Uses of Header Files ............................ 3
+1.3.2 The `#include' Directive ........................ 3
+1.3.3 How `#include' Works .......................... 4
+1.3.4 Once-Only Include Files ......................... 5
+1.3.5 Inheritance and Header Files .................... 6
+1.4 Macros ................................................. 7
+1.4.1 Simple Macros .................................. 7
+1.4.2 Macros with Arguments ......................... 8
+1.4.3 Predened Macros ............................. 10
+1.4.3.1 Standard Predened Macros ........... 10
+1.4.3.2 Nonstandard Predened Macros ........ 12
+1.4.4 Stringication ................................. 14
+1.4.5 Concatenation ................................. 15
+1.4.6 Undening Macros ............................. 16
+1.4.7 Redening Macros ............................. 16
+1.4.8 Pitfalls and Subtleties of Macros ................ 17
+1.4.8.1 Improperly Nested Constructs ......... 17
+1.4.8.2 Unintended Grouping of Arithmetic .... 17
+1.4.8.3 Swallowing the Semicolon .............. 18
+1.4.8.4 Duplication of Side Eects ............. 19
+1.4.8.5 Self-Referential Macros ................ 20
+1.4.8.6 Separate Expansion of Macro Arguments
+......................................... 20
+1.4.8.7 Cascaded Use of Macros ............... 22
+1.4.9 Newlines in Macro Arguments .................. 23
+1.5 Conditionals ........................................... 23
+1.5.1 Why Conditionals are Used ..................... 23
+1.5.2 Syntax of Conditionals ......................... 24
+1.5.2.1 The `#if' Directive .................... 24
+1.5.2.2 The `#else' Directive ................. 25
+1.5.2.3 The `#elif' Directive ................. 25
+1.5.3 Keeping Deleted Code for Future Reference ...... 26
+1.5.4 Conditionals and Macros ....................... 26
+1.5.5 Assertions ..................................... 27
+1.5.6 The `#error' and `#warning' Directives ......... 29
+1.6 Combining Source Files ................................. 29
+1.7 Miscellaneous Preprocessing Directives ................... 30
+1.8 C Preprocessor Output ................................. 31
+1.9 Invoking the C Preprocessor ............................ 31
+ii The C Preprocessor
+Concept Index ............................... 37
+Index of Directives, Macros and Options ...... 39
