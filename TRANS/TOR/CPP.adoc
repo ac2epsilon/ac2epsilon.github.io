@@ -586,7 +586,7 @@ if (*p++ != ' ') { \
 p--; break; }}}
 ----
 
-Тут Backslash-Newline використовується для розділення макро визначення, яке повинно бути єдиним рядком, щоб воно нагадувало спосіб, як такий C код був би викладений, якби не частина макрозначення. Виклик до цього макросу може бути `SKIP_SPACES (p, lim)`. Строго кажучи, виклик розширюється до складеного оператора, який є повним висловлюванням, не маючи крапки з комою для його завершення. Але це виглядає як виклик функції. Таким чином, це зводить до мінімуму плутанину, якщо ви можете використовувати його як виклик функції, записавши після цього крапку з комою, як у `SKIP_SPACES (p, lim);` Але це може спричинити неприємності перед твердженнями `else ', тому що крапка з комою - це фактично нульове твердження. Припустимо, ви пишете
+Тут Backslash-Newline використовується для розділення макро визначення, яке повинно бути єдиним рядком, щоб воно нагадувало спосіб, як такий C код був би викладений, якби не частина макрозначення. Виклик до цього макросу може бути `SKIP_SPACES (p, lim)`. Строго кажучи, виклик розширюється до складеного оператора, який є повним висловлюванням, не маючи крапки з комою для його завершення. Але це виглядає як виклик функції. Таким чином, це зводить до мінімуму плутанину, якщо ви можете використовувати його як виклик функції, записавши після цього крапку з комою, як у `SKIP_SPACES (p, lim);` Але це може спричинити неприємності перед твердженнями `else`, тому що крапка з комою - це фактично нульове твердження. Припустимо, ви пишете
 
 [source,scala]
 ----
@@ -595,20 +595,22 @@ SKIP_SPACES (p, lim);
 else :::
 ----
 
-The presence of two statements|the compound statement and a null statement|in between
-the `if' condition and the `else' makes invalid C code.
-The denition of the macro `SKIP_SPACES' can be altered to solve this problem, using a
-`do ::: while' statement. Here is how:
+Наявність двох операторів складеного оператора та нульового твердження між умовою `if` та `else` робить недійсним код C. Визначення макросу `SKIP_SPACES` може бути змінено для вирішення цієї проблеми, використовуючи оператор `do:::while`. Ось як:
+
+[source,scala]
+----
 #define SKIP_SPACES (p, limit) \
 do { register char *lim = (limit); \
 while (p != lim) { \
 if (*p++ != ' ') { \
 p--; break; }}} \
 while (0)
-Now `SKIP_SPACES (p, lim);' expands into
-do {:::} while (0);
-which is one statement.
-1.4.8.4 Duplication of Side Eects
+----
+
+Тепер `SKIP_SPACES (p, lim);` розширюється в `do {:::} while (0);`, що є одним твердженням.
+
+===== 1.4.8.4 Дублювання побічних ефектів
+
 Many C programs dene a macro `min', for \minimum", like this:
 #define min(X, Y) ((X) < (Y) ? (X) : (Y))
 When you use this macro with an argument containing a side eect, as shown here,
@@ -636,8 +638,9 @@ int tem = foo (z);
 next = min (x + y, tem);
 }
 (where we assume that `foo' returns type `int').
-20 The C Preprocessor
-1.4.8.5 Self-Referential Macros
+
+===== 1.4.8.5 Самореференційні макроси
+
 A self-referential macro is one whose name appears in its denition. A special feature of
 ANSI Standard C is that the self-reference is not considered a macro call. It is passed into
 the preprocessor output unchanged.
