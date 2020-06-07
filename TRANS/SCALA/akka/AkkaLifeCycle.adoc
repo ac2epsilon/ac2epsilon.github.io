@@ -2,8 +2,6 @@ include::header.adoc[]
 
 == Життєвий цикл актора
 
-For the Akka Classic documentation of this feature see Classic Actors.
-
 === Інформація про модуль
 
 Щоб використовувати Akka Actors, додайте таку залежність у свій проект:
@@ -15,28 +13,31 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.5"
 
 === Вступ
 
-An actor is a stateful resource that has to be explicitly started and stopped.
+Актор - це ресурс зі станом, який потрібно явно розпочати і зупинити.
 
-It is important to note that actors do not stop automatically when no longer referenced, every Actor that is created must also explicitly be destroyed. The only simplification is that stopping a parent Actor will also recursively stop all the child Actors that this parent has created. All actors are also stopped automatically when the ActorSystem is shut down.
+Важливо зазначити, що актори не зупиняються автоматично, коли на них більше немає посилань, кожен створений Актор також повинен явно знищуватися. Єдине спрощення полягає в тому, що зупинка батьківського Актора також буде рекурсивно зупиняти всіх дочірніх Акторів, яких створив цей батько. Усі актори також автоматично зупиняються, коли вимикається `ActorSystem`.
 
-Note
-An ActorSystem is a heavyweight structure that will allocate threads, so create one per logical application. Typically one ActorSystem per JVM process.
+Примітка. ActorSystem - це важка структура, яка буде виділяти нитки, тому створіть по одній на логічну програму. Зазвичай одна система акторів на один процес JVM.
 
-Creating Actors
-An actor can create, or spawn, an arbitrary number of child actors, which in turn can spawn children of their own, thus forming an actor hierarchy. ActorSystem hosts the hierarchy and there can be only one root actor, an actor at the top of the hierarchy of the ActorSystem. The lifecycle of a child actor is tied to the parent – a child can stop itself or be stopped at any time but it can never outlive its parent.
+=== Створення акторів
 
-The ActorContext
-The ActorContext can be accessed for many purposes such as:
+Актор може створити або нерестити довільну кількість дитячих акторів, які, в свою чергу, можуть породити своїх дітей, тим самим формуючи ієрархію акторів. `ActorSystem` формує ієрархію, і може бути лише один корінний актор, актор на вершині ієрархії `ActorSystem`. Життєвий цикл дитини-актора пов'язаний з батьком - дитина може зупинити себе або зупинити її в будь-який час, але вона ніколи не може пережити свого батька.
 
-Spawning child actors and supervision
-Watching other actors to receive a Terminated(otherActor) event should the watched actor stop permanently
-Logging
-Creating message adapters
-Request-response interactions (ask) with another actor
-Access to the self ActorRef
-If a behavior needs to use the ActorContext, for example to spawn child actors, or use context.self, it can be obtained by wrapping construction with Behaviors.setup:
+===== ActorContext
 
-Scala
+Доступ до ActorContext можна отримати для багатьох цілей, таких як:
+
+* Створення дитячіх акторів та нагляд
+* Нагляд інших акторів на отримання події `Terminated(otherActor)`, якщо нагляданий актор назавжди зупиниться
+* Ведення журналів
+* Створення адаптерів повідомлень
+* Взаємодія запит-відповідь (`ask`) з іншим актором
+* Доступ до свого `ActorRef` `self`
+
+Якщо поведінка потребує використання `ActorContext`, наприклад, для продукування дітей-акторів або використання `context.self`, це можна отримати, обернувши конструкцію `Behaviors.setup`:
+
+[source,scala]
+----
 object HelloWorldMain {
 
   final case class SayHello(name: String)
@@ -53,34 +54,41 @@ object HelloWorldMain {
     }
 
 }
-Java
-ActorContext Thread Safety
-Many of the methods in ActorContext are not thread-safe and
+----
 
-Must not be accessed by threads from scala.concurrent.Future callbacks
-Must not be shared between several actor instances
-Must only be used in the ordinary actor message processing thread
-The Guardian Actor
-The top level actor, also called the user guardian actor, is created along with the ActorSystem. Messages sent to the actor system are directed to the root actor. The root actor is defined by the behavior used to create the ActorSystem, named HelloWorldMain in the example below:
+=== Безпека нитки ActorContext
 
-Scala
+Багато методів у `ActorContext` не є безпечними для потоків, і тому:
 
+* Не можна отримувати доступ до потоків із зворотнього виклику `scala.concurrent.Future`
+* Не може ділитися між кількома акторами
+* Потрібно використовувати лише у звичайній нитці обробки повідомлень актора
+
+=== Актор-охоронець
+
+Актор верхнього рівня, який також називають актором-охоронцем користувача, створюється разом з `ActorSystem`. Повідомлення, що надсилаються до акторської системи, спрямовуються на головного актора. Основний актор визначається поведінкою, що використовується для створення `ActorSystem`, названої `HelloWorldMain` у наведеному нижче прикладі:
+
+[source,scala]
+----
 val system: ActorSystem[HelloWorldMain.SayHello] =
   ActorSystem(HelloWorldMain(), "hello")
 
 system ! HelloWorldMain.SayHello("World")
 system ! HelloWorldMain.SayHello("Akka")
-Java
-For very simple applications the guardian may contain the actual application logic and handle messages. As soon as the application handles more than one concern the guardian should instead just bootstrap the application, spawn the various subsystems as children and monitor their lifecycles.
+----
 
-When the guardian actor stops this will stop the ActorSystem.
+Для дуже простих додатків опікун може містити фактичну логіку програми та обробляти повідомлення. Як тільки програма звертається до декількох проблем, опікун повинен замість цього лише завантажувати програму, відгалужувати різні підсистеми як дітей, та контролювати їх життєвий цикл.
 
-When ActorSystem.terminate is invoked the Coordinated Shutdown process will stop actors and services in a specific order.
+Коли актор-охоронець зупиниться, це зупинить `ActorSystem`.
 
-Spawning Children
-Child actors are created and started with ActorContext’s spawn. In the example below, when the root actor is started, it spawns a child actor described by the HelloWorld behavior. Additionally, when the root actor receives a Start message, it creates a child actor defined by the behavior HelloWorldBot:
+Коли робиться виклик `ActorSystem.terminate`, процес скоординованого відключення зупинить акторів і служби у визначеному порядку.
 
-Scala
+=== Створення дітей
+
+Дитячі актори створюються і починаються `ActorContext` `spawn` . У наведеному нижче прикладі, коли запускається кореневий актор, він породжує дочірнього актора, описаного поведінкою `HelloWorld`. Крім того, коли кореневий актор отримує повідомлення `Start`, він створює дочірній актор, визначени поведінкою `HelloWorldBot`:
+
+[source,scala]
+----
 object HelloWorldMain {
 
   final case class SayHello(name: String)
@@ -97,10 +105,12 @@ object HelloWorldMain {
     }
 
 }
-Java
-To specify a dispatcher when spawning an actor use DispatcherSelector. If not specified, the actor will use the default dispatcher, see Default dispatcher for details.
+----
 
-Scala
+Щоб вказати диспетчера під час створення актора, використовуйте `DispatcherSelector`. Якщо не вказано, актор використовуватиме диспетчер за замовчуванням, детальну інформацію див. У https://doc.akka.io/docs/akka/current/typed/dispatchers.html#default-dispatcher[диспетчері за замовчуванням].
+
+[source,scala]
+----
 def apply(): Behavior[SayHello] =
   Behaviors.setup { context =>
     val dispatcherPath = "akka.actor.default-blocking-io-dispatcher"
@@ -115,17 +125,20 @@ def apply(): Behavior[SayHello] =
       Behaviors.same
     }
   }
-Java
-Refer to Actors for a walk-through of the above examples.
+----
 
-SpawnProtocol
-The guardian actor should be responsible for initialization of tasks and create the initial actors of the application, but sometimes you might want to spawn new actors from the outside of the guardian actor. For example creating one actor per HTTP request.
+Зверніться до акторів, щоб ознайомитися з вищезазначеними прикладами.
 
-That is not difficult to implement in your behavior, but since this is a common pattern there is a predefined message protocol and implementation of a behavior for this. It can be used as the guardian actor of the ActorSystem, possibly combined with Behaviors.setup to start some initial tasks or actors. Child actors can then be started from the outside by telling or asking SpawnProtocol.Spawn to the actor reference of the system. Using ask is similar to how ActorSystem.actorOf can be used in classic actors with the difference that a Future of the ActorRef is returned.
+=== SpawnProtocol
 
-The guardian behavior can be defined as:
+Актор-опікун повинен відповідати за ініціалізацію завдань та створення початкових акторів програми, але іноді ви можете породжувати нових акторів із зовнішньої сторони актора-опікуна. Наприклад, створення одного актора на кожний запит HTTP.
 
-Scala
+Це не важко реалізувати у вашій поведінці, але оскільки це загальний шаблон, існує попередньо визначений протокол повідомлення та реалізація поведінки для цього. Він може бути використаний як актор-охоронець системи `ActorSystem`, можливо, поєднаний з `Behaviors.setup`, щоб розпочати деякі початкові завдання чи акторів. Потім дочірніх акторів можна запустити ззовні, через `tell` або `ask` `SpawnProtocol.Spawn` до посилання на актора системи. Використання запиту аналогічно тому, як `ActorSystem.actorOf` може використовуватися в класичних акторах з тією різницею, що повертається `Future` `ActorRef`.
+
+Поведінку опікуна можна визначити як:
+
+[source,scala]
+----
 import akka.actor.typed.Behavior
 import akka.actor.typed.SpawnProtocol
 import akka.actor.typed.scaladsl.Behaviors
@@ -134,16 +147,18 @@ import akka.actor.typed.scaladsl.LoggerOps
 object HelloWorldMain {
   def apply(): Behavior[SpawnProtocol.Command] =
     Behaviors.setup { context =>
-      // Start initial tasks
+      // Запуск початкових завдань
       // context.spawn(...)
 
       SpawnProtocol()
     }
 }
-Java
-and the ActorSystem can be created with that main behavior and asked to spawn other actors:
+----
 
-Scala
+і ActorSystem можна створити з такою основною поведінкою і попросити породити інших суб'єктів:
+
+[source,scala]
+----
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Props
@@ -153,7 +168,7 @@ import akka.util.Timeout
 implicit val system: ActorSystem[SpawnProtocol.Command] =
   ActorSystem(HelloWorldMain(), "hello")
 
-// needed in implicit scope for ask (?)
+// треба в неявному полі для ask (?)
 import akka.actor.typed.scaladsl.AskPattern._
 implicit val ec: ExecutionContext = system.executionContext
 implicit val timeout: Timeout = Timeout(3.seconds)
@@ -172,34 +187,36 @@ val greetedReplyTo: Future[ActorRef[HelloWorld.Greeted]] =
 for (greeterRef <- greeter; replyToRef <- greetedReplyTo) {
   greeterRef ! HelloWorld.Greet("Akka", replyToRef)
 }
-Java
-The SpawnProtocol can also be used at other places in the actor hierarchy. It doesn’t have to be the root guardian actor.
+----
 
-A way to find running actors is described in Actor discovery.
+SpawnProtocol також можна використовувати в інших місцях в ієрархії акторів. Не обов’язково бути актором-кореневим опікуном.
 
-Stopping Actors
-An actor can stop itself by returning Behaviors.stopped as the next behavior.
+Спосіб пошуку працюючих акторів описаний у відкритті Актора.
 
-A child actor can be forced to stop after it finishes processing its current message by using the stop method of the ActorContext from the parent actor. Only child actors can be stopped in that way.
+=== Зупинка акторів
 
-All child actors will be stopped when their parent is stopped.
+Актор може зупинити себе, повернувши `Behaviors.stopped` як наступну поведінку.
 
-When an actor is stopped, it receives the PostStop signal that can be used for cleaning up resources. A callback function may be specified as parameter to Behaviors.stopped to handle the PostStop signal when stopping gracefully. This allows to apply different actions when it is stopped abruptly.
+Дитячого актора можна змусити зупинитись після того, як він закінчить обробляти своє поточне повідомлення, використовуючи метод зупинки `stop` `ActorContext` від батьківського актора. Тільки дитячі актори можуть бути зупинені таким чином.
 
-Here is an illustrating example:
+Усі діти будуть зупинені, коли їх батька зупинено.
 
-Scala
+Коли актор зупиняється, він отримує сигнал `PostStop`, який можна використовувати для очищення ресурсів. Функція зворотного виклику може бути визначена як параметр `Behaviors.stopped` для обробки сигналу `PostStop` при витонченій зупинці. Це дозволяє застосовувати різні дії, коли виконання різко зупиняється.
+
+Ось ілюструючий приклад:
+
+[source,scala]
+----
 import akka.actor.typed.Behavior
 import akka.actor.typed.scaladsl.Behaviors
 import akka.actor.typed.{ ActorSystem, PostStop }
-
 
 object MasterControlProgram {
   sealed trait Command
   final case class SpawnJob(name: String) extends Command
   case object GracefulShutdown extends Command
 
-  // Predefined cleanup operation
+  // Визначена операція зачистки
   def cleanup(log: Logger): Unit = log.info("Cleaning up!")
 
   def apply(): Behavior[Command] = {
@@ -212,8 +229,8 @@ object MasterControlProgram {
             Behaviors.same
           case GracefulShutdown =>
             context.log.info("Initiating graceful shutdown...")
-            // perform graceful stop, executing cleanup before final system termination
-            // behavior executing cleanup is passed as a parameter to Actor.stopped
+            // м'яка зупинка перед фінальною зупинкою
+            // поведінка очистки передана як параметр до Actor.stopped
             Behaviors.stopped { () =>
               cleanup(context.system.log)
             }
@@ -241,27 +258,30 @@ object Job {
 
 import MasterControlProgram._
 
-val system: ActorSystem[Command] = ActorSystem(MasterControlProgram(), "B7700")
+val system: ActorSystem[Command] 
+    = ActorSystem(MasterControlProgram(), "B7700")
 
 system ! SpawnJob("a")
 system ! SpawnJob("b")
 
 Thread.sleep(100)
 
-// gracefully stop the system
+// м'яка зупинка системи
 system ! GracefulShutdown
 
 Thread.sleep(100)
 
 Await.result(system.whenTerminated, 3.seconds)
-Java
-When cleaning up resources from PostStop you should also consider doing the same for the PreRestart signal, which is emitted when the actor is restarted. Note that PostStop is not emitted for a restart.
+----
 
-Watching Actors
-In order to be notified when another actor terminates (i.e. stops permanently, not temporary failure and restart), an actor can watch another actor. It will receive the Terminated signal upon termination (see Stopping Actors) of the watched actor.
+Під час очищення ресурсів від `PostStop` слід також розглянути можливість виконання того ж самого для сигналу `PreRestart`, який випромінюється при перезапуску актора. Зауважте, що `PostStop` не видається для перезавантаження.
 
-Scala
+=== Спостереження за акторами
 
+Для того, щоб отримувати повідомлення про припинення дії іншого актора (тобто припиняється постійно, а не тимчасової несправності та перезавантаження), актор може спостерігати іншого актора. Він отримає сигнал `Terminated` після припинення (див. Припинення акторів) актора під наглядом.
+
+[source,scala]
+----
 object MasterControlProgram {
   sealed trait Command
   final case class SpawnJob(name: String) extends Command
@@ -284,13 +304,14 @@ object MasterControlProgram {
       }
   }
 }
-Java
-An alternative to watch is watchWith, which allows specifying a custom message instead of the Terminated. This is often preferred over using watch and the Terminated signal because additional information can be included in the message that can be used later when receiving it.
+----
 
-Similar example as above, but using watchWith and replies to the original requestor when the job has finished.
+Альтернативою для `watch` є `watchWith`, що дозволяє вказати користувальницьке повідомлення замість `Terminated`. Цьом часто надається перевага, ніж використанню `watch` та сигналу `Terminated`, оскільки в повідомлення може бути включена додаткова інформація, яка може бути використана пізніше при його отриманні.
 
-Scala
+Аналогічний приклад, як вище, але використовуючи `watchWith` та відповіді на початковий запитувач, коли робота закінчена.
 
+[source,scala]
+----
 object MasterControlProgram {
   sealed trait Command
   final case class SpawnJob(name: String, replyToWhenDone: ActorRef[JobDone]) extends Command
@@ -313,15 +334,16 @@ object MasterControlProgram {
     }
   }
 }
-Java
-Note how the replyToWhenDone is included in the watchWith message and then used later when receiving the JobTerminated message.
+----
 
-The watched actor can be any ActorRef, it doesn’t have to be a child actor as in the above example.
+Зверніть увагу, як `replyToWhenDone` включається до повідомлення `watchWith`, а потім використовується пізніше при отриманні повідомлення `JobTerminated`.
 
-It should be noted that the terminated message is generated independent of the order in which registration and termination occur. In particular, the watching actor will receive a terminated message even if the watched actor has already been terminated at the time of registration.
+Спостерігаємим актором може бути будь-який `ActorRef`, не обов’язково бути дочірним актором, як у наведеному вище прикладі.
 
-Registering multiple times does not necessarily lead to multiple messages being generated, but there is no guarantee that only exactly one such message is received: if termination of the watched actor has generated and queued the message, and another registration is done before this message has been processed, then a second message will be queued, because registering for monitoring of an already terminated actor leads to the immediate generation of the terminated message.
+Слід зазначити, що `terminated` повідомлення формується незалежно від порядку, в якому відбувається реєстрація та припинення. Зокрема, спостерігаючий актор отримає повідомлення про припинення, навіть якщо спостерігаючий актор вже був припинений на момент реєстрації.
 
-It is also possible to deregister from watching another actor’s liveliness using context.unwatch(target). This works even if the terminated message has already been enqueued in the mailbox; after calling unwatch no terminated message for that actor will be processed anymore.
+Реєстрація кілька разів не обов'язково призводить до створення декількох повідомлень, але немає гарантії, що буде отримано лише одне саме таке повідомлення: якщо припинення переглянутого актора генерувало та ставило в чергу повідомлення, а інша реєстрація робиться до того, як це повідомлення було дійсно оброблене, тоді друге повідомлення буде в черзі, тому що реєстрація для моніторингу вже закінченого актора призводить до негайного генерування повідомлення `terminated`.
 
-The terminated message is also sent when the watched actor is on a node that has been removed from the Cluster.
+Можливо також скасувати реєстрацію за переглядання жвавості іншого актора, використовуючи `context.unwatch(target)`. Це працює, навіть якщо повідомлення `terminated` вже зафіксовано у поштовій скриньці; після виклику `unatch` жодне припинене повідомлення для цього актора більше не буде оброблятися.
+
+Повідомлення `terminated` також надсилається, коли спостерігаючий актор знаходиться на вузлі, видаленому з кластеру.

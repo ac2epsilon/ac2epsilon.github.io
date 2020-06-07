@@ -801,7 +801,6 @@ asciidoc.install();
 <div class="sect1">
 <h2 id="___">Життєвий цикл актора</h2>
 <div class="sectionbody">
-<div class="paragraph"><p>For the Akka Classic documentation of this feature see Classic Actors.</p></div>
 <div class="sect2">
 <h3 id="____2">Інформація про модуль</h3>
 <div class="paragraph"><p>Щоб використовувати Akka Actors, додайте таку залежність у свій проект:</p></div>
@@ -811,286 +810,334 @@ asciidoc.install();
 </div>
 <div class="sect2">
 <h3 id="_">Вступ</h3>
-<div class="paragraph"><p>An actor is a stateful resource that has to be explicitly started and stopped.</p></div>
-<div class="paragraph"><p>It is important to note that actors do not stop automatically when no longer referenced, every Actor that is created must also explicitly be destroyed. The only simplification is that stopping a parent Actor will also recursively stop all the child Actors that this parent has created. All actors are also stopped automatically when the ActorSystem is shut down.</p></div>
-<div class="paragraph"><p>Note
-An ActorSystem is a heavyweight structure that will allocate threads, so create one per logical application. Typically one ActorSystem per JVM process.</p></div>
-<div class="paragraph"><p>Creating Actors
-An actor can create, or spawn, an arbitrary number of child actors, which in turn can spawn children of their own, thus forming an actor hierarchy. ActorSystem hosts the hierarchy and there can be only one root actor, an actor at the top of the hierarchy of the ActorSystem. The lifecycle of a child actor is tied to the parent – a child can stop itself or be stopped at any time but it can never outlive its parent.</p></div>
-<div class="paragraph"><p>The ActorContext
-The ActorContext can be accessed for many purposes such as:</p></div>
-<div class="paragraph"><p>Spawning child actors and supervision
-Watching other actors to receive a Terminated(otherActor) event should the watched actor stop permanently
-Logging
-Creating message adapters
-Request-response interactions (ask) with another actor
-Access to the self ActorRef
-If a behavior needs to use the ActorContext, for example to spawn child actors, or use context.self, it can be obtained by wrapping construction with Behaviors.setup:</p></div>
-<div class="paragraph"><p>Scala
-object HelloWorldMain {</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>final case class SayHello(name: String)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply(): Behavior[SayHello] =
-  Behaviors.setup { context =&gt;
-    val greeter = context.spawn(HelloWorld(), "greeter")</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  Behaviors.receiveMessage { message =&gt;
-    val replyTo = context.spawn(HelloWorldBot(max = 3), message.name)
-    greeter ! HelloWorld.Greet(message.name, replyTo)
-    Behaviors.same
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>}
-Java
-ActorContext Thread Safety
-Many of the methods in ActorContext are not thread-safe and</p></div>
-<div class="paragraph"><p>Must not be accessed by threads from scala.concurrent.Future callbacks
-Must not be shared between several actor instances
-Must only be used in the ordinary actor message processing thread
-The Guardian Actor
-The top level actor, also called the user guardian actor, is created along with the ActorSystem. Messages sent to the actor system are directed to the root actor. The root actor is defined by the behavior used to create the ActorSystem, named HelloWorldMain in the example below:</p></div>
-<div class="paragraph"><p>Scala</p></div>
-<div class="paragraph"><p>val system: ActorSystem[HelloWorldMain.SayHello] =
-  ActorSystem(HelloWorldMain(), "hello")</p></div>
-<div class="paragraph"><p>system ! HelloWorldMain.SayHello("World")
-system ! HelloWorldMain.SayHello("Akka")
-Java
-For very simple applications the guardian may contain the actual application logic and handle messages. As soon as the application handles more than one concern the guardian should instead just bootstrap the application, spawn the various subsystems as children and monitor their lifecycles.</p></div>
-<div class="paragraph"><p>When the guardian actor stops this will stop the ActorSystem.</p></div>
-<div class="paragraph"><p>When ActorSystem.terminate is invoked the Coordinated Shutdown process will stop actors and services in a specific order.</p></div>
-<div class="paragraph"><p>Spawning Children
-Child actors are created and started with ActorContext’s spawn. In the example below, when the root actor is started, it spawns a child actor described by the HelloWorld behavior. Additionally, when the root actor receives a Start message, it creates a child actor defined by the behavior HelloWorldBot:</p></div>
-<div class="paragraph"><p>Scala
-object HelloWorldMain {</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>final case class SayHello(name: String)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply(): Behavior[SayHello] =
-  Behaviors.setup { context =&gt;
-    val greeter = context.spawn(HelloWorld(), "greeter")</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  Behaviors.receiveMessage { message =&gt;
-    val replyTo = context.spawn(HelloWorldBot(max = 3), message.name)
-    greeter ! HelloWorld.Greet(message.name, replyTo)
-    Behaviors.same
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>}
-Java
-To specify a dispatcher when spawning an actor use DispatcherSelector. If not specified, the actor will use the default dispatcher, see Default dispatcher for details.</p></div>
-<div class="paragraph"><p>Scala
-def apply(): Behavior[SayHello] =
-  Behaviors.setup { context &#8658;
-    val dispatcherPath = "akka.actor.default-blocking-io-dispatcher"</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>val props = DispatcherSelector.fromConfig(dispatcherPath)
-val greeter = context.spawn(HelloWorld(), "greeter", props)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>Behaviors.receiveMessage { message =&gt;
-  val replyTo = context.spawn(HelloWorldBot(max = 3), message.name)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>      greeter ! HelloWorld.Greet(message.name, replyTo)
-      Behaviors.same
-    }
-  }
-Java
-Refer to Actors for a walk-through of the above examples.</code></pre>
-</div></div>
-<div class="paragraph"><p>SpawnProtocol
-The guardian actor should be responsible for initialization of tasks and create the initial actors of the application, but sometimes you might want to spawn new actors from the outside of the guardian actor. For example creating one actor per HTTP request.</p></div>
-<div class="paragraph"><p>That is not difficult to implement in your behavior, but since this is a common pattern there is a predefined message protocol and implementation of a behavior for this. It can be used as the guardian actor of the ActorSystem, possibly combined with Behaviors.setup to start some initial tasks or actors. Child actors can then be started from the outside by telling or asking SpawnProtocol.Spawn to the actor reference of the system. Using ask is similar to how ActorSystem.actorOf can be used in classic actors with the difference that a Future of the ActorRef is returned.</p></div>
-<div class="paragraph"><p>The guardian behavior can be defined as:</p></div>
-<div class="paragraph"><p>Scala
-import akka.actor.typed.Behavior
-import akka.actor.typed.SpawnProtocol
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.scaladsl.LoggerOps</p></div>
-<div class="paragraph"><p>object HelloWorldMain {
-  def apply(): Behavior[SpawnProtocol.Command] =
-    Behaviors.setup { context &#8658;
-      // Start initial tasks
-      // context.spawn(&#8230;)</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>      SpawnProtocol()
-    }
-}
-Java
-and the ActorSystem can be created with that main behavior and asked to spawn other actors:</code></pre>
-</div></div>
-<div class="paragraph"><p>Scala
-import akka.actor.typed.ActorRef
-import akka.actor.typed.ActorSystem
-import akka.actor.typed.Props
-import akka.util.Timeout</p></div>
-<div class="paragraph"><p>implicit val system: ActorSystem[SpawnProtocol.Command] =
-  ActorSystem(HelloWorldMain(), "hello")</p></div>
-<div class="paragraph"><p>import akka.actor.typed.scaladsl.AskPattern._
-implicit val ec: ExecutionContext = system.executionContext
-implicit val timeout: Timeout = Timeout(3.seconds)</p></div>
-<div class="paragraph"><p>val greeter: Future[ActorRef[HelloWorld.Greet]] =
-  system.ask(SpawnProtocol.Spawn(behavior = HelloWorld(), name = "greeter", props = Props.empty, _))</p></div>
-<div class="paragraph"><p>val greetedBehavior = Behaviors.receive[HelloWorld.Greeted] { (context, message) &#8658;
-  context.log.info2("Greeting for {} from {}", message.whom, message.from)
-  Behaviors.stopped
-}</p></div>
-<div class="paragraph"><p>val greetedReplyTo: Future[ActorRef[HelloWorld.Greeted]] =
-  system.ask(SpawnProtocol.Spawn(greetedBehavior, name = "", props = Props.empty, _))</p></div>
-<div class="paragraph"><p>for (greeterRef &#8592; greeter; replyToRef &#8592; greetedReplyTo) {
-  greeterRef ! HelloWorld.Greet("Akka", replyToRef)
-}
-Java
-The SpawnProtocol can also be used at other places in the actor hierarchy. It doesn’t have to be the root guardian actor.</p></div>
-<div class="paragraph"><p>A way to find running actors is described in Actor discovery.</p></div>
-<div class="paragraph"><p>Stopping Actors
-An actor can stop itself by returning Behaviors.stopped as the next behavior.</p></div>
-<div class="paragraph"><p>A child actor can be forced to stop after it finishes processing its current message by using the stop method of the ActorContext from the parent actor. Only child actors can be stopped in that way.</p></div>
-<div class="paragraph"><p>All child actors will be stopped when their parent is stopped.</p></div>
-<div class="paragraph"><p>When an actor is stopped, it receives the PostStop signal that can be used for cleaning up resources. A callback function may be specified as parameter to Behaviors.stopped to handle the PostStop signal when stopping gracefully. This allows to apply different actions when it is stopped abruptly.</p></div>
-<div class="paragraph"><p>Here is an illustrating example:</p></div>
-<div class="paragraph"><p>Scala
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors
-import akka.actor.typed.{ ActorSystem, PostStop }</p></div>
-<div class="paragraph"><p>object MasterControlProgram {
-  sealed trait Command
-  final case class SpawnJob(name: String) extends Command
-  case object GracefulShutdown extends Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>// Predefined cleanup operation
-def cleanup(log: Logger): Unit = log.info("Cleaning up!")</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(): Behavior[Command] = {
-    Behaviors
-      .receive[Command] { (context, message) =&gt;
-        message match {
-          case SpawnJob(jobName) =&gt;
-            context.log.info("Spawning job {}!", jobName)
-            context.spawn(Job(jobName), name = jobName)
-            Behaviors.same
-          case GracefulShutdown =&gt;
-            context.log.info("Initiating graceful shutdown...")
-            // perform graceful stop, executing cleanup before final system termination
-            // behavior executing cleanup is passed as a parameter to Actor.stopped
-            Behaviors.stopped { () =&gt;
-              cleanup(context.system.log)
-            }
-        }
-      }
-      .receiveSignal {
-        case (context, PostStop) =&gt;
-          context.log.info("Master Control Program stopped")
-          Behaviors.same
-      }
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>object Job {
-  sealed trait Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(name: String): Behavior[Command] = {
-    Behaviors.receiveSignal[Command] {
-      case (context, PostStop) =&gt;
-        context.log.info("Worker {} stopped", name)
-        Behaviors.same
-    }
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>import MasterControlProgram._</p></div>
-<div class="paragraph"><p>val system: ActorSystem[Command] = ActorSystem(MasterControlProgram(), "B7700")</p></div>
-<div class="paragraph"><p>system ! SpawnJob("a")
-system ! SpawnJob("b")</p></div>
-<div class="paragraph"><p>Thread.sleep(100)</p></div>
-<div class="paragraph"><p>system ! GracefulShutdown</p></div>
-<div class="paragraph"><p>Thread.sleep(100)</p></div>
-<div class="paragraph"><p>Await.result(system.whenTerminated, 3.seconds)
-Java
-When cleaning up resources from PostStop you should also consider doing the same for the PreRestart signal, which is emitted when the actor is restarted. Note that PostStop is not emitted for a restart.</p></div>
-<div class="paragraph"><p>Watching Actors
-In order to be notified when another actor terminates (i.e. stops permanently, not temporary failure and restart), an actor can watch another actor. It will receive the Terminated signal upon termination (see Stopping Actors) of the watched actor.</p></div>
-<div class="paragraph"><p>Scala</p></div>
-<div class="paragraph"><p>object MasterControlProgram {
-  sealed trait Command
-  final case class SpawnJob(name: String) extends Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(): Behavior[Command] = {
-    Behaviors
-      .receive[Command] { (context, message) =&gt;
-        message match {
-          case SpawnJob(jobName) =&gt;
-            context.log.info("Spawning job {}!", jobName)
-            val job = context.spawn(Job(jobName), name = jobName)
-            context.watch(job)
-            Behaviors.same
-        }
-      }
-      .receiveSignal {
-        case (context, Terminated(ref)) =&gt;
-          context.log.info("Job stopped: {}", ref.path.name)
-          Behaviors.same
-      }
-  }
-}
-Java
-An alternative to watch is watchWith, which allows specifying a custom message instead of the Terminated. This is often preferred over using watch and the Terminated signal because additional information can be included in the message that can be used later when receiving it.</code></pre>
-</div></div>
-<div class="paragraph"><p>Similar example as above, but using watchWith and replies to the original requestor when the job has finished.</p></div>
-<div class="paragraph"><p>Scala</p></div>
-<div class="paragraph"><p>object MasterControlProgram {
-  sealed trait Command
-  final case class SpawnJob(name: String, replyToWhenDone: ActorRef[JobDone]) extends Command
-  final case class JobDone(name: String)
-  private final case class JobTerminated(name: String, replyToWhenDone: ActorRef[JobDone]) extends Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(): Behavior[Command] = {
-    Behaviors.receive { (context, message) =&gt;
-      message match {
-        case SpawnJob(jobName, replyToWhenDone) =&gt;
-          context.log.info("Spawning job {}!", jobName)
-          val job = context.spawn(Job(jobName), name = jobName)
-          context.watchWith(job, JobTerminated(jobName, replyToWhenDone))
-          Behaviors.same
-        case JobTerminated(jobName, replyToWhenDone) =&gt;
-          context.log.info("Job stopped: {}", jobName)
-          replyToWhenDone ! JobDone(jobName)
-          Behaviors.same
-      }
-    }
-  }
-}
-Java
-Note how the replyToWhenDone is included in the watchWith message and then used later when receiving the JobTerminated message.</code></pre>
-</div></div>
-<div class="paragraph"><p>The watched actor can be any ActorRef, it doesn’t have to be a child actor as in the above example.</p></div>
-<div class="paragraph"><p>It should be noted that the terminated message is generated independent of the order in which registration and termination occur. In particular, the watching actor will receive a terminated message even if the watched actor has already been terminated at the time of registration.</p></div>
-<div class="paragraph"><p>Registering multiple times does not necessarily lead to multiple messages being generated, but there is no guarantee that only exactly one such message is received: if termination of the watched actor has generated and queued the message, and another registration is done before this message has been processed, then a second message will be queued, because registering for monitoring of an already terminated actor leads to the immediate generation of the terminated message.</p></div>
-<div class="paragraph"><p>It is also possible to deregister from watching another actor’s liveliness using context.unwatch(target). This works even if the terminated message has already been enqueued in the mailbox; after calling unwatch no terminated message for that actor will be processed anymore.</p></div>
-<div class="paragraph"><p>The terminated message is also sent when the watched actor is on a node that has been removed from the Cluster.</p></div>
+<div class="paragraph"><p>Актор - це ресурс зі станом, який потрібно явно розпочати і зупинити.</p></div>
+<div class="paragraph"><p>Важливо зазначити, що актори не зупиняються автоматично, коли на них більше немає посилань, кожен створений Актор також повинен явно знищуватися. Єдине спрощення полягає в тому, що зупинка батьківського Актора також буде рекурсивно зупиняти всіх дочірніх Акторів, яких створив цей батько. Усі актори також автоматично зупиняються, коли вимикається <code>ActorSystem</code>.</p></div>
+<div class="paragraph"><p>Примітка. ActorSystem - це важка структура, яка буде виділяти нитки, тому створіть по одній на логічну програму. Зазвичай одна система акторів на один процес JVM.</p></div>
+</div>
+<div class="sect2">
+<h3 id="__">Створення акторів</h3>
+<div class="paragraph"><p>Актор може створити або нерестити довільну кількість дитячих акторів, які, в свою чергу, можуть породити своїх дітей, тим самим формуючи ієрархію акторів. <code>ActorSystem</code> формує ієрархію, і може бути лише один корінний актор, актор на вершині ієрархії <code>ActorSystem</code>. Життєвий цикл дитини-актора пов'язаний з батьком - дитина може зупинити себе або зупинити її в будь-який час, але вона ніколи не може пережити свого батька.</p></div>
+<div class="sect4">
+<h5 id="_actorcontext">ActorContext</h5>
+<div class="paragraph"><p>Доступ до ActorContext можна отримати для багатьох цілей, таких як:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Створення дитячіх акторів та нагляд
+</p>
+</li>
+<li>
+<p>
+Нагляд інших акторів на отримання події <code>Terminated(otherActor)</code>, якщо нагляданий актор назавжди зупиниться
+</p>
+</li>
+<li>
+<p>
+Ведення журналів
+</p>
+</li>
+<li>
+<p>
+Створення адаптерів повідомлень
+</p>
+</li>
+<li>
+<p>
+Взаємодія запит-відповідь (<code>ask</code>) з іншим актором
+</p>
+</li>
+<li>
+<p>
+Доступ до свого <code>ActorRef</code> <code>self</code>
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Якщо поведінка потребує використання <code>ActorContext</code>, наприклад, для продукування дітей-акторів або використання <code>context.self</code>, це можна отримати, обернувши конструкцію <code>Behaviors.setup</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">HelloWorldMain</span> <span class="o">{</span>
+
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">SayHello</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">SayHello</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">greeter</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">HelloWorld</span><span class="o">(),</span> <span class="s">&quot;greeter&quot;</span><span class="o">)</span>
+
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span> <span class="n">message</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">replyTo</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">HelloWorldBot</span><span class="o">(</span><span class="n">max</span> <span class="k">=</span> <span class="mi">3</span><span class="o">),</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span><span class="o">)</span>
+        <span class="n">greeter</span> <span class="o">!</span> <span class="nc">HelloWorld</span><span class="o">.</span><span class="nc">Greet</span><span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</pre></div></div></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="___actorcontext">Безпека нитки ActorContext</h3>
+<div class="paragraph"><p>Багато методів у <code>ActorContext</code> не є безпечними для потоків, і тому:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Не можна отримувати доступ до потоків із зворотнього виклику <code>scala.concurrent.Future</code>
+</p>
+</li>
+<li>
+<p>
+Не може ділитися між кількома акторами
+</p>
+</li>
+<li>
+<p>
+Потрібно використовувати лише у звичайній нитці обробки повідомлень актора
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="___2">Актор-охоронець</h3>
+<div class="paragraph"><p>Актор верхнього рівня, який також називають актором-охоронцем користувача, створюється разом з <code>ActorSystem</code>. Повідомлення, що надсилаються до акторської системи, спрямовуються на головного актора. Основний актор визначається поведінкою, що використовується для створення <code>ActorSystem</code>, названої <code>HelloWorldMain</code> у наведеному нижче прикладі:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">system</span><span class="k">:</span> <span class="kt">ActorSystem</span><span class="o">[</span><span class="kt">HelloWorldMain.SayHello</span><span class="o">]</span> <span class="k">=</span>
+  <span class="nc">ActorSystem</span><span class="o">(</span><span class="nc">HelloWorldMain</span><span class="o">(),</span> <span class="s">&quot;hello&quot;</span><span class="o">)</span>
+
+<span class="n">system</span> <span class="o">!</span> <span class="nc">HelloWorldMain</span><span class="o">.</span><span class="nc">SayHello</span><span class="o">(</span><span class="s">&quot;World&quot;</span><span class="o">)</span>
+<span class="n">system</span> <span class="o">!</span> <span class="nc">HelloWorldMain</span><span class="o">.</span><span class="nc">SayHello</span><span class="o">(</span><span class="s">&quot;Akka&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Для дуже простих додатків опікун може містити фактичну логіку програми та обробляти повідомлення. Як тільки програма звертається до декількох проблем, опікун повинен замість цього лише завантажувати програму, відгалужувати різні підсистеми як дітей, та контролювати їх життєвий цикл.</p></div>
+<div class="paragraph"><p>Коли актор-охоронець зупиниться, це зупинить <code>ActorSystem</code>.</p></div>
+<div class="paragraph"><p>Коли робиться виклик <code>ActorSystem.terminate</code>, процес скоординованого відключення зупинить акторів і служби у визначеному порядку.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___3">Створення дітей</h3>
+<div class="paragraph"><p>Дитячі актори створюються і починаються <code>ActorContext</code> <code>spawn</code> . У наведеному нижче прикладі, коли запускається кореневий актор, він породжує дочірнього актора, описаного поведінкою <code>HelloWorld</code>. Крім того, коли кореневий актор отримує повідомлення <code>Start</code>, він створює дочірній актор, визначени поведінкою <code>HelloWorldBot</code>:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">HelloWorldMain</span> <span class="o">{</span>
+
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">SayHello</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">SayHello</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">greeter</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">HelloWorld</span><span class="o">(),</span> <span class="s">&quot;greeter&quot;</span><span class="o">)</span>
+
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span> <span class="n">message</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">replyTo</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">HelloWorldBot</span><span class="o">(</span><span class="n">max</span> <span class="k">=</span> <span class="mi">3</span><span class="o">),</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span><span class="o">)</span>
+        <span class="n">greeter</span> <span class="o">!</span> <span class="nc">HelloWorld</span><span class="o">.</span><span class="nc">Greet</span><span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Щоб вказати диспетчера під час створення актора, використовуйте <code>DispatcherSelector</code>. Якщо не вказано, актор використовуватиме диспетчер за замовчуванням, детальну інформацію див. У <a href="https://doc.akka.io/docs/akka/current/typed/dispatchers.html#default-dispatcher">диспетчері за замовчуванням</a>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">SayHello</span><span class="o">]</span> <span class="k">=</span>
+  <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+    <span class="k">val</span> <span class="n">dispatcherPath</span> <span class="k">=</span> <span class="s">&quot;akka.actor.default-blocking-io-dispatcher&quot;</span>
+
+    <span class="k">val</span> <span class="n">props</span> <span class="k">=</span> <span class="nc">DispatcherSelector</span><span class="o">.</span><span class="n">fromConfig</span><span class="o">(</span><span class="n">dispatcherPath</span><span class="o">)</span>
+    <span class="k">val</span> <span class="n">greeter</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">HelloWorld</span><span class="o">(),</span> <span class="s">&quot;greeter&quot;</span><span class="o">,</span> <span class="n">props</span><span class="o">)</span>
+
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span> <span class="n">message</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">replyTo</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">HelloWorldBot</span><span class="o">(</span><span class="n">max</span> <span class="k">=</span> <span class="mi">3</span><span class="o">),</span> <span class="n">message</span><span class="o">.</span><span class="n">name</span><span class="o">)</span>
+
+      <span class="n">greeter</span> <span class="o">!</span> <span class="nc">HelloWorld</span><span class="o">.</span><span class="nc">Greet</span><span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">name</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span>
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зверніться до акторів, щоб ознайомитися з вищезазначеними прикладами.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_spawnprotocol">SpawnProtocol</h3>
+<div class="paragraph"><p>Актор-опікун повинен відповідати за ініціалізацію завдань та створення початкових акторів програми, але іноді ви можете породжувати нових акторів із зовнішньої сторони актора-опікуна. Наприклад, створення одного актора на кожний запит HTTP.</p></div>
+<div class="paragraph"><p>Це не важко реалізувати у вашій поведінці, але оскільки це загальний шаблон, існує попередньо визначений протокол повідомлення та реалізація поведінки для цього. Він може бути використаний як актор-охоронець системи <code>ActorSystem</code>, можливо, поєднаний з <code>Behaviors.setup</code>, щоб розпочати деякі початкові завдання чи акторів. Потім дочірніх акторів можна запустити ззовні, через <code>tell</code> або <code>ask</code> <code>SpawnProtocol.Spawn</code> до посилання на актора системи. Використання запиту аналогічно тому, як <code>ActorSystem.actorOf</code> може використовуватися в класичних акторах з тією різницею, що повертається <code>Future</code> <code>ActorRef</code>.</p></div>
+<div class="paragraph"><p>Поведінку опікуна можна визначити як:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">akka.actor.typed.Behavior</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.SpawnProtocol</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.Behaviors</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.LoggerOps</span>
+
+<span class="k">object</span> <span class="nc">HelloWorldMain</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">SpawnProtocol.Command</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="c1">// Запуск початкових завдань</span>
+      <span class="c1">// context.spawn(...)</span>
+
+      <span class="nc">SpawnProtocol</span><span class="o">()</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>і ActorSystem можна створити з такою основною поведінкою і попросити породити інших суб'єктів:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">akka.actor.typed.ActorRef</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.ActorSystem</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.Props</span>
+<span class="k">import</span> <span class="nn">akka.util.Timeout</span>
+
+
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">system</span><span class="k">:</span> <span class="kt">ActorSystem</span><span class="o">[</span><span class="kt">SpawnProtocol.Command</span><span class="o">]</span> <span class="k">=</span>
+  <span class="nc">ActorSystem</span><span class="o">(</span><span class="nc">HelloWorldMain</span><span class="o">(),</span> <span class="s">&quot;hello&quot;</span><span class="o">)</span>
+
+<span class="c1">// треба в неявному полі для ask (?)</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.AskPattern._</span>
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">ec</span><span class="k">:</span> <span class="kt">ExecutionContext</span> <span class="o">=</span> <span class="n">system</span><span class="o">.</span><span class="n">executionContext</span>
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">timeout</span><span class="k">:</span> <span class="kt">Timeout</span> <span class="o">=</span> <span class="nc">Timeout</span><span class="o">(</span><span class="mf">3.</span><span class="n">seconds</span><span class="o">)</span>
+
+<span class="k">val</span> <span class="n">greeter</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">ActorRef</span><span class="o">[</span><span class="kt">HelloWorld.Greet</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="n">system</span><span class="o">.</span><span class="n">ask</span><span class="o">(</span><span class="nc">SpawnProtocol</span><span class="o">.</span><span class="nc">Spawn</span><span class="o">(</span><span class="n">behavior</span> <span class="k">=</span> <span class="nc">HelloWorld</span><span class="o">(),</span> <span class="n">name</span> <span class="k">=</span> <span class="s">&quot;greeter&quot;</span><span class="o">,</span> <span class="n">props</span> <span class="k">=</span> <span class="nc">Props</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span> <span class="k">_</span><span class="o">))</span>
+
+<span class="k">val</span> <span class="n">greetedBehavior</span> <span class="k">=</span> <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receive</span><span class="o">[</span><span class="kt">HelloWorld.Greeted</span><span class="o">]</span> <span class="o">{</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">message</span><span class="o">)</span> <span class="k">=&gt;</span>
+  <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info2</span><span class="o">(</span><span class="s">&quot;Greeting for {} from {}&quot;</span><span class="o">,</span> <span class="n">message</span><span class="o">.</span><span class="n">whom</span><span class="o">,</span> <span class="n">message</span><span class="o">.</span><span class="n">from</span><span class="o">)</span>
+  <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span>
+<span class="o">}</span>
+
+<span class="k">val</span> <span class="n">greetedReplyTo</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">ActorRef</span><span class="o">[</span><span class="kt">HelloWorld.Greeted</span><span class="o">]]</span> <span class="k">=</span>
+  <span class="n">system</span><span class="o">.</span><span class="n">ask</span><span class="o">(</span><span class="nc">SpawnProtocol</span><span class="o">.</span><span class="nc">Spawn</span><span class="o">(</span><span class="n">greetedBehavior</span><span class="o">,</span> <span class="n">name</span> <span class="k">=</span> <span class="s">&quot;&quot;</span><span class="o">,</span> <span class="n">props</span> <span class="k">=</span> <span class="nc">Props</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span> <span class="k">_</span><span class="o">))</span>
+
+<span class="k">for</span> <span class="o">(</span><span class="n">greeterRef</span> <span class="k">&lt;-</span> <span class="n">greeter</span><span class="o">;</span> <span class="n">replyToRef</span> <span class="k">&lt;-</span> <span class="n">greetedReplyTo</span><span class="o">)</span> <span class="o">{</span>
+  <span class="n">greeterRef</span> <span class="o">!</span> <span class="nc">HelloWorld</span><span class="o">.</span><span class="nc">Greet</span><span class="o">(</span><span class="s">&quot;Akka&quot;</span><span class="o">,</span> <span class="n">replyToRef</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>SpawnProtocol також можна використовувати в інших місцях в ієрархії акторів. Не обов’язково бути актором-кореневим опікуном.</p></div>
+<div class="paragraph"><p>Спосіб пошуку працюючих акторів описаний у відкритті Актора.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___4">Зупинка акторів</h3>
+<div class="paragraph"><p>Актор може зупинити себе, повернувши <code>Behaviors.stopped</code> як наступну поведінку.</p></div>
+<div class="paragraph"><p>Дитячого актора можна змусити зупинитись після того, як він закінчить обробляти своє поточне повідомлення, використовуючи метод зупинки <code>stop</code> <code>ActorContext</code> від батьківського актора. Тільки дитячі актори можуть бути зупинені таким чином.</p></div>
+<div class="paragraph"><p>Усі діти будуть зупинені, коли їх батька зупинено.</p></div>
+<div class="paragraph"><p>Коли актор зупиняється, він отримує сигнал <code>PostStop</code>, який можна використовувати для очищення ресурсів. Функція зворотного виклику може бути визначена як параметр <code>Behaviors.stopped</code> для обробки сигналу <code>PostStop</code> при витонченій зупинці. Це дозволяє застосовувати різні дії, коли виконання різко зупиняється.</p></div>
+<div class="paragraph"><p>Ось ілюструючий приклад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">akka.actor.typed.Behavior</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.Behaviors</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.</span><span class="o">{</span> <span class="nc">ActorSystem</span><span class="o">,</span> <span class="nc">PostStop</span> <span class="o">}</span>
+
+<span class="k">object</span> <span class="nc">MasterControlProgram</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">case</span> <span class="k">object</span> <span class="nc">GracefulShutdown</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="c1">// Визначена операція зачистки</span>
+  <span class="k">def</span> <span class="n">cleanup</span><span class="o">(</span><span class="n">log</span><span class="k">:</span> <span class="kt">Logger</span><span class="o">)</span><span class="k">:</span> <span class="kt">Unit</span> <span class="o">=</span> <span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Cleaning up!&quot;</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span>
+      <span class="o">.</span><span class="n">receive</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">message</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="n">message</span> <span class="k">match</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="n">jobName</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Spawning job {}!&quot;</span><span class="o">,</span> <span class="n">jobName</span><span class="o">)</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">Job</span><span class="o">(</span><span class="n">jobName</span><span class="o">),</span> <span class="n">name</span> <span class="k">=</span> <span class="n">jobName</span><span class="o">)</span>
+            <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+          <span class="k">case</span> <span class="nc">GracefulShutdown</span> <span class="k">=&gt;</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Initiating graceful shutdown...&quot;</span><span class="o">)</span>
+            <span class="c1">// м&#39;яка зупинка перед фінальною зупинкою</span>
+            <span class="c1">// поведінка очистки передана як параметр до Actor.stopped</span>
+            <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span> <span class="o">{</span> <span class="o">()</span> <span class="k">=&gt;</span>
+              <span class="n">cleanup</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">log</span><span class="o">)</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">receiveSignal</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="nc">PostStop</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Master Control Program stopped&quot;</span><span class="o">)</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">object</span> <span class="nc">Job</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveSignal</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="nc">PostStop</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Worker {} stopped&quot;</span><span class="o">,</span> <span class="n">name</span><span class="o">)</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">import</span> <span class="nn">MasterControlProgram._</span>
+
+<span class="k">val</span> <span class="n">system</span><span class="k">:</span> <span class="kt">ActorSystem</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span>
+    <span class="k">=</span> <span class="nc">ActorSystem</span><span class="o">(</span><span class="nc">MasterControlProgram</span><span class="o">(),</span> <span class="s">&quot;B7700&quot;</span><span class="o">)</span>
+
+<span class="n">system</span> <span class="o">!</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="s">&quot;a&quot;</span><span class="o">)</span>
+<span class="n">system</span> <span class="o">!</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="s">&quot;b&quot;</span><span class="o">)</span>
+
+<span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">)</span>
+
+<span class="c1">// м&#39;яка зупинка системи</span>
+<span class="n">system</span> <span class="o">!</span> <span class="nc">GracefulShutdown</span>
+
+<span class="nc">Thread</span><span class="o">.</span><span class="n">sleep</span><span class="o">(</span><span class="mi">100</span><span class="o">)</span>
+
+<span class="nc">Await</span><span class="o">.</span><span class="n">result</span><span class="o">(</span><span class="n">system</span><span class="o">.</span><span class="n">whenTerminated</span><span class="o">,</span> <span class="mf">3.</span><span class="n">seconds</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Під час очищення ресурсів від <code>PostStop</code> слід також розглянути можливість виконання того ж самого для сигналу <code>PreRestart</code>, який випромінюється при перезапуску актора. Зауважте, що <code>PostStop</code> не видається для перезавантаження.</p></div>
+</div>
+<div class="sect2">
+<h3 id="____3">Спостереження за акторами</h3>
+<div class="paragraph"><p>Для того, щоб отримувати повідомлення про припинення дії іншого актора (тобто припиняється постійно, а не тимчасової несправності та перезавантаження), актор може спостерігати іншого актора. Він отримає сигнал <code>Terminated</code> після припинення (див. Припинення акторів) актора під наглядом.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">MasterControlProgram</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span>
+      <span class="o">.</span><span class="n">receive</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">message</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="n">message</span> <span class="k">match</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="n">jobName</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Spawning job {}!&quot;</span><span class="o">,</span> <span class="n">jobName</span><span class="o">)</span>
+            <span class="k">val</span> <span class="n">job</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">Job</span><span class="o">(</span><span class="n">jobName</span><span class="o">),</span> <span class="n">name</span> <span class="k">=</span> <span class="n">jobName</span><span class="o">)</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">watch</span><span class="o">(</span><span class="n">job</span><span class="o">)</span>
+            <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">receiveSignal</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="nc">Terminated</span><span class="o">(</span><span class="n">ref</span><span class="o">))</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Job stopped: {}&quot;</span><span class="o">,</span> <span class="n">ref</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">name</span><span class="o">)</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Альтернативою для <code>watch</code> є <code>watchWith</code>, що дозволяє вказати користувальницьке повідомлення замість <code>Terminated</code>. Цьом часто надається перевага, ніж використанню <code>watch</code> та сигналу <code>Terminated</code>, оскільки в повідомлення може бути включена додаткова інформація, яка може бути використана пізніше при його отриманні.</p></div>
+<div class="paragraph"><p>Аналогічний приклад, як вище, але використовуючи <code>watchWith</code> та відповіді на початковий запитувач, коли робота закінчена.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">MasterControlProgram</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">replyToWhenDone</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">JobDone</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">JobDone</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+  <span class="k">private</span> <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">JobTerminated</span><span class="o">(</span><span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">replyToWhenDone</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">JobDone</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receive</span> <span class="o">{</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">message</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="n">message</span> <span class="k">match</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">SpawnJob</span><span class="o">(</span><span class="n">jobName</span><span class="o">,</span> <span class="n">replyToWhenDone</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Spawning job {}!&quot;</span><span class="o">,</span> <span class="n">jobName</span><span class="o">)</span>
+          <span class="k">val</span> <span class="n">job</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">Job</span><span class="o">(</span><span class="n">jobName</span><span class="o">),</span> <span class="n">name</span> <span class="k">=</span> <span class="n">jobName</span><span class="o">)</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">watchWith</span><span class="o">(</span><span class="n">job</span><span class="o">,</span> <span class="nc">JobTerminated</span><span class="o">(</span><span class="n">jobName</span><span class="o">,</span> <span class="n">replyToWhenDone</span><span class="o">))</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+        <span class="k">case</span> <span class="nc">JobTerminated</span><span class="o">(</span><span class="n">jobName</span><span class="o">,</span> <span class="n">replyToWhenDone</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Job stopped: {}&quot;</span><span class="o">,</span> <span class="n">jobName</span><span class="o">)</span>
+          <span class="n">replyToWhenDone</span> <span class="o">!</span> <span class="nc">JobDone</span><span class="o">(</span><span class="n">jobName</span><span class="o">)</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зверніть увагу, як <code>replyToWhenDone</code> включається до повідомлення <code>watchWith</code>, а потім використовується пізніше при отриманні повідомлення <code>JobTerminated</code>.</p></div>
+<div class="paragraph"><p>Спостерігаємим актором може бути будь-який <code>ActorRef</code>, не обов’язково бути дочірним актором, як у наведеному вище прикладі.</p></div>
+<div class="paragraph"><p>Слід зазначити, що <code>terminated</code> повідомлення формується незалежно від порядку, в якому відбувається реєстрація та припинення. Зокрема, спостерігаючий актор отримає повідомлення про припинення, навіть якщо спостерігаючий актор вже був припинений на момент реєстрації.</p></div>
+<div class="paragraph"><p>Реєстрація кілька разів не обов'язково призводить до створення декількох повідомлень, але немає гарантії, що буде отримано лише одне саме таке повідомлення: якщо припинення переглянутого актора генерувало та ставило в чергу повідомлення, а інша реєстрація робиться до того, як це повідомлення було дійсно оброблене, тоді друге повідомлення буде в черзі, тому що реєстрація для моніторингу вже закінченого актора призводить до негайного генерування повідомлення <code>terminated</code>.</p></div>
+<div class="paragraph"><p>Можливо також скасувати реєстрацію за переглядання жвавості іншого актора, використовуючи <code>context.unwatch(target)</code>. Це працює, навіть якщо повідомлення <code>terminated</code> вже зафіксовано у поштовій скриньці; після виклику <code>unatch</code> жодне припинене повідомлення для цього актора більше не буде оброблятися.</p></div>
+<div class="paragraph"><p>Повідомлення <code>terminated</code> також надсилається, коли спостерігаючий актор знаходиться на вузлі, видаленому з кластеру.</p></div>
 </div>
 </div>
 </div>
@@ -1099,7 +1146,7 @@ Note how the replyToWhenDone is included in the watchWith message and then used 
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-06-06 21:06:33 EEST
+ 2020-06-07 14:14:22 EEST
 </div>
 </div>
 </body>
