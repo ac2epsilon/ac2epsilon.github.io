@@ -19,17 +19,16 @@ libraryDependencies += "com.typesafe.akka" %% "akka-actor-typed" % "2.6.5"
 
 === Стріль і забудь
 
-The fundamental way to interact with an actor is through “tell”, which is so common that it has a special symbolic method name: actorRef ! message. Sending a message with tell can safely be done from any thread.
+Принциповий спосіб взаємодії з актором - це `tell`, що є настільки поширеним, що має спеціальну символічну назву методу: `actRef ! message`. Надіслати повідомлення з `tell` можна безпечно з будь-якого потоку. `tell` є асинхронним, що означає, що метод повертається відразу. Після виконання заяви немає гарантії, що одержувач ще не обробив повідомлення. Це також означає, що немає ніякого способу дізнатися, чи було повідомлення отримано, обробка вдалася чи не вдалася.
 
-Tell is asynchronous which means that the method returns right away. After the statement is executed there is no guarantee that the message has been processed by the recipient yet. It also means there is no way to know if the message was received, the processing succeeded or failed.
+Приклад:
 
-Example:
+image::fire-forget.png[]
 
-fire-forget.png
+За допомогою даного протоколу та поведінки актора:
 
-With the given protocol and actor behavior:
-
-Scala
+[source,scala]
+----
 object Printer {
 
   case class PrintMe(message: String)
@@ -41,29 +40,35 @@ object Printer {
         Behaviors.same
     }
 }
-Java
-Fire and forget looks like this:
+----
 
-Scala
+Стріль і забудь виглядає так:
+
+[source,scala]
+----
 val system = ActorSystem(Printer(), "fire-and-forget-sample")
 
-// note how the system is also the top level actor ref
+// зауважте, як система також є актором верхнього рівня ref
 val printer: ActorRef[Printer.PrintMe] = system
 
-// these are all fire and forget
+// це все стріль і забудь
 printer ! Printer.PrintMe("message 1")
 printer ! Printer.PrintMe("not message 2")
-Java
-Useful when:
+----
+
+===== Корисно, коли:
 
 It is not critical to be sure that the message was processed
 There is no way to act on non successful delivery or processing
 We want to minimize the number of messages created to get higher throughput (sending a response would require creating twice the number of messages)
-Problems:
+
+===== Проблеми:
 
 If the inflow of messages is higher than the actor can process the inbox will fill up and can in the worst case cause the JVM crash with an OutOfMemoryError
 If the message gets lost, the sender will not know
-Request-Response
+
+=== Request-Response
+
 Many interactions between actors require one or more response message being sent back from the receiving actor. A response message can be a result of a query, some form of acknowledgment that the message was received and processed or events that the request subscribed to.
 
 In Akka the recipient of responses has to be encoded as a field in the message itself, which the recipient can then use to send (tell) a response back.

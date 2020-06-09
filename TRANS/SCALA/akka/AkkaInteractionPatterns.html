@@ -815,44 +815,53 @@ asciidoc.install();
 </div>
 <div class="sect2">
 <h3 id="____2">Стріль і забудь</h3>
-<div class="paragraph"><p>The fundamental way to interact with an actor is through “tell”, which is so common that it has a special symbolic method name: actorRef ! message. Sending a message with tell can safely be done from any thread.</p></div>
-<div class="paragraph"><p>Tell is asynchronous which means that the method returns right away. After the statement is executed there is no guarantee that the message has been processed by the recipient yet. It also means there is no way to know if the message was received, the processing succeeded or failed.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>fire-forget.png</p></div>
-<div class="paragraph"><p>With the given protocol and actor behavior:</p></div>
-<div class="paragraph"><p>Scala
-object Printer {</p></div>
-<div class="literalblock">
+<div class="paragraph"><p>Принциповий спосіб взаємодії з актором - це <code>tell</code>, що є настільки поширеним, що має спеціальну символічну назву методу: <code>actRef ! message</code>. Надіслати повідомлення з <code>tell</code> можна безпечно з будь-якого потоку. <code>tell</code> є асинхронним, що означає, що метод повертається відразу. Після виконання заяви немає гарантії, що одержувач ще не обробив повідомлення. Це також означає, що немає ніякого способу дізнатися, чи було повідомлення отримано, обробка вдалася чи не вдалася.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>case class PrintMe(message: String)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(): Behavior[PrintMe] =
-    Behaviors.receive {
-      case (context, PrintMe(message)) =&gt;
-        context.log.info(message)
-        Behaviors.same
-    }
-}
-Java
-Fire and forget looks like this:</code></pre>
-</div></div>
-<div class="paragraph"><p>Scala
-val system = ActorSystem(Printer(), "fire-and-forget-sample")</p></div>
-<div class="paragraph"><p>val printer: ActorRef[Printer.PrintMe] = system</p></div>
-<div class="paragraph"><p>printer ! Printer.PrintMe("message 1")
-printer ! Printer.PrintMe("not message 2")
-Java
-Useful when:</p></div>
+<img src="fire-forget.png" alt="fire-forget.png" />
+</div>
+</div>
+<div class="paragraph"><p>За допомогою даного протоколу та поведінки актора:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Printer</span> <span class="o">{</span>
+
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">PrintMe</span><span class="o">(</span><span class="n">message</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">PrintMe</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receive</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="nc">PrintMe</span><span class="o">(</span><span class="n">message</span><span class="o">))</span> <span class="k">=&gt;</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="n">message</span><span class="o">)</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Стріль і забудь виглядає так:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">system</span> <span class="k">=</span> <span class="nc">ActorSystem</span><span class="o">(</span><span class="nc">Printer</span><span class="o">(),</span> <span class="s">&quot;fire-and-forget-sample&quot;</span><span class="o">)</span>
+
+<span class="c1">// зауважте, як система також є актором верхнього рівня ref</span>
+<span class="k">val</span> <span class="n">printer</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Printer.PrintMe</span><span class="o">]</span> <span class="k">=</span> <span class="n">system</span>
+
+<span class="c1">// це все стріль і забудь</span>
+<span class="n">printer</span> <span class="o">!</span> <span class="nc">Printer</span><span class="o">.</span><span class="nc">PrintMe</span><span class="o">(</span><span class="s">&quot;message 1&quot;</span><span class="o">)</span>
+<span class="n">printer</span> <span class="o">!</span> <span class="nc">Printer</span><span class="o">.</span><span class="nc">PrintMe</span><span class="o">(</span><span class="s">&quot;not message 2&quot;</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="sect4">
+<h5 id="___2">Корисно, коли:</h5>
 <div class="paragraph"><p>It is not critical to be sure that the message was processed
 There is no way to act on non successful delivery or processing
-We want to minimize the number of messages created to get higher throughput (sending a response would require creating twice the number of messages)
-Problems:</p></div>
+We want to minimize the number of messages created to get higher throughput (sending a response would require creating twice the number of messages)</p></div>
+</div>
+<div class="sect4">
+<h5 id="__2">Проблеми:</h5>
 <div class="paragraph"><p>If the inflow of messages is higher than the actor can process the inbox will fill up and can in the worst case cause the JVM crash with an OutOfMemoryError
-If the message gets lost, the sender will not know
-Request-Response
-Many interactions between actors require one or more response message being sent back from the receiving actor. A response message can be a result of a query, some form of acknowledgment that the message was received and processed or events that the request subscribed to.</p></div>
+If the message gets lost, the sender will not know</p></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_request_response">Request-Response</h3>
+<div class="paragraph"><p>Many interactions between actors require one or more response message being sent back from the receiving actor. A response message can be a result of a query, some form of acknowledgment that the message was received and processed or events that the request subscribed to.</p></div>
 <div class="paragraph"><p>In Akka the recipient of responses has to be encoded as a field in the message itself, which the recipient can then use to send (tell) a response back.</p></div>
 <div class="paragraph"><p>Example:</p></div>
 <div class="paragraph"><p>request-response.png</p></div>
@@ -1606,7 +1615,7 @@ A disadvantage is that a message adapter can’t be used so the response has to 
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-06-07 23:17:09 EEST
+ 2020-06-08 01:31:42 EEST
 </div>
 </div>
 </body>
