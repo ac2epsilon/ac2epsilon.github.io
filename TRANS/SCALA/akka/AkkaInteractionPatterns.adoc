@@ -64,58 +64,67 @@ printer ! Printer.PrintMe("not message 2")
 
 ===== Проблеми:
 
-If the inflow of messages is higher than the actor can process the inbox will fill up and can in the worst case cause the JVM crash with an OutOfMemoryError
-If the message gets lost, the sender will not know
+* Якщо приплив повідомлень в папку "Вхідні" більший, ніж актор може обробити, вона заповниться і, в гіршому випадку, може призвести до аварії JVM з `OutOfMemoryError`
+* Якщо повідомлення загубиться, відправник не дізнається про це
 
-=== Request-Response
+=== Запит-відповідь
 
-Many interactions between actors require one or more response message being sent back from the receiving actor. A response message can be a result of a query, some form of acknowledgment that the message was received and processed or events that the request subscribed to.
+Багато взаємодій між акторами вимагають відправлення одного або більше повідомлень відповіді від отримуючого актора. Повідомлення відповіді може бути результатом запиту, певної форми підтвердження того, що повідомлення було отримано та оброблено, або подій, на які підписувався запит.
 
-In Akka the recipient of responses has to be encoded as a field in the message itself, which the recipient can then use to send (tell) a response back.
+У Akka одержувач відповідей повинен бути закодований як поле у ​​самому повідомленні, яке одержувач може потім використати, щоб надіслати (`tell`) відповідь назад.
 
-Example:
+Приклад:
 
-request-response.png
+image::request-response.png[]
 
-With the following protocol:
+З наступним протоколом:
 
-Scala
+[source,scala]
+----
 case class Request(query: String, replyTo: ActorRef[Response])
 case class Response(result: String)
-Java
-The sender would use its own ActorRef[Response], which it can access through ActorContext.self, for the replyTo.
+----
 
-Scala
+Відправник буде використовувати свій власний `ActorRef[Response]`, до якого він може отримати доступ через `ActorContext.self`, для `replyTo`.
+
+[source,scala]
+----
 cookieFabric ! CookieFabric.Request("give me cookies", context.self)
-Java
-On the receiving side the ActorRef[Response] can then be used to send one or more responses back:
+----
 
-Scala
+На приймальній стороні `ActorRef[Response]` потім може бути використаний для надсилання однієї або декількох відповідей назад:
+
+[source,scala]
+----
 def apply(): Behaviors.Receive[Request] =
   Behaviors.receiveMessage[Request] {
     case Request(query, replyTo) =>
-      // ... process query ...
+      // ... обробити запит ...
       replyTo ! Response(s"Here are the cookies for [$query]!")
       Behaviors.same
   }
-Java
-Useful when:
+----
 
-Subscribing to an actor that will send many response messages back
-Problems:
+Корисно, коли:
 
-Actors seldom have a response message from another actor as a part of their protocol (see adapted response)
-It is hard to detect that a message request was not delivered or processed (see ask)
-Unless the protocol already includes a way to provide context, for example a request id that is also sent in the response, it is not possible to tie an interaction to some specific context without introducing a new, separate, actor (see ask or per session child actor)
-Adapted Response
-Most often the sending actor does not, and should not, support receiving the response messages of another actor. In such cases we need to provide an ActorRef of the right type and adapt the response message to a type that the sending actor can handle.
+* Треба підписатись на актора, який відправить назад багато відповідей
 
-Example:
+Проблеми:
 
-adapted-response.png
+* Актори рідко отримують відповідь від іншого актора у складі свого протоколу (див. Адаптовану відповідь)
+* Важко виявити, що запит на повідомлення не був доставлений чи оброблений (див.`ask`)
+* Якщо протокол вже не містить способу надання контексту, наприклад ідентифікатора запиту, який також надсилається у відповіді, неможливо прив’язати взаємодію до певного конкретного контексту без введення нового, окремого актора (див.`ask`)
 
-Scala
+=== Адаптований відповідь
 
+Найчастіше надсилаючий актор, не підтримує та не має підтримувати отримання повідомлення відповіді від іншого актора. У таких випадках нам потрібно надати `ActorRef` потрібного типу та адаптувати відповідь на тип, який може обробляти надсилаючий актор.
+
+Приклад:
+
+image::adapted-response.png[]
+
+[source,scala]
+----
 object Backend {
   sealed trait Request
   final case class StartTranslationJob(taskId: Int, site: URI, replyTo: ActorRef[Response]) extends Request
@@ -163,10 +172,11 @@ object Frontend {
       active(inProgress = Map.empty, count = 0)
     }
 }
-Java
-You can register several message adapters for different message classes. It’s only possible to have one message adapter per message class to make sure that the number of adapters are not growing unbounded if registered repeatedly. That also means that a registered adapter will replace an existing adapter for the same message class.
+----
 
-A message adapter will be used if the message class matches the given class or is a subclass thereof. The registered adapters are tried in reverse order of their registration order, i.e. the last registered first.
+Ви можете зареєструвати кілька адаптерів повідомлень для різних класів повідомлень. Для кожного класу повідомлень можливий лише один адаптер повідомлень, щоб переконатися, що кількість адаптерів не зростає без обмежень при повторній реєстрації. Це також означає, що зареєстрований адаптер замінить існуючий адаптер для того ж класу повідомлень.
+
+Адаптер повідомлень буде використовуватися, якщо клас повідомлень відповідає даному класу або є його підкласом. Зареєстровані адаптери випробовуються у зворотному порядку їх порядку реєстрації, тобто останній зареєстрований першим.
 
 A message adapter (and the returned ActorRef) has the same lifecycle as the receiving actor. It’s recommended to register the adapters in a top level Behaviors.setup or constructor of AbstractBehavior but it’s possible to register them later if needed.
 

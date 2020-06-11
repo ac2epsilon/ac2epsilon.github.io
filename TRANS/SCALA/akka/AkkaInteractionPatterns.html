@@ -869,107 +869,136 @@ asciidoc.install();
 </div>
 <div class="sect4">
 <h5 id="__2">Проблеми:</h5>
-<div class="paragraph"><p>If the inflow of messages is higher than the actor can process the inbox will fill up and can in the worst case cause the JVM crash with an OutOfMemoryError
-If the message gets lost, the sender will not know</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Якщо приплив повідомлень в папку "Вхідні" більший, ніж актор може обробити, вона заповниться і, в гіршому випадку, може призвести до аварії JVM з <code>OutOfMemoryError</code>
+</p>
+</li>
+<li>
+<p>
+Якщо повідомлення загубиться, відправник не дізнається про це
+</p>
+</li>
+</ul></div>
 </div>
 </div>
 <div class="sect2">
-<h3 id="_request_response">Request-Response</h3>
-<div class="paragraph"><p>Many interactions between actors require one or more response message being sent back from the receiving actor. A response message can be a result of a query, some form of acknowledgment that the message was received and processed or events that the request subscribed to.</p></div>
-<div class="paragraph"><p>In Akka the recipient of responses has to be encoded as a field in the message itself, which the recipient can then use to send (tell) a response back.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>request-response.png</p></div>
-<div class="paragraph"><p>With the following protocol:</p></div>
-<div class="paragraph"><p>Scala
-case class Request(query: String, replyTo: ActorRef[Response])
-case class Response(result: String)
-Java
-The sender would use its own ActorRef[Response], which it can access through ActorContext.self, for the replyTo.</p></div>
-<div class="paragraph"><p>Scala
-cookieFabric ! CookieFabric.Request("give me cookies", context.self)
-Java
-On the receiving side the ActorRef[Response] can then be used to send one or more responses back:</p></div>
-<div class="paragraph"><p>Scala
-def apply(): Behaviors.Receive[Request] =
-  Behaviors.receiveMessage[Request] {
-    case Request(query, replyTo) &#8658;
-      // &#8230; process query &#8230;
-      replyTo ! Response(s"Here are the cookies for [$query]!")
-      Behaviors.same
-  }
-Java
-Useful when:</p></div>
-<div class="paragraph"><p>Subscribing to an actor that will send many response messages back
-Problems:</p></div>
-<div class="paragraph"><p>Actors seldom have a response message from another actor as a part of their protocol (see adapted response)
-It is hard to detect that a message request was not delivered or processed (see ask)
-Unless the protocol already includes a way to provide context, for example a request id that is also sent in the response, it is not possible to tie an interaction to some specific context without introducing a new, separate, actor (see ask or per session child actor)
-Adapted Response
-Most often the sending actor does not, and should not, support receiving the response messages of another actor. In such cases we need to provide an ActorRef of the right type and adapt the response message to a type that the sending actor can handle.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>adapted-response.png</p></div>
-<div class="paragraph"><p>Scala</p></div>
-<div class="paragraph"><p>object Backend {
-  sealed trait Request
-  final case class StartTranslationJob(taskId: Int, site: URI, replyTo: ActorRef[Response]) extends Request</p></div>
-<div class="literalblock">
+<h3 id="___3">Запит-відповідь</h3>
+<div class="paragraph"><p>Багато взаємодій між акторами вимагають відправлення одного або більше повідомлень відповіді від отримуючого актора. Повідомлення відповіді може бути результатом запиту, певної форми підтвердження того, що повідомлення було отримано та оброблено, або подій, на які підписувався запит.</p></div>
+<div class="paragraph"><p>У Akka одержувач відповідей повинен бути закодований як поле у ​​самому повідомленні, яке одержувач може потім використати, щоб надіслати (<code>tell</code>) відповідь назад.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>  sealed trait Response
-  final case class JobStarted(taskId: Int) extends Response
-  final case class JobProgress(taskId: Int, progress: Double) extends Response
-  final case class JobCompleted(taskId: Int, result: URI) extends Response
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>object Frontend {</p></div>
-<div class="literalblock">
+<img src="request-response.png" alt="request-response.png" />
+</div>
+</div>
+<div class="paragraph"><p>З наступним протоколом:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">case</span> <span class="k">class</span> <span class="nc">Request</span><span class="o">(</span><span class="n">query</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Response</span><span class="o">])</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Response</span><span class="o">(</span><span class="n">result</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Відправник буде використовувати свій власний <code>ActorRef[Response]</code>, до якого він може отримати доступ через <code>ActorContext.self</code>, для <code>replyTo</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">cookieFabric</span> <span class="o">!</span> <span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">Request</span><span class="o">(</span><span class="s">&quot;give me cookies&quot;</span><span class="o">,</span> <span class="n">context</span><span class="o">.</span><span class="n">self</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>На приймальній стороні <code>ActorRef[Response]</code> потім може бути використаний для надсилання однієї або декількох відповідей назад:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behaviors.Receive</span><span class="o">[</span><span class="kt">Request</span><span class="o">]</span> <span class="k">=</span>
+  <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">[</span><span class="kt">Request</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="nc">Request</span><span class="o">(</span><span class="n">query</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="c1">// ... обробити запит ...</span>
+      <span class="n">replyTo</span> <span class="o">!</span> <span class="nc">Response</span><span class="o">(</span><span class="s">s&quot;Here are the cookies for [</span><span class="si">$query</span><span class="s">]!&quot;</span><span class="o">)</span>
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+  <span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Треба підписатись на актора, який відправить назад багато відповідей
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Актори рідко отримують відповідь від іншого актора у складі свого протоколу (див. Адаптовану відповідь)
+</p>
+</li>
+<li>
+<p>
+Важко виявити, що запит на повідомлення не був доставлений чи оброблений (див.<code>ask</code>)
+</p>
+</li>
+<li>
+<p>
+Якщо протокол вже не містить способу надання контексту, наприклад ідентифікатора запиту, який також надсилається у відповіді, неможливо прив’язати взаємодію до певного конкретного контексту без введення нового, окремого актора (див.<code>ask</code>)
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="___4">Адаптований відповідь</h3>
+<div class="paragraph"><p>Найчастіше надсилаючий актор, не підтримує та не має підтримувати отримання повідомлення відповіді від іншого актора. У таких випадках нам потрібно надати <code>ActorRef</code> потрібного типу та адаптувати відповідь на тип, який може обробляти надсилаючий актор.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>sealed trait Command
-final case class Translate(site: URI, replyTo: ActorRef[URI]) extends Command
-private final case class WrappedBackendResponse(response: Backend.Response) extends Command</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply(backend: ActorRef[Backend.Request]): Behavior[Command] =
-  Behaviors.setup[Command] { context =&gt;
-    val backendResponseMapper: ActorRef[Backend.Response] =
-      context.messageAdapter(rsp =&gt; WrappedBackendResponse(rsp))</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def active(inProgress: Map[Int, ActorRef[URI]], count: Int): Behavior[Command] = {
-  Behaviors.receiveMessage[Command] {
-    case Translate(site, replyTo) =&gt;
-      val taskId = count + 1
-      backend ! Backend.StartTranslationJob(taskId, site, backendResponseMapper)
-      active(inProgress.updated(taskId, replyTo), taskId)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    case wrapped: WrappedBackendResponse =&gt;
-      wrapped.response match {
-        case Backend.JobStarted(taskId) =&gt;
-          context.log.info("Started {}", taskId)
-          Behaviors.same
-        case Backend.JobProgress(taskId, progress) =&gt;
-          context.log.info2("Progress {}: {}", taskId, progress)
-          Behaviors.same
-        case Backend.JobCompleted(taskId, result) =&gt;
-          context.log.info2("Completed {}: {}", taskId, result)
-          inProgress(taskId) ! result
-          active(inProgress - taskId, count)
-      }
-  }
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>      active(inProgress = Map.empty, count = 0)
-    }
-}
-Java
-You can register several message adapters for different message classes. It’s only possible to have one message adapter per message class to make sure that the number of adapters are not growing unbounded if registered repeatedly. That also means that a registered adapter will replace an existing adapter for the same message class.</code></pre>
-</div></div>
-<div class="paragraph"><p>A message adapter will be used if the message class matches the given class or is a subclass thereof. The registered adapters are tried in reverse order of their registration order, i.e. the last registered first.</p></div>
+<img src="adapted-response.png" alt="adapted-response.png" />
+</div>
+</div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Backend</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Request</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">StartTranslationJob</span><span class="o">(</span><span class="n">taskId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">site</span><span class="k">:</span> <span class="kt">URI</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Response</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Request</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Response</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">JobStarted</span><span class="o">(</span><span class="n">taskId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Response</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">JobProgress</span><span class="o">(</span><span class="n">taskId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">progress</span><span class="k">:</span> <span class="kt">Double</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Response</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">JobCompleted</span><span class="o">(</span><span class="n">taskId</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">result</span><span class="k">:</span> <span class="kt">URI</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Response</span>
+<span class="o">}</span>
+
+<span class="k">object</span> <span class="nc">Frontend</span> <span class="o">{</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Translate</span><span class="o">(</span><span class="n">site</span><span class="k">:</span> <span class="kt">URI</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">URI</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">WrappedBackendResponse</span><span class="o">(</span><span class="n">response</span><span class="k">:</span> <span class="kt">Backend.Response</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">backend</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Backend.Request</span><span class="o">])</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">backendResponseMapper</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Backend.Response</span><span class="o">]</span> <span class="k">=</span>
+        <span class="n">context</span><span class="o">.</span><span class="n">messageAdapter</span><span class="o">(</span><span class="n">rsp</span> <span class="k">=&gt;</span> <span class="nc">WrappedBackendResponse</span><span class="o">(</span><span class="n">rsp</span><span class="o">))</span>
+
+      <span class="k">def</span> <span class="n">active</span><span class="o">(</span><span class="n">inProgress</span><span class="k">:</span> <span class="kt">Map</span><span class="o">[</span><span class="kt">Int</span><span class="p">,</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">URI</span><span class="o">]],</span> <span class="n">count</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">Translate</span><span class="o">(</span><span class="n">site</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="k">val</span> <span class="n">taskId</span> <span class="k">=</span> <span class="n">count</span> <span class="o">+</span> <span class="mi">1</span>
+            <span class="n">backend</span> <span class="o">!</span> <span class="nc">Backend</span><span class="o">.</span><span class="nc">StartTranslationJob</span><span class="o">(</span><span class="n">taskId</span><span class="o">,</span> <span class="n">site</span><span class="o">,</span> <span class="n">backendResponseMapper</span><span class="o">)</span>
+            <span class="n">active</span><span class="o">(</span><span class="n">inProgress</span><span class="o">.</span><span class="n">updated</span><span class="o">(</span><span class="n">taskId</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">),</span> <span class="n">taskId</span><span class="o">)</span>
+
+          <span class="k">case</span> <span class="n">wrapped</span><span class="k">:</span> <span class="kt">WrappedBackendResponse</span> <span class="o">=&gt;</span>
+            <span class="n">wrapped</span><span class="o">.</span><span class="n">response</span> <span class="k">match</span> <span class="o">{</span>
+              <span class="k">case</span> <span class="nc">Backend</span><span class="o">.</span><span class="nc">JobStarted</span><span class="o">(</span><span class="n">taskId</span><span class="o">)</span> <span class="k">=&gt;</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Started {}&quot;</span><span class="o">,</span> <span class="n">taskId</span><span class="o">)</span>
+                <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+              <span class="k">case</span> <span class="nc">Backend</span><span class="o">.</span><span class="nc">JobProgress</span><span class="o">(</span><span class="n">taskId</span><span class="o">,</span> <span class="n">progress</span><span class="o">)</span> <span class="k">=&gt;</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info2</span><span class="o">(</span><span class="s">&quot;Progress {}: {}&quot;</span><span class="o">,</span> <span class="n">taskId</span><span class="o">,</span> <span class="n">progress</span><span class="o">)</span>
+                <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+              <span class="k">case</span> <span class="nc">Backend</span><span class="o">.</span><span class="nc">JobCompleted</span><span class="o">(</span><span class="n">taskId</span><span class="o">,</span> <span class="n">result</span><span class="o">)</span> <span class="k">=&gt;</span>
+                <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info2</span><span class="o">(</span><span class="s">&quot;Completed {}: {}&quot;</span><span class="o">,</span> <span class="n">taskId</span><span class="o">,</span> <span class="n">result</span><span class="o">)</span>
+                <span class="n">inProgress</span><span class="o">(</span><span class="n">taskId</span><span class="o">)</span> <span class="o">!</span> <span class="n">result</span>
+                <span class="n">active</span><span class="o">(</span><span class="n">inProgress</span> <span class="o">-</span> <span class="n">taskId</span><span class="o">,</span> <span class="n">count</span><span class="o">)</span>
+            <span class="o">}</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="n">active</span><span class="o">(</span><span class="n">inProgress</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">.</span><span class="n">empty</span><span class="o">,</span> <span class="n">count</span> <span class="k">=</span> <span class="mi">0</span><span class="o">)</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Ви можете зареєструвати кілька адаптерів повідомлень для різних класів повідомлень. Для кожного класу повідомлень можливий лише один адаптер повідомлень, щоб переконатися, що кількість адаптерів не зростає без обмежень при повторній реєстрації. Це також означає, що зареєстрований адаптер замінить існуючий адаптер для того ж класу повідомлень.</p></div>
+<div class="paragraph"><p>Адаптер повідомлень буде використовуватися, якщо клас повідомлень відповідає даному класу або є його підкласом. Зареєстровані адаптери випробовуються у зворотному порядку їх порядку реєстрації, тобто останній зареєстрований першим.</p></div>
 <div class="paragraph"><p>A message adapter (and the returned ActorRef) has the same lifecycle as the receiving actor. It’s recommended to register the adapters in a top level Behaviors.setup or constructor of AbstractBehavior but it’s possible to register them later if needed.</p></div>
 <div class="paragraph"><p>The adapter function is running in the receiving actor and can safely access its state, but if it throws an exception the actor is stopped.</p></div>
 <div class="paragraph"><p>Useful when:</p></div>
@@ -1629,7 +1658,7 @@ A disadvantage is that a message adapter can’t be used so the response has to 
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-06-10 16:30:03 EEST
+ 2020-06-11 14:45:29 EEST
 </div>
 </div>
 </body>
