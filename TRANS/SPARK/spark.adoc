@@ -1,0 +1,235 @@
+include::header.adoc[]
+
+image::spark-logo-trademark.png[]
+
+= Apache Spark ™ - це уніфікований механізм аналітики для масштабної обробки даних.
+
+== Швидкість
+
+===== Виконуйте навантаження в 100 разів швидше.
+
+Apache Spark досягає високої продуктивності як для пакетних, так і потокових даних, використовуючи сучасний DAG-планувальник, оптимізатор запитів і механізм фізичного виконання.
+
+== Простота використання
+
+===== Швидко пишіть програми на Java, Scala, Python, R та SQL.
+
+Spark пропонує понад 80 операторів високого рівня, які спрощують створення паралельних додатків. І ви можете використовувати його інтерактивно з оболонок Scala, Python, R та SQL.
+
+== Загальність
+
+===== Поєднайте SQL, поточну та комплексну аналітику.
+
+Spark посилює стек бібліотек, включаючи SQL і DataFrames, MLlib для машинного навчання, GraphX ​​та Spark Streaming. Ви можете безперешкодно поєднувати ці бібліотеки в одній програмі.
+
+== Виконується будь-де
+
+===== Spark працює на Hadoop, Apache Mesos, Kubernetes, окремо або в хмарі. Він може отримати доступ до різноманітних джерел даних.
+
+Ви можете запустити Spark, використовуючи його окремий кластерний режим, на EC2, Hadoop YARN, Mesos або Kubernetes. Доступ до даних у форматі HDFS, Alluxio, Apache Cassandra, Apache HBase, Apache Hive та сотнях інших джерел даних.
+
+== Швидкий старт
+
+Цей підручник пропонує швидке ознайомлення з використанням Spark. Спочатку ми введемо API через інтерактивну оболонку Spark (у Python чи Scala), а потім покажемо, як писати програми на Java, Scala та Python.
+
+Щоб дотримуватися цього посібника, спочатку завантажте упакований випуск Spark з веб-сайту Spark. Оскільки ми не будемо використовувати HDFS, ви можете завантажити пакет для будь-якої версії Hadoop.
+
+Зауважте, що до Spark 2.0 основним інтерфейсом програмування Spark був стійкий розподілений набір даних (Resilient Distributed Dataset, RDD). Після Spark 2.0 RDD замінюються Dataset, який суворо типізований як RDD, але з більш багатими оптимізаціями за лаштунками. Інтерфейс RDD все ще підтримується, і ви можете отримати більш детальну інформацію в посібнику з програмування RDD. Однак ми настійно рекомендуємо перейти на використання Dataset, який має кращі показники, ніж RDD. Для отримання додаткової інформації про Dataset див. Посібник із програмування SQL.
+
+=== Безпека
+
+Безпека Spark за замовчуванням вимкнена. Це може означати, що ви вразливі до атаки за замовчуванням. Будь ласка, перегляньте безпеку Spark перед запуском Spark.
+
+=== Інтерактивний аналіз із оболонкою Spark
+
+==== Основи
+
+Оболонка Spark забезпечує простий спосіб вивчення API, а також потужний інструмент для інтерактивного аналізу даних. Він доступний або в Scala (який працює на Java VM, тому є хорошим способом використання існуючих бібліотек Java), або в Python. Почніть роботу, запустивши в каталозі Spark наступне:
+
+[source,bash]
+----
+./bin/spark-shell
+----
+
+Основна абстракція Spark - це розподілена колекція елементів, що називається Набір даних `Dataset`. Набори даних можна створити з Hadoop `InputFormats` (таких як файли HDFS) або шляхом перетворення інших наборів даних. Давайте зробимо новий набір даних із тексту файлу `README` у каталозі джерел Spark:
+
+[source,scala]
+----
+scala> val textFile = spark.read.textFile("README.md")
+textFile: org.apache.spark.sql.Dataset[String] = [value: string]
+----
+
+Ви можете отримати значення з Набору даних безпосередньо, викликавши виконня  деяких дій, або трансформуючи Набір даних, щоб отримати новий. Для отримання більш детальної інформації, будь ласка, ознайомтеся з документацією API.
+
+[source,scala]
+----
+scala> textFile.count() // Кількість елементів у цьому наборі даних
+res0: Long = 126 // Може відрізнятись від вашої, оскільки README.md змінюватиметься з часом, як і інші результати
+
+scala> textFile.first() // Перший елемент у цьому наборі даних
+res1: String = # Apache Spark
+----
+
+Тепер перетворимо цей набір даних у новий. Ми викликаємо фільтр, щоб повернути новий набір даних із підмножиною елементів у файлі.
+
+[source,scala]
+----
+scala> val linesWithSpark = textFile.filter(line => line.contains("Spark"))
+linesWithSpark: org.apache.spark.sql.Dataset[String] = [value: string]
+----
+
+Ми можемо поєднати трансформації та дії:
+
+[source,scala]
+----
+scala> textFile.filter(line => line.contains("Spark")).count() // Скільки рядків містить "Spark"?
+res3: Long = 15
+----
+
+==== Детальніше про операції з набором даних
+
+Дії та перетворення набору даних можна використовувати для більш складних обчислень. Скажімо, ми хочемо знайти рядок з найбільшою кількістю слів:
+
+[source,scala]
+----
+scala> textFile.map(line => line.split(" ").size).reduce((a, b) => if (a > b) a else b)
+res4: Long = 15
+----
+
+Першим виконується відображення рядка на ціле значення, створюючи новий набір даних. `reduce` визивається для цього набору даних, щоб знайти найбільшу кількість слів. Аргументи для `map` та `reduce` - це функціональні літерали Scala (замикання) і можуть використовувати будь-яку мовну функцію або бібліотеку Scala/Java. Наприклад, ми можемо легко викликати функції, оголошені в іншому місці. Ми будемо використовувати функцію `Math.max()`, щоб полегшити розуміння цього коду:
+
+[source,scala]
+----
+scala> import java.lang.Math
+import java.lang.Math
+
+scala> textFile.map(line => line.split(" ").size).reduce((a, b) => Math.max(a, b))
+res5: Int = 15
+----
+
+Однією поширеною схемою потоку даних є MapReduce, яку популяризує Hadoop. Spark може легко реалізувати потоки MapReduce:
+
+[source,scala]
+----
+scala> val wordCounts = textFile.flatMap(line => line.split(" ")).groupByKey(identity).count()
+wordCounts: org.apache.spark.sql.Dataset[(String, Long)] = [value: string, count(1): bigint]
+----
+
+Тут ми закликаємо `flatMap` для перетворення набору даних рядків у набір слів, а потім поєднуємо в `groupByKey` і підраховуємо, щоб обчислити кількість слів у файлі у вигляді набору даних з пар `(String, Long)`. Щоб зібрати кількість слів у нашій оболонці, ми можемо викликати `collect`:
+
+[source,scala]
+----
+scala> wordCounts.collect()
+res6: Array[(String, Int)] = Array((means,1), (under,2), (this,3), (Because,1), (Python,2), (agree,1), (cluster.,1), ...)
+----
+
+==== Кешування
+
+Spark також підтримує перетягування наборів даних у кеш-пам'ять, що є загальною для кластера. Це дуже корисно, коли до них звертаються неодноразово, наприклад, при запитах до невеликого "гарячого" набору даних або при запуску ітеративного алгоритму, наприклад `PageRank`. Як простий приклад, позначимо кешування нашого набору `linesWithSpark`:
+
+[source,scala]
+----
+scala> linesWithSpark.cache()
+res7: linesWithSpark.type = [value: string]
+
+scala> linesWithSpark.count()
+res8: Long = 15
+
+scala> linesWithSpark.count()
+res9: Long = 15
+----
+
+Може здатися нерозумним використання Spark для вивчення та кешування текстового файлу в 100 рядків. Цікава частина полягає в тому, що ці самі функції можна використовувати на дуже великих наборах даних, навіть коли вони поділені на десятки чи сотні вузлів. Ви також можете це зробити інтерактивно, підключивши `bin/spark-shell` до кластеру, як описано в посібнику з програмування RDD.
+
+==== Самозабезпечені програми
+
+Припустимо, ми хочемо написати автономну програму за допомогою API Spark. Ми розглянемо простий додаток у Scala (з sbt), Java (з Maven) та Python (pip).
+
+Ми створимо в Scala дуже простий додаток Spark - насправді настільки простий, що називається `SimpleApp.scala`:
+
+[source,scala]
+----
+/* SimpleApp.scala */
+import org.apache.spark.sql.SparkSession
+
+object SimpleApp {
+  def main(args: Array[String]) {
+    val logFile = "YOUR_SPARK_HOME/README.md" // Має бути якийсь файл у вашій системі
+    val spark = SparkSession.builder.appName("Simple Application").getOrCreate()
+    val logData = spark.read.textFile(logFile).cache()
+    val numAs = logData.filter(line => line.contains("a")).count()
+    val numBs = logData.filter(line => line.contains("b")).count()
+    println(s"Lines with a: $numAs, Lines with b: $numBs")
+    spark.stop()
+  }
+}
+----
+
+Зауважте, що програми повинні визначати метод `main()` замість розширення `scala.App`. Підкласи `scala.App` можуть працювати неправильно.
+
+Ця програма просто підраховує кількість рядків, що містять `"a"`, і число, що містить `"b"` в `Spark` `README`. Зауважте, що вам потрібно буде замінити `YOUR_SPARK_HOME` на місце, де встановлено Spark. На відміну від попередніх прикладів із оболонкою Spark, яка ініціалізує власну `SparkSession`, ми ініціалізуємо `SparkSession` як частину програми.
+
+Ми викликаємо `SparkSession.builder` щоб побудувати `[[SparkSession]]`, потім встановити ім'я програми та нарешті викликати `getOrCreate`, щоб отримати екземпляр `[[SparkSession]]`.
+
+Our application depends on the Spark API, so we’ll also include an sbt configuration file, build.sbt, which explains that Spark is a dependency. This file also adds a repository that Spark depends on:
+Наш додаток залежить від Spark API, тому ми також включимо файл конфігурації sbt, `build.sbt`, який пояснює, що Spark - це залежність. Цей файл також додає сховище, від якого залежить Spark:
+
+[source,sbt]
+----
+name := "Simple Project"
+
+version := "1.0"
+
+scalaVersion := "2.12.10"
+
+libraryDependencies += "org.apache.spark" %% "spark-sql" % "2.4.6"
+----
+
+Щоб sbt працював правильно, нам потрібно буде компонувати `SimpleApp.scala` і `build.sbt` відповідно до типової структури каталогів. Після того, як все буде на місці, ми можемо створити пакет JAR, що містить код програми, а потім використовувати сценарій `spark-submit` для запуску нашої програми.
+
+[source,bash]
+----
+# Скелет вашого каталогу повинен виглядати приблизно так
+$ find .
+.
+./build.sbt
+./src
+./src/main
+./src/main/scala
+./src/main/scala/SimpleApp.scala
+
+# Пакує jar, що містить ваше застосування
+$ sbt package
+...
+[info] Packaging {..}/{..}/target/scala-2.12/simple-project_2.12-1.0.jar
+
+# Використовуйте spark-submit, щоб запустити ваше застосування
+$ YOUR_SPARK_HOME/bin/spark-submit \
+  --class "SimpleApp" \
+  --master local[4] \
+  target/scala-2.12/simple-project_2.12-1.0.jar
+...
+Lines with a: 46, Lines with b: 23
+----
+
+=== Куди піти звідси
+
+Вітаємо з запуском першої програми Spark!
+
+Щоб отримати поглиблений огляд API, почніть з посібника з програмування RDD та керівництва з програмування SQL або перегляньте меню «Посібники з програмування» для інших компонентів.
+
+Для запуску програм на кластері перейдіть до огляду розгортання.
+
+Нарешті, Spark включає декілька зразків у каталозі прикладів (Scala, Java, Python, R). Ви можете запустити їх наступним чином:
+
+[source,scala]
+----
+# Для Scala та Java використовуйте run-example:
+./bin/run-example SparkPi
+
+# Для прикладів Python напряму використовуйте spark-submit:
+./bin/spark-submit examples/src/main/python/pi.py
+
+# For R examples, use spark-submit directly:
+# Для прикладів R напряму використовуйте spark-submit:
+./bin/spark-submit examples/src/main/r/dataframe.R
