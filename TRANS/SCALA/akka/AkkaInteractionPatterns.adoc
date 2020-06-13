@@ -193,18 +193,18 @@ object Frontend {
 * Лише одну адаптацію може бути здійснено для кожного типу відповідей, якщо зареєстровано нова, стара заміщується. Наприклад, різні цільові актори не можуть мати різну адаптацію, якщо вони використовують одні і ті ж типи відповідей, якщо деяке впівідношення не закодоване в самомоу повідомленні
 * Якщо протокол вже не містить способу надання контексту, наприклад, ідентифікатора запиту, який також надсилається у відповіді, неможливо прив’язати взаємодію до певного конкретного контексту без введення нового, окремого актора
 
-=== Запит-відповідь ask між двома суб'єктами
+=== Запит-відповідь ask між двома акторами
 
 У взаємодії, де є відображення 1: 1 між запитом та відповіддю, ми можемо використовувати `ask` у `ActorContext` для взаємодії з іншим актором.
 
-The interaction has two steps, first we need to construct the outgoing message, to do that we need an ActorRef[Response] to put as recipient in the outgoing message. The second step is to transform the successful Response or failure into a message that is part of the protocol of the sending actor.
-Взаємодія має два етапи: спочатку нам потрібно побудувати вихідне повідомлення; для цього нам потрібен `ActorRef[Response]`, який потрібно розмістити як одержувача у вихідному повідомленні. Другий крок - перетворення успішного Відповіді або відмови в повідомлення, яке є частиною протоколу актора, що відправляє.
+Взаємодія має два етапи: спочатку нам потрібно побудувати вихідне повідомлення; для цього нам потрібен `ActorRef[Response]`, який потрібно розмістити як одержувача у вихідному повідомленні. Другий крок - перетворення успішного `Response` або відмови в повідомлення, яке є частиною протоколу актора, що відправляє.
 
-Example:
+Приклад:
 
-ask-from-actor.png
+image::ask-from-actor.png[]
 
-Scala
+[source,scala]
+----
 object Hal {
   sealed trait Command
   case class OpenThePodBayDoorsPlease(replyTo: ActorRef[Response]) extends Command
@@ -221,28 +221,28 @@ object Hal {
 object Dave {
 
   sealed trait Command
-  // this is a part of the protocol that is internal to the actor itself
+  // це частина протоколу, яка є внутрішньою для самого актора
   private case class AdaptedResponse(message: String) extends Command
 
   def apply(hal: ActorRef[Hal.Command]): Behavior[Dave.Command] =
     Behaviors.setup[Command] { context =>
-      // asking someone requires a timeout, if the timeout hits without response
-      // the ask is failed with a TimeoutException
+      // запитання у когось вимагає тайм-ауту, якщо тайм-аут потрапляє без відповіді
+      // запит ask не вдається з TimeoutException
       implicit val timeout: Timeout = 3.seconds
 
-      // Note: The second parameter list takes a function `ActorRef[T] => Message`,
-      // as OpenThePodBayDoorsPlease is a case class it has a factory apply method
-      // that is what we are passing as the second parameter here it could also be written
-      // as `ref => OpenThePodBayDoorsPlease(ref)`
+      // Примітка. Другий список параметрів виконує функцію `ActorRef[T] => Message`,
+      // як OpenThePodBayDoorsPlease - кейс клас, він має фекторі метод apply
+      // це те, що ми передаємо як другий параметр, тут він також міг бути записаний
+      // як `ref => OpenThePodBayDoorsPlease (ref)`
       context.ask(hal, Hal.OpenThePodBayDoorsPlease) {
         case Success(Hal.Response(message)) => AdaptedResponse(message)
         case Failure(_)                     => AdaptedResponse("Request failed")
       }
 
-      // we can also tie in request context into an interaction, it is safe to look at
-      // actor internal state from the transformation function, but remember that it may have
-      // changed at the time the response arrives and the transformation is done, best is to
-      // use immutable state we have closed over like here.
+      // ми також можемо зв’язати в контексті запиту і взаємодію, це безпечно дивитись на
+      // внутрішній стан актора з функції перетворення, але пам’ятайте, що він може мати бути
+      // змінений під час надходження відповіді та трансформація вже зроблена. Найкраще - це
+      // використовувати незмінний стан, який ми зачинили, як тут.
       val requestId = 1
       context.ask(hal, Hal.OpenThePodBayDoorsPlease) {
         case Success(Hal.Response(message)) => AdaptedResponse(s"$requestId: $message")
@@ -250,38 +250,44 @@ object Dave {
       }
 
       Behaviors.receiveMessage {
-        // the adapted message ends up being processed like any other
-        // message sent to the actor
+        // адаптоване повідомлення в кінцевому підсумку обробляється, як і будь-яке інше
+        // повідомлення, надіслане акторові
         case AdaptedResponse(message) =>
           context.log.info("Got response from hal: {}", message)
           Behaviors.same
       }
     }
 }
-Java
-The response adapting function is running in the receiving actor and can safely access its state, but if it throws an exception the actor is stopped.
+----
 
-Useful when:
+Функція адаптації відповіді працює у приймаючому акторі і може безпечно отримувати доступ до свого стану, але якщо вона закидає виняток, актор зупиняється.
 
-Single response queries
-An actor needs to know that the message was processed before continuing
-To allow an actor to resend if a timely response is not produced
-To keep track of outstanding requests and not overwhelm a recipient with messages (“backpressure”)
-Context should be attached to the interaction but the protocol does not support that (request id, what query the response was for)
-Problems:
+Корисно, коли:
 
-There can only be a single response to one ask (see per session child Actor)
-When ask times out, the receiving actor does not know and may still process it to completion, or even start processing it after the fact
-Finding a good value for the timeout, especially when ask triggers chained asks in the receiving actor. You want a short timeout to be responsive and answer back to the requester, but at the same time you do not want to have many false positives
-Request-Response with ask from outside an Actor
-Sometimes you need to interact with actors from the outside of the actor system, this can be done with fire-and-forget as described above or through another version of ask that returns a Future[Response] that is either completed with a successful response or failed with a TimeoutException if there was no response within the specified timeout.
+* Поодинокі запити відповідей
+* Актору потрібно знати, що повідомлення було оброблено, перш ніж продовжувати
+* Дозволити акторові повторне надсилання, якщо не представлена своєчасна відповідь
+* Відстежувати невирішені запити та не переповнювати одержувача повідомленнями ("зворотний тиск")
+* Контекст повинен бути доданий до взаємодії, але протокол цього не підтримує (ідентифікатор запиту, на який запит була відповідь)
 
-To do this we use ask (or the symbolic ?) implicitly added to ActorRef by akka.actor.typed.scaladsl.AskPattern._ to send a message to an actor and get a Future[Response] back. ask takes implicit Timeout and ActorSystem parameters.
-Example:
+Проблеми:
 
-ask-from-outside.png
+* Існує лише одна відповідь на одне запитання
+* Коли `ask` виходить в тайм-аут, актор, що приймає, не знає і може все-таки обробити його до завершення або навіть почати обробляти його після факту
+* Пошук гарного значення для тайм-аута, особливо, коли тригери `ask` сціплюють `ask` у приймаючого актора. Ви хочете, щоб короткий час очікування був чуйним і відповідав запитувачу, але в той же час ви не хочете мати багато помилкових позитивів
 
-Scala
+=== Запит-відповідь із `ask` з-за меж актора
+
+Іноді вам потрібно взаємодіяти з акторами ззовні акторської системи, це може бути зроблено за допомогою стрільнути і забути, як описано вище, або за допомогою іншої версії `ask`, яка повертає `Future[Response]`, яке або завершено успішною відповіддю або не вдалося з `TimeoutException`, якщо не було відповіді протягом зазначеного часу.
+
+Для цього ми використовуємо `ask` (або символічний?), неявно додано до `ActorRef` `akka.actor.typed.scaladsl.AskPattern._`, щоб надіслати повідомлення актору і отримати назад `Future[Response]`. `ask` приймає неявні параметри `Timeout` та `ActorSystem`.
+
+Приклад:
+
+image::ask-from-outside.png[]
+
+[source,scala]
+----
 object CookieFabric {
   sealed trait Command {}
   case class GiveMeCookies(count: Int, replyTo: ActorRef[Reply]) extends Command
@@ -303,15 +309,15 @@ object CookieFabric {
 import akka.actor.typed.scaladsl.AskPattern._
 import akka.util.Timeout
 
-// asking someone requires a timeout if the timeout hits without response
-// the ask is failed with a TimeoutException
+// запитання когось вимагає тайм-аут, якщо тайм-аут досягнутий без відповіді
+// ask не вдається за допомогою TimeoutException
 implicit val timeout: Timeout = 3.seconds
-// implicit ActorSystem in scope
+// неявна ActorSystem в області застосування
 implicit val system: ActorSystem[_] = theSystem
 
 val result: Future[CookieFabric.Reply] = cookieFabric.ask(ref => CookieFabric.GiveMeCookies(3, ref))
 
-// the response callback will be executed on this execution context
+// зворотний виклик відповіді буде виконано в цьому контексті виконання
 implicit val ec = system.executionContext
 
 result.onComplete {
@@ -319,10 +325,12 @@ result.onComplete {
   case Success(CookieFabric.InvalidRequest(reason)) => println(s"No cookies for me. $reason")
   case Failure(ex)                                  => println(s"Boo! didn't get cookies: ${ex.getMessage}")
 }
-Java
-Note that validation errors are also explicit in the message protocol. The GiveMeCookies request can reply with Cookies or InvalidRequest. The requestor has to decide how to handle an InvalidRequest reply. Sometimes it should be treated as a failed Future and for that the reply can be mapped on the requestor side.
+----
 
-Scala
+Зауважте, що помилки перевірки також явні в протоколі повідомлень. Запит `GiveMeCookies` може відповісти за допомогою `Cookies` або `InvalidRequest`. Заявник повинен вирішити, як обробити відповідь `InvalidRequest`. Іноді це слід трактувати як невдале `FutureFuture`, і для цього відповідь може бути відображена на стороні запитувача.
+
+[source,scala]
+----
 val cookies: Future[CookieFabric.Cookies] =
   cookieFabric.ask[CookieFabric.Reply](ref => CookieFabric.GiveMeCookies(3, ref)).flatMap {
     case c: CookieFabric.Cookies             => Future.successful(c)
@@ -333,46 +341,55 @@ cookies.onComplete {
   case Success(CookieFabric.Cookies(count)) => println(s"Yay, $count cookies!")
   case Failure(ex)                          => println(s"Boo! didn't get cookies: ${ex.getMessage}")
 }
-Java
-Useful when:
+----
 
-Querying an actor from outside of the actor system
-Problems:
+Корисно, коли:
 
-It is easy to accidentally close over and unsafely mutable state with the callbacks on the returned Future as those will be executed on a different thread
-There can only be a single response to one ask (see per session child Actor)
-When ask times out, the receiving actor does not know and may still process it to completion, or even start processing it after the fact
-Ignoring replies
-In some situations an actor has a response for a particular request message but you are not interested in the response. In this case you can pass system.ignoreRef turning the request-response into a fire-and-forget.
+Запит на актора поза системою актора
 
-system.ignoreRef, as the name indicates, returns an ActorRef that ignores any message sent to it.
+Проблеми:
 
-With the same protocol as the request response above, if the sender would prefer to ignore the reply it could pass system.ignoreRef for the replyTo, which it can access through ActorContext.system.ignoreRef.
+* Легко випадково замкнутись і небезпечно змінити стан із зворотними викликами на поверненому Future, оскільки вони будуть виконані в іншому потоці
+* Існує лише одна відповідь на одне запитання
+* Коли `ask` отримує тайм-аут, отримуючий актор не знає, і може все-таки обробити його до завершення або навіть почати обробляти його після факту
 
-Scala
+=== Ігнорування відповідей
+
+У деяких ситуаціях актор отримує відповідь на певне повідомлення із запитом, але вас не цікавить відповідь. У цьому випадку ви можете передати `system.ignoreRef`, перетворивши запит-відповідь на стріль-та-забудь.
+
+`system.ignoreRef`, як вказує ім'я, повертає `ActorRef`, який ігнорує будь-яке повідомлення, надіслане до нього.
+
+За тим самим протоколом, що і запит-відповідь вище, якщо відправник вважає за краще ігнорувати відповідь, він може передавати `system.ignoreRef` для `replyTo`, до якого він може отримати доступ через `ActorContext.system.ignoreRef`.
+
+[source,scala]
+----
 cookieFabric ! CookieFabric.Request("don't send cookies back", context.system.ignoreRef)
-Java
-Useful when:
+----
 
-Sending a message for which the protocol defines a reply, but you are not interested in getting the reply
-Problems:
+Корисно, коли:
 
-The returned ActorRef ignores all messages sent to it, therefore it should be used carefully.
+* Треба надіслати повідомлення, на яке протокол визначає відповідь, але ви не зацікавлені в отриманні відповіді
 
-Passing it around inadvertently as if it was a normal ActorRef may result in broken actor-to-actor interactions.
-Using it when performing an ask from outside the Actor System will cause the Future returned by the ask to timeout since it will never complete.
-Finally, it’s legal to watch it, but since it’s of a special kind, it never terminates and therefore you will never receive a Terminated signal from it.
-Send Future result to self
-When using an API that returns a Future from an actor it’s common that you would like to use the value of the response in the actor when the Future is completed. For this purpose the ActorContext provides a pipeToSelf method.
+Проблеми:
 
-Example:
+Повернений `ActorRef` ігнорує всі надіслані йому повідомлення, тому його слід використовувати обережно.
 
-pipe-to-self.png
+* Якщо мимоволі передати його навколо, як би це був звичайний `ActorRef`, це може призвести до порушених взаємодій актор-актор.
+* Використання його під час виконання запиту поза Акторською системою призведе до того, що `Future` повернеться `ask` до тайм-ауту, оскільки він ніколи не завершиться.
+* Нарешті, законно спостерігати за ним, але оскільки це особливий різновид, він ніколи не припиняється, і тому ви ніколи не отримаєте від нього сигналу Terminated.
 
-An actor, CustomerRepository, is invoking a method on CustomerDataAccess that returns a Future.
+=== Надіслати результат Future самому собі
 
-Scala
+Під час використання API, який повертає `Future` від актора, звичайно, що ви хочете використовувати значення відповіді в акторі, коли майбутнє завершено. Для цього `ActorContext` забезпечує метод `pipeToSelf`.
 
+Приклад:
+
+image::pipe-to-self.png[]
+
+Актор, `CustomerRepository`, викликає метод `CustomerDataAccess`, який повертає майбутнє.
+
+[source,scala]
+----
 trait CustomerDataAccess {
   def update(value: Customer): Future[Done]
 }
@@ -405,11 +422,11 @@ object CustomerRepository {
           } else {
             val futureResult = dataAccess.update(value)
             context.pipeToSelf(futureResult) {
-              // map the Future value to a message, handled by this actor
+              // відображує значення Future до повідомлення, обробленого цим актором
               case Success(_) => WrappedUpdateResult(UpdateSuccess(value.id), replyTo)
               case Failure(e) => WrappedUpdateResult(UpdateFailure(value.id, e.getMessage), replyTo)
             }
-            // increase operationsInProgress counter
+            // збільшує operationsInProgress
             next(dataAccess, operationsInProgress + 1)
           }
 
@@ -422,35 +439,39 @@ object CustomerRepository {
     }
   }
 }
-Java
-It could be tempting to just use onComplete on the Future, but that introduces the risk of accessing internal state of the actor that is not thread-safe from an external thread. For example, the numberOfPendingOperations counter in above example can’t be accessed from such callback. Therefore it is better to map the result to a message and perform further processing when receiving that message.
+----
 
-Useful when:
+Може бути заманливо просто використовувати onComplete on the Future, але це вводить ризик доступу до внутрішнього стану актора, який не є безпечним для потоків із зовнішньої нитки. Наприклад, лічильник числаOfPendingOperations у наведеному вище прикладі не може отримати доступ до такого зворотного дзвінка. Тому краще відобразити результат на повідомлення та виконати подальшу обробку при отриманні цього повідомлення.
 
-Accessing APIs that are returning Future from an actor, such as a database or an external service
-The actor needs to continue processing when the Future has completed
-Keep context from the original request and use that when the Future has completed, for example an replyTo actor reference
-Problems:
+Корисно, коли:
 
-Boilerplate of adding wrapper messages for the results
-Per session child Actor
-In some cases a complete response to a request can only be created and sent back after collecting multiple answers from other actors. For these kinds of interaction it can be good to delegate the work to a per “session” child actor. The child could also contain arbitrary logic to implement retrying, failing on timeout, tail chopping, progress inspection etc.
+* Є доступ до API, які повертають `Future` від актора, наприклад, до бази даних чи зовнішньої служби
+* Актору потрібно продовжувати обробку, коли `Future` завершиться
+* Зберігається контекст від початкового запиту і використовується, коли `Future` завершиться, наприклад посилання актора `replyTo` 
 
-Note that this is essentially how ask is implemented, if all you need is a single response with a timeout it is better to use ask.
+Проблеми:
 
-The child is created with the context it needs to do the work, including an ActorRef that it can respond to. When the complete result is there the child responds with the result and stops itself.
+* Додавання обгорткових повідомлень для результатів
 
-As the protocol of the session actor is not a public API but rather an implementation detail of the parent actor, it may not always make sense to have an explicit protocol and adapt the messages of the actors that the session actor interacts with. For this use case it is possible to express that the actor can receive any message (Any).
+=== Один актор на сеанс
 
-Example:
+У деяких випадках повну відповідь на запит можна створити і надіслати назад лише після збору декількох відповідей від інших суб'єктів. Для таких видів взаємодії може бути корисним делегувати роботу на дитячого актора, по одному на сеанс. Дитина також може містити довільну логіку для здійснення повторних спроб, невдача по тайм-ауту, рубання хвоста, перевірка прогресу тощо
 
-per-session-child.png
+Зауважте, що це по суті те, як реалізується `ask`, якщо все, що вам потрібно, - це одна відповідь з таймаутом, краще використовувати `ask`.
 
-Scala
-// dummy data types just for this sample
+Дитина створена з контекстом, який їй потрібно виконати, включаючи `ActorRef`, на який вона може відповісти. Коли повний результат є, дитина реагує на результат і зупиняється на собі.
+
+Оскільки протокол актора сеансу не є загальнодоступним API, а, скоріше, деталізацією реалізації головного актора, не завжди має сенс мати чіткий протокол та адаптувати повідомлення учасників, з якими взаємодіє актор сеансу. Для цього випадку використання можна висловити, що актор може отримати будь-яке повідомлення (`Any`).
+
+Приклад:
+
+image::per-session-child.png[]
+
+[source,scala]
+----
+// фіктивні типи даних саме для цього зразка
 case class Keys()
 case class Wallet()
-
 
 object Home {
   sealed trait Command
@@ -470,28 +491,27 @@ object Home {
     }
   }
 
-  // per session actor behavior
+  // на кожний сеанс поведінки актора
   def prepareToLeaveHome(
       whoIsLeaving: String,
       replyTo: ActorRef[ReadyToLeaveHome],
       keyCabinet: ActorRef[KeyCabinet.GetKeys],
       drawer: ActorRef[Drawer.GetWallet]): Behavior[NotUsed] = {
-    // we don't _really_ care about the actor protocol here as nobody will send us
-    // messages except for responses to our queries, so we just accept any kind of message
-    // but narrow that to more limited types when we interact
-    Behaviors
+    // Нас не хвилює протокол актора, оскільки нам ніхто не надсилатиме
+    // повідомлення, крім відповідей на наші запити, тому ми просто приймаємо будь-яке повідомлення
+    // але звузити їх до більш обмежених типів, коли ми взаємодіємо з Behaviors
       .setup[AnyRef] { context =>
         var wallet: Option[Wallet] = None
         var keys: Option[Keys] = None
 
-        // we narrow the ActorRef type to any subtype of the actual type we accept
+// ми звужуємо тип ActorRef до будь-якого підтипу фактичного типу, який ми приймаємо
         keyCabinet ! KeyCabinet.GetKeys(whoIsLeaving, context.self.narrow[Keys])
         drawer ! Drawer.GetWallet(whoIsLeaving, context.self.narrow[Wallet])
 
         def nextBehavior(): Behavior[AnyRef] =
           (keys, wallet) match {
             case (Some(w), Some(k)) =>
-              // we got both, "session" is completed!
+              // у нас обоє, "сесія" завершена!
               replyTo ! ReadyToLeaveHome(whoIsLeaving, w, k)
               Behaviors.stopped
 
@@ -510,32 +530,37 @@ object Home {
             Behaviors.unhandled
         }
       }
-      .narrow[NotUsed] // we don't let anyone else know we accept anything
+      .narrow[NotUsed] // ми не даємо іншим знати, що ми щось приймаємо
   }
 }
-Java
-In an actual session child you would likely want to include some form of timeout as well (see scheduling messages to self).
+----
 
-Useful when:
+У дійсному сеансі дитина, ймовірно, захоче також включити певну форму таймауту (див. щодо планування повідомлень для себе).
 
-A single incoming request should result in multiple interactions with other actors before a result can be built, for example aggregation of several results
-You need to handle acknowledgement and retry messages for at-least-once delivery
-Problems:
+Корисно, коли:
 
-Children have life cycles that must be managed to not create a resource leak, it can be easy to miss a scenario where the session actor is not stopped
-It increases complexity, since each such child can execute concurrently with other children and the parent
-General purpose response aggregator
-This is similar to above Per session child Actor pattern. Sometimes you might end up repeating the same way of aggregating replies and want to extract that to a reusable actor.
+* Один вхідний запит повинен спричинити багаторазову взаємодію з іншими суб'єктами, перш ніж результат може бути побудований, наприклад, агрегування кількох результатів
+* Потрібно обробляти підтвердження та повторювати повідомлення хоча б раз на доставку
 
-There are many variations of this pattern and that is the reason this is provided as a documentation example rather than a built in Behavior in Akka. It is intended to be adjusted to your specific needs.
+Проблеми:
 
-Example:
+* Діти мають життєві цикли, якими потрібно керувати, щоб не створити витік ресурсів, легко можна пропустити сценарій, коли актор сеансу не зупиняється
+* Це збільшує складність, оскільки кожна така дитина може виконувати одночасно з іншими дітьми та батьком
 
-aggregator.png
+=== Агрегатор відповідей загального призначення
 
-This example is an aggregator of expected number of replies. Requests for quotes are sent with the given sendRequests function to the two hotel actors, which both speak different protocols. When both expected replies have been collected they are aggregated with the given aggregateReplies function and sent back to the replyTo. If replies don’t arrive within the timeout the replies so far are aggregated and sent back to the replyTo.
+Це схоже на вищезазначений малюнок Актор на сеанс. Іноді ви можете в кінцевому підсумку повторити той самий спосіб збирання відповідей і хочете витягнути це для актора, який може повторно використовуватись.
 
-Scala
+Існує багато варіацій цього шаблону, і саме тому це подано як приклад документації, а не вбудованої поведінки в Akka. Він призначений для адаптації до ваших конкретних потреб.
+
+Приклад:
+
+image::aggregator.png[]
+
+Цей приклад є агрегатором очікуваної кількості відповідей. Запити щодо пропозицій надсилаються із заданою функцією `sendRequests` двом акторам готелю, які обидва говорять за різними протоколами. Коли обидві очікувані відповіді будуть зібрані, вони агрегуються із заданою функцією агрегату `Replies` та повертаються до `replyTo`. Якщо відповіді не надходять у термін очікування, відповіді що зібрані надсилаються до `replyTo`.
+
+[source,scala]
+----
 object Hotel1 {
   final case class RequestQuote(replyTo: ActorRef[Quote])
   final case class Quote(hotel: String, price: BigDecimal)
@@ -545,7 +570,7 @@ object Hotel2 {
   final case class Price(hotel: String, price: BigDecimal)
 }
 
-// Any since no common type between Hotel1 and Hotel2
+// Any, оскільки немає загального типу між Hotel1 та Hotel2
 type Reply = Any
 
 object HotelCustomer {
@@ -553,7 +578,8 @@ object HotelCustomer {
   final case class Quote(hotel: String, price: BigDecimal)
   final case class AggregatedQuotes(quotes: List[Quote]) extends Command
 
-  def apply(hotel1: ActorRef[Hotel1.RequestQuote], hotel2: ActorRef[Hotel2.RequestPrice]): Behavior[Command] = {
+  def apply(hotel1: ActorRef[Hotel1.RequestQuote], 
+    hotel2: ActorRef[Hotel2.RequestPrice]): Behavior[Command] = {
 
     Behaviors.setup[Command] { context =>
       context.spawnAnonymous(
@@ -565,8 +591,8 @@ object HotelCustomer {
           expectedReplies = 2,
           context.self,
           aggregateReplies = replies =>
-            // The hotels have different protocols with different replies,
-            // convert them to `HotelCustomer.Quote` that this actor understands.
+            // Готелі мають різні протоколи з різними відповідями,
+            // конвертуйте їх у `HotelCustomer.Quote`, що цей актор розуміє.
             AggregatedQuotes(
               replies
                 .map {
@@ -585,10 +611,12 @@ object HotelCustomer {
     }
   }
 }
-Java
-The implementation of the Aggregator:
+----
 
-Scala
+Реалізація агрегатора:
+
+[source,scala]
+----
 import scala.collection.immutable
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
@@ -637,19 +665,23 @@ object Aggregator {
   }
 
 }
-Java
-Useful when:
+----
 
-Aggregating replies are performed in the same way at multiple places and should be extracted to a more general purpose actor.
-A single incoming request should result in multiple interactions with other actors before a result can be built, for example aggregation of several results
-You need to handle acknowledgement and retry messages for at-least-once delivery
-Problems:
+Корисно, коли:
 
-Message protocols with generic types are difficult since the generic types are erased in runtime
-Children have life cycles that must be managed to not create a resource leak, it can be easy to miss a scenario where the session actor is not stopped
-It increases complexity, since each such child can execute concurrently with other children and the parent
-Latency tail chopping
-This is a variation of above General purpose response aggregator pattern.
+* Агрегуючі відповіді виконуються однаково в декількох місцях і повинні бути вилучені для актора більш загального призначення.
+* Один вхідний запит повинен спричинити багаторазову взаємодію з іншими суб'єктами, перш ніж результат може бути побудований, наприклад, агрегування кількох результатів
+* Потрібно обробляти підтвердження та повторювати повідомлення для доставки хоча б раз
+
+Проблеми:
+
+* Протоколи повідомлень із загальними типами є складними, оскільки загальні типи стираються під час виконання
+* Діти мають життєві цикли, якими потрібно керувати, щоб не створити витік ресурсів, може легко пропустити сценарій, коли актор сеансу не зупиняється
+* Це збільшує складність, оскільки кожна така дитина може виконувати одночасно з іншими дітьми та батьком
+
+=== Рубання хвоста затримки
+
+Це варіація вищезазначеної схеми агрегатора відповідей загального призначення.
 
 The goal of this algorithm is to decrease tail latencies (“chop off the tail latency”) in situations where multiple destination actors can perform the same piece of work, and where an actor may occasionally respond more slowly than expected. In this case, sending the same work request (also known as a “backup request”) to another actor results in decreased response time - because it’s less probable that multiple actors are under heavy load simultaneously. This technique is explained in depth in Jeff Dean’s presentation on Achieving Rapid Response Times in Large Online Services.
 

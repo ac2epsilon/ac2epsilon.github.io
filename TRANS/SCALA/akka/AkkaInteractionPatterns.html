@@ -1034,454 +1034,586 @@ asciidoc.install();
 </ul></div>
 </div>
 <div class="sect2">
-<h3 id="___ask____">Запит-відповідь ask між двома суб'єктами</h3>
+<h3 id="___ask___">Запит-відповідь ask між двома акторами</h3>
 <div class="paragraph"><p>У взаємодії, де є відображення 1: 1 між запитом та відповіддю, ми можемо використовувати <code>ask</code> у <code>ActorContext</code> для взаємодії з іншим актором.</p></div>
-<div class="paragraph"><p>The interaction has two steps, first we need to construct the outgoing message, to do that we need an ActorRef[Response] to put as recipient in the outgoing message. The second step is to transform the successful Response or failure into a message that is part of the protocol of the sending actor.
-Взаємодія має два етапи: спочатку нам потрібно побудувати вихідне повідомлення; для цього нам потрібен <code>ActorRef[Response]</code>, який потрібно розмістити як одержувача у вихідному повідомленні. Другий крок - перетворення успішного Відповіді або відмови в повідомлення, яке є частиною протоколу актора, що відправляє.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>ask-from-actor.png</p></div>
-<div class="paragraph"><p>Scala
-object Hal {
-  sealed trait Command
-  case class OpenThePodBayDoorsPlease(replyTo: ActorRef[Response]) extends Command
-  case class Response(message: String)</p></div>
-<div class="literalblock">
+<div class="paragraph"><p>Взаємодія має два етапи: спочатку нам потрібно побудувати вихідне повідомлення; для цього нам потрібен <code>ActorRef[Response]</code>, який потрібно розмістити як одержувача у вихідному повідомленні. Другий крок - перетворення успішного <code>Response</code> або відмови в повідомлення, яке є частиною протоколу актора, що відправляє.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>  def apply(): Behaviors.Receive[Hal.Command] =
-    Behaviors.receiveMessage[Command] {
-      case OpenThePodBayDoorsPlease(replyTo) =&gt;
-        replyTo ! Response("I'm sorry, Dave. I'm afraid I can't do that.")
-        Behaviors.same
-    }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>object Dave {</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sealed trait Command
-// this is a part of the protocol that is internal to the actor itself
-private case class AdaptedResponse(message: String) extends Command</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply(hal: ActorRef[Hal.Command]): Behavior[Dave.Command] =
-  Behaviors.setup[Command] { context =&gt;
-    // asking someone requires a timeout, if the timeout hits without response
-    // the ask is failed with a TimeoutException
-    implicit val timeout: Timeout = 3.seconds</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>// Note: The second parameter list takes a function `ActorRef[T] =&gt; Message`,
-// as OpenThePodBayDoorsPlease is a case class it has a factory apply method
-// that is what we are passing as the second parameter here it could also be written
-// as `ref =&gt; OpenThePodBayDoorsPlease(ref)`
-context.ask(hal, Hal.OpenThePodBayDoorsPlease) {
-  case Success(Hal.Response(message)) =&gt; AdaptedResponse(message)
-  case Failure(_)                     =&gt; AdaptedResponse("Request failed")
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>// we can also tie in request context into an interaction, it is safe to look at
-// actor internal state from the transformation function, but remember that it may have
-// changed at the time the response arrives and the transformation is done, best is to
-// use immutable state we have closed over like here.
-val requestId = 1
-context.ask(hal, Hal.OpenThePodBayDoorsPlease) {
-  case Success(Hal.Response(message)) =&gt; AdaptedResponse(s"$requestId: $message")
-  case Failure(_)                     =&gt; AdaptedResponse(s"$requestId: Request failed")
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>      Behaviors.receiveMessage {
-        // the adapted message ends up being processed like any other
-        // message sent to the actor
-        case AdaptedResponse(message) =&gt;
-          context.log.info("Got response from hal: {}", message)
-          Behaviors.same
-      }
-    }
-}
-Java
-The response adapting function is running in the receiving actor and can safely access its state, but if it throws an exception the actor is stopped.</code></pre>
-</div></div>
-<div class="paragraph"><p>Useful when:</p></div>
-<div class="paragraph"><p>Single response queries
-An actor needs to know that the message was processed before continuing
-To allow an actor to resend if a timely response is not produced
-To keep track of outstanding requests and not overwhelm a recipient with messages (“backpressure”)
-Context should be attached to the interaction but the protocol does not support that (request id, what query the response was for)
-Problems:</p></div>
-<div class="paragraph"><p>There can only be a single response to one ask (see per session child Actor)
-When ask times out, the receiving actor does not know and may still process it to completion, or even start processing it after the fact
-Finding a good value for the timeout, especially when ask triggers chained asks in the receiving actor. You want a short timeout to be responsive and answer back to the requester, but at the same time you do not want to have many false positives
-Request-Response with ask from outside an Actor
-Sometimes you need to interact with actors from the outside of the actor system, this can be done with fire-and-forget as described above or through another version of ask that returns a Future[Response] that is either completed with a successful response or failed with a TimeoutException if there was no response within the specified timeout.</p></div>
-<div class="paragraph"><p>To do this we use ask (or the symbolic ?) implicitly added to ActorRef by akka.actor.typed.scaladsl.AskPattern._ to send a message to an actor and get a Future[Response] back. ask takes implicit Timeout and ActorSystem parameters.
-Example:</p></div>
-<div class="paragraph"><p>ask-from-outside.png</p></div>
-<div class="paragraph"><p>Scala
-object CookieFabric {
-  sealed trait Command {}
-  case class GiveMeCookies(count: Int, replyTo: ActorRef[Reply]) extends Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sealed trait Reply
-case class Cookies(count: Int) extends Reply
-case class InvalidRequest(reason: String) extends Reply</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(): Behaviors.Receive[CookieFabric.GiveMeCookies] =
-    Behaviors.receiveMessage { message =&gt;
-      if (message.count &gt;= 5)
-        message.replyTo ! InvalidRequest("Too many cookies.")
-      else
-        message.replyTo ! Cookies(message.count)
-      Behaviors.same
-    }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>import akka.actor.typed.scaladsl.AskPattern._
-import akka.util.Timeout</p></div>
-<div class="paragraph"><p>implicit val timeout: Timeout = 3.seconds
+<img src="ask-from-actor.png" alt="ask-from-actor.png" />
+</div>
+</div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Hal</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">OpenThePodBayDoorsPlease</span><span class="o">(</span><span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Response</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">Response</span><span class="o">(</span><span class="n">message</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
 
-implicit val system: ActorSystem[_] = theSystem</p></div>
-<div class="paragraph"><p>val result: Future[CookieFabric.Reply] = cookieFabric.ask(ref &#8658; CookieFabric.GiveMeCookies(3, ref))</p></div>
-<div class="paragraph"><p>implicit val ec = system.executionContext</p></div>
-<div class="paragraph"><p>result.onComplete {
-  case Success(CookieFabric.Cookies(count))         &#8658; println(s"Yay, $count cookies!")
-  case Success(CookieFabric.InvalidRequest(reason)) &#8658; println(s"No cookies for me. $reason")
-  case Failure(ex)                                  &#8658; println(s"Boo! didn&#8217;t get cookies: ${ex.getMessage}")
-}
-Java
-Note that validation errors are also explicit in the message protocol. The GiveMeCookies request can reply with Cookies or InvalidRequest. The requestor has to decide how to handle an InvalidRequest reply. Sometimes it should be treated as a failed Future and for that the reply can be mapped on the requestor side.</p></div>
-<div class="paragraph"><p>Scala
-val cookies: Future[CookieFabric.Cookies] =
-  cookieFabric.ask[CookieFabric.Reply](ref &#8658; CookieFabric.GiveMeCookies(3, ref)).flatMap {
-    case c: CookieFabric.Cookies             &#8658; Future.successful(c)
-    case CookieFabric.InvalidRequest(reason) &#8658; Future.failed(new IllegalArgumentException(reason))
-  }</p></div>
-<div class="paragraph"><p>cookies.onComplete {
-  case Success(CookieFabric.Cookies(count)) &#8658; println(s"Yay, $count cookies!")
-  case Failure(ex)                          &#8658; println(s"Boo! didn&#8217;t get cookies: ${ex.getMessage}")
-}
-Java
-Useful when:</p></div>
-<div class="paragraph"><p>Querying an actor from outside of the actor system
-Problems:</p></div>
-<div class="paragraph"><p>It is easy to accidentally close over and unsafely mutable state with the callbacks on the returned Future as those will be executed on a different thread
-There can only be a single response to one ask (see per session child Actor)
-When ask times out, the receiving actor does not know and may still process it to completion, or even start processing it after the fact
-Ignoring replies
-In some situations an actor has a response for a particular request message but you are not interested in the response. In this case you can pass system.ignoreRef turning the request-response into a fire-and-forget.</p></div>
-<div class="paragraph"><p>system.ignoreRef, as the name indicates, returns an ActorRef that ignores any message sent to it.</p></div>
-<div class="paragraph"><p>With the same protocol as the request response above, if the sender would prefer to ignore the reply it could pass system.ignoreRef for the replyTo, which it can access through ActorContext.system.ignoreRef.</p></div>
-<div class="paragraph"><p>Scala
-cookieFabric ! CookieFabric.Request("don&#8217;t send cookies back", context.system.ignoreRef)
-Java
-Useful when:</p></div>
-<div class="paragraph"><p>Sending a message for which the protocol defines a reply, but you are not interested in getting the reply
-Problems:</p></div>
-<div class="paragraph"><p>The returned ActorRef ignores all messages sent to it, therefore it should be used carefully.</p></div>
-<div class="paragraph"><p>Passing it around inadvertently as if it was a normal ActorRef may result in broken actor-to-actor interactions.
-Using it when performing an ask from outside the Actor System will cause the Future returned by the ask to timeout since it will never complete.
-Finally, it’s legal to watch it, but since it’s of a special kind, it never terminates and therefore you will never receive a Terminated signal from it.
-Send Future result to self
-When using an API that returns a Future from an actor it’s common that you would like to use the value of the response in the actor when the Future is completed. For this purpose the ActorContext provides a pipeToSelf method.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>pipe-to-self.png</p></div>
-<div class="paragraph"><p>An actor, CustomerRepository, is invoking a method on CustomerDataAccess that returns a Future.</p></div>
-<div class="paragraph"><p>Scala</p></div>
-<div class="paragraph"><p>trait CustomerDataAccess {
-  def update(value: Customer): Future[Done]
-}</p></div>
-<div class="paragraph"><p>final case class Customer(id: String, version: Long, name: String, address: String)</p></div>
-<div class="paragraph"><p>object CustomerRepository {
-  sealed trait Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>final case class Update(value: Customer, replyTo: ActorRef[UpdateResult]) extends Command
-sealed trait UpdateResult
-final case class UpdateSuccess(id: String) extends UpdateResult
-final case class UpdateFailure(id: String, reason: String) extends UpdateResult
-private final case class WrappedUpdateResult(result: UpdateResult, replyTo: ActorRef[UpdateResult])
-    extends Command</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>private val MaxOperationsInProgress = 10</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply(dataAccess: CustomerDataAccess): Behavior[Command] = {
-  next(dataAccess, operationsInProgress = 0)
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>private def next(dataAccess: CustomerDataAccess, operationsInProgress: Int): Behavior[Command] = {
-  Behaviors.receive { (context, command) =&gt;
-    command match {
-      case Update(value, replyTo) =&gt;
-        if (operationsInProgress == MaxOperationsInProgress) {
-          replyTo ! UpdateFailure(value.id, s"Max $MaxOperationsInProgress concurrent operations supported")
-          Behaviors.same
-        } else {
-          val futureResult = dataAccess.update(value)
-          context.pipeToSelf(futureResult) {
-            // map the Future value to a message, handled by this actor
-            case Success(_) =&gt; WrappedUpdateResult(UpdateSuccess(value.id), replyTo)
-            case Failure(e) =&gt; WrappedUpdateResult(UpdateFailure(value.id, e.getMessage), replyTo)
-          }
-          // increase operationsInProgress counter
-          next(dataAccess, operationsInProgress + 1)
-        }</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>        case WrappedUpdateResult(result, replyTo) =&gt;
-          // send result to original requestor
-          replyTo ! result
-          // decrease operationsInProgress counter
-          next(dataAccess, operationsInProgress - 1)
-      }
-    }
-  }
-}
-Java
-It could be tempting to just use onComplete on the Future, but that introduces the risk of accessing internal state of the actor that is not thread-safe from an external thread. For example, the numberOfPendingOperations counter in above example can’t be accessed from such callback. Therefore it is better to map the result to a message and perform further processing when receiving that message.</code></pre>
-</div></div>
-<div class="paragraph"><p>Useful when:</p></div>
-<div class="paragraph"><p>Accessing APIs that are returning Future from an actor, such as a database or an external service
-The actor needs to continue processing when the Future has completed
-Keep context from the original request and use that when the Future has completed, for example an replyTo actor reference
-Problems:</p></div>
-<div class="paragraph"><p>Boilerplate of adding wrapper messages for the results
-Per session child Actor
-In some cases a complete response to a request can only be created and sent back after collecting multiple answers from other actors. For these kinds of interaction it can be good to delegate the work to a per “session” child actor. The child could also contain arbitrary logic to implement retrying, failing on timeout, tail chopping, progress inspection etc.</p></div>
-<div class="paragraph"><p>Note that this is essentially how ask is implemented, if all you need is a single response with a timeout it is better to use ask.</p></div>
-<div class="paragraph"><p>The child is created with the context it needs to do the work, including an ActorRef that it can respond to. When the complete result is there the child responds with the result and stops itself.</p></div>
-<div class="paragraph"><p>As the protocol of the session actor is not a public API but rather an implementation detail of the parent actor, it may not always make sense to have an explicit protocol and adapt the messages of the actors that the session actor interacts with. For this use case it is possible to express that the actor can receive any message (Any).</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>per-session-child.png</p></div>
-<div class="paragraph"><p>Scala
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behaviors.Receive</span><span class="o">[</span><span class="kt">Hal.Command</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">OpenThePodBayDoorsPlease</span><span class="o">(</span><span class="n">replyTo</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="n">replyTo</span> <span class="o">!</span> <span class="nc">Response</span><span class="o">(</span><span class="s">&quot;I&#39;m sorry, Dave. I&#39;m afraid I can&#39;t do that.&quot;</span><span class="o">)</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+    <span class="o">}</span>
+<span class="o">}</span>
 
-case class Keys()
-case class Wallet()</p></div>
-<div class="paragraph"><p>object Home {
-  sealed trait Command
-  case class LeaveHome(who: String, replyTo: ActorRef[ReadyToLeaveHome]) extends Command
-  case class ReadyToLeaveHome(who: String, keys: Keys, wallet: Wallet)</p></div>
-<div class="literalblock">
+<span class="k">object</span> <span class="nc">Dave</span> <span class="o">{</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="c1">// це частина протоколу, яка є внутрішньою для самого актора</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">AdaptedResponse</span><span class="o">(</span><span class="n">message</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">hal</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Hal.Command</span><span class="o">])</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Dave.Command</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="c1">// запитання у когось вимагає тайм-ауту, якщо тайм-аут потрапляє без відповіді</span>
+      <span class="c1">// запит ask не вдається з TimeoutException</span>
+      <span class="k">implicit</span> <span class="k">val</span> <span class="n">timeout</span><span class="k">:</span> <span class="kt">Timeout</span> <span class="o">=</span> <span class="mf">3.</span><span class="n">seconds</span>
+
+      <span class="c1">// Примітка. Другий список параметрів виконує функцію `ActorRef[T] =&gt; Message`,</span>
+      <span class="c1">// як OpenThePodBayDoorsPlease - кейс клас, він має фекторі метод apply</span>
+      <span class="c1">// це те, що ми передаємо як другий параметр, тут він також міг бути записаний</span>
+      <span class="c1">// як `ref =&gt; OpenThePodBayDoorsPlease (ref)`</span>
+      <span class="n">context</span><span class="o">.</span><span class="n">ask</span><span class="o">(</span><span class="n">hal</span><span class="o">,</span> <span class="nc">Hal</span><span class="o">.</span><span class="nc">OpenThePodBayDoorsPlease</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="nc">Hal</span><span class="o">.</span><span class="nc">Response</span><span class="o">(</span><span class="n">message</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="nc">AdaptedResponse</span><span class="o">(</span><span class="n">message</span><span class="o">)</span>
+        <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="k">_</span><span class="o">)</span>                     <span class="k">=&gt;</span> <span class="nc">AdaptedResponse</span><span class="o">(</span><span class="s">&quot;Request failed&quot;</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="c1">// ми також можемо зв’язати в контексті запиту і взаємодію, це безпечно дивитись на</span>
+      <span class="c1">// внутрішній стан актора з функції перетворення, але пам’ятайте, що він може мати бути</span>
+      <span class="c1">// змінений під час надходження відповіді та трансформація вже зроблена. Найкраще - це</span>
+      <span class="c1">// використовувати незмінний стан, який ми зачинили, як тут.</span>
+      <span class="k">val</span> <span class="n">requestId</span> <span class="k">=</span> <span class="mi">1</span>
+      <span class="n">context</span><span class="o">.</span><span class="n">ask</span><span class="o">(</span><span class="n">hal</span><span class="o">,</span> <span class="nc">Hal</span><span class="o">.</span><span class="nc">OpenThePodBayDoorsPlease</span><span class="o">)</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="nc">Hal</span><span class="o">.</span><span class="nc">Response</span><span class="o">(</span><span class="n">message</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="nc">AdaptedResponse</span><span class="o">(</span><span class="s">s&quot;</span><span class="si">$requestId</span><span class="s">: </span><span class="si">$message</span><span class="s">&quot;</span><span class="o">)</span>
+        <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="k">_</span><span class="o">)</span>                     <span class="k">=&gt;</span> <span class="nc">AdaptedResponse</span><span class="o">(</span><span class="s">s&quot;</span><span class="si">$requestId</span><span class="s">: Request failed&quot;</span><span class="o">)</span>
+      <span class="o">}</span>
+
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span>
+        <span class="c1">// адаптоване повідомлення в кінцевому підсумку обробляється, як і будь-яке інше</span>
+        <span class="c1">// повідомлення, надіслане акторові</span>
+        <span class="k">case</span> <span class="nc">AdaptedResponse</span><span class="o">(</span><span class="n">message</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Got response from hal: {}&quot;</span><span class="o">,</span> <span class="n">message</span><span class="o">)</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Функція адаптації відповіді працює у приймаючому акторі і може безпечно отримувати доступ до свого стану, але якщо вона закидає виняток, актор зупиняється.</p></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Поодинокі запити відповідей
+</p>
+</li>
+<li>
+<p>
+Актору потрібно знати, що повідомлення було оброблено, перш ніж продовжувати
+</p>
+</li>
+<li>
+<p>
+Дозволити акторові повторне надсилання, якщо не представлена своєчасна відповідь
+</p>
+</li>
+<li>
+<p>
+Відстежувати невирішені запити та не переповнювати одержувача повідомленнями ("зворотний тиск")
+</p>
+</li>
+<li>
+<p>
+Контекст повинен бути доданий до взаємодії, але протокол цього не підтримує (ідентифікатор запиту, на який запит була відповідь)
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Існує лише одна відповідь на одне запитання
+</p>
+</li>
+<li>
+<p>
+Коли <code>ask</code> виходить в тайм-аут, актор, що приймає, не знає і може все-таки обробити його до завершення або навіть почати обробляти його після факту
+</p>
+</li>
+<li>
+<p>
+Пошук гарного значення для тайм-аута, особливо, коли тригери <code>ask</code> сціплюють <code>ask</code> у приймаючого актора. Ви хочете, щоб короткий час очікування був чуйним і відповідав запитувачу, але в той же час ви не хочете мати багато помилкових позитивів
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="____code_ask_code____">Запит-відповідь із <code>ask</code> з-за меж актора</h3>
+<div class="paragraph"><p>Іноді вам потрібно взаємодіяти з акторами ззовні акторської системи, це може бути зроблено за допомогою стрільнути і забути, як описано вище, або за допомогою іншої версії <code>ask</code>, яка повертає <code>Future[Response]</code>, яке або завершено успішною відповіддю або не вдалося з <code>TimeoutException</code>, якщо не було відповіді протягом зазначеного часу.</p></div>
+<div class="paragraph"><p>Для цього ми використовуємо <code>ask</code> (або символічний?), неявно додано до <code>ActorRef</code> <code>akka.actor.typed.scaladsl.AskPattern._</code>, щоб надіслати повідомлення актору і отримати назад <code>Future[Response]</code>. <code>ask</code> приймає неявні параметри <code>Timeout</code> та <code>ActorSystem</code>.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>def apply(): Behavior[Command] = {
-  Behaviors.setup[Command] { context =&gt;
-    val keyCabinet: ActorRef[KeyCabinet.GetKeys] = context.spawn(KeyCabinet(), "key-cabinet")
-    val drawer: ActorRef[Drawer.GetWallet] = context.spawn(Drawer(), "drawer")</code></pre>
-</div></div>
-<div class="literalblock">
+<img src="ask-from-outside.png" alt="ask-from-outside.png" />
+</div>
+</div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">CookieFabric</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span> <span class="o">{}</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">GiveMeCookies</span><span class="o">(</span><span class="n">count</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Reply</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Reply</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">Cookies</span><span class="o">(</span><span class="n">count</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Reply</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">InvalidRequest</span><span class="o">(</span><span class="n">reason</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Reply</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behaviors.Receive</span><span class="o">[</span><span class="kt">CookieFabric.GiveMeCookies</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span> <span class="n">message</span> <span class="k">=&gt;</span>
+      <span class="k">if</span> <span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">count</span> <span class="o">&gt;=</span> <span class="mi">5</span><span class="o">)</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">replyTo</span> <span class="o">!</span> <span class="nc">InvalidRequest</span><span class="o">(</span><span class="s">&quot;Too many cookies.&quot;</span><span class="o">)</span>
+      <span class="k">else</span>
+        <span class="n">message</span><span class="o">.</span><span class="n">replyTo</span> <span class="o">!</span> <span class="nc">Cookies</span><span class="o">(</span><span class="n">message</span><span class="o">.</span><span class="n">count</span><span class="o">)</span>
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.AskPattern._</span>
+<span class="k">import</span> <span class="nn">akka.util.Timeout</span>
+
+<span class="c1">// запитання когось вимагає тайм-аут, якщо тайм-аут досягнутий без відповіді</span>
+<span class="c1">// ask не вдається за допомогою TimeoutException</span>
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">timeout</span><span class="k">:</span> <span class="kt">Timeout</span> <span class="o">=</span> <span class="mf">3.</span><span class="n">seconds</span>
+<span class="c1">// неявна ActorSystem в області застосування</span>
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">system</span><span class="k">:</span> <span class="kt">ActorSystem</span><span class="o">[</span><span class="k">_</span><span class="o">]</span> <span class="k">=</span> <span class="n">theSystem</span>
+
+<span class="k">val</span> <span class="n">result</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">CookieFabric.Reply</span><span class="o">]</span> <span class="k">=</span> <span class="n">cookieFabric</span><span class="o">.</span><span class="n">ask</span><span class="o">(</span><span class="n">ref</span> <span class="k">=&gt;</span> <span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">GiveMeCookies</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="n">ref</span><span class="o">))</span>
+
+<span class="c1">// зворотний виклик відповіді буде виконано в цьому контексті виконання</span>
+<span class="k">implicit</span> <span class="k">val</span> <span class="n">ec</span> <span class="k">=</span> <span class="n">system</span><span class="o">.</span><span class="n">executionContext</span>
+
+<span class="n">result</span><span class="o">.</span><span class="n">onComplete</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">Cookies</span><span class="o">(</span><span class="n">count</span><span class="o">))</span>         <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;Yay, </span><span class="si">$count</span><span class="s"> cookies!&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">InvalidRequest</span><span class="o">(</span><span class="n">reason</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;No cookies for me. </span><span class="si">$reason</span><span class="s">&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span>                                  <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;Boo! didn&#39;t get cookies: </span><span class="si">${</span><span class="n">ex</span><span class="o">.</span><span class="n">getMessage</span><span class="si">}</span><span class="s">&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Зауважте, що помилки перевірки також явні в протоколі повідомлень. Запит <code>GiveMeCookies</code> може відповісти за допомогою <code>Cookies</code> або <code>InvalidRequest</code>. Заявник повинен вирішити, як обробити відповідь <code>InvalidRequest</code>. Іноді це слід трактувати як невдале <code>FutureFuture</code>, і для цього відповідь може бути відображена на стороні запитувача.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">val</span> <span class="n">cookies</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">CookieFabric.Cookies</span><span class="o">]</span> <span class="k">=</span>
+  <span class="n">cookieFabric</span><span class="o">.</span><span class="n">ask</span><span class="o">[</span><span class="kt">CookieFabric.Reply</span><span class="o">](</span><span class="n">ref</span> <span class="k">=&gt;</span> <span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">GiveMeCookies</span><span class="o">(</span><span class="mi">3</span><span class="o">,</span> <span class="n">ref</span><span class="o">)).</span><span class="n">flatMap</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">c</span><span class="k">:</span> <span class="kt">CookieFabric.Cookies</span>             <span class="o">=&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">successful</span><span class="o">(</span><span class="n">c</span><span class="o">)</span>
+    <span class="k">case</span> <span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">InvalidRequest</span><span class="o">(</span><span class="n">reason</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Future</span><span class="o">.</span><span class="n">failed</span><span class="o">(</span><span class="k">new</span> <span class="nc">IllegalArgumentException</span><span class="o">(</span><span class="n">reason</span><span class="o">))</span>
+  <span class="o">}</span>
+
+<span class="n">cookies</span><span class="o">.</span><span class="n">onComplete</span> <span class="o">{</span>
+  <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">Cookies</span><span class="o">(</span><span class="n">count</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;Yay, </span><span class="si">$count</span><span class="s"> cookies!&quot;</span><span class="o">)</span>
+  <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">ex</span><span class="o">)</span>                          <span class="k">=&gt;</span> <span class="n">println</span><span class="o">(</span><span class="s">s&quot;Boo! didn&#39;t get cookies: </span><span class="si">${</span><span class="n">ex</span><span class="o">.</span><span class="n">getMessage</span><span class="si">}</span><span class="s">&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="paragraph"><p>Запит на актора поза системою актора</p></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Легко випадково замкнутись і небезпечно змінити стан із зворотними викликами на поверненому Future, оскільки вони будуть виконані в іншому потоці
+</p>
+</li>
+<li>
+<p>
+Існує лише одна відповідь на одне запитання
+</p>
+</li>
+<li>
+<p>
+Коли <code>ask</code> отримує тайм-аут, отримуючий актор не знає, і може все-таки обробити його до завершення або навіть почати обробляти його після факту
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="___5">Ігнорування відповідей</h3>
+<div class="paragraph"><p>У деяких ситуаціях актор отримує відповідь на певне повідомлення із запитом, але вас не цікавить відповідь. У цьому випадку ви можете передати <code>system.ignoreRef</code>, перетворивши запит-відповідь на стріль-та-забудь.</p></div>
+<div class="paragraph"><p><code>system.ignoreRef</code>, як вказує ім'я, повертає <code>ActorRef</code>, який ігнорує будь-яке повідомлення, надіслане до нього.</p></div>
+<div class="paragraph"><p>За тим самим протоколом, що і запит-відповідь вище, якщо відправник вважає за краще ігнорувати відповідь, він може передавати <code>system.ignoreRef</code> для <code>replyTo</code>, до якого він може отримати доступ через <code>ActorContext.system.ignoreRef</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="n">cookieFabric</span> <span class="o">!</span> <span class="nc">CookieFabric</span><span class="o">.</span><span class="nc">Request</span><span class="o">(</span><span class="s">&quot;don&#39;t send cookies back&quot;</span><span class="o">,</span> <span class="n">context</span><span class="o">.</span><span class="n">system</span><span class="o">.</span><span class="n">ignoreRef</span><span class="o">)</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Треба надіслати повідомлення, на яке протокол визначає відповідь, але ви не зацікавлені в отриманні відповіді
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="paragraph"><p>Повернений <code>ActorRef</code> ігнорує всі надіслані йому повідомлення, тому його слід використовувати обережно.</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Якщо мимоволі передати його навколо, як би це був звичайний <code>ActorRef</code>, це може призвести до порушених взаємодій актор-актор.
+</p>
+</li>
+<li>
+<p>
+Використання його під час виконання запиту поза Акторською системою призведе до того, що <code>Future</code> повернеться <code>ask</code> до тайм-ауту, оскільки він ніколи не завершиться.
+</p>
+</li>
+<li>
+<p>
+Нарешті, законно спостерігати за ним, але оскільки це особливий різновид, він ніколи не припиняється, і тому ви ніколи не отримаєте від нього сигналу Terminated.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="___future__">Надіслати результат Future самому собі</h3>
+<div class="paragraph"><p>Під час використання API, який повертає <code>Future</code> від актора, звичайно, що ви хочете використовувати значення відповіді в акторі, коли майбутнє завершено. Для цього <code>ActorContext</code> забезпечує метод <code>pipeToSelf</code>.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>    Behaviors.receiveMessage[Command] {
-      case LeaveHome(who, replyTo) =&gt;
-        context.spawn(prepareToLeaveHome(who, replyTo, keyCabinet, drawer), s"leaving-$who")
-        Behaviors.same
-    }
-  }
-}</code></pre>
-</div></div>
-<div class="literalblock">
+<img src="pipe-to-self.png" alt="pipe-to-self.png" />
+</div>
+</div>
+<div class="paragraph"><p>Актор, <code>CustomerRepository</code>, викликає метод <code>CustomerDataAccess</code>, який повертає майбутнє.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">trait</span> <span class="nc">CustomerDataAccess</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">update</span><span class="o">(</span><span class="n">value</span><span class="k">:</span> <span class="kt">Customer</span><span class="o">)</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Done</span><span class="o">]</span>
+<span class="o">}</span>
+
+<span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Customer</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">version</span><span class="k">:</span> <span class="kt">Long</span><span class="o">,</span> <span class="n">name</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">address</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+<span class="k">object</span> <span class="nc">CustomerRepository</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Update</span><span class="o">(</span><span class="n">value</span><span class="k">:</span> <span class="kt">Customer</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">UpdateResult</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">UpdateResult</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">UpdateSuccess</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">UpdateResult</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">UpdateFailure</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">reason</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">UpdateResult</span>
+  <span class="k">private</span> <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">WrappedUpdateResult</span><span class="o">(</span><span class="n">result</span><span class="k">:</span> <span class="kt">UpdateResult</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">UpdateResult</span><span class="o">])</span>
+      <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">private</span> <span class="k">val</span> <span class="nc">MaxOperationsInProgress</span> <span class="k">=</span> <span class="mi">10</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">dataAccess</span><span class="k">:</span> <span class="kt">CustomerDataAccess</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="n">next</span><span class="o">(</span><span class="n">dataAccess</span><span class="o">,</span> <span class="n">operationsInProgress</span> <span class="k">=</span> <span class="mi">0</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">next</span><span class="o">(</span><span class="n">dataAccess</span><span class="k">:</span> <span class="kt">CustomerDataAccess</span><span class="o">,</span> <span class="n">operationsInProgress</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receive</span> <span class="o">{</span> <span class="o">(</span><span class="n">context</span><span class="o">,</span> <span class="n">command</span><span class="o">)</span> <span class="k">=&gt;</span>
+      <span class="n">command</span> <span class="k">match</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">Update</span><span class="o">(</span><span class="n">value</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">operationsInProgress</span> <span class="o">==</span> <span class="nc">MaxOperationsInProgress</span><span class="o">)</span> <span class="o">{</span>
+            <span class="n">replyTo</span> <span class="o">!</span> <span class="nc">UpdateFailure</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="n">id</span><span class="o">,</span> <span class="s">s&quot;Max </span><span class="si">$MaxOperationsInProgress</span><span class="s"> concurrent operations supported&quot;</span><span class="o">)</span>
+            <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+          <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="k">val</span> <span class="n">futureResult</span> <span class="k">=</span> <span class="n">dataAccess</span><span class="o">.</span><span class="n">update</span><span class="o">(</span><span class="n">value</span><span class="o">)</span>
+            <span class="n">context</span><span class="o">.</span><span class="n">pipeToSelf</span><span class="o">(</span><span class="n">futureResult</span><span class="o">)</span> <span class="o">{</span>
+              <span class="c1">// відображує значення Future до повідомлення, обробленого цим актором</span>
+              <span class="k">case</span> <span class="nc">Success</span><span class="o">(</span><span class="k">_</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">WrappedUpdateResult</span><span class="o">(</span><span class="nc">UpdateSuccess</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="n">id</span><span class="o">),</span> <span class="n">replyTo</span><span class="o">)</span>
+              <span class="k">case</span> <span class="nc">Failure</span><span class="o">(</span><span class="n">e</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">WrappedUpdateResult</span><span class="o">(</span><span class="nc">UpdateFailure</span><span class="o">(</span><span class="n">value</span><span class="o">.</span><span class="n">id</span><span class="o">,</span> <span class="n">e</span><span class="o">.</span><span class="n">getMessage</span><span class="o">),</span> <span class="n">replyTo</span><span class="o">)</span>
+            <span class="o">}</span>
+            <span class="c1">// збільшує operationsInProgress</span>
+            <span class="n">next</span><span class="o">(</span><span class="n">dataAccess</span><span class="o">,</span> <span class="n">operationsInProgress</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+          <span class="o">}</span>
+
+        <span class="k">case</span> <span class="nc">WrappedUpdateResult</span><span class="o">(</span><span class="n">result</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="c1">// send result to original requestor</span>
+          <span class="n">replyTo</span> <span class="o">!</span> <span class="n">result</span>
+          <span class="c1">// decrease operationsInProgress counter</span>
+          <span class="n">next</span><span class="o">(</span><span class="n">dataAccess</span><span class="o">,</span> <span class="n">operationsInProgress</span> <span class="o">-</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Може бути заманливо просто використовувати onComplete on the Future, але це вводить ризик доступу до внутрішнього стану актора, який не є безпечним для потоків із зовнішньої нитки. Наприклад, лічильник числаOfPendingOperations у наведеному вище прикладі не може отримати доступ до такого зворотного дзвінка. Тому краще відобразити результат на повідомлення та виконати подальшу обробку при отриманні цього повідомлення.</p></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Є доступ до API, які повертають <code>Future</code> від актора, наприклад, до бази даних чи зовнішньої служби
+</p>
+</li>
+<li>
+<p>
+Актору потрібно продовжувати обробку, коли <code>Future</code> завершиться
+</p>
+</li>
+<li>
+<p>
+Зберігається контекст від початкового запиту і використовується, коли <code>Future</code> завершиться, наприклад посилання актора <code>replyTo</code>
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Додавання обгорткових повідомлень для результатів
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="____">Один актор на сеанс</h3>
+<div class="paragraph"><p>У деяких випадках повну відповідь на запит можна створити і надіслати назад лише після збору декількох відповідей від інших суб'єктів. Для таких видів взаємодії може бути корисним делегувати роботу на дитячого актора, по одному на сеанс. Дитина також може містити довільну логіку для здійснення повторних спроб, невдача по тайм-ауту, рубання хвоста, перевірка прогресу тощо</p></div>
+<div class="paragraph"><p>Зауважте, що це по суті те, як реалізується <code>ask</code>, якщо все, що вам потрібно, - це одна відповідь з таймаутом, краще використовувати <code>ask</code>.</p></div>
+<div class="paragraph"><p>Дитина створена з контекстом, який їй потрібно виконати, включаючи <code>ActorRef</code>, на який вона може відповісти. Коли повний результат є, дитина реагує на результат і зупиняється на собі.</p></div>
+<div class="paragraph"><p>Оскільки протокол актора сеансу не є загальнодоступним API, а, скоріше, деталізацією реалізації головного актора, не завжди має сенс мати чіткий протокол та адаптувати повідомлення учасників, з якими взаємодіє актор сеансу. Для цього випадку використання можна висловити, що актор може отримати будь-яке повідомлення (<code>Any</code>).</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>// per session actor behavior
-def prepareToLeaveHome(
-    whoIsLeaving: String,
-    replyTo: ActorRef[ReadyToLeaveHome],
-    keyCabinet: ActorRef[KeyCabinet.GetKeys],
-    drawer: ActorRef[Drawer.GetWallet]): Behavior[NotUsed] = {
-  // we don't _really_ care about the actor protocol here as nobody will send us
-  // messages except for responses to our queries, so we just accept any kind of message
-  // but narrow that to more limited types when we interact
-  Behaviors
-    .setup[AnyRef] { context =&gt;
-      var wallet: Option[Wallet] = None
-      var keys: Option[Keys] = None</code></pre>
-</div></div>
-<div class="literalblock">
+<img src="per-session-child.png" alt="per-session-child.png" />
+</div>
+</div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// фіктивні типи даних саме для цього зразка</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Keys</span><span class="o">()</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Wallet</span><span class="o">()</span>
+
+<span class="k">object</span> <span class="nc">Home</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">LeaveHome</span><span class="o">(</span><span class="n">who</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">ReadyToLeaveHome</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">case</span> <span class="k">class</span> <span class="nc">ReadyToLeaveHome</span><span class="o">(</span><span class="n">who</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">keys</span><span class="k">:</span> <span class="kt">Keys</span><span class="o">,</span> <span class="n">wallet</span><span class="k">:</span> <span class="kt">Wallet</span><span class="o">)</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="k">val</span> <span class="n">keyCabinet</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">KeyCabinet.GetKeys</span><span class="o">]</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">KeyCabinet</span><span class="o">(),</span> <span class="s">&quot;key-cabinet&quot;</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">drawer</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Drawer.GetWallet</span><span class="o">]</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="nc">Drawer</span><span class="o">(),</span> <span class="s">&quot;drawer&quot;</span><span class="o">)</span>
+
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">LeaveHome</span><span class="o">(</span><span class="n">who</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">spawn</span><span class="o">(</span><span class="n">prepareToLeaveHome</span><span class="o">(</span><span class="n">who</span><span class="o">,</span> <span class="n">replyTo</span><span class="o">,</span> <span class="n">keyCabinet</span><span class="o">,</span> <span class="n">drawer</span><span class="o">),</span> <span class="s">s&quot;leaving-</span><span class="si">$who</span><span class="s">&quot;</span><span class="o">)</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="c1">// на кожний сеанс поведінки актора</span>
+  <span class="k">def</span> <span class="n">prepareToLeaveHome</span><span class="o">(</span>
+      <span class="n">whoIsLeaving</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span>
+      <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">ReadyToLeaveHome</span><span class="o">],</span>
+      <span class="n">keyCabinet</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">KeyCabinet.GetKeys</span><span class="o">],</span>
+      <span class="n">drawer</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Drawer.GetWallet</span><span class="o">])</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">NotUsed</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="c1">// Нас не хвилює протокол актора, оскільки нам ніхто не надсилатиме</span>
+    <span class="c1">// повідомлення, крім відповідей на наші запити, тому ми просто приймаємо будь-яке повідомлення</span>
+    <span class="c1">// але звузити їх до більш обмежених типів, коли ми взаємодіємо з Behaviors</span>
+      <span class="o">.</span><span class="n">setup</span><span class="o">[</span><span class="kt">AnyRef</span><span class="o">]</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+        <span class="k">var</span> <span class="n">wallet</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Wallet</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span>
+        <span class="k">var</span> <span class="n">keys</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">Keys</span><span class="o">]</span> <span class="k">=</span> <span class="nc">None</span>
+
+<span class="c1">// ми звужуємо тип ActorRef до будь-якого підтипу фактичного типу, який ми приймаємо</span>
+        <span class="n">keyCabinet</span> <span class="o">!</span> <span class="nc">KeyCabinet</span><span class="o">.</span><span class="nc">GetKeys</span><span class="o">(</span><span class="n">whoIsLeaving</span><span class="o">,</span> <span class="n">context</span><span class="o">.</span><span class="n">self</span><span class="o">.</span><span class="n">narrow</span><span class="o">[</span><span class="kt">Keys</span><span class="o">])</span>
+        <span class="n">drawer</span> <span class="o">!</span> <span class="nc">Drawer</span><span class="o">.</span><span class="nc">GetWallet</span><span class="o">(</span><span class="n">whoIsLeaving</span><span class="o">,</span> <span class="n">context</span><span class="o">.</span><span class="n">self</span><span class="o">.</span><span class="n">narrow</span><span class="o">[</span><span class="kt">Wallet</span><span class="o">])</span>
+
+        <span class="k">def</span> <span class="n">nextBehavior</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">AnyRef</span><span class="o">]</span> <span class="k">=</span>
+          <span class="o">(</span><span class="n">keys</span><span class="o">,</span> <span class="n">wallet</span><span class="o">)</span> <span class="k">match</span> <span class="o">{</span>
+            <span class="k">case</span> <span class="o">(</span><span class="nc">Some</span><span class="o">(</span><span class="n">w</span><span class="o">),</span> <span class="nc">Some</span><span class="o">(</span><span class="n">k</span><span class="o">))</span> <span class="k">=&gt;</span>
+              <span class="c1">// у нас обоє, &quot;сесія&quot; завершена!</span>
+              <span class="n">replyTo</span> <span class="o">!</span> <span class="nc">ReadyToLeaveHome</span><span class="o">(</span><span class="n">whoIsLeaving</span><span class="o">,</span> <span class="n">w</span><span class="o">,</span> <span class="n">k</span><span class="o">)</span>
+              <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span>
+
+            <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+              <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+          <span class="o">}</span>
+
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="n">w</span><span class="k">:</span> <span class="kt">Wallet</span> <span class="o">=&gt;</span>
+            <span class="n">wallet</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="n">w</span><span class="o">)</span>
+            <span class="n">nextBehavior</span><span class="o">()</span>
+          <span class="k">case</span> <span class="n">k</span><span class="k">:</span> <span class="kt">Keys</span> <span class="o">=&gt;</span>
+            <span class="n">keys</span> <span class="k">=</span> <span class="nc">Some</span><span class="o">(</span><span class="n">k</span><span class="o">)</span>
+            <span class="n">nextBehavior</span><span class="o">()</span>
+          <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span>
+            <span class="nc">Behaviors</span><span class="o">.</span><span class="n">unhandled</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+      <span class="o">.</span><span class="n">narrow</span><span class="o">[</span><span class="kt">NotUsed</span><span class="o">]</span> <span class="c1">// ми не даємо іншим знати, що ми щось приймаємо</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>У дійсному сеансі дитина, ймовірно, захоче також включити певну форму таймауту (див. щодо планування повідомлень для себе).</p></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Один вхідний запит повинен спричинити багаторазову взаємодію з іншими суб'єктами, перш ніж результат може бути побудований, наприклад, агрегування кількох результатів
+</p>
+</li>
+<li>
+<p>
+Потрібно обробляти підтвердження та повторювати повідомлення хоча б раз на доставку
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Діти мають життєві цикли, якими потрібно керувати, щоб не створити витік ресурсів, легко можна пропустити сценарій, коли актор сеансу не зупиняється
+</p>
+</li>
+<li>
+<p>
+Це збільшує складність, оскільки кожна така дитина може виконувати одночасно з іншими дітьми та батьком
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_____2">Агрегатор відповідей загального призначення</h3>
+<div class="paragraph"><p>Це схоже на вищезазначений малюнок Актор на сеанс. Іноді ви можете в кінцевому підсумку повторити той самий спосіб збирання відповідей і хочете витягнути це для актора, який може повторно використовуватись.</p></div>
+<div class="paragraph"><p>Існує багато варіацій цього шаблону, і саме тому це подано як приклад документації, а не вбудованої поведінки в Akka. Він призначений для адаптації до ваших конкретних потреб.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>// we narrow the ActorRef type to any subtype of the actual type we accept
-keyCabinet ! KeyCabinet.GetKeys(whoIsLeaving, context.self.narrow[Keys])
-drawer ! Drawer.GetWallet(whoIsLeaving, context.self.narrow[Wallet])</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def nextBehavior(): Behavior[AnyRef] =
-  (keys, wallet) match {
-    case (Some(w), Some(k)) =&gt;
-      // we got both, "session" is completed!
-      replyTo ! ReadyToLeaveHome(whoIsLeaving, w, k)
-      Behaviors.stopped</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  case _ =&gt;
-    Behaviors.same
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>        Behaviors.receiveMessage {
-          case w: Wallet =&gt;
-            wallet = Some(w)
-            nextBehavior()
-          case k: Keys =&gt;
-            keys = Some(k)
-            nextBehavior()
-          case _ =&gt;
-            Behaviors.unhandled
-        }
-      }
-      .narrow[NotUsed] // we don't let anyone else know we accept anything
-  }
-}
-Java
-In an actual session child you would likely want to include some form of timeout as well (see scheduling messages to self).</code></pre>
-</div></div>
-<div class="paragraph"><p>Useful when:</p></div>
-<div class="paragraph"><p>A single incoming request should result in multiple interactions with other actors before a result can be built, for example aggregation of several results
-You need to handle acknowledgement and retry messages for at-least-once delivery
-Problems:</p></div>
-<div class="paragraph"><p>Children have life cycles that must be managed to not create a resource leak, it can be easy to miss a scenario where the session actor is not stopped
-It increases complexity, since each such child can execute concurrently with other children and the parent
-General purpose response aggregator
-This is similar to above Per session child Actor pattern. Sometimes you might end up repeating the same way of aggregating replies and want to extract that to a reusable actor.</p></div>
-<div class="paragraph"><p>There are many variations of this pattern and that is the reason this is provided as a documentation example rather than a built in Behavior in Akka. It is intended to be adjusted to your specific needs.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>aggregator.png</p></div>
-<div class="paragraph"><p>This example is an aggregator of expected number of replies. Requests for quotes are sent with the given sendRequests function to the two hotel actors, which both speak different protocols. When both expected replies have been collected they are aggregated with the given aggregateReplies function and sent back to the replyTo. If replies don’t arrive within the timeout the replies so far are aggregated and sent back to the replyTo.</p></div>
-<div class="paragraph"><p>Scala
-object Hotel1 {
-  final case class RequestQuote(replyTo: ActorRef[Quote])
-  final case class Quote(hotel: String, price: BigDecimal)
-}
-object Hotel2 {
-  final case class RequestPrice(replyTo: ActorRef[Price])
-  final case class Price(hotel: String, price: BigDecimal)
-}</p></div>
-<div class="paragraph"><p>type Reply = Any</p></div>
-<div class="paragraph"><p>object HotelCustomer {
-  sealed trait Command
-  final case class Quote(hotel: String, price: BigDecimal)
-  final case class AggregatedQuotes(quotes: List[Quote]) extends Command</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply(hotel1: ActorRef[Hotel1.RequestQuote], hotel2: ActorRef[Hotel2.RequestPrice]): Behavior[Command] = {</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>Behaviors.setup[Command] { context =&gt;
-  context.spawnAnonymous(
-    Aggregator[Reply, AggregatedQuotes](
-      sendRequests = { replyTo =&gt;
-        hotel1 ! Hotel1.RequestQuote(replyTo)
-        hotel2 ! Hotel2.RequestPrice(replyTo)
-      },
-      expectedReplies = 2,
-      context.self,
-      aggregateReplies = replies =&gt;
-        // The hotels have different protocols with different replies,
-        // convert them to `HotelCustomer.Quote` that this actor understands.
-        AggregatedQuotes(
-          replies
-            .map {
-              case Hotel1.Quote(hotel, price) =&gt; Quote(hotel, price)
-              case Hotel2.Price(hotel, price) =&gt; Quote(hotel, price)
-            }
-            .sortBy(_.price)
-            .toList),
-      timeout = 5.seconds))</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>      Behaviors.receiveMessage {
-        case AggregatedQuotes(quotes) =&gt;
-          context.log.info("Best {}", quotes.headOption.getOrElse("Quote N/A"))
-          Behaviors.same
-      }
-    }
-  }
-}
-Java
-The implementation of the Aggregator:</code></pre>
-</div></div>
-<div class="paragraph"><p>Scala
-import scala.collection.immutable
-import scala.concurrent.duration.FiniteDuration
-import scala.reflect.ClassTag</p></div>
-<div class="paragraph"><p>import akka.actor.typed.ActorRef
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors</p></div>
-<div class="paragraph"><p>object Aggregator {</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sealed trait Command
-private case object ReceiveTimeout extends Command
-private case class WrappedReply[R](reply: R) extends Command</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply[Reply: ClassTag, Aggregate](
-    sendRequests: ActorRef[Reply] =&gt; Unit,
-    expectedReplies: Int,
-    replyTo: ActorRef[Aggregate],
-    aggregateReplies: immutable.IndexedSeq[Reply] =&gt; Aggregate,
-    timeout: FiniteDuration): Behavior[Command] = {
-  Behaviors.setup { context =&gt;
-    context.setReceiveTimeout(timeout, ReceiveTimeout)
-    val replyAdapter = context.messageAdapter[Reply](WrappedReply(_))
-    sendRequests(replyAdapter)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def collecting(replies: immutable.IndexedSeq[Reply]): Behavior[Command] = {
-  Behaviors.receiveMessage {
-    case WrappedReply(reply: Reply) =&gt;
-      val newReplies = replies :+ reply
-      if (newReplies.size == expectedReplies) {
-        val result = aggregateReplies(newReplies)
-        replyTo ! result
-        Behaviors.stopped
-      } else
-        collecting(newReplies)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    case ReceiveTimeout =&gt;
-      val aggregate = aggregateReplies(replies)
-      replyTo ! aggregate
-      Behaviors.stopped
-  }
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    collecting(Vector.empty)
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>}
-Java
-Useful when:</p></div>
-<div class="paragraph"><p>Aggregating replies are performed in the same way at multiple places and should be extracted to a more general purpose actor.
-A single incoming request should result in multiple interactions with other actors before a result can be built, for example aggregation of several results
-You need to handle acknowledgement and retry messages for at-least-once delivery
-Problems:</p></div>
-<div class="paragraph"><p>Message protocols with generic types are difficult since the generic types are erased in runtime
-Children have life cycles that must be managed to not create a resource leak, it can be easy to miss a scenario where the session actor is not stopped
-It increases complexity, since each such child can execute concurrently with other children and the parent
-Latency tail chopping
-This is a variation of above General purpose response aggregator pattern.</p></div>
+<img src="aggregator.png" alt="aggregator.png" />
+</div>
+</div>
+<div class="paragraph"><p>Цей приклад є агрегатором очікуваної кількості відповідей. Запити щодо пропозицій надсилаються із заданою функцією <code>sendRequests</code> двом акторам готелю, які обидва говорять за різними протоколами. Коли обидві очікувані відповіді будуть зібрані, вони агрегуються із заданою функцією агрегату <code>Replies</code> та повертаються до <code>replyTo</code>. Якщо відповіді не надходять у термін очікування, відповіді що зібрані надсилаються до <code>replyTo</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Hotel1</span> <span class="o">{</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">RequestQuote</span><span class="o">(</span><span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Quote</span><span class="o">])</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Quote</span><span class="o">(</span><span class="n">hotel</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">price</span><span class="k">:</span> <span class="kt">BigDecimal</span><span class="o">)</span>
+<span class="o">}</span>
+<span class="k">object</span> <span class="nc">Hotel2</span> <span class="o">{</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">RequestPrice</span><span class="o">(</span><span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Price</span><span class="o">])</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Price</span><span class="o">(</span><span class="n">hotel</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">price</span><span class="k">:</span> <span class="kt">BigDecimal</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="c1">// Any, оскільки немає загального типу між Hotel1 та Hotel2</span>
+<span class="k">type</span> <span class="kt">Reply</span> <span class="o">=</span> <span class="nc">Any</span>
+
+<span class="k">object</span> <span class="nc">HotelCustomer</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Quote</span><span class="o">(</span><span class="n">hotel</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">price</span><span class="k">:</span> <span class="kt">BigDecimal</span><span class="o">)</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">AggregatedQuotes</span><span class="o">(</span><span class="n">quotes</span><span class="k">:</span> <span class="kt">List</span><span class="o">[</span><span class="kt">Quote</span><span class="o">])</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">hotel1</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Hotel1.RequestQuote</span><span class="o">],</span>
+    <span class="n">hotel2</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Hotel2.RequestPrice</span><span class="o">])</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="n">context</span><span class="o">.</span><span class="n">spawnAnonymous</span><span class="o">(</span>
+        <span class="nc">Aggregator</span><span class="o">[</span><span class="kt">Reply</span><span class="p">,</span> <span class="kt">AggregatedQuotes</span><span class="o">](</span>
+          <span class="n">sendRequests</span> <span class="k">=</span> <span class="o">{</span> <span class="n">replyTo</span> <span class="k">=&gt;</span>
+            <span class="n">hotel1</span> <span class="o">!</span> <span class="nc">Hotel1</span><span class="o">.</span><span class="nc">RequestQuote</span><span class="o">(</span><span class="n">replyTo</span><span class="o">)</span>
+            <span class="n">hotel2</span> <span class="o">!</span> <span class="nc">Hotel2</span><span class="o">.</span><span class="nc">RequestPrice</span><span class="o">(</span><span class="n">replyTo</span><span class="o">)</span>
+          <span class="o">},</span>
+          <span class="n">expectedReplies</span> <span class="k">=</span> <span class="mi">2</span><span class="o">,</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">self</span><span class="o">,</span>
+          <span class="n">aggregateReplies</span> <span class="k">=</span> <span class="n">replies</span> <span class="k">=&gt;</span>
+            <span class="c1">// Готелі мають різні протоколи з різними відповідями,</span>
+            <span class="c1">// конвертуйте їх у `HotelCustomer.Quote`, що цей актор розуміє.</span>
+            <span class="nc">AggregatedQuotes</span><span class="o">(</span>
+              <span class="n">replies</span>
+                <span class="o">.</span><span class="n">map</span> <span class="o">{</span>
+                  <span class="k">case</span> <span class="nc">Hotel1</span><span class="o">.</span><span class="nc">Quote</span><span class="o">(</span><span class="n">hotel</span><span class="o">,</span> <span class="n">price</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Quote</span><span class="o">(</span><span class="n">hotel</span><span class="o">,</span> <span class="n">price</span><span class="o">)</span>
+                  <span class="k">case</span> <span class="nc">Hotel2</span><span class="o">.</span><span class="nc">Price</span><span class="o">(</span><span class="n">hotel</span><span class="o">,</span> <span class="n">price</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Quote</span><span class="o">(</span><span class="n">hotel</span><span class="o">,</span> <span class="n">price</span><span class="o">)</span>
+                <span class="o">}</span>
+                <span class="o">.</span><span class="n">sortBy</span><span class="o">(</span><span class="k">_</span><span class="o">.</span><span class="n">price</span><span class="o">)</span>
+                <span class="o">.</span><span class="n">toList</span><span class="o">),</span>
+          <span class="n">timeout</span> <span class="k">=</span> <span class="mf">5.</span><span class="n">seconds</span><span class="o">))</span>
+
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span>
+        <span class="k">case</span> <span class="nc">AggregatedQuotes</span><span class="o">(</span><span class="n">quotes</span><span class="o">)</span> <span class="k">=&gt;</span>
+          <span class="n">context</span><span class="o">.</span><span class="n">log</span><span class="o">.</span><span class="n">info</span><span class="o">(</span><span class="s">&quot;Best {}&quot;</span><span class="o">,</span> <span class="n">quotes</span><span class="o">.</span><span class="n">headOption</span><span class="o">.</span><span class="n">getOrElse</span><span class="o">(</span><span class="s">&quot;Quote N/A&quot;</span><span class="o">))</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Реалізація агрегатора:</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">scala.collection.immutable</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.duration.FiniteDuration</span>
+<span class="k">import</span> <span class="nn">scala.reflect.ClassTag</span>
+
+<span class="k">import</span> <span class="nn">akka.actor.typed.ActorRef</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.Behavior</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.Behaviors</span>
+
+<span class="k">object</span> <span class="nc">Aggregator</span> <span class="o">{</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">object</span> <span class="nc">ReceiveTimeout</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">WrappedReply</span><span class="o">[</span><span class="kt">R</span><span class="o">](</span><span class="n">reply</span><span class="k">:</span> <span class="kt">R</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">[</span><span class="kt">Reply:</span> <span class="kt">ClassTag</span><span class="p">,</span> <span class="kt">Aggregate</span><span class="o">](</span>
+      <span class="n">sendRequests</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Reply</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Unit</span><span class="o">,</span>
+      <span class="n">expectedReplies</span><span class="k">:</span> <span class="kt">Int</span><span class="o">,</span>
+      <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Aggregate</span><span class="o">],</span>
+      <span class="n">aggregateReplies</span><span class="k">:</span> <span class="kt">immutable.IndexedSeq</span><span class="o">[</span><span class="kt">Reply</span><span class="o">]</span> <span class="k">=&gt;</span> <span class="nc">Aggregate</span><span class="o">,</span>
+      <span class="n">timeout</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="n">context</span><span class="o">.</span><span class="n">setReceiveTimeout</span><span class="o">(</span><span class="n">timeout</span><span class="o">,</span> <span class="nc">ReceiveTimeout</span><span class="o">)</span>
+      <span class="k">val</span> <span class="n">replyAdapter</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">messageAdapter</span><span class="o">[</span><span class="kt">Reply</span><span class="o">](</span><span class="nc">WrappedReply</span><span class="o">(</span><span class="k">_</span><span class="o">))</span>
+      <span class="n">sendRequests</span><span class="o">(</span><span class="n">replyAdapter</span><span class="o">)</span>
+
+      <span class="k">def</span> <span class="n">collecting</span><span class="o">(</span><span class="n">replies</span><span class="k">:</span> <span class="kt">immutable.IndexedSeq</span><span class="o">[</span><span class="kt">Reply</span><span class="o">])</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span>
+          <span class="k">case</span> <span class="nc">WrappedReply</span><span class="o">(</span><span class="n">reply</span><span class="k">:</span> <span class="kt">Reply</span><span class="o">)</span> <span class="k">=&gt;</span>
+            <span class="k">val</span> <span class="n">newReplies</span> <span class="k">=</span> <span class="n">replies</span> <span class="o">:+</span> <span class="n">reply</span>
+            <span class="k">if</span> <span class="o">(</span><span class="n">newReplies</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">expectedReplies</span><span class="o">)</span> <span class="o">{</span>
+              <span class="k">val</span> <span class="n">result</span> <span class="k">=</span> <span class="n">aggregateReplies</span><span class="o">(</span><span class="n">newReplies</span><span class="o">)</span>
+              <span class="n">replyTo</span> <span class="o">!</span> <span class="n">result</span>
+              <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span>
+            <span class="o">}</span> <span class="k">else</span>
+              <span class="n">collecting</span><span class="o">(</span><span class="n">newReplies</span><span class="o">)</span>
+
+          <span class="k">case</span> <span class="nc">ReceiveTimeout</span> <span class="k">=&gt;</span>
+            <span class="k">val</span> <span class="n">aggregate</span> <span class="k">=</span> <span class="n">aggregateReplies</span><span class="o">(</span><span class="n">replies</span><span class="o">)</span>
+            <span class="n">replyTo</span> <span class="o">!</span> <span class="n">aggregate</span>
+            <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span>
+        <span class="o">}</span>
+      <span class="o">}</span>
+
+      <span class="n">collecting</span><span class="o">(</span><span class="nc">Vector</span><span class="o">.</span><span class="n">empty</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Агрегуючі відповіді виконуються однаково в декількох місцях і повинні бути вилучені для актора більш загального призначення.
+</p>
+</li>
+<li>
+<p>
+Один вхідний запит повинен спричинити багаторазову взаємодію з іншими суб'єктами, перш ніж результат може бути побудований, наприклад, агрегування кількох результатів
+</p>
+</li>
+<li>
+<p>
+Потрібно обробляти підтвердження та повторювати повідомлення для доставки хоча б раз
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Протоколи повідомлень із загальними типами є складними, оскільки загальні типи стираються під час виконання
+</p>
+</li>
+<li>
+<p>
+Діти мають життєві цикли, якими потрібно керувати, щоб не створити витік ресурсів, може легко пропустити сценарій, коли актор сеансу не зупиняється
+</p>
+</li>
+<li>
+<p>
+Це збільшує складність, оскільки кожна така дитина може виконувати одночасно з іншими дітьми та батьком
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="____3">Рубання хвоста затримки</h3>
+<div class="paragraph"><p>Це варіація вищезазначеної схеми агрегатора відповідей загального призначення.</p></div>
 <div class="paragraph"><p>The goal of this algorithm is to decrease tail latencies (“chop off the tail latency”) in situations where multiple destination actors can perform the same piece of work, and where an actor may occasionally respond more slowly than expected. In this case, sending the same work request (also known as a “backup request”) to another actor results in decreased response time - because it’s less probable that multiple actors are under heavy load simultaneously. This technique is explained in depth in Jeff Dean’s presentation on Achieving Rapid Response Times in Large Online Services.</p></div>
 <div class="paragraph"><p>There are many variations of this pattern and that is the reason this is provided as a documentation example rather than a built in Behavior in Akka. It is intended to be adjusted to your specific needs.</p></div>
 <div class="paragraph"><p>Example:</p></div>
@@ -1685,7 +1817,7 @@ A disadvantage is that a message adapter can’t be used so the response has to 
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-06-11 23:48:12 EEST
+ 2020-06-13 12:51:36 EEST
 </div>
 </div>
 </body>
