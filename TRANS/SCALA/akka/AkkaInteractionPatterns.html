@@ -1614,201 +1614,236 @@ asciidoc.install();
 <div class="sect2">
 <h3 id="____3">Рубання хвоста затримки</h3>
 <div class="paragraph"><p>Це варіація вищезазначеної схеми агрегатора відповідей загального призначення.</p></div>
-<div class="paragraph"><p>The goal of this algorithm is to decrease tail latencies (“chop off the tail latency”) in situations where multiple destination actors can perform the same piece of work, and where an actor may occasionally respond more slowly than expected. In this case, sending the same work request (also known as a “backup request”) to another actor results in decreased response time - because it’s less probable that multiple actors are under heavy load simultaneously. This technique is explained in depth in Jeff Dean’s presentation on Achieving Rapid Response Times in Large Online Services.</p></div>
-<div class="paragraph"><p>There are many variations of this pattern and that is the reason this is provided as a documentation example rather than a built in Behavior in Akka. It is intended to be adjusted to your specific needs.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>tail-chopping.png</p></div>
-<div class="paragraph"><p>Scala
-import scala.concurrent.duration.FiniteDuration
-import scala.reflect.ClassTag</p></div>
-<div class="paragraph"><p>import akka.actor.typed.ActorRef
-import akka.actor.typed.Behavior
-import akka.actor.typed.scaladsl.Behaviors</p></div>
-<div class="paragraph"><p>object TailChopping {</p></div>
-<div class="literalblock">
+<div class="paragraph"><p>Метою цього алгоритму є зменшення затримок хвоста («відрізати затримку хвоста») у ситуаціях, коли кілька суб'єктів призначення можуть виконувати одну роботу, і коли актор може час від часу реагувати повільніше, ніж очікувалося. У цьому випадку надсилання того ж запиту на роботу (також відомий як "запит на резервну копію") іншому актору призводить до скорочення часу реакції - тому що менше ймовірність того, що кілька суб'єктів одночасно сильно завантажуються. Ця методика глибоко пояснюється у презентації Джеффа Діна про досягнення швидкого часу реагування у великих Інтернет-сервісах.</p></div>
+<div class="paragraph"><p>Існує багато варіацій цього шаблону, і саме тому це подано як приклад документації, а не вбудованого поведінки в Akka. Він призначений для адаптації до ваших конкретних потреб.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>sealed trait Command
-private case object RequestTimeout extends Command
-private case object FinalTimeout extends Command
-private case class WrappedReply[R](reply: R) extends Command</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def apply[Reply: ClassTag](
-    sendRequest: (Int, ActorRef[Reply]) =&gt; Boolean,
-    nextRequestAfter: FiniteDuration,
-    replyTo: ActorRef[Reply],
-    finalTimeout: FiniteDuration,
-    timeoutReply: Reply): Behavior[Command] = {
-  Behaviors.setup { context =&gt;
-    Behaviors.withTimers { timers =&gt;
-      val replyAdapter = context.messageAdapter[Reply](WrappedReply(_))</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def waiting(requestCount: Int): Behavior[Command] = {
-  Behaviors.receiveMessage {
-    case WrappedReply(reply: Reply) =&gt;
-      replyTo ! reply
-      Behaviors.stopped</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>case RequestTimeout =&gt;
-  sendNextRequest(requestCount + 1)</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>    case FinalTimeout =&gt;
-      replyTo ! timeoutReply
-      Behaviors.stopped
-  }
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>def sendNextRequest(requestCount: Int): Behavior[Command] = {
-  if (sendRequest(requestCount, replyAdapter)) {
-    timers.startSingleTimer(RequestTimeout, nextRequestAfter)
-  } else {
-    timers.startSingleTimer(FinalTimeout, finalTimeout)
-  }
-  waiting(requestCount)
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>      sendNextRequest(1)
-    }
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>}
-Java
-Useful when:</p></div>
-<div class="paragraph"><p>Reducing higher latency percentiles and variations of latency are important
-The “work” can be done more than once with the same result, e.g. a request to retrieve information
-Problems:</p></div>
-<div class="paragraph"><p>Increased load since more messages are sent and “work” is performed more than once
-Can’t be used when the “work” is not idempotent and must only be performed once
-Message protocols with generic types are difficult since the generic types are erased in runtime
-Children have life cycles that must be managed to not create a resource leak, it can be easy to miss a scenario where the session actor is not stopped
-Scheduling messages to self
-The following example demonstrates how to use timers to schedule messages to an actor.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>timer.png</p></div>
-<div class="paragraph"><p>The Buncher actor buffers a burst of incoming messages and delivers them as a batch after a timeout or when the number of batched messages exceeds a maximum size.</p></div>
-<div class="paragraph"><p>Scala
-object Buncher {</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>sealed trait Command
-final case class ExcitingMessage(message: String) extends Command
-final case class Batch(messages: Vector[Command])
-private case object Timeout extends Command
-private case object TimerKey</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def apply(target: ActorRef[Batch], after: FiniteDuration, maxSize: Int): Behavior[Command] = {
-    Behaviors.withTimers(timers =&gt; new Buncher(timers, target, after, maxSize).idle())
-  }
-}</code></pre>
-</div></div>
-<div class="paragraph"><p>class Buncher(
-    timers: TimerScheduler[Buncher.Command],
-    target: ActorRef[Buncher.Batch],
-    after: FiniteDuration,
-    maxSize: Int) {
-  import Buncher._</p></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>private def idle(): Behavior[Command] = {
-  Behaviors.receiveMessage[Command] { message =&gt;
-    timers.startSingleTimer(TimerKey, Timeout, after)
-    active(Vector(message))
-  }
-}</code></pre>
-</div></div>
-<div class="literalblock">
-<div class="content">
-<pre><code>  def active(buffer: Vector[Command]): Behavior[Command] = {
-    Behaviors.receiveMessage[Command] {
-      case Timeout =&gt;
-        target ! Batch(buffer)
-        idle()
-      case m =&gt;
-        val newBuffer = buffer :+ m
-        if (newBuffer.size == maxSize) {
-          timers.cancel(TimerKey)
-          target ! Batch(newBuffer)
-          idle()
-        } else
-          active(newBuffer)
-    }
-  }
-}
-Java
-There are a few things worth noting here:</code></pre>
-</div></div>
-<div class="paragraph"><p>To get access to the timers you start with Behaviors.withTimers that will pass a TimerScheduler instance to the function. This can be used with any type of Behavior, including receive, receiveMessage, but also setup or any other behavior.
-Each timer has a key and if a new timer with the same key is started, the previous is cancelled. It is guaranteed that a message from the previous timer is not received, even if it was already enqueued in the mailbox when the new timer was started.
-Both periodic and single message timers are supported.
-The TimerScheduler is mutable in itself, because it performs and manages the side effects of registering the scheduled tasks.
-The TimerScheduler is bound to the lifecycle of the actor that owns it and is cancelled automatically when the actor is stopped.
-Behaviors.withTimers can also be used inside Behaviors.supervise and it will automatically cancel the started timers correctly when the actor is restarted, so that the new incarnation will not receive scheduled messages from a previous incarnation.
-Schedule periodically
-Scheduling of recurring messages can have two different characteristics:</p></div>
-<div class="paragraph"><p>fixed-delay - The delay between sending subsequent messages will always be (at least) the given delay. Use startTimerWithFixedDelay.
-fixed-rate - The frequency of execution over time will meet the given interval. Use startTimerAtFixedRate.
-If you are uncertain of which one to use you should pick startTimerWithFixedDelay.</p></div>
-<div class="paragraph"><p>When using fixed-delay it will not compensate the delay between messages if the scheduling is delayed longer than specified for some reason. The delay between sending subsequent messages will always be (at least) the given delay. In the long run, the frequency of messages will generally be slightly lower than the reciprocal of the specified delay.</p></div>
-<div class="paragraph"><p>Fixed-delay execution is appropriate for recurring activities that require “smoothness.” In other words, it is appropriate for activities where it is more important to keep the frequency accurate in the short run than in the long run.</p></div>
-<div class="paragraph"><p>When using fixed-rate it will compensate the delay for a subsequent task if the previous messages were delayed too long. In such cases, the actual sending interval will differ from the interval passed to the scheduleAtFixedRate method.</p></div>
-<div class="paragraph"><p>If the tasks are delayed longer than the interval, the subsequent message will be sent immediately after the prior one. This also has the consequence that after long garbage collection pauses or other reasons when the JVM was suspended all “missed” tasks will execute when the process wakes up again. For example, scheduleAtFixedRate with an interval of 1 second and the process is suspended for 30 seconds will result in 30 messages being sent in rapid succession to catch up. In the long run, the frequency of execution will be exactly the reciprocal of the specified interval.</p></div>
-<div class="paragraph"><p>Fixed-rate execution is appropriate for recurring activities that are sensitive to absolute time or where the total time to perform a fixed number of executions is important, such as a countdown timer that ticks once every second for ten seconds.</p></div>
-<div class="paragraph"><p>Warning
-scheduleAtFixedRate can result in bursts of scheduled messages after long garbage collection pauses, which may in worst case cause undesired load on the system. scheduleWithFixedDelay is often preferred.</p></div>
-<div class="paragraph"><p>Responding to a sharded actor
-When Akka Cluster is used to shard actors you need to take into account that an actor may move or get passivated.</p></div>
-<div class="paragraph"><p>The normal pattern for expecting a reply is to include an ActorRef in the message, typically a message adapter. This can be used for a sharded actor but if ctx.self is sent and the sharded actor is moved or passivated then the reply will sent to dead letters.</p></div>
-<div class="paragraph"><p>An alternative is to send the entityId in the message and have the reply sent via sharding.</p></div>
-<div class="paragraph"><p>Example:</p></div>
-<div class="paragraph"><p>sharded-response.png</p></div>
-<div class="paragraph"><p>Scala
+<img src="tail-chopping.png" alt="tail-chopping.png" />
+</div>
+</div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">import</span> <span class="nn">scala.concurrent.duration.FiniteDuration</span>
+<span class="k">import</span> <span class="nn">scala.reflect.ClassTag</span>
 
-object CounterConsumer {
-  sealed trait Command
-  final case class NewCount(count: Long) extends Command
-  val TypeKey: EntityTypeKey[Command] = EntityTypeKey[Command]("example-sharded-response")
-}</p></div>
-<div class="paragraph"><p>object Counter {
-  trait Command
-  case object Increment extends Command
-  final case class GetValue(replyToEntityId: String) extends Command
-  val TypeKey: EntityTypeKey[Command] = EntityTypeKey[Command]("example-sharded-counter")</p></div>
-<div class="literalblock">
+<span class="k">import</span> <span class="nn">akka.actor.typed.ActorRef</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.Behavior</span>
+<span class="k">import</span> <span class="nn">akka.actor.typed.scaladsl.Behaviors</span>
+
+<span class="k">object</span> <span class="nc">TailChopping</span> <span class="o">{</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">object</span> <span class="nc">RequestTimeout</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">object</span> <span class="nc">FinalTimeout</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">WrappedReply</span><span class="o">[</span><span class="kt">R</span><span class="o">](</span><span class="n">reply</span><span class="k">:</span> <span class="kt">R</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">[</span><span class="kt">Reply:</span> <span class="kt">ClassTag</span><span class="o">](</span>
+      <span class="n">sendRequest</span><span class="k">:</span> <span class="o">(</span><span class="kt">Int</span><span class="o">,</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Reply</span><span class="o">])</span> <span class="k">=&gt;</span> <span class="nc">Boolean</span><span class="o">,</span>
+      <span class="n">nextRequestAfter</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">,</span>
+      <span class="n">replyTo</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Reply</span><span class="o">],</span>
+      <span class="n">finalTimeout</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">,</span>
+      <span class="n">timeoutReply</span><span class="k">:</span> <span class="kt">Reply</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="nc">Behaviors</span><span class="o">.</span><span class="n">withTimers</span> <span class="o">{</span> <span class="n">timers</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">replyAdapter</span> <span class="k">=</span> <span class="n">context</span><span class="o">.</span><span class="n">messageAdapter</span><span class="o">[</span><span class="kt">Reply</span><span class="o">](</span><span class="nc">WrappedReply</span><span class="o">(</span><span class="k">_</span><span class="o">))</span>
+
+        <span class="k">def</span> <span class="n">waiting</span><span class="o">(</span><span class="n">requestCount</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+          <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span>
+            <span class="k">case</span> <span class="nc">WrappedReply</span><span class="o">(</span><span class="n">reply</span><span class="k">:</span> <span class="kt">Reply</span><span class="o">)</span> <span class="k">=&gt;</span>
+              <span class="n">replyTo</span> <span class="o">!</span> <span class="n">reply</span>
+              <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span>
+
+            <span class="k">case</span> <span class="nc">RequestTimeout</span> <span class="k">=&gt;</span>
+              <span class="n">sendNextRequest</span><span class="o">(</span><span class="n">requestCount</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+
+            <span class="k">case</span> <span class="nc">FinalTimeout</span> <span class="k">=&gt;</span>
+              <span class="n">replyTo</span> <span class="o">!</span> <span class="n">timeoutReply</span>
+              <span class="nc">Behaviors</span><span class="o">.</span><span class="n">stopped</span>
+          <span class="o">}</span>
+        <span class="o">}</span>
+
+        <span class="k">def</span> <span class="n">sendNextRequest</span><span class="o">(</span><span class="n">requestCount</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+          <span class="k">if</span> <span class="o">(</span><span class="n">sendRequest</span><span class="o">(</span><span class="n">requestCount</span><span class="o">,</span> <span class="n">replyAdapter</span><span class="o">))</span> <span class="o">{</span>
+            <span class="n">timers</span><span class="o">.</span><span class="n">startSingleTimer</span><span class="o">(</span><span class="nc">RequestTimeout</span><span class="o">,</span> <span class="n">nextRequestAfter</span><span class="o">)</span>
+          <span class="o">}</span> <span class="k">else</span> <span class="o">{</span>
+            <span class="n">timers</span><span class="o">.</span><span class="n">startSingleTimer</span><span class="o">(</span><span class="nc">FinalTimeout</span><span class="o">,</span> <span class="n">finalTimeout</span><span class="o">)</span>
+          <span class="o">}</span>
+          <span class="n">waiting</span><span class="o">(</span><span class="n">requestCount</span><span class="o">)</span>
+        <span class="o">}</span>
+
+        <span class="n">sendNextRequest</span><span class="o">(</span><span class="mi">1</span><span class="o">)</span>
+      <span class="o">}</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Корисно, коли:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Важливими є зниження вищих відсотків затримки та варіації затримки
+</p>
+</li>
+<li>
+<p>
+"Робота" може бути виконана більше одного разу з тим самим результатом, наприклад запит на отримання інформації
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Проблеми:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Збільшується навантаження, оскільки надсилається більше повідомлень, і "робота" виконується не раз
+</p>
+</li>
+<li>
+<p>
+Не можна використовувати, коли "робота" не є ідентичною, і повинна бути виконана лише один раз
+</p>
+</li>
+<li>
+<p>
+Протоколи повідомлень із загальними типами є складними, оскільки загальні типи стираються під час виконання
+</p>
+</li>
+<li>
+<p>
+Діти мають життєві цикли, якими потрібно керувати, щоб не створити витік ресурсів. Можна легко пропустити сценарій, коли актор сеансу не зупиняється
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_____3">Планування повідомлень для себе</h3>
+<div class="paragraph"><p>Наступний приклад демонструє, як використовувати таймери для планування повідомлень для актора.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>private def apply(): Behavior[Command] =
-  Behaviors.setup { context =&gt;
-    counter(ClusterSharding(context.system), 0)
-  }</code></pre>
-</div></div>
-<div class="literalblock">
+<img src="timer.png" alt="timer.png" />
+</div>
+</div>
+<div class="paragraph"><p>Актор Buncher буферизує пакет вхідних повідомлень і доставляє їх у вигляді партії після таймауту або коли кількість пакетних повідомлень перевищує максимальний розмір.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="k">object</span> <span class="nc">Buncher</span> <span class="o">{</span>
+
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">ExcitingMessage</span><span class="o">(</span><span class="n">message</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">Batch</span><span class="o">(</span><span class="n">messages</span><span class="k">:</span> <span class="kt">Vector</span><span class="o">[</span><span class="kt">Command</span><span class="o">])</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">object</span> <span class="nc">Timeout</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">private</span> <span class="k">case</span> <span class="k">object</span> <span class="nc">TimerKey</span>
+
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">target</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Batch</span><span class="o">],</span> <span class="n">after</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">,</span> <span class="n">maxSize</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">withTimers</span><span class="o">(</span><span class="n">timers</span> <span class="k">=&gt;</span> <span class="k">new</span> <span class="nc">Buncher</span><span class="o">(</span><span class="n">timers</span><span class="o">,</span> <span class="n">target</span><span class="o">,</span> <span class="n">after</span><span class="o">,</span> <span class="n">maxSize</span><span class="o">).</span><span class="n">idle</span><span class="o">())</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">Buncher</span><span class="o">(</span>
+    <span class="n">timers</span><span class="k">:</span> <span class="kt">TimerScheduler</span><span class="o">[</span><span class="kt">Buncher.Command</span><span class="o">],</span>
+    <span class="n">target</span><span class="k">:</span> <span class="kt">ActorRef</span><span class="o">[</span><span class="kt">Buncher.Batch</span><span class="o">],</span>
+    <span class="n">after</span><span class="k">:</span> <span class="kt">FiniteDuration</span><span class="o">,</span>
+    <span class="n">maxSize</span><span class="k">:</span> <span class="kt">Int</span><span class="o">)</span> <span class="o">{</span>
+  <span class="k">import</span> <span class="nn">Buncher._</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">idle</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span> <span class="n">message</span> <span class="k">=&gt;</span>
+      <span class="n">timers</span><span class="o">.</span><span class="n">startSingleTimer</span><span class="o">(</span><span class="nc">TimerKey</span><span class="o">,</span> <span class="nc">Timeout</span><span class="o">,</span> <span class="n">after</span><span class="o">)</span>
+      <span class="n">active</span><span class="o">(</span><span class="nc">Vector</span><span class="o">(</span><span class="n">message</span><span class="o">))</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">active</span><span class="o">(</span><span class="n">buffer</span><span class="k">:</span> <span class="kt">Vector</span><span class="o">[</span><span class="kt">Command</span><span class="o">])</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">Timeout</span> <span class="k">=&gt;</span>
+        <span class="n">target</span> <span class="o">!</span> <span class="nc">Batch</span><span class="o">(</span><span class="n">buffer</span><span class="o">)</span>
+        <span class="n">idle</span><span class="o">()</span>
+      <span class="k">case</span> <span class="n">m</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">newBuffer</span> <span class="k">=</span> <span class="n">buffer</span> <span class="o">:+</span> <span class="n">m</span>
+        <span class="k">if</span> <span class="o">(</span><span class="n">newBuffer</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="n">maxSize</span><span class="o">)</span> <span class="o">{</span>
+          <span class="n">timers</span><span class="o">.</span><span class="n">cancel</span><span class="o">(</span><span class="nc">TimerKey</span><span class="o">)</span>
+          <span class="n">target</span> <span class="o">!</span> <span class="nc">Batch</span><span class="o">(</span><span class="n">newBuffer</span><span class="o">)</span>
+          <span class="n">idle</span><span class="o">()</span>
+        <span class="o">}</span> <span class="k">else</span>
+          <span class="n">active</span><span class="o">(</span><span class="n">newBuffer</span><span class="o">)</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Тут варто зазначити кілька речей:</p></div>
+<div class="paragraph"><p>Щоб отримати доступ до таймерів, ви починаєте з <code>Behaviors.withTimers</code>, які передадуть функцію екземпляра <code>TimerScheduler</code>. Це може використовуватися з будь-яким типом <code>Behavior</code>, включаючи отримання, отримання повідомлення, але також налаштування чи будь-яку іншу поведінку.</p></div>
+<div class="paragraph"><p>У кожному таймері є ключ, і якщо запускається новий таймер з тим самим ключем, попередній скасовується. Гарантується, що повідомлення від попереднього таймера не буде отримано, навіть якщо воно вже було зафіксовано у поштовій скриньці, коли запускався новий таймер.</p></div>
+<div class="paragraph"><p>Підтримуються і періодичні, і таймери одного повідомлення.</p></div>
+<div class="paragraph"><p><code>TimerScheduler</code> є змінним сам по собі, оскільки він виконує та керує побічними ефектами реєстрації запланованих завдань.</p></div>
+<div class="paragraph"><p><code>TimerScheduler</code> пов'язаний з життєвим циклом актора, якому належить, і автоматично скасовується при зупинці актора.</p></div>
+<div class="paragraph"><p><code>Behaviors.withTimers</code> також можна використовувати всередині <code>Behaviors.supervise</code>, і він автоматично скасує запущені таймери правильно при перезапуску актора, так що нове перевтілення не отримає запланованих повідомлень з попереднього втілення.</p></div>
+</div>
+<div class="sect2">
+<h3 id="___6">Періодичне планування</h3>
+<div class="paragraph"><p>Scheduling of recurring messages can have two different characteristics:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<code>fixed-delay</code>- затримка між відправленням наступних повідомлень завжди буде з(принаймні) заданою затримкою. Використовуйте <code>startTimerWithFixedDelay</code>.
+</p>
+</li>
+<li>
+<p>
+<code>fixed-rate</code> - Частота виконання протягом часу буде відповідати заданому інтервалу. Використовуйте <code>startTimerAtFixedRate</code>.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Якщо ви не знаєте, який саме використовувати, виберіть команду <code>startTimerWithFixedDelay</code>.</p></div>
+<div class="paragraph"><p>При використанні фіксованої затримки це не компенсує затримку між повідомленнями, якщо планування з якоїсь причини затримується довше, ніж зазначено. Затримка між відправленням наступних повідомлень завжди буде з(принаймні) заданою затримкою. У перспективі частота повідомлень, як правило, буде трохи нижчою, ніж зворотна зазначена затримка.</p></div>
+<div class="paragraph"><p>Виконання з фіксованою затримкою підходить для періодичних дій, які потребують "плавності". Іншими словами, це доцільно для діяльності, де важливіше підтримувати частоту точною у короткостроковому періоді, ніж у довгостроковій перспективі.</p></div>
+<div class="paragraph"><p>При використанні фіксованої частоти це компенсує затримку для наступного завдання, якщо попередні повідомлення були затримані занадто довго. У таких випадках фактичний інтервал відправки буде відрізнятися від інтервалу, переданого методу <code>rasporedAtFixedRate</code>.</p></div>
+<div class="paragraph"><p>Якщо завдання затримуються довше інтервалу, наступне повідомлення буде надіслане негайно після попереднього. Це також призводить до того, що після тривалих пауз з прибиранням сміття чи інших причин, коли JVM було призупинено, всі "пропущені" завдання виконуватимуться разом, коли процес знову прокинеться. Наприклад, <code>rasporedAtFixedRate</code> з інтервалом в 1 секунду, і процес призупинено на 30 секунд, це призведе до того, що 30 повідомлень будуть надсилатися швидко і поспіль, щоб наздогнати заплановане. У перспективі частота виконання буде точно дотримуватись заданого інтервалу.</p></div>
+<div class="paragraph"><p>Виконання з фіксованою частотою підходить для періодичних дій, чутливих до абсолютного часу або де важливий загальний час виконання фіксованої кількості виконань, наприклад, таймер зворотного відліку, який клацає один раз на секунду протягом десяти секунд.</p></div>
+<div class="paragraph"><p><strong>Увага</strong> <code>rasporedAtFixedRate</code> може призвести до сплеску запланованих повідомлень після тривалих пауз прибирання сміття, що в гіршому випадку може спричинити небажане навантаження на систему. <code>scheduleWithFixedDelay</code> часто віддають перевагу.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_____4">Реагуювання на шардованого актора</h3>
+<div class="paragraph"><p>Коли Акка Кластер використовується для оскорблення акторів, потрібно враховувати, що актор може рухатися або переходити в пасивний стан.</p></div>
+<div class="paragraph"><p>Нормальною схемою очікування відповіді є включення <code>ActorRef</code> у повідомлення, як правило, адаптер повідомлень. Це може бути використано для розподіленого актора, але якщо надіслано <code>ctx.self</code> і переміщений або пасивованний актор, то відповідь буде надіслана мертвих листів.</p></div>
+<div class="paragraph"><p>Альтернативою є надіслати <code>entityId</code> у повідомленні та відповідь надіслана за допомогою шардингу.</p></div>
+<div class="paragraph"><p>Приклад:</p></div>
+<div class="imageblock">
 <div class="content">
-<pre><code>private def counter(sharding: ClusterSharding, value: Long): Behavior[Command] =
-  Behaviors.receiveMessage {
-    case Increment =&gt;
-      counter(sharding, value + 1)
-    case GetValue(replyToEntityId) =&gt;
-      val replyToEntityRef = sharding.entityRefFor(CounterConsumer.TypeKey, replyToEntityId)
-      replyToEntityRef ! CounterConsumer.NewCount(value)
-      Behaviors.same
-  }</code></pre>
-</div></div>
-<div class="paragraph"><p>}
-Java
-A disadvantage is that a message adapter can’t be used so the response has to be in the protocol of the actor being responded to. Additionally the EntityTypeKey could be included in the message if it is not known statically.</p></div>
+<img src="sharded-response.png" alt="sharded-response.png" />
+</div>
+</div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span><span class="c1">// розподілений актор, який потребує оновлення лічильника</span>
+<span class="k">object</span> <span class="nc">CounterConsumer</span> <span class="o">{</span>
+  <span class="k">sealed</span> <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">NewCount</span><span class="o">(</span><span class="n">count</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">val</span> <span class="nc">TypeKey</span><span class="k">:</span> <span class="kt">EntityTypeKey</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="nc">EntityTypeKey</span><span class="o">[</span><span class="kt">Command</span><span class="o">](</span><span class="s">&quot;example-sharded-response&quot;</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="c1">// розкиданий лічильник, який надсилає відповіді іншому розподіленому актору</span>
+<span class="k">object</span> <span class="nc">Counter</span> <span class="o">{</span>
+  <span class="k">trait</span> <span class="nc">Command</span>
+  <span class="k">case</span> <span class="k">object</span> <span class="nc">Increment</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">final</span> <span class="k">case</span> <span class="k">class</span> <span class="nc">GetValue</span><span class="o">(</span><span class="n">replyToEntityId</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">Command</span>
+  <span class="k">val</span> <span class="nc">TypeKey</span><span class="k">:</span> <span class="kt">EntityTypeKey</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span> <span class="nc">EntityTypeKey</span><span class="o">[</span><span class="kt">Command</span><span class="o">](</span><span class="s">&quot;example-sharded-counter&quot;</span><span class="o">)</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">apply</span><span class="o">()</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">setup</span> <span class="o">{</span> <span class="n">context</span> <span class="k">=&gt;</span>
+      <span class="n">counter</span><span class="o">(</span><span class="nc">ClusterSharding</span><span class="o">(</span><span class="n">context</span><span class="o">.</span><span class="n">system</span><span class="o">),</span> <span class="mi">0</span><span class="o">)</span>
+    <span class="o">}</span>
+
+  <span class="k">private</span> <span class="k">def</span> <span class="n">counter</span><span class="o">(</span><span class="n">sharding</span><span class="k">:</span> <span class="kt">ClusterSharding</span><span class="o">,</span> <span class="n">value</span><span class="k">:</span> <span class="kt">Long</span><span class="o">)</span><span class="k">:</span> <span class="kt">Behavior</span><span class="o">[</span><span class="kt">Command</span><span class="o">]</span> <span class="k">=</span>
+    <span class="nc">Behaviors</span><span class="o">.</span><span class="n">receiveMessage</span> <span class="o">{</span>
+      <span class="k">case</span> <span class="nc">Increment</span> <span class="k">=&gt;</span>
+        <span class="n">counter</span><span class="o">(</span><span class="n">sharding</span><span class="o">,</span> <span class="n">value</span> <span class="o">+</span> <span class="mi">1</span><span class="o">)</span>
+      <span class="k">case</span> <span class="nc">GetValue</span><span class="o">(</span><span class="n">replyToEntityId</span><span class="o">)</span> <span class="k">=&gt;</span>
+        <span class="k">val</span> <span class="n">replyToEntityRef</span> <span class="k">=</span> <span class="n">sharding</span><span class="o">.</span><span class="n">entityRefFor</span><span class="o">(</span><span class="nc">CounterConsumer</span><span class="o">.</span><span class="nc">TypeKey</span><span class="o">,</span> <span class="n">replyToEntityId</span><span class="o">)</span>
+        <span class="n">replyToEntityRef</span> <span class="o">!</span> <span class="nc">CounterConsumer</span><span class="o">.</span><span class="nc">NewCount</span><span class="o">(</span><span class="n">value</span><span class="o">)</span>
+        <span class="nc">Behaviors</span><span class="o">.</span><span class="n">same</span>
+    <span class="o">}</span>
+<span class="o">}</span>
+</pre></div></div></div>
+<div class="paragraph"><p>Недоліком є ​​те, що адаптер повідомлень не можна використовувати, тому відповідь має бути в протоколі актора, на який іде відповідь. Крім того, <code>EntityTypeKey</code> може бути включений у повідомлення, якщо воно статично невідоме.</p></div>
 </div>
 </div>
 </div>
@@ -1817,7 +1852,7 @@ A disadvantage is that a message adapter can’t be used so the response has to 
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2020-06-13 12:51:36 EEST
+ 2020-06-14 19:23:50 EEST
 </div>
 </div>
 </body>

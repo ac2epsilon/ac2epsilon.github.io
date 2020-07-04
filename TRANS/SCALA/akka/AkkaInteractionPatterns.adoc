@@ -683,15 +683,16 @@ object Aggregator {
 
 Це варіація вищезазначеної схеми агрегатора відповідей загального призначення.
 
-The goal of this algorithm is to decrease tail latencies (“chop off the tail latency”) in situations where multiple destination actors can perform the same piece of work, and where an actor may occasionally respond more slowly than expected. In this case, sending the same work request (also known as a “backup request”) to another actor results in decreased response time - because it’s less probable that multiple actors are under heavy load simultaneously. This technique is explained in depth in Jeff Dean’s presentation on Achieving Rapid Response Times in Large Online Services.
+Метою цього алгоритму є зменшення затримок хвоста («відрізати затримку хвоста») у ситуаціях, коли кілька суб'єктів призначення можуть виконувати одну роботу, і коли актор може час від часу реагувати повільніше, ніж очікувалося. У цьому випадку надсилання того ж запиту на роботу (також відомий як "запит на резервну копію") іншому актору призводить до скорочення часу реакції - тому що менше ймовірність того, що кілька суб'єктів одночасно сильно завантажуються. Ця методика глибоко пояснюється у презентації Джеффа Діна про досягнення швидкого часу реагування у великих Інтернет-сервісах.
 
-There are many variations of this pattern and that is the reason this is provided as a documentation example rather than a built in Behavior in Akka. It is intended to be adjusted to your specific needs.
+Існує багато варіацій цього шаблону, і саме тому це подано як приклад документації, а не вбудованого поведінки в Akka. Він призначений для адаптації до ваших конкретних потреб.
 
-Example:
+Приклад:
 
-tail-chopping.png
+image::tail-chopping.png[]
 
-Scala
+[source,scala]
+----
 import scala.concurrent.duration.FiniteDuration
 import scala.reflect.ClassTag
 
@@ -746,27 +747,33 @@ object TailChopping {
   }
 
 }
-Java
-Useful when:
+----
 
-Reducing higher latency percentiles and variations of latency are important
-The “work” can be done more than once with the same result, e.g. a request to retrieve information
-Problems:
+Корисно, коли:
 
-Increased load since more messages are sent and “work” is performed more than once
-Can’t be used when the “work” is not idempotent and must only be performed once
-Message protocols with generic types are difficult since the generic types are erased in runtime
-Children have life cycles that must be managed to not create a resource leak, it can be easy to miss a scenario where the session actor is not stopped
-Scheduling messages to self
-The following example demonstrates how to use timers to schedule messages to an actor.
+* Важливими є зниження вищих відсотків затримки та варіації затримки
 
-Example:
+* "Робота" може бути виконана більше одного разу з тим самим результатом, наприклад запит на отримання інформації
 
-timer.png
+Проблеми:
 
-The Buncher actor buffers a burst of incoming messages and delivers them as a batch after a timeout or when the number of batched messages exceeds a maximum size.
+* Збільшується навантаження, оскільки надсилається більше повідомлень, і "робота" виконується не раз
+* Не можна використовувати, коли "робота" не є ідентичною, і повинна бути виконана лише один раз
+* Протоколи повідомлень із загальними типами є складними, оскільки загальні типи стираються під час виконання
+* Діти мають життєві цикли, якими потрібно керувати, щоб не створити витік ресурсів. Можна легко пропустити сценарій, коли актор сеансу не зупиняється
 
-Scala
+=== Планування повідомлень для себе
+
+Наступний приклад демонструє, як використовувати таймери для планування повідомлень для актора.
+
+Приклад:
+
+image::timer.png[]
+
+Актор Buncher буферизує пакет вхідних повідомлень і доставляє їх у вигляді партії після таймауту або коли кількість пакетних повідомлень перевищує максимальний розмір.
+
+[source,scala]
+----
 object Buncher {
 
   sealed trait Command
@@ -810,55 +817,65 @@ class Buncher(
     }
   }
 }
-Java
-There are a few things worth noting here:
+----
 
-To get access to the timers you start with Behaviors.withTimers that will pass a TimerScheduler instance to the function. This can be used with any type of Behavior, including receive, receiveMessage, but also setup or any other behavior.
-Each timer has a key and if a new timer with the same key is started, the previous is cancelled. It is guaranteed that a message from the previous timer is not received, even if it was already enqueued in the mailbox when the new timer was started.
-Both periodic and single message timers are supported.
-The TimerScheduler is mutable in itself, because it performs and manages the side effects of registering the scheduled tasks.
-The TimerScheduler is bound to the lifecycle of the actor that owns it and is cancelled automatically when the actor is stopped.
-Behaviors.withTimers can also be used inside Behaviors.supervise and it will automatically cancel the started timers correctly when the actor is restarted, so that the new incarnation will not receive scheduled messages from a previous incarnation.
-Schedule periodically
+Тут варто зазначити кілька речей:
+
+Щоб отримати доступ до таймерів, ви починаєте з `Behaviors.withTimers`, які передадуть функцію екземпляра `TimerScheduler`. Це може використовуватися з будь-яким типом `Behavior`, включаючи отримання, отримання повідомлення, але також налаштування чи будь-яку іншу поведінку.
+
+У кожному таймері є ключ, і якщо запускається новий таймер з тим самим ключем, попередній скасовується. Гарантується, що повідомлення від попереднього таймера не буде отримано, навіть якщо воно вже було зафіксовано у поштовій скриньці, коли запускався новий таймер.
+
+Підтримуються і періодичні, і таймери одного повідомлення.
+
+`TimerScheduler` є змінним сам по собі, оскільки він виконує та керує побічними ефектами реєстрації запланованих завдань.
+
+`TimerScheduler` пов'язаний з життєвим циклом актора, якому належить, і автоматично скасовується при зупинці актора.
+
+`Behaviors.withTimers` також можна використовувати всередині `Behaviors.supervise`, і він автоматично скасує запущені таймери правильно при перезапуску актора, так що нове перевтілення не отримає запланованих повідомлень з попереднього втілення.
+
+=== Періодичне планування
+
 Scheduling of recurring messages can have two different characteristics:
 
-fixed-delay - The delay between sending subsequent messages will always be (at least) the given delay. Use startTimerWithFixedDelay.
-fixed-rate - The frequency of execution over time will meet the given interval. Use startTimerAtFixedRate.
-If you are uncertain of which one to use you should pick startTimerWithFixedDelay.
+* `fixed-delay`- затримка між відправленням наступних повідомлень завжди буде з(принаймні) заданою затримкою. Використовуйте `startTimerWithFixedDelay`.
+* `fixed-rate` - Частота виконання протягом часу буде відповідати заданому інтервалу. Використовуйте `startTimerAtFixedRate`.
 
-When using fixed-delay it will not compensate the delay between messages if the scheduling is delayed longer than specified for some reason. The delay between sending subsequent messages will always be (at least) the given delay. In the long run, the frequency of messages will generally be slightly lower than the reciprocal of the specified delay.
+Якщо ви не знаєте, який саме використовувати, виберіть команду `startTimerWithFixedDelay`.
 
-Fixed-delay execution is appropriate for recurring activities that require “smoothness.” In other words, it is appropriate for activities where it is more important to keep the frequency accurate in the short run than in the long run.
+При використанні фіксованої затримки це не компенсує затримку між повідомленнями, якщо планування з якоїсь причини затримується довше, ніж зазначено. Затримка між відправленням наступних повідомлень завжди буде з(принаймні) заданою затримкою. У перспективі частота повідомлень, як правило, буде трохи нижчою, ніж зворотна зазначена затримка.
 
-When using fixed-rate it will compensate the delay for a subsequent task if the previous messages were delayed too long. In such cases, the actual sending interval will differ from the interval passed to the scheduleAtFixedRate method.
+Виконання з фіксованою затримкою підходить для періодичних дій, які потребують "плавності". Іншими словами, це доцільно для діяльності, де важливіше підтримувати частоту точною у короткостроковому періоді, ніж у довгостроковій перспективі.
 
-If the tasks are delayed longer than the interval, the subsequent message will be sent immediately after the prior one. This also has the consequence that after long garbage collection pauses or other reasons when the JVM was suspended all “missed” tasks will execute when the process wakes up again. For example, scheduleAtFixedRate with an interval of 1 second and the process is suspended for 30 seconds will result in 30 messages being sent in rapid succession to catch up. In the long run, the frequency of execution will be exactly the reciprocal of the specified interval.
+При використанні фіксованої частоти це компенсує затримку для наступного завдання, якщо попередні повідомлення були затримані занадто довго. У таких випадках фактичний інтервал відправки буде відрізнятися від інтервалу, переданого методу `rasporedAtFixedRate`.
 
-Fixed-rate execution is appropriate for recurring activities that are sensitive to absolute time or where the total time to perform a fixed number of executions is important, such as a countdown timer that ticks once every second for ten seconds.
+Якщо завдання затримуються довше інтервалу, наступне повідомлення буде надіслане негайно після попереднього. Це також призводить до того, що після тривалих пауз з прибиранням сміття чи інших причин, коли JVM було призупинено, всі "пропущені" завдання виконуватимуться разом, коли процес знову прокинеться. Наприклад, `rasporedAtFixedRate` з інтервалом в 1 секунду, і процес призупинено на 30 секунд, це призведе до того, що 30 повідомлень будуть надсилатися швидко і поспіль, щоб наздогнати заплановане. У перспективі частота виконання буде точно дотримуватись заданого інтервалу.
 
-Warning
-scheduleAtFixedRate can result in bursts of scheduled messages after long garbage collection pauses, which may in worst case cause undesired load on the system. scheduleWithFixedDelay is often preferred.
+Виконання з фіксованою частотою підходить для періодичних дій, чутливих до абсолютного часу або де важливий загальний час виконання фіксованої кількості виконань, наприклад, таймер зворотного відліку, який клацає один раз на секунду протягом десяти секунд.
 
-Responding to a sharded actor
-When Akka Cluster is used to shard actors you need to take into account that an actor may move or get passivated.
+*Увага* `rasporedAtFixedRate` може призвести до сплеску запланованих повідомлень після тривалих пауз прибирання сміття, що в гіршому випадку може спричинити небажане навантаження на систему. `scheduleWithFixedDelay` часто віддають перевагу.
 
-The normal pattern for expecting a reply is to include an ActorRef in the message, typically a message adapter. This can be used for a sharded actor but if ctx.self is sent and the sharded actor is moved or passivated then the reply will sent to dead letters.
+=== Реагуювання на шардованого актора
 
-An alternative is to send the entityId in the message and have the reply sent via sharding.
+Коли Акка Кластер використовується для оскорблення акторів, потрібно враховувати, що актор може рухатися або переходити в пасивний стан.
 
-Example:
+Нормальною схемою очікування відповіді є включення `ActorRef` у повідомлення, як правило, адаптер повідомлень. Це може бути використано для розподіленого актора, але якщо надіслано `ctx.self` і переміщений або пасивованний актор, то відповідь буде надіслана мертвих листів.
 
-sharded-response.png
+Альтернативою є надіслати `entityId` у повідомленні та відповідь надіслана за допомогою шардингу.
 
-Scala
-// a sharded actor that needs counter updates
+Приклад:
+
+image::sharded-response.png[]
+
+[source,scala]
+----
+// розподілений актор, який потребує оновлення лічильника
 object CounterConsumer {
   sealed trait Command
   final case class NewCount(count: Long) extends Command
   val TypeKey: EntityTypeKey[Command] = EntityTypeKey[Command]("example-sharded-response")
 }
 
-// a sharded counter that sends responses to another sharded actor
+// розкиданий лічильник, який надсилає відповіді іншому розподіленому актору
 object Counter {
   trait Command
   case object Increment extends Command
@@ -879,7 +896,7 @@ object Counter {
         replyToEntityRef ! CounterConsumer.NewCount(value)
         Behaviors.same
     }
-
 }
-Java
-A disadvantage is that a message adapter can’t be used so the response has to be in the protocol of the actor being responded to. Additionally the EntityTypeKey could be included in the message if it is not known statically.
+----
+
+Недоліком є ​​те, що адаптер повідомлень не можна використовувати, тому відповідь має бути в протоколі актора, на який іде відповідь. Крім того, `EntityTypeKey` може бути включений у повідомлення, якщо воно статично невідоме.

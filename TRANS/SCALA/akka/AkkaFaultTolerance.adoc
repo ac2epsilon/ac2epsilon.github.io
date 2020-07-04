@@ -1,0 +1,264 @@
+include::header.adoc[]
+
+== Толерантність до помилок
+
+Коли актор видає несподіваний виняток, збій під час обробки повідомлення або під час ініціалізації, актор за замовчуванням буде зупинений.
+
+*Примітка* Важлива відмінність між типованими акторами та класичними акторами полягає в тому, що за замовчуванням: перші зупиняються, якщо закидається виключення і не визначена стратегія нагляду, тоді як у Classic вони перезапускаються.
+
+Зауважте, що між відмовами та помилками перевірки існує важлива відмінність:
+
+* Помилка перевірки означає, що дані команди, надіслані акторові, не є дійсними, це має бути скоріше модельовано як частину протоколу актора, ніж змусити  актора кидати винятки.
+
+* Натомість невдача - це дещо несподіване або поза контролем самого актора, наприклад, з'єднання з базою даних, яке порушилось. На відміну від помилок перевірки, рідко корисно моделювати збої як частину протоколу, оскільки актор, що надсилає, дуже рідко може робити щось корисне з цього приводу.
+
+У випадку невдач корисно застосувати філософію "нехай падає": замість змішування тонкого відновлення та виправлення внутрішнього стану, який, можливо, став частково недійсним через невдачу з бізнес логікою, ми перекладаємо цю відповідальність кудись інше. У багатьох випадках тоді рішення може бути "впасти" актора і розпочати нового, зі свіжим станом, який, на нашу думку, є дійсним.
+
+=== Нагляд
+
+У Акці це «десь інше» називають наглядом. Нагляд дозволяє декларативно описати, що має статися, коли певні типи винятків закидаються всередині актора.
+
+Стратегія нагляду за замовчуванням - зупинити актора, якщо буде викинуто виняток. У багатьох випадках вам доведеться додатково налаштувати таку поведінку. Для використання нагляду фактична поведінка актора розгортається за допомогою `Behaviors.supervise`. Як правило, ви огортаєте актора з наглядом у батьків, нерестуючи його як дитину.
+
+Цей приклад перезапускає актора, коли він хибить з `IllegalStateException`:
+
+[source,scala]
+----
+Behaviors.supervise(behavior).onFailure[IllegalStateException](SupervisorStrategy.restart)
+----
+
+Або відновити, проігноруйте помилку та замість цього обробіть наступне повідомлення:
+
+[source,scala]
+----
+Behaviors.supervise(behavior).onFailure[IllegalStateException](SupervisorStrategy.resume)
+----
+
+Можна використовувати більш складні стратегії перезапуску, наприклад перезапустити не більше 10 разів за 10 секундний період:
+
+[source,scala]
+----
+Behaviors
+  .supervise(behavior)
+  .onFailure[IllegalStateException](
+    SupervisorStrategy.restart.withLimit(maxNrOfRetries = 10, withinTimeRange = 10.seconds))
+----
+
+Для обробки різних винятків з різними стратегіями можна вкласти виклики для контролю:
+
+[source,scala]
+----
+Behaviors
+  .supervise(Behaviors.supervise(behavior).onFailure[IllegalStateException](SupervisorStrategy.restart))
+  .onFailure[IllegalArgumentException](SupervisorStrategy.stop)
+----
+
+Повний список стратегій див. У відкритих методах на SupervisorStrategy.
+
+*Примітка* Коли поведінка перезапускається, знову встановлюється початкова поведінка, надана `Behaviors.supervise`, що означає, що якщо вона містить стан, що змінюється, вона повинна бути фабрикою через `Behaviors.setup`. При використанні об'єктно-орієнтованого стилю з класом, що розширює `AbstractBehavior`, завжди рекомендується створювати його за допомогою `Behaviors.setup`, як описано у фабричному методі поведінки. Для стилю функції зазвичай не потрібна фабрика, якщо стан фіксується незмінними параметрами.
+
+==== Огортання поведінки
+
+У функціональному стилі дуже часто зберігається стан, змінюючи поведінку, наприклад
+
+[source,scala]
+----
+object Counter {
+  sealed trait Command
+  case class Increment(nr: Int) extends Command
+  case class GetCount(replyTo: ActorRef[Int]) extends Command
+
+  def apply(): Behavior[Command] =
+    Behaviors.supervise(counter(1)).onFailure(SupervisorStrategy.restart)
+
+  private def counter(count: Int): Behavior[Command] =
+    Behaviors.receiveMessage[Command] {
+      case Increment(nr: Int) =>
+        counter(count + nr)
+      case GetCount(replyTo) =>
+        replyTo ! count
+        Behaviors.same
+    }
+}
+----
+
+Виконуючи цей нагляд, потрібно лише додати його до найвищого рівня:
+
+[source,scala]
+----
+def apply(): Behavior[Command] =
+  Behaviors.supervise(counter(1)).onFailure(SupervisorStrategy.restart)
+----
+
+Кожна повернута поведінка буде автоматично перетворена з керівником.
+
+==== Діти акторів зупиняються, коли батьки перезапускаються
+
+Дочірніх акторів часто запускають у блоці налаштування, який запускається знову при перезапуску батьківського актора. Дітей-акторів зупиняють, щоб уникнути витоку ресурсів для створення нових дітей-акторів щоразу, коли батьки перезапускаються.
+
+[source,scala]
+----
+def child(size: Long): Behavior[String] =
+  Behaviors.receiveMessage(msg => child(size + msg.length))
+
+def parent: Behavior[String] = {
+  Behaviors
+    .supervise[String] {
+      Behaviors.setup { ctx =>
+        val child1 = ctx.spawn(child(0), "child1")
+        val child2 = ctx.spawn(child(0), "child2")
+
+        Behaviors.receiveMessage[String] { msg =>
+          // обробка повідомлення, яке може спричинити виняток
+          val parts = msg.split(" ")
+          child1 ! parts(0)
+          child2 ! parts(1)
+          Behaviors.same
+        }
+      }
+    }
+    .onFailure(SupervisorStrategy.restart)
+}
+----
+
+Це можливо переосмислити таким чином, щоб дочірні актори не зазнавали впливу під час перезапуску батьківського актора. Після цього перезапущений батьківський екземпляр матиме ті самі діти, що і до відмови.
+
+Якщо дочірні актори створені з налаштування, як у попередньому прикладі, і вони повинні залишатися неушкодженими (не зупинятись), коли батьківський перезапуск запускається, контроль слід помістити всередину інсталяції та використовувати `SupervisorStrategy.restart.withStopChildren(false)`, як це:
+
+[source,scala]
+----
+def parent2: Behavior[String] = {
+  Behaviors.setup { ctx =>
+    val child1 = ctx.spawn(child(0), "child1")
+    val child2 = ctx.spawn(child(0), "child2")
+
+    // Стратегія нагляду всередині установки, щоб не відтворити дітей при перезапуску
+    Behaviors
+      .supervise {
+        Behaviors.receiveMessage[String] { msg =>
+          // message handling that might throw an exception
+          val parts = msg.split(" ")
+          child1 ! parts(0)
+          child2 ! parts(1)
+          Behaviors.same
+        }
+      }
+      .onFailure(SupervisorStrategy.restart.withStopChildren(false))
+  }
+}
+----
+
+Це означає, що блок настройки буде запускатися лише тоді, коли початковий актор вперше запущений, а не тоді, коли він буде перезапущений.
+
+=== Сигнал попереднього запуску PreRestart
+
+Перед перезапуском контрольованого актора йому надсилається сигнал `PreRestart`, що дає йому можливість очистити створені ним ресурси, подібно до сигналу `PostStop`, коли актор зупиняється. Повернута поведінка від сигналу `PreRestart` ігнорується.
+
+[source,scala]
+----
+def withPreRestart: Behavior[String] = {
+  Behaviors
+    .supervise[String] {
+      Behaviors.setup { ctx =>
+        val resource = claimResource()
+
+        Behaviors
+          .receiveMessage[String] { msg =>
+            // message handling that might throw an exception
+
+            val parts = msg.split(" ")
+            resource.process(parts)
+            Behaviors.same
+          }
+          .receiveSignal {
+            case (_, signal) if signal == PreRestart || signal == PostStop =>
+              resource.close()
+              Behaviors.same
+          }
+      }
+    }
+    .onFailure[Exception](SupervisorStrategy.restart)
+}
+----
+
+Зауважте, що `PostStop` не видається для перезавантаження, тому для очищення ресурсів, як правило, вам потрібно обробити і `PreRestart`, і `PostStop`.
+
+=== Просування збоїв через ієрархію
+
+У деяких сценаріях може бути корисним рішення про те, що робити при відмові вгору в ієрархії Актор, і дозволити батьківському актору впоратися з тим, що повинно статися при збоях (у класичних Акка Актори це працює за замовчуванням).
+
+Щоб батько отримував сповіщення про припинення дитини, він повинен спостерігати за дитиною. Якщо дитина була зупинена через збій, надійде сигнал `ChildFailed`, який міститиме причину. `ChildFailed` розширює функцію `Terminated`, тому якщо вашому випадку використання не потрібно розрізняти зупинку та збій, ви можете обробляти обидва випадки сигналом `Terminated`.
+
+Якщо батько, в свою чергу, не обробляє повідомлення `Terminated`, воно буде невдалим за допомогою `akka.actor.typed.DeathPactException`.
+
+Це означає, що в ієрархії акторів може виникнути бульбашка з невдачею дитини, змушуючи кожного актора зупинятися, але інформувати головного батька про те, що стався збій, і як з цим боротися, однак оригінальним винятком, який спричинив цей збій, буде бути доступним лише для безпосереднього батька (це найчастіше гарна річ, не розголошуючі деталі про реалізацію).
+
+Можливо, бувають випадки, коли ви хочете, щоб оригінальний виняток мандрував ієрархію, це можна зробити, обробляючи сигнал `Terminated` і повторно скидаючи виняток у кожного актора.
+
+[source,scala]
+----
+import akka.actor.typed.ActorRef
+import akka.actor.typed.Behavior
+import akka.actor.typed.DeathPactException
+import akka.actor.typed.SupervisorStrategy
+import akka.actor.typed.scaladsl.Behaviors
+
+object Protocol {
+  sealed trait Command
+  case class Fail(text: String) extends Command
+  case class Hello(text: String, replyTo: ActorRef[String]) extends Command
+}
+import Protocol._
+
+object Worker {
+  def apply(): Behavior[Command] =
+    Behaviors.receiveMessage {
+      case Fail(text) =>
+        throw new RuntimeException(text)
+      case Hello(text, replyTo) =>
+        replyTo ! text
+        Behaviors.same
+    }
+}
+
+object MiddleManagement {
+  def apply(): Behavior[Command] =
+    Behaviors.setup[Command] { context =>
+      context.log.info("Middle management starting up")
+      // нагляд за дитиною за замовчуванням, що означає, що вона припиниться на збої
+      val child = context.spawn(Worker(), "child")
+      // ми хочемо знати, коли дитина закінчується, але оскільки ми не обробляємо
+      // Terminated, ми в свою чергу відмовляємося від припинення дитини
+      context.watch(child)
+
+      // тут ми взагалі не обробляємо Terminated, що означає, що
+      // коли дитина виходить з ладу або акуратно зупиниться, цей актор буде
+      // виходити з ладу з DeathPactException
+      Behaviors.receiveMessage { message =>
+        child ! message
+        Behaviors.same
+      }
+    }
+}
+
+object Boss {
+  def apply(): Behavior[Command] =
+    Behaviors
+      .supervise(Behaviors.setup[Command] { context =>
+        context.log.info("Boss starting up")
+        // нагляд за дитиною за замовчуванням, що означає, що вона припиниться на збої
+        val middleManagement = context.spawn(MiddleManagement(), "middle-management")
+        context.watch(middleManagement)
+
+        // тут ми взагалі не обробляємо Terminated, що означає, що
+        // коли середній менеджмент не вдається з DeathPactException
+        // цей актор теж зазнає невдачі
+        Behaviors.receiveMessage[Command] { message =>
+          middleManagement ! message
+          Behaviors.same
+        }
+      })
+      .onFailure[DeathPactException](SupervisorStrategy.restart)
+}
+----
+
