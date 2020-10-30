@@ -1,0 +1,142 @@
+:ascii-ids:
+:doctype: book
+:source-highlighter: pygments
+:icons: font
+
+=== Как работать с JSON в mysql
+
+Если вам повезло, и у вас стоит MySQL, а не MariaDB, то у вас доступны тип поля JSON и несколько функций работы с ним. Вот как можно собрать различные переводы в ML файле:
+
+[source,sql]
+----
+CREATE VIEW `ac_category` AS
+    SELECT 
+        `aircraft_category_id` AS `id`,
+        JSON_OBJECTAGG(`lang_id`, `name`) AS `name_ml`
+    FROM
+        `aircraft_category_ml`
+    GROUP BY `aircraft_category_id`
+----
+
+Результат говорит за себя:
+
+[source,sql]
+----
+mysql> describe ac_category;
++---------+---------+------+-----+---------+-------+
+| Field   | Type    | Null | Key | Default | Extra |
++---------+---------+------+-----+---------+-------+
+| id      | int(11) | NO   |     | NULL    |       |
+| name_ml | json    | YES  |     | NULL    |       |
++---------+---------+------+-----+---------+-------+
+2 rows in set (0.01 sec)
+----
+
+Правда не все понимают этот тип, но приличные ORM всегда поддерживают настройку маршаллинга для любых типов. Например, Knex делает ето в конфиге: 
+
+[source,js]
+----
+const knexConfig = {
+  client: 'mysql',
+ ...
+    typeCast: function(field, next) {
+      if (field.type === 'JSON') {
+        return (JSON.parse(field.string()))
+      }
+      return next();
+    },
+  },
+};
+----
+
+* На самом-то деле (с) функция `typeCast` принадлежит драйверу `mysql` и передается туда через конфигурацию knex. Поэтому почитать о ней в документации knex не получится - искать лучше link:https://github.com/mysqljs/mysql#custom-type-casting[ТУТ].
+
+После этого я просто даю объектный тип на поле:
+
+[source,json]
+----
+  type ML {
+    en: String
+    de: String
+    ru: String
+    uk: String
+  }
+  type AirCraft {
+    id: ID
+    name: String
+    type: String
+    brand: String
+    category_ml: ML
+  }
+----
+ 
+И главное не забыть (а это и не получится) что надо дать декомпозицию:
+
+[source,json]
+----
+{
+  aircrafts {
+    id
+    name
+    type
+    brand
+    category_ml {
+      en
+      ru
+    }
+  }
+}
+----
+
+Получим красивый результат:
+
+[source,json]
+----
+{
+  "data": {
+    "aircrafts": [
+      {
+        "id": "796",
+        "name": "Avro Shackleton",
+        "type": "Not Specified",
+        "brand": "Not Specified",
+        "category_ml": {
+          "en": "Other",
+          "ru": "Другие"
+        }
+      },
+----
+
+=== Как работать с JSON в MariaDB (никак)
+
+Поскольку в MariaDB нет типа JSON, то поискать его не получится. Придется идентифицировать по какому-то другому, суррагатному признаку:
+
+[source,js]
+----
+    typeCast: function(field, next) {
+      if (field.name.endsWith('_ml')) {
+        return (JSON.parse(field.string()))
+      }
+      return next();
+    },
+----
+
+Аналогично нет и `JSON_OBJECTAGG`, поэтому придется делать некрасивые вещи:
+
+[source,html]
+----
+CREATE VIEW `ac_category` AS
+    SELECT 
+        `aircraft_category_ml`.`aircraft_category_id` AS `id`,
+        CONCAT('{',
+                GROUP_CONCAT(CONCAT('"',
+                            `aircraft_category_ml`.`lang_id`,
+                            '": "',
+                            `aircraft_category_ml`.`name`,
+                            '"')
+                    SEPARATOR ','),
+                '}') AS `name_ml`
+    FROM
+        `aircraft_category_ml`
+    GROUP BY `aircraft_category_ml`.`aircraft_category_id`
+----
