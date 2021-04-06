@@ -139,33 +139,40 @@ Directive1=
 
 **Requires=*: Ця директива перелічує любі юніти, від яких конче залежить цей юніт. Якщо поточний юніт активується, перелічені тут юніти також мають успішно активізуватись, інакше цей юніт схибить. По замовчанню ці юніти стартують паралельно з поточним юнітом.
 
-**Wants=*: Ця директива подібна до `Requires=`, але менш сувора. `Systemd` буде намагатись запустити любі юніти, перелічені тут, при активації цього юніта. Якщо ці юніти не знайдені або не можуть стартувати, поточний юніт буде продовжувати роботу. Це рекомендований спосіб This is the recommended way to configure most dependency relationships. Again, this implies a parallel activation unless modified by other directives.
+**Wants=*: Ця директива подібна до `Requires=`, але менш сувора. `Systemd` буде намагатись запустити любі юніти, перелічені тут, при активації цього юніта. Якщо ці юніти не знайдені або не можуть стартувати, поточний юніт буде продовжувати роботу. Це рекомендований спосіб зконфігурувати більшість відношень залежності. Знову, це передбачає паралельну активацію, якщо не модифіковано іншими директивами.
 
-**BindsTo=*: Ця директива is similar to `Requires=`, but also causes the current unit to stop when the associated unit terminates.
+**BindsTo=*: Ця директива подібна до `Requires=`, але також спричиняє зупинення поточного юніта,якщо припиняється асоційований юніт.
 
-**Before=*: The units listed in Ця директива will not be started until the current unit is marked as started if they are activated at the same time. This does not imply a dependency relationship and must be used in conjunction with one of the above directives if this is desired.
+**Before=*: Юніти, перераховані в цій директиві, не будуть запущені, доки поточний юніт не буде відмічений як запущений, якщо вони активовані одночасно. Це не передбачає відносин залежності, і має використовуватись в поєднанні з одною з попередніх директив, якщо це бажано.
 
-**After=*: The units listed in Ця директива will be started before starting the current unit. This does not imply a dependency relationship and one must be established through the above directives if this is required.
+**After=*: Юніти, перелічені і цій директиві, будуть запущені перед запуском поточного юніта. Це не передбачає відносин залежності, і має використовуватись в поєднанні з одною з попередніх директив, якщо це бажано.
 
-**Conflicts=*: This can be used to list units that cannot be run at the same time as the current unit. Starting a unit with this relationship will cause the other units to be stopped.
+**Conflicts=*: Це можна використати для переліку юнітів, що не можуть використовуватись одночасно з поточним юнтом. Запуск юніта з такою залежністю спричинить зупинку іншого юніта.
 
-**Condition...=*: There are a number of directives that start with Condition which allow the administrator to test certain conditions prior to starting the unit. This can be used to provide a generic unit file that will only be run when on appropriate systems. If the condition is not met, the unit is gracefully skipped.
+**Condition...=*: Це декілька директив, що починаються з `Condition`, що дозволяють адміністратору перевіряти певні кондиції перед запуском юніта. Це може бути використано для запровадження узагальненого юніт файла, що буде виконуватись тільки на відповідних системах. Якщо кондиція не справдилась юніт буде безпечно пропущений.
 
-**Assert...=*: Similar to the directives that start with Condition, these directives check for different aspects of the running environment to decide whether the unit should activate. However, unlike the Condition directives, a negative result causes a failure with Ця директива.
+**Assert...=*: Подібно до директив, що починаються з  `Condition`, ці директиви первіряють різні аспекти оточення виконання, щоб прийняти рішення, чи слід активувати юніт. Однак, на відміну від директив `Condition`, негативний результат спричиняє збій цієї директиви.
 
-Using these directives and a handful of others, general information about the unit and its relationship to other units and the operating system can be established.
+Використовуючи ці та декілька інших директив, можна встановити відносини між юнітом та іншими юнітами  та операційною систнмою.
 
-[Install] Section Directives
-On the opposite side of unit file, the last section is often the [Install] section. This section is optional and is used to define the behavior or a unit if it is enabled or disabled. Enabling a unit marks it to be automatically started at boot. In essence, this is accomplished by latching the unit in question onto another unit that is somewhere in the line of units to be started at boot.
+=== Директиви секції [Install]
 
-Because of this, only units that can be enabled will have this section. The directives within dictate what should happen when the unit is enabled:
+На протилежній стороні файла останньою секцією часто є секція `[Install]`. Ця секція опціональна, та використовується для визначення поведінки юніта коли він буде ввімкнений або вимкнений. Ввімкнення юніта відмічає його для автоматичного запуску при запуску. В основі це досягається зчепленням розгляданого юніта з іншим юнітом, що знаходиться десь в черзі юнітів, які запускаються при завантаженні.
 
-WantedBy=: The WantedBy= directive is the most common way to specify how a unit should be enabled. Ця директива allows you to specify a dependency relationship in a similar way to the Wants= directive does in the [Unit] section. The difference is that Ця директива is included in the ancillary unit allowing the primary unit listed to remain relatively clean. When a unit with Ця директива is enabled, a directory will be created within /etc/systemd/system named after the specified unit with .wants appended to the end. Within this, a symbolic link to the current unit will be created, creating the dependency. For instance, if the current unit has WantedBy=multi-user.target, a directory called multi-user.target.wants will be created within /etc/systemd/system (if not already available) and a symbolic link to the current unit will be placed within. Disabling this unit removes the link and removes the dependency relationship.
-RequiredBy=: Ця директива is very similar to the WantedBy= directive, but instead specifies a required dependency that will cause the activation to fail if not met. When enabled, a unit with Ця директива will create a directory ending with .requires.
-Alias=: Ця директива allows the unit to be enabled under another name as well. Among other uses, this allows multiple providers of a function to be available, so that related units can look for any provider of the common aliased name.
-Also=: Ця директива allows units to be enabled or disabled as a set. Supporting units that should always be available when this unit is active can be listed here. They will be managed as a group for installation tasks.
-DefaultInstance=: For template units (covered later) which can produce unit instances with unpredictable names, this can be used as a fallback value for the name if an appropriate name is not provided.
-Unit-Specific Section Directives
+Через це тільки юніти, які можуть бути ввімкнені, будуть мати цей розділ. Директиви всередині диктують, що має відбуватись, коли юніт ввімкнений:
+
+**WantedBy=*: Директива `WantedBy` є найбільш загальним шляхом вказати, як треба вмикати юніт. Ця директива дозволяє вам задати відношення залежності, в спосіб подібний до директиви `Wants` в секції `[Unit]`. Різниця в тому, що ця директива включена в залежний юніт, що залишає первинний юніт відносно чиистим. Коли юніт з цією директивою вімкнено, в `/etc/systemd/system` буде створена директорія за назвою юніта та `.wants` в кінці. В ній буде створено символічне посилання на поточний юніт, що створиь залежність. Наприклад, якщо поточний юніт має `WantedBy=multi-user.target`, буде створена директорія `multi-user.target.wants` в `/etc/systemd/system` (якщо її ще не існує), і в неї буде покладено посилання на поточний юніт. Відключення юніта видалить посилання і відносини залежності разом з ним.
+
+**RequiredBy=*: Ця директива дуже подібна до директиви `WantedBy`, але замість вказує потрібну залежність, що, коли не справдиться, призведе до збою активації. Коли вімкнений, юніт з цією директивою створюватиме директорію, що матиме в кінці `.requires`.
+
+**Alias=*: Ця директива дозволяє юніту бути також вімкненим під іншим ім'ям. Між іншими застосуваннями це дозволяє існування декількох провайдерів функції, так що пов'язані юніти можуть шукати любого провайдера по загальному імені.
+
+**Also=*: Ця директива дозволяє юнітам вмикатись або відмикатися як набір. Тут можливо перелічити юніти підтримки, що повинні завжди бути під рукою, коли запущений наш юніт.
+
+**DefaultInstance=*: For template units (covered later) which can produce unit instances with unpredictable names, this can be used as a fallback value for the name if an appropriate name is not provided.
+
+=== Unit-Specific Section Directives
+
 Sandwiched between the previous two sections, you will likely find unit type-specific sections. Most unit types offer directives that only apply to their specific type. These are available within sections named after their type. We will cover those briefly here.
 
 The device, target, snapshot, and scope unit types have no unit-specific directives, and thus have no associated sections for their type.
