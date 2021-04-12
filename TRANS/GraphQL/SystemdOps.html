@@ -5,7 +5,7 @@
 <head>
 <meta http-equiv="Content-Type" content="application/xhtml+xml; charset=UTF-8" />
 <meta name="generator" content="AsciiDoc 8.6.10" />
-<title>Spotters Knowledge Base <sub>by ac2</sub></title>
+<title></title>
 <style type="text/css">
 /* Shared CSS for AsciiDoc xhtml11 and html5 backends */
 
@@ -796,53 +796,51 @@ asciidoc.install();
 </head>
 <body class="book">
 <div id="header">
-<h1>Spotters Knowledge Base <sub>by ac2</sub></h1>
 </div>
 <div id="content">
-<div id="preamble">
+<div class="sect1">
+<h2 id="____nodejs_">Старт та зупинка nodeJs сервісів</h2>
 <div class="sectionbody">
-<div class="imageblock">
-<div class="content">
-<img src="logo.png" alt="alt=CarrotCanFly" />
-</div>
-</div>
-<div class="ulist"><ul>
-<li>
-<p>
-<a href="graphql.html">Исчерпывающая справка по GraphQL</a>
-</p>
-</li>
-<li>
-<p>
-<a href="nosql.html">Копирование VIEW с локальной машины на сервер</a>
-</p>
-</li>
-<li>
-<p>
-<a href="vue3.html">Новые возможности Vue 3</a>
-</p>
-</li>
-<li>
-<p>
-<a href="apollo.html">Сервер Apollo</a>
-</p>
-</li>
-<li>
-<p>
-<a href="SystemdOps.html">Запуск Apollo як сервісу</a>
-</p>
-</li>
-<li>
-<p>
-<a href="json.html">Работа с JSON в MySQL &amp; MariaDB</a>
-</p>
-</li>
-<li>
-<p>
-<a href="auth_hierarchy.html">Нормализованная иерархия авторизации</a>
-</p>
-</li>
-</ul></div>
+<div class="paragraph"><p><a href="https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units-ru">джерело</a></p></div>
+<div class="paragraph"><p>Як відомо, Java Script робить у власній VM та код досить ізольований від середовища. Тому ядро NodeJs не інтегроване в ОС, та не має прямого способу прописати себе для запуску як сервісу - ви маєте зробити це власноруч, або скористатись чимось кодом. Оскільки це не дуже складна справа, пояснимо це на прикладі.</p></div>
+<div class="paragraph"><p>Як відомо, сервер Apollo типово завантажується як <code>node index.js</code>. Нам треба зробити те саме автоматично при завантаженні системи. Головне, що вам треба пам'ятати - система завантажується не в вашому особистому контексті, а в контексті супер користувача. З цього випливає важливе слідоцтво: всі шляхи та поточні каталоги НЕ ПРАЦЮЮТЬ як ви очікуєте. Це стосується обох: файлу конфігурації та файлів, якими оперує ваш сервіс! Скоріше всього ваші спроби створювати файли потраплять в корінь замість вашого каталогу, і результатом буде відмова доступу.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>$ journalctl -u apollo.service
+  ...
+  Error: EACCES: permission denied, mkdir &#39;/data-cache&#39;
+</pre></div></div></div>
+<div class="paragraph"><p>Створимо файл сервісу apollo.service (присутній в коррені проекту):</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>[Unit]
+Description=Spotters Apolllo GQL
+Documentation=https://example.com
+After=network.target
+
+[Service]
+Environment=NODE_PORT=4040
+Type=simple
+User=arseniy
+ExecStart=/usr/bin/node /home/arseniy/dev/graphql-server/index.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+</pre></div></div></div>
+<div class="paragraph"><p>Розташуємо його в <code>/lib/systemd/system/apollo.service</code>.</p></div>
+<div class="listingblock">
+<div class="content"><div class="highlight"><pre><span></span>$ sudo systemctl start apollo
+$ systemctl enable apollo
+$ systemctl status apollo
+● apollo.service
+     Loaded: loaded (/lib/systemd/system/apollo.service; disabled; vendor preset: enabled)
+     Active: active (running) since Mon 2021-04-12 15:35:09 CEST; 4s ago
+   Main PID: 1655914 (node)
+      Tasks: 7 (limit: 2286)
+     Memory: 53.4M
+     CGroup: /system.slice/apollo.service
+             └─1655914 /usr/bin/node /home/arseniy/dev/graphql-server/index.js
+</pre></div></div></div>
+<div class="paragraph"><p>Перевірте досяжність сервісу в данному випадку в плейграунді Apollo <code>http://ac2spotters.gq/apollo</code>.</p></div>
 </div>
 </div>
 </div>
@@ -850,7 +848,7 @@ asciidoc.install();
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2021-04-12 16:49:09 EEST
+ 2021-04-12 16:59:36 EEST
 </div>
 </div>
 </body>

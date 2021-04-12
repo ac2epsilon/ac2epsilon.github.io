@@ -1,0 +1,58 @@
+:ascii-ids:
+:doctype: book
+:source-highlighter: pygments
+:icons: font
+
+== Старт та зупинка nodeJs сервісів
+
+link:https://www.digitalocean.com/community/tutorials/how-to-use-systemctl-to-manage-systemd-services-and-units-ru[джерело]
+
+Як відомо, Java Script робить у власній VM та код досить ізольований від середовища. Тому ядро NodeJs не інтегроване в ОС, та не має прямого способу прописати себе для запуску як сервісу - ви маєте зробити це власноруч, або скористатись чимось кодом. Оскільки це не дуже складна справа, пояснимо це на прикладі.
+
+Як відомо, сервер Apollo типово завантажується як `node index.js`. Нам треба зробити те саме автоматично при завантаженні системи. Головне, що вам треба пам'ятати - система завантажується не в вашому особистому контексті, а в контексті супер користувача. З цього випливає важливе слідоцтво: всі шляхи та поточні каталоги НЕ ПРАЦЮЮТЬ як ви очікуєте. Це стосується обох: файлу конфігурації та файлів, якими оперує ваш сервіс! Скоріше всього ваші спроби створювати файли потраплять в корінь замість вашого каталогу, і результатом буде відмова доступу.
+
+[source,text]
+----
+$ journalctl -u apollo.service
+  ...
+  Error: EACCES: permission denied, mkdir '/data-cache'
+----
+
+Створимо файл сервісу apollo.service (присутній в коррені проекту):
+
+[source,text]
+----
+[Unit]
+Description=Spotters Apolllo GQL 
+Documentation=https://example.com
+After=network.target
+
+[Service]
+Environment=NODE_PORT=4040
+Type=simple
+User=arseniy
+ExecStart=/usr/bin/node /home/arseniy/dev/graphql-server/index.js
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+----
+
+Розташуємо його в `/lib/systemd/system/apollo.service`.
+
+[source,text]
+----
+$ sudo systemctl start apollo
+$ systemctl enable apollo
+$ systemctl status apollo
+● apollo.service
+     Loaded: loaded (/lib/systemd/system/apollo.service; disabled; vendor preset: enabled)
+     Active: active (running) since Mon 2021-04-12 15:35:09 CEST; 4s ago
+   Main PID: 1655914 (node)
+      Tasks: 7 (limit: 2286)
+     Memory: 53.4M
+     CGroup: /system.slice/apollo.service
+             └─1655914 /usr/bin/node /home/arseniy/dev/graphql-server/index.js
+----
+
+Перевірте досяжність сервісу в данному випадку в плейграунді Apollo `http://ac2spotters.gq/apollo`.
