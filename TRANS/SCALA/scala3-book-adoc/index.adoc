@@ -1406,3 +1406,60 @@ val x = nums.filter(_ > 3)
 * _Об'єкт-компанйон_ - це об'єкт , що має те саме ім'я, що і клас, з яким він поділяє один файл. В такій ситуації клас також називається _класом-компанйоном_
 * Вони використовуються для реалізації трейтів, щоб створити _модулі_
 
+==== Допоміжні методи-утіліти
+
+Оскільки `object` є синглтоном, його методи можуть бути досяжними, як методи `static` в Java класі. Наприклад, цей об'єкт `StringUtils` містить невелику колекцію методів, пов'язаних з рядками: 
+[source,scala]
+----
+object StringUtils:
+  def isNullOrEmpty(s: String): Boolean = s == null || s.trim.isEmpty
+  def leftTrim(s: String): String = s.replaceAll("^\\s+", "")
+  def rightTrim(s: String): String = s.replaceAll("\\s+$", "")
+----
+Оскільки `StringUtils` є синглтоном, його методи можуть бути викликані на об'єкті: 
+[source,scala]
+----
+val x = StringUtils.isNullOrEmpty("")    // true
+val x = StringUtils.isNullOrEmpty("a")   // false
+----
+
+==== Об'єкти-компанйони
+
+Компанйон-клас або компанйон-об'єкт можуть отримувати доступ до приватних членів свого компанйона. Використовуйте компанйон-об'єкт для методів, що не є специфічними для примірників компанйон-класа.
+
+Цей приклад демонструє, як метод `area` в компанйон класі має доступ до приватного метода `calculateArea` в компанйон-об'єкті: 
+[source,scala]
+----
+import scala.math.*
+
+class Circle(radius: Double):
+  import Circle.*
+  def area: Double = calculateArea(radius)
+
+object Circle:
+  private def calculateArea(radius: Double): Double =
+    Pi * pow(radius, 2.0)
+
+val circle1 = Circle(5.0)
+circle1.area   // Double = 78.53981633974483
+----
+
+==== Створення модулів з трейтів
+
+Об'єкти також можуть використовуватись для реалізації трейтів, щоб створити модулі. Цей прийом бере два трейти, і комбінує їх, щоб створити конкретний `object`: 
+[source,scala]
+----
+trait AddService:
+  def add(a: Int, b: Int) = a + b
+
+trait MultiplyService:
+  def multiply(a: Int, b: Int) = a * b
+
+// реалізація трейтів в якості об'єкта
+object MathService extends AddService, MultiplyService
+
+// використання об'єкту
+import MathService.*
+println(add(1,1))        // 2
+println(multiply(2,2))   // 4
+----
