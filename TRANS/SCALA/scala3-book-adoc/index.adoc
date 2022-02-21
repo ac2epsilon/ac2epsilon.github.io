@@ -2095,7 +2095,7 @@ val list =
 2. Далі обробляється 11 - друге число з диапазона. Воно множиться на 2, і видається число 22. Ви можете вважати, що ці отримані результати зберігаються в тимчасовому сховищі.
 3. Нарешті, обробляється число 12 з диапазону, множиться на 2, видаючи число 24. Цикл завершується в цій точці, видаючи остаточний результат, вектор `Vector(20,22,24)`.
 
-Хоча ціль цього розділу - продемоонструвати `for` вирази, може бути корисним розуміти, що показаний вираз `for` еквівалентний до цього виклику метода `map`: 
+Хоча ціль цього розділу - продемонструвати `for` вирази, може бути корисним розуміти, що показаний вираз `for` еквівалентний до цього виклику метода `map`: 
 [source,scala]
 ----
 val list = (10 to 12).map(i => i * 2)
@@ -2161,7 +2161,7 @@ while (i < 3) {
 ----
 import scala.annotation.switch
 
-// `i` is an integer
+val i = 5
 val day = i match
   case 0 => "Sunday"
   case 1 => "Monday"
@@ -2171,6 +2171,8 @@ val day = i match
   case 5 => "Friday"
   case 6 => "Saturday"
   case _ => "invalid day"   // the default, catch-all
+
+  println(day)
 ----
 В цьому прикладі змінна `i` перевіряється на рівнісь з переліченими значеннями. Якщо число в межах від 0 до 6, `day` отримує значення рядка, що представляє назву одного з днів тижня. Якщо ні - спрацьовує випадок перехоплення, представлений символом підкреслення `_`, і `day` отримує рядок `"invalid day"`.
 
@@ -2181,12 +2183,159 @@ val day = i match
 Якщо вам треба отримати значення по замовчанню в `match` виразі, просто надайте ім'я змінної в лівій частині `case` твердження, та потім використовуйте це ім'я в правій частині твердження: 
 [source,scala]
 ----
-i match
-  case 0 => println("1")
-  case 1 => println("2")
-  case what => println(s"You gave me: $what" )
+val i = 2
+val digit = i match
+  case 0 => "0"
+  case 1 => "1"
+  case what => s"You gave me: $what"
+
+  println(digit)
 ----
 В цьому прикладі змінна має назву `what`, щоб показати, що тут може бути довільне ім'я. Ви також можете використати підкреслення, щоб проігнорувати це значення.
 
 ==== Обробка декількох співпадінь в одному рядку 
+
+Як вже згадувалось, вирази `match` мають багато можливостей. Цей приклад показує, як використовувати декілька можливих співпадінь в кожному твердженні `case`:
+[source,scala]
+----
+val evenOrOdd = i match
+  case 1 | 3 | 5 | 7 | 9 => "odd"
+  case 2 | 4 | 6 | 8 | 10 => "even"
+  case _ => "some other number"
+
+println(evenOdd)
+----
+
+==== Використання if охоронців в case конструкціях
+
+Ви також можете використовувати `if` охоронців в порівняннях `match`. В цьому прикладі другий та третій `case` використовують охоронців для порівняння декількох цілих значень: 
+[source,scala]
+----
+val i = 3
+val result = i match
+  case 1 => "one, a lonely number"
+  case x if x == 2 || x == 3 => "two’s company, three’s a crowd"
+  case x if x > 3 => "4+, that’s a party"
+  case _ => "i’m guessing your number is zero or less"
+
+println(result)
+----
+Це інший приклад, який показує, як `match` порівнює значеення з диапазонами значень: 
+[source,scala]
+----
+val i = 15
+val result = i match
+  case a if 0 to 9 contains a => s"0-9 range: $a"
+  case b if 10 to 19 contains b => s"10-19 range: $b"
+  case c if 20 to 29 contains c => s"20-29 range: $c"
+  case _ => "Hmmm..."
+
+println(result)
+----
+
+==== Case класи та match вирази
+
+Також ви можете вилучити поля з `case` класів, або класів, що сумлінно реалізують методи `apply`/`unapply`, та використовувати їх в умовах охоронців. Ось приклад з використанням простого `case` классу `Person`: 
+[source,scala]
+----
+case class Person(name: String)
+
+def speak(p: Person) = p match
+  case Person(name) if name == "Fred" => println(s"$name says, Yubba dubba doo")
+  case Person(name) if name == "Bam Bam" => println(s"$name says, Bam bam!")
+  case _ => println("Watch the Flintstones!")
+
+speak(Person("Fred"))      // "Fred says, Yubba dubba doo"
+speak(Person("Bam Bam"))   // "Bam Bam says, Bam bam!"
+----
+
+=== Використання match виразу як тіла методу
+
+Оскільки `match` вирази повертають значення, вони можуть використовуватись як тіло методів. Цей метод приймає значення `Matchable` як вхідний параметр, та повертає `Boolean` на основі результата `match`: 
+[source,scala]
+----
+def isTruthy(a: Matchable) = a match
+  case 0 | "" | false => false
+  case _              => true
+----
+Вхідний параметр `a` визначений з типом `Matchable`, що є коренем для усіх типів Scala, на яких можливо виконувати порівняння. Метод реалізований порівнянням параметру, що має два випадки. Перший перевіряє, чи отримане значення є цілим 0, порожнім рядком або `false`, і повертає `false` в цьому випадку. По замовчанню ми повертаємо `true` для кожного іншого випадку. Ці приклади показують як робить цей метод: 
+[source,scala]
+----
+isTruthy(0)      // false
+isTruthy(false)  // false
+isTruthy("")     // false
+isTruthy(1)      // true
+isTruthy(" ")    // true
+isTruthy(2F)     // true
+----
+Використання виразу `match` як тіла методу є дуже загальним прикладом використання.
+
+==== Match вирази підтримують багато різних типів шаблонів
+
+Існує багато різних форм шаблонів, що можна використать для `match` виразів. Приклади включають: 
+
+* Константи-шаблони (такі як `case 3 => `)
+* Шаблони послідовностей (такі як `case List(els : _*) => `)
+* Шаблони-тапли (такі як `case (x, y) => `)
+* Шаблон-конструктори (такі як `case Person(first, last) => `)
+* Шаблони порівняння типів (`case p: Person => `)
+
+Всі ці різновиди шаблонів показані в наступному методі `pattern`, що приймає вхідний параметр типу `Matchable`, та повертає `String`: 
+[source,scala]
+----
+def pattern(x: Matchable): String = x match
+
+  // шаблон-константа
+  case 0 => "zero"
+  case true => "true"
+  case "hello" => "you said 'hello'"
+  case Nil => "an empty List"
+
+  // шаблон-послідовність
+  case List(0, _, _) => "a 3-element list with 0 as the first element"
+  case List(1, _*) => "list, starts with 1, has any number of elements"
+  case Vector(1, _*) => "vector, starts w/ 1, has any number of elements"
+
+  // шаблон-тапл
+  case (a, b) => s"got $a and $b"
+  case (a, b, c) => s"got $a, $b, and $c"
+
+  // шаблон-конструктор
+  case Person(first, "Alexander") => s"Alexander, first name = $first"
+  case Dog("Zeus") => "found a dog named Zeus"
+
+  // шаблон перевірки типів
+  case s: String => s"got a string: $s"
+  case i: Int => s"got an int: $i"
+  case f: Float => s"got a float: $f"
+  case a: Array[Int] => s"array of int: ${a.mkString(",")}"
+  case as: Array[String] => s"string array: ${as.mkString(",")}"
+  case d: Dog => s"dog: ${d.name}"
+  case list: List[?] => s"got a List: $list"
+  case m: Map[?, ?] => m.toString
+
+  // шаблон по замовчанню
+  case _ => "Unknown"
+----
+
+=== try/catch/finally
+
+Як і Java, Scala має конструкцію `try/catch/finally`, що дозволяє вам перехоплювати та обробляти виключення. Для узгодженності Scala використовує той самий синтаксис, що використовує `match` для підтримки порівняння шаблонів, на різних можливих виключеннях, що можуть виикнути. 
+
+В наступному прикладі `openAndReadAFile` є метод, який робить те що і обіцяє: відкриває файл та читає текст з нього, отримуючи результат в змінній `text`: 
+[source,scala]
+----
+var text = ""
+try
+  text = openAndReadAFile(filename)
+catch
+  case fnf: FileNotFoundException => fnf.printStackTrace()
+  case ioe: IOException => ioe.printStackTrace()
+finally
+// закриття ресурсів
+println("Came to the 'finally' clause.")
+----
+Вважаючи, що метод `openAndReadAFile` використовує Java класи `java.io.*` для читання файлу та не перехоплює виключень, спроба відкриття та читання файлів може призвести до `FileNotFoundException` або `IOException`, і обоє перехоплюються в блоці `catch` в прикладі.
+
+== Domain modelling
 
