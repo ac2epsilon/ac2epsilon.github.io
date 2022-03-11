@@ -5208,6 +5208,96 @@ http://www.gnu.org/software/src-highlite -->
 </div>
 <div class="sect2">
 <h3 id="_примірники_та_приватний_змінний_стан">Примірники та приватний змінний стан</h3>
+<div class="paragraph"><p>Як і інші мови, що підтримують ООП, трейти та класи в Scala можуть визначати змінні поля:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Counter</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-style: italic"><span style="color: #9A1900">// може досліджуватись тільки через метод `count`</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">private</span></span> <span style="font-weight: bold"><span style="color: #0000FF">var</span></span> currentCount <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #993399">0</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">tick</span></span><span style="color: #990000">()</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Unit <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> currentCount <span style="color: #990000">+</span><span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #993399">1</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> count<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> currentCount</tt></pre></div></div>
+<div class="paragraph"><p>Кожний примірник класу <code>Counter</code> має свій власний приватний стан, що може досліджуватись лише через метод <code>count</code>, як ілюструє наступна послідовність:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> c1 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">Counter</span></span><span style="color: #990000">()</span>
+c1<span style="color: #990000">.</span>count <span style="font-style: italic"><span style="color: #9A1900">// 0</span></span>
+<span style="font-weight: bold"><span style="color: #000000">c1.tick</span></span><span style="color: #990000">()</span>
+<span style="font-weight: bold"><span style="color: #000000">c1.tick</span></span><span style="color: #990000">()</span>
+c1<span style="color: #990000">.</span>count <span style="font-style: italic"><span style="color: #9A1900">// 2</span></span></tt></pre></div></div>
+<div class="sect3">
+<h4 id="_модифікатори_доступу">Модифікатори доступу</h4>
+<div class="paragraph"><p>По замовчанню всі члени, визначені в Scala, є публічно видимі. Щоб приховати деталі реалізації, можливо визначати члени (методи, поля, типи тощо), щоб зробити їх <code>private</code> або <code>protected</code>. Таким чином ви можете контролювати, як отримується доступ або перекриття. Приватні члени видимі для самого класу/трейту та його компанйон об&#8217;єкта. Захищені члени також видимі в субкласі класу.</p></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_просунутий_приклад_сервіс_орієнтовний_дизайн">Просунутий приклад: сервіс-орієнтовний дизайн</h3>
+<div class="paragraph"><p>Далі ми ілюструємо деякі просунуті можливості Scala, та покажемо, як вони можуть використовуватись для структурування більших софтверних компонент. Приклади адаптовані з папіру "Маштабовані компонентні абстракції" від Martin Odersky та Matthias Zenger. Не хвилюйтесь, якщо ви не розумієте деталей прикладу. Він призначений для демонстрації, як використовувати декілька можливостей для побудови більших компонент.</p></div>
+<div class="paragraph"><p>Наша ціль - визначити програмний компонент з <em>сім&#8217;єю типів</em>, так що він може бути уточнений пізніше в реалізації компонент. Конкретніше, наступний код визначає компонент <code>SubjectObserver</code> як трейт з двома абстрактними членами, <code>S</code> (від subjects) та <code>O</code> (від observers):</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">trait</span></span> <span style="color: #008080">SubjectObserver</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">type</span></span> S <span style="font-weight: bold"><span style="color: #0000FF">&lt;:</span></span> Subject
+  <span style="font-weight: bold"><span style="color: #0000FF">type</span></span> O <span style="font-weight: bold"><span style="color: #0000FF">&lt;:</span></span> Observer
+
+  <span style="font-weight: bold"><span style="color: #0000FF">trait</span></span> <span style="color: #008080">Subject</span> <span style="color: #FF0000">{</span> self<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> S <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">private</span></span> <span style="font-weight: bold"><span style="color: #0000FF">var</span></span> observers<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> List<span style="color: #990000">[</span>O<span style="color: #990000">]</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">List</span></span><span style="color: #990000">()</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">subscribe</span></span><span style="color: #990000">(</span>obs<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> O<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Unit <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+      observers <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> obs <span style="font-weight: bold"><span style="color: #0000FF">::</span></span> observers
+    <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">publish</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+      <span style="font-weight: bold"><span style="color: #0000FF">for</span></span> obs <span style="font-weight: bold"><span style="color: #0000FF">&lt;-</span></span> observers <span style="font-weight: bold"><span style="color: #0000FF">do</span></span> <span style="font-weight: bold"><span style="color: #000000">obs.notify</span></span><span style="color: #990000">(</span><span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">)</span>
+  <span style="color: #FF0000">}</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">trait</span></span> <span style="color: #008080">Observer</span> <span style="color: #FF0000">{</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">notify</span></span><span style="color: #990000">(</span>sub<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> S<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Unit
+  <span style="color: #FF0000">}</span></tt></pre></div></div>
+<div class="paragraph"><p>Є декілька речей, що потребують пояснення.</p></div>
+<div class="sect3">
+<h4 id="_абстрактні_члени_типів">Абстрактні члени типів</h4>
+<div class="paragraph"><p>Декларація <code>type S &lt;: Subject</code> каже, що в трейті <code>SubjectObserver</code> ми можемо посилатись на деякий <em>невідомий</em> (тобто абстрактний) тип з назвою <code>S</code>. Однак цей тип не повністю невідомий: про нього відомо, що він є <em>деяким підтипом</em> трейту <code>Subject</code>. Любі класи, що розширюють <code>SubjectObserver</code> вільні обирати любий тип для <code>S</code>, доки цей тип є субтипом для <code>Subject</code>. Частина <code>&lt;: Subject</code> також відома як <em>верхня межа для S</em>.</p></div>
+</div>
+<div class="sect3">
+<h4 id="_вкладені_трейти">Вкладені трейти</h4>
+<div class="paragraph"><p><em>Всередині</em> трейту <code>SubjectObserver</code> ми визначаємо два інші трейти. Давайте почнемо з трейту <code>Observer</code>, що визначає тільки абстрактний метод <code>notify</code>, що приймає аргумент типу S. Як ми швидко побачимо, це важливо, що аргумент має тип <code>S</code>, а не <code>Subject</code>.</p></div>
+<div class="paragraph"><p>Другий трейт, <code>Subject</code>, визначає приватне поле <code>observers</code>, щоб зберігати всіх спостерігачів (обсервери), що підписані на деяку подію. Підпис на подію просто зберігає об&#8217;єкт в списку. І знову, тип параметра <code>obs</code> є <code>O</code> а не <code>Observer</code>.</p></div>
+</div>
+<div class="sect3">
+<h4 id="_само_типова_анотація">Само-типова анотація</h4>
+<div class="paragraph"><p>Нарешті, тепер ми можемо поцікавитись, що означає <code>self: S =&gt;</code> на трейті <code>Subject</code>. Це має назву <em>само-типова анотація</em>. Це вимагає,щоб підтипи <code>Subject</code> також були підтипами <code>S</code>. Це потрібно, щоб мати змогу викликати <code>obs.notify</code> з <code>this</code> як аргументом, оскільки він потребує тип <code>S</code>. Коли <code>S</code> буде <em>конкретним</em> типом, само-типова анотація може бути замінена на <code>trait Subject extends S</code>.</p></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_реалізація_компонента">Реалізація компонента</h3>
+<div class="paragraph"><p>Тепер ми можемо реалізувати компонент та визначити абстрактні члени типів як конкретні типи:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">object</span></span> SensorReader <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> SubjectObserver<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">type</span></span> S <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> Sensor
+  <span style="font-weight: bold"><span style="color: #0000FF">type</span></span> O <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> Display
+
+  <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Sensor</span><span style="color: #990000">(</span><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> label<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> Subject<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">private</span></span> <span style="font-weight: bold"><span style="color: #0000FF">var</span></span> currentValue <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #993399">0.0</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> value <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> currentValue
+    <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">changeValue</span></span><span style="color: #990000">(</span>v<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span><span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+      currentValue <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> v
+      <span style="font-weight: bold"><span style="color: #000000">publish</span></span><span style="color: #990000">()</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Display</span> <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> Observer<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">notify</span></span><span style="color: #990000">(</span>sub<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Sensor<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+      <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span>s<span style="color: #FF0000">"${sub.label} has value ${sub.value}"</span><span style="color: #990000">)</span></tt></pre></div></div>
 </div>
 </div>
 </div>
@@ -5216,7 +5306,7 @@ http://www.gnu.org/software/src-highlite -->
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2022-03-10 14:44:10 EET
+ 2022-03-11 15:03:11 EET
 </div>
 </div>
 </body>
