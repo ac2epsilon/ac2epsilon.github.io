@@ -5298,6 +5298,1161 @@ http://www.gnu.org/software/src-highlite -->
   <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Display</span> <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> Observer<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
     <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">notify</span></span><span style="color: #990000">(</span>sub<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Sensor<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
       <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span>s<span style="color: #FF0000">"${sub.label} has value ${sub.value}"</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Маючи в своєму розпорядженні всі ці утіліти об&#8217;єктного програмування, в наступному розділі ми продемонструємо, як розробляти програми в функціональному стилі.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_фп_моделювання">ФП моделювання</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Ця глава провадить вступ до доменного моделювання з використанням функціонального програмування в Scala 3. Коли моделюєте навколішний світ за допомогою ФП, ви типово використовуєте ці конструкції Scala:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Переліки (енуми)
+</p>
+</li>
+<li>
+<p>
+Кейс класи
+</p>
+</li>
+<li>
+<p>
+Трейти
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><code>Якщо ви не знайомі з алгебраїчними типами даних (ADT) і їх узагальненням (GADT), ви можете прочитати розділ https://docs.scala-lang.org/scala3/book/types-adts-gadts.html[Algebraic Data Types] перед тим, як просуватись далі.</code></pre>
+</div></div>
+</li>
+</ul></div>
+<div class="sect2">
+<h3 id="_вступ_2">Вступ</h3>
+<div class="paragraph"><p>В ФП <em>дані</em> та <em>операції над тими даними</em> є дві окремі речі. Вам не треба інкапсулювати їх разом, як ви робите це в ООП.</p></div>
+<div class="paragraph"><p>Концепція подібна до числової алгебри. Коли ви думаєте про цілі числа, чиї значення більші або дорівнюють нулю, ви маєте <em>множину</em> можливих значень, що виглядає так:</p></div>
+<div class="paragraph"><p><em>0, 1, 2 &#8230; Int.MaxValue</em></p></div>
+<div class="paragraph"><p>Ігноруючи ділення цілих чисел, можливі <em>операції</em> з ціма значеннями:</p></div>
+<div class="paragraph"><p><em>+, -, *</em></p></div>
+<div class="paragraph"><p>ФП дизайн реалізований в подібний спосіб:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Ви визначаєте набір значень (ваші дані).
+</p>
+</li>
+<li>
+<p>
+Ви описуєте операції, що роблять з ціма значеннями (ваші функції).
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><code>Як ми побачимо, міркування щодо програм в цьому стилі досить відрізняється від об'єктно-орієнтовного. Дані в ФП просто _є_. Відділення функціональності від даних дозволяють вам перевіряти ваші дані, не турбуючись про поведінку.</code></pre>
+</div></div>
+</li>
+</ul></div>
+<div class="paragraph"><p>В цій главі ми змоделюємо дані та операції, пов&#8217;язані з піцою. Ви побачите, як реалізувати частину "дані" моделі ФП в Scala 3, і потім ви побачите декілька різних шляхів, як ви можете організувати операції з ціма даними.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_моделювання_даних">Моделювання даних</h3>
+<div class="paragraph"><p>В Scala опис моделі даних для проблеми програмування є простим:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Якщо ви бажаєте моделювати дані в вигляді декількох альтернатив, використовуйте конструкцію <code>enum</code>.
+</p>
+</li>
+<li>
+<p>
+Якщо ви бажаєте лише згрупіювати речі (або треба кращий контроль), використовуйте <code>case</code> класи.
+</p>
+</li>
+</ul></div>
+<div class="sect3">
+<h4 id="_опис_альтернатив">Опис альтернатив</h4>
+<div class="paragraph"><p>Дані, що просто складаються з різних альтернатив, як розмір коржів або різні начінки, моделюються в Scala 3 конструкцією <code>enum</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>enum CrustSize<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Small<span style="color: #990000">,</span> Medium<span style="color: #990000">,</span> Large
+
+enum CrustType<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Thin<span style="color: #990000">,</span> Thick<span style="color: #990000">,</span> Regular
+
+enum Topping<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Cheese<span style="color: #990000">,</span> Pepperoni<span style="color: #990000">,</span> BlackOlives<span style="color: #990000">,</span> GreenOlives<span style="color: #990000">,</span> Onions</tt></pre></div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Типи даних, що описують різні альтернативи (як `CrustSize`) також часом називають типи суми.</code></pre>
+</div></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_опис_складних_даних">Опис складних даних</h3>
+<div class="paragraph"><p>Піца може розглядатись як <em>складний контейнер</em> з різних атрибутів. Ми можемо використати <code>case</code> клас, щоб описати <code>Pizza</code>, що складається з <code>crustSize</code>, <code>crustType</code>, та потенційно декількох <code>Topping</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000080">import</span></span> CrustSize<span style="color: #990000">.*</span>
+<span style="font-weight: bold"><span style="color: #000080">import</span></span> CrustType<span style="color: #990000">.*</span>
+<span style="font-weight: bold"><span style="color: #000080">import</span></span> Topping<span style="color: #990000">.*</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Pizza</span><span style="color: #990000">(</span>
+  crustSize<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">,</span>
+  crustType<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">,</span>
+  toppings<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Seq<span style="color: #990000">[</span>Topping<span style="color: #990000">]</span>
+<span style="color: #990000">)</span></tt></pre></div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Типи даних, що _агрегують декілька компонентів_ (як `Pizza`) також іноді називають _типами множення_.</code></pre>
+</div></div>
+<div class="paragraph"><p>І це все. Це модель даних для піци в стилі ФП. Рішення дуже стисле, бо воно не потребує операцій над піцами, які треба інтегрувати з моделлю даних. Модель даних легко читати, як декларацію реляційної бази даних. Також дуже легко створити значення моделі даних та перевірити її:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> myFavPizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>Small<span style="color: #990000">,</span> Regular<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #000000">Seq</span></span><span style="color: #990000">(</span>Cheese<span style="color: #990000">,</span> Pepperoni<span style="color: #990000">))</span>
+<span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span>myFavPizza<span style="color: #990000">.</span>crustType<span style="color: #990000">)</span> <span style="font-style: italic"><span style="color: #9A1900">// prints Regular</span></span></tt></pre></div></div>
+<div class="sect3">
+<h4 id="_ще_про_модель_даних">Ще про модель даних</h4>
+<div class="paragraph"><p>Ми можемо продовжувати в тому ж дусі для моделювання цілої системи замовлення піци. Ось декілька інших <code>case</code> класів, що використовуються для моделювання такої системи:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Address</span><span style="color: #990000">(</span>
+  street1<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span>
+  street2<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Option<span style="color: #990000">[</span>String<span style="color: #990000">],</span>
+  city<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span>
+  state<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span>
+  zipCode<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String
+<span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Customer</span><span style="color: #990000">(</span>
+  name<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span>
+  phone<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span>
+  address<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Address
+<span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Order</span><span style="color: #990000">(</span>
+  pizzas<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Seq<span style="color: #990000">[</span>Pizza<span style="color: #990000">],</span>
+  customer<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Customer
+<span style="color: #990000">)</span></tt></pre></div></div>
+</div>
+<div class="sect3">
+<h4 id="_худі_доменні_об_8217_єкти">"Худі доменні об&#8217;єкти"</h4>
+<div class="paragraph"><p>В своїй книзі <em>Функціональне і реактивне доменне моделювання</em> Debasish Ghosh стверджує, що в той час, коли практикуючі ООП розробники описують свої класи як "багаті доменні моделі", що інкапсулюють дані та поведінку, ФП моделі даних можна розглядати як "худі доменні об&#8217;єкти". Це тому, як показує цей урок, що моделі даних визначені як <code>case</code> класи з атрибутами, але без поведінки, що дає короткі і стислі структури даних.</p></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_моделювання_операцій">Моделювання операцій</h3>
+<div class="paragraph"><p>Все це веде до цікавого питання: оскільки ФП відділяє дані від операцій над ціма даними, як реалізувати ці операції в Scala?</p></div>
+<div class="paragraph"><p>Відповідь, насправді, дуже проста: ви просто пишете функції (або методи), що оперують зі значеннями даних, які ми щойно змоделювали. Наприклад, ми можемо визначити функцію, що обчислює вартість піци.</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">pizzaPrice</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> p <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>crustSize<span style="color: #990000">,</span> crustType<span style="color: #990000">,</span> toppings<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> base  <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #993399">6.00</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> crust <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">crustPrice</span></span><span style="color: #990000">(</span>crustSize<span style="color: #990000">,</span> crustType<span style="color: #990000">)</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> tops  <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">toppings.map</span></span><span style="color: #990000">(</span>toppingPrice<span style="color: #990000">).</span>sum
+    base <span style="color: #990000">+</span> crust <span style="color: #990000">+</span> tops</tt></pre></div></div>
+<div class="paragraph"><p>Ви можете зауважити, як реалізація функції просто слідує за формою даних: оскільки <code>Pizza</code> є кейс класом, ми використовуємо порівняння шаблонів для отримання компонентів, і викликаємо допоміжні функції для обчислення окремої вартості.</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">toppingPrice</span></span><span style="color: #990000">(</span>t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Topping<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> t <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Cheese <span style="color: #990000">|</span> Onions <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.5</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Pepperoni <span style="color: #990000">|</span> BlackOlives <span style="color: #990000">|</span> GreenOlives <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.75</span></tt></pre></div></div>
+<div class="paragraph"><p>Аналогічно, оскільки <code>Topping</code> є переліком, ми використовуємо порівняння шаблонів для розрізнення різних варіантів. Так, сир та цибуля коштують 50 центів, а інше - 75.</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">crustPrice</span></span><span style="color: #990000">(</span>s<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">,</span> t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="color: #990000">(</span>s<span style="color: #990000">,</span> t<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">// якщо корж малий або середній його тип не важливий</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #990000">(</span>Small <span style="color: #990000">|</span> Medium<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.25</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #990000">(</span>Large<span style="color: #990000">,</span> Thin<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.50</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #990000">(</span>Large<span style="color: #990000">,</span> Regular<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.75</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #990000">(</span>Large<span style="color: #990000">,</span> Thick<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">1.00</span></tt></pre></div></div>
+<div class="paragraph"><p>Щоб обчислити вартість коржа ми одночасно порівнюємо шаблони по розміру та типу коржа.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Важливе зауваження щодо всіх показаних функцій: вони всі _чисті_ функції, вони не змінюють будь-які дані і не мають жодних побічних ефектів (як закидання виключень або запис в файл). Все що вони роблять, це отримують значення та отримують результат.</code></pre>
+</div></div>
+</div>
+<div class="sect2">
+<h3 id="_як_організувати_функціональність">Як організувати функціональність</h3>
+<div class="paragraph"><p>Коли ми реалізували <code>pizzaPrice</code>, ми не казали, <em>де саме</em> треба визначати її. В Scala 3 є чудово прийнятним визначити її на верхньому рівні вашого файла. Однак, мова надає вам багато чудових інструментів, щоб організувати нашу логіку в різних просторах імен та модулях.</p></div>
+<div class="paragraph"><p>Існують декілька різних шляхів реалізувати та впорядкувати поведінку:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Визначити функції в об&#8217;єкті-компанйоні.
+</p>
+</li>
+<li>
+<p>
+Використовувати модулярний стиль програмування.
+</p>
+</li>
+<li>
+<p>
+Використати підхід "функціональних об&#8217;єктів".
+</p>
+</li>
+<li>
+<p>
+Визначити функціональність в методах розширення.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Ці різні рішення показані в залишку розділа.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_об_8217_єкти_компанйони_3">Об&#8217;єкти-компанйони</h3>
+<div class="paragraph"><p>Перший підхід є визначення поведінки, тобто функцій, в об&#8217;єкті-компанйоні.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Як обговорювалось в _Інструменти доменного моделювання_, _об'єкт-компанйон_ є `object`, що має ту саму назву, що і клас, та декларований в тому самому файлі, що і клас.</code></pre>
+</div></div>
+<div class="paragraph"><p>За цім підходом, на додаток до перелічень та кейс класів ви визначаєте так само названі об&#8217;єкти-компанйони, що містять поведінку.</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Pizza</span><span style="color: #990000">(</span>
+  crustSize<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">,</span>
+  crustType<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">,</span>
+  toppings<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Seq<span style="color: #990000">[</span>Topping<span style="color: #990000">]</span>
+<span style="color: #990000">)</span>
+
+<span style="font-style: italic"><span style="color: #9A1900">// об'єкт-компанйон до класу Pizza</span></span>
+<span style="font-weight: bold"><span style="color: #0000FF">object</span></span> Pizza<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-style: italic"><span style="color: #9A1900">// реалізація `pizzaPrice`</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">price</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #990000">...</span>
+
+enum Topping<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Cheese<span style="color: #990000">,</span> Pepperoni<span style="color: #990000">,</span> BlackOlives<span style="color: #990000">,</span> GreenOlives<span style="color: #990000">,</span> Onions
+
+<span style="font-style: italic"><span style="color: #9A1900">// об'єкт-компанйон до енума Topping</span></span>
+<span style="font-weight: bold"><span style="color: #0000FF">object</span></span> Topping<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-style: italic"><span style="color: #9A1900">// реалізація `toppingPrice`</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">price</span></span><span style="color: #990000">(</span>t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Topping<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> t <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Cheese <span style="color: #990000">|</span> Onions <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.5</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> Pepperoni <span style="color: #990000">|</span> BlackOlives <span style="color: #990000">|</span> GreenOlives <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #993399">0.75</span></tt></pre></div></div>
+<div class="paragraph"><p>За цім підходом ви можете створити <code>Pizza</code> та обчислити вартість:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> pizza1 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>Small<span style="color: #990000">,</span> Thin<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #000000">Seq</span></span><span style="color: #990000">(</span>Cheese<span style="color: #990000">,</span> Onions<span style="color: #990000">))</span>
+<span style="font-weight: bold"><span style="color: #000000">Pizza.price</span></span><span style="color: #990000">(</span>pizza1<span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Групування функціональності таким чином має декілька переваг:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Це асоціює функціональність з даними, і спрощує пошук одного і другого, як для програмістів, так і для компілятора.
+</p>
+</li>
+<li>
+<p>
+Створоюється простір імен, і, наприклад, дозволяє використовувати <code>price</code> як ім&#8217;я методу, без необхідності посилання на перевантаження.
+</p>
+</li>
+<li>
+<p>
+Реалізація <code>Topping.price</code> (наприклад) може мати доступ до членів енуму <code>Cheese</code> без необхідності його імпорту.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Але також є декілька недоліків, про які варто пам&#8217;ятати:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Це тісно пов&#8217;язує функціональність з вашою моделлю даних. Зокрема, об&#8217;єкт-компанйон має бути визначений в тому самому файлі, що і кейс клас.
+</p>
+</li>
+<li>
+<p>
+Іноді може бути незрозумілим, де визначати функції як <code>crustPrice</code>, що однаково можуть розташовуватись в компанйон-об&#8217;єктах <code>CrustSize</code> та <code>CrustType</code>.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_модулі">Модулі</h3>
+<div class="paragraph"><p>Другий шлях організувати поведінку - використати "модулярний" підхід. Книжка <em>Programming in Scala</em> визначає <em>модуль</em> як "менший програмний шматок з гарно визначеним інтерфейсом і прихованою реалізацією". Поглянемо що це означає.</p></div>
+<div class="sect3">
+<h4 id="_створення_інтерфейсу_pizzaservice">Створення інтерфейсу PizzaService</h4>
+<div class="paragraph"><p>Перша річ, про яку треба подумати, це "поведінки" <code>Pizza</code>. При цьому ми накидуємо трейт <code>PizzaServiceInterface</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">trait</span></span> <span style="color: #008080">PizzaServiceInterface</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">price</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">,</span> t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Topping<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">removeAllToppings</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustSize</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">,</span> cs<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">,</span> ct<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza</tt></pre></div></div>
+<div class="paragraph"><p>Як видно, кожний метод приймає <code>Pizza</code> як вхідний параметр - разом з іншими параметрами - і потім повертає <code>Pizza</code> як результат.</p></div>
+<div class="paragraph"><p>Коли ви пишете чистий інтерфейс, як цей, ви можете думати про нього як про контракт, який стверджує "всі не-абстрактні класи, що розширюють цей трейт, <em>мають</em> провадити реалізацію ціх сервісів".</p></div>
+<div class="paragraph"><p>Що ви також маєте уявляти в цей момент - це поставити себе на місце користувача цього API. Це допоможе створити деякий "споживаючий" код, щоб переконатись, що воно виглядає як потрібно:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>Small<span style="color: #990000">,</span> Thin<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #000000">Seq</span></span><span style="color: #990000">(</span>Cheese<span style="color: #990000">))</span>
+
+<span style="font-style: italic"><span style="color: #9A1900">// як буде використовуватись PizzaServiceInterface</span></span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p1 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>p<span style="color: #990000">,</span> Pepperoni<span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p2 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>p1<span style="color: #990000">,</span> Onions<span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p3 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>p2<span style="color: #990000">,</span> Thick<span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p4 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustSize</span></span><span style="color: #990000">(</span>p3<span style="color: #990000">,</span> Large<span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Коли все виглядає як треба, ви типово переходите до інших API, таких як API рахунків, але поки обмежимось піцами. Тепер закінчимо з інтерфейсами, і перейдемо до конкретної реалізації цього інтерфейсу.</p></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Зауважте, що це зазвичай дво-кроковий процес. На першому кроці ми робимо ескіз контракту API, як інтерфейсу. В деяких випадках ми в результаті створимо декілька конкретних реалізацій базового інтерфейсу.</code></pre>
+</div></div>
+</div>
+<div class="sect3">
+<h4 id="_створення_конкретної_реалізації">Створення конкретної реалізації</h4>
+<div class="paragraph"><p>Тепер, коли ми знаємо, як виглядає <code>PizzaServiceInterface</code>, ви можете створити його конкретну реалізацію, написавши тіло всіх методів, яки ви визначили в інтерфейсі:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">object</span></span> PizzaService <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> PizzaServiceInterface<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">price</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="color: #990000">...</span> <span style="font-style: italic"><span style="color: #9A1900">// те саме, що і раніше</span></span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">,</span> t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Topping<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> p<span style="color: #990000">.</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">:</span></span><span style="color: #990000">+</span> t<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">removeAllToppings</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> Seq<span style="color: #990000">.</span>empty<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustSize</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">,</span> cs<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>crustSize <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> cs<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">,</span> ct<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>crustType <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> ct<span style="color: #990000">)</span>
+
+end PizzaService</tt></pre></div></div>
+<div class="paragraph"><p>Хоча дво-кроковий процес створення інтерфейсу та його реалізації не завжди потрібний, окремо промислити API та його застосування є гарним підходом.</p></div>
+<div class="paragraph"><p>Коли все готове, ви можете використати ваш клас <code>Pizza</code> та <code>PizzaService</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000080">import</span></span> PizzaService<span style="color: #990000">.*</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>Small<span style="color: #990000">,</span> Thin<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #000000">Seq</span></span><span style="color: #990000">(</span>Cheese<span style="color: #990000">))</span>
+
+<span style="font-style: italic"><span style="color: #9A1900">// використання методів PizzaService</span></span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p1 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>p<span style="color: #990000">,</span> Pepperoni<span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p2 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>p1<span style="color: #990000">,</span> Onions<span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p3 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>p2<span style="color: #990000">,</span> Thick<span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> p4 <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustSize</span></span><span style="color: #990000">(</span>p3<span style="color: #990000">,</span> Large<span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #000000">println(price</span></span><span style="color: #990000">(</span>p4<span style="color: #990000">))</span> <span style="font-style: italic"><span style="color: #9A1900">// друкує 8.75</span></span></tt></pre></div></div>
+</div>
+<div class="sect3">
+<h4 id="_функціональні_об_8217_єкти">Функціональні об&#8217;єкти</h4>
+<div class="paragraph"><p>В книжці <em>Programming in Scala</em> автор визначає термін "функціональний об&#8217;єкт" як "об&#8217;єкт, що не має жодного змінного стану". Це також стосується типів в <code>scala.collection.immutable</code>. Наприклад, методи <code>List</code> не змінюють внутрішній стан, замість цього створюючи копію <code>List</code> в якості результата.</p></div>
+<div class="paragraph"><p>Ви можете думати про цей підхід як "гибридний ФП/ООП". Ви можете:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Моделювати дані з використанням <code>case</code> класів.
+</p>
+</li>
+<li>
+<p>
+Визначати поведінку (методи) в <em>тому самому типі</em>, що і дані.
+</p>
+</li>
+<li>
+<p>
+Реалізовати поведінку як чисті функції: вони не змінюють жодного внутрішнього стану. Замість цього вони повертають копії.
+</p>
+<div class="literalblock">
+<div class="content">
+<pre><code>Це насправді гібрідний підхід: як в ООП, методи є інкапсульованими в клас разом з даними, але, як в типовому ФП, методи реалізовані як чисті функції, що не змінюють дані.</code></pre>
+</div></div>
+</li>
+</ul></div>
+</div>
+<div class="sect3">
+<h4 id="_приклад">Приклад</h4>
+<div class="paragraph"><p>Використовуючи цей підхід, ви можете напряму реалізувати "функціональність піци":</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Pizza</span><span style="color: #990000">(</span>
+  crustSize<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">,</span>
+  crustType<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">,</span>
+  toppings<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Seq<span style="color: #990000">[</span>Topping<span style="color: #990000">]</span>
+<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+
+  <span style="font-style: italic"><span style="color: #9A1900">// операції моделі даних</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> price<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">pizzaPrice</span></span><span style="color: #990000">(</span><span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">)</span> <span style="font-style: italic"><span style="color: #9A1900">// реалізація див. вище</span></span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Topping<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">copy</span></span><span style="color: #990000">(</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">.</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">:</span></span><span style="color: #990000">+</span> t<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> removeAllToppings<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">copy</span></span><span style="color: #990000">(</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> Seq<span style="color: #990000">.</span>empty<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustSize</span></span><span style="color: #990000">(</span>cs<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">copy</span></span><span style="color: #990000">(</span>crustSize <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> cs<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>ct<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">this</span></span><span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">copy</span></span><span style="color: #990000">(</span>crustType <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> ct<span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Зауважте, що, на відміну від попередніх підходів, оскільки це методи класу <code>Pizza</code>, вони не потребують посилання на <code>Pizza</code> в якості вхідного параметру. Замість цього вони мають власне посилання на поточний примірник, <code>this</code>.</p></div>
+<div class="paragraph"><p>Тепер ви можете використовувати цей новий дизайн:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>Small<span style="color: #990000">,</span> Thin<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #000000">Seq</span></span><span style="color: #990000">(</span>Cheese<span style="color: #990000">))</span>
+  <span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>Pepperoni<span style="color: #990000">)</span>
+  <span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>Thick<span style="color: #990000">)</span>
+  <span style="color: #990000">.</span>price</tt></pre></div></div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="_методи_розширення_2">Методи розширення</h3>
+<div class="paragraph"><p>Нарешті, ми покажемо підхід, що знаходиться між першим (визначення функцій в об&#8217;єкті-компанйоні), та останнім (визначення функцій як методів самого типу).</p></div>
+<div class="paragraph"><p>Методи розширення дозволяють вам створювати API, такі як функціональний об&#8217;єкт, без визначення функцій як методів самого типу. Це може мати декілька переваг:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Наша модель даних знову дуже <em>стисла</em>, і не включає жодної поведінки.
+</p>
+</li>
+<li>
+<p>
+Ми можемо оздобити типи додатковими методами <em>заднім числом</em>, без потреби змінювати оригінальне визначення.
+</p>
+</li>
+<li>
+<p>
+На відміну від об&#8217;єктів-компанйонів або прямих методів на типах, методи розширення можна визначати <em>ззовні</em>, в іншому файлі.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Давайте повернемось до нашого прикладу:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Pizza</span><span style="color: #990000">(</span>
+  crustSize<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">,</span>
+  crustType<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">,</span>
+  toppings<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Seq<span style="color: #990000">[</span>Topping<span style="color: #990000">]</span>
+<span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #000000">extension</span></span> <span style="color: #990000">(</span>p<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza<span style="color: #990000">)</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> price<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">pizzaPrice</span></span><span style="color: #990000">(</span>p<span style="color: #990000">)</span> <span style="font-style: italic"><span style="color: #9A1900">// що і раніше</span></span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Topping<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> p<span style="color: #990000">.</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">:</span></span><span style="color: #990000">+</span> t<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> removeAllToppings<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>toppings <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> Seq<span style="color: #990000">.</span>empty<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustSize</span></span><span style="color: #990000">(</span>cs<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustSize<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>crustSize <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> cs<span style="color: #990000">)</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>ct<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CrustType<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Pizza <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">p.copy</span></span><span style="color: #990000">(</span>crustType <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> ct<span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>В цьому коді ми визначаємо різні методи як <em>зовнішні</em> методи. В <code>extension (p: Pizza)</code> ми кажемо, що ми бажаємо додати методи до примірників <code>Pizza</code>, та посилатись далі на цей примірник як на <code>p</code>.</p></div>
+<div class="paragraph"><p>Таким чином, ми отримуємо такий самий API, як і раніше.</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">Pizza</span></span><span style="color: #990000">(</span>Small<span style="color: #990000">,</span> Thin<span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #000000">Seq</span></span><span style="color: #990000">(</span>Cheese<span style="color: #990000">))</span>
+  <span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">addTopping</span></span><span style="color: #990000">(</span>Pepperoni<span style="color: #990000">)</span>
+  <span style="color: #990000">.</span><span style="font-weight: bold"><span style="color: #000000">updateCrustType</span></span><span style="color: #990000">(</span>Thick<span style="color: #990000">)</span>
+  <span style="color: #990000">.</span>price</tt></pre></div></div>
+<div class="paragraph"><p>При цьому ми в змозі визначити розширення в любому іншому модулі. Типово, якщо ви розробник моделі даних, ви будете визначати ваші методи розширення в об&#8217;єкті-компанйоні. Таким чином вони вже доступні для всіх користувачів. Інакше методи розширення мають бути явно імпортовані, щоб бути корисними.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_підсумок_різних_підходів">Підсумок різних підходів</h3>
+<div class="paragraph"><p>Визначення моделі даних в Scala/FP схильне бути простим: просто моделюйте варіанти даних переліками, та складні дані <code>case</code> класами. Після цього для моделювання поведінки використовуються функції, що оперують на значеннях вашої моделі. Ми маємо декілька шляхів для організації наших функцій:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Ви можете покласти ваші методи в об&#8217;єкт-компанйон.
+</p>
+</li>
+<li>
+<p>
+Ви можете використовувати модулярний стиль програмування, розділяючи інтерфейс та реалізацію.
+</p>
+</li>
+<li>
+<p>
+Ви можете створити "функціональний об&#8217;єкт", та зберігати методи на визначеному типі даних.
+</p>
+</li>
+<li>
+<p>
+Ви можете використати методи розширення, щоб додати функціональність до вашої моделі даних.
+</p>
+</li>
+</ul></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_методи">Методи</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>В Scala 2 <em>методи</em> можуть бути визначені в класах, трейтах, об&#8217;єктах, кейс класах і кейс об&#8217;єктах. Але все на краще: в Scala 3 вони можуть бути визначені <em>ззовні</em> всіх ціх конструкцій. Ми кажемо про визначення "вищого рівня", оскільки вони не вкладені в інші визначення. Коротко кажучи, методи тепер можуть бути визначені будь-де.</p></div>
+<div class="paragraph"><p>Багато можливостей методів будуть продемонстровані в наступних розділах. Оскільки метод <code>main</code> потребує додаткового пояснення, йому буде виділений окремий розділ.</p></div>
+<div class="sect2">
+<h3 id="_властивості_методів">Властивості методів</h3>
+<div class="paragraph"><p>Цей розділ вводить в різні аспекти визначення та виклику методів в Scala 3.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_визначення_методів">Визначення методів</h3>
+<div class="paragraph"><p>Scala методи мають багато властивостей, включаючи такі:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Дженерік параметри (параметри типів).
+</p>
+</li>
+<li>
+<p>
+Значення параметрів по замовчанню.
+</p>
+</li>
+<li>
+<p>
+Декілька груп параметрів.
+</p>
+</li>
+<li>
+<p>
+Параметри, надані контекстом.
+</p>
+</li>
+<li>
+<p>
+Параметри за ім&#8217;ям.
+&#8230;
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Деякі з ціх властивостей демонструються в цьому розділі. Але коли ви визначаєте "простий" метод, що не використовує додаткових можливостей, його синтаксис виглядає таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">methodName</span></span><span style="color: #990000">(</span>param1<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Type1<span style="color: #990000">,</span> param2<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Type2<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> ReturnType <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="font-style: italic"><span style="color: #9A1900">// тіло метода</span></span>
+end methodName   <span style="font-style: italic"><span style="color: #9A1900">// опціонально</span></span></tt></pre></div></div>
+<div class="paragraph"><p>В цьому синтаксисі:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Ключове слово <code>def</code> використовується для визначення методу.
+</p>
+</li>
+<li>
+<p>
+За стандартом Scala методи отримують назву за кемел-кейс домовленістю.
+</p>
+</li>
+<li>
+<p>
+Параметри методів завжди визначаються разом з типом.
+</p>
+</li>
+<li>
+<p>
+Декларування типу повернення метода є опціональним.
+</p>
+</li>
+<li>
+<p>
+Метод може складатись з багатьох рядків, або тільки з одного.
+</p>
+</li>
+<li>
+<p>
+Провадження частини <code>end methodName</code> після тіла метода також є опціональним, і рекомендоване лише для довгих методів.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Ось два приклади одно-рядкових методів з назвою <code>add</code>, що приймають два вхідні параметри типу <code>Int</code>. Перша версія ясно вказує тип результату <code>Int</code>, тоді як друга - ні.</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">add</span></span><span style="color: #990000">(</span>a<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">,</span> b<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> a <span style="color: #990000">+</span> b
+<span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">add</span></span><span style="color: #990000">(</span>a<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">,</span> b<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> a <span style="color: #990000">+</span> b</tt></pre></div></div>
+<div class="paragraph"><p>Рекомендовано анотувати публічно видимі методи типом повернення. Декларування типу повернення може спростити розуміння, коли ви повернетесь через місяць або рік, або коли ви дивитесь на код когось іншого.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_виклик_методів">Виклик методів</h3>
+<div class="paragraph"><p>Виклик методів прямолінійний:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> x <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">add</span></span><span style="color: #990000">(</span><span style="color: #993399">1</span><span style="color: #990000">,</span> <span style="color: #993399">2</span><span style="color: #990000">)</span>   <span style="font-style: italic"><span style="color: #9A1900">// 3</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Класи колекцій в Scala мають десятки вбудованих методів. Ці приклади показують, як їх викликати:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">val</span></span> x <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">List</span></span><span style="color: #990000">(</span><span style="color: #993399">1</span><span style="color: #990000">,</span> <span style="color: #993399">2</span><span style="color: #990000">,</span> <span style="color: #993399">3</span><span style="color: #990000">)</span>
+x<span style="color: #990000">.</span>size          <span style="font-style: italic"><span style="color: #9A1900">// 3</span></span>
+<span style="font-weight: bold"><span style="color: #000000">x.contains</span></span><span style="color: #990000">(</span><span style="color: #993399">1</span><span style="color: #990000">)</span>   <span style="font-style: italic"><span style="color: #9A1900">// true</span></span>
+<span style="font-weight: bold"><span style="color: #000000">x.map</span></span><span style="color: #990000">(</span><span style="font-weight: bold"><span style="color: #0000FF">_</span></span> <span style="color: #990000">*</span> <span style="color: #993399">10</span><span style="color: #990000">)</span>   <span style="font-style: italic"><span style="color: #9A1900">// List(10, 20, 30)</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Зауваження:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<code>size</code> не приймає аргументів, та повертає число елементів в списку.
+</p>
+</li>
+<li>
+<p>
+<code>contains</code> приймає один аргумент, значення, що входить до списку або ні. Повертає логічне значення.
+</p>
+</li>
+<li>
+<p>
+<code>map</code> приймає один аргумент, деяку функцію, в дано випадку анонімну, та застосовує її до кожного елемента списку. Повертає новий список, що складається з результатів роботи функціі для кожного елементу.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_багаторядкові_методи">Багаторядкові методи</h3>
+<div class="paragraph"><p>Коли метод більше одного рядка в довжину, тіло метода починається з другого рядка, посунутого вправо:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">addThenDouble</span></span><span style="color: #990000">(</span>a<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">,</span> b<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="font-style: italic"><span style="color: #9A1900">// уявімо, що це тіло потребує декілька рядків</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> sum <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> a <span style="color: #990000">+</span> b
+  sum <span style="color: #990000">*</span> <span style="color: #993399">2</span></tt></pre></div></div>
+<div class="paragraph"><p>В цьому методі:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<code>sum</code> є незмінна локальна змінна, до неї нема доступу ззовні.
+</p>
+</li>
+<li>
+<p>
+Останній рядок подвоює значення <code>sum</code>, це значення повертається як результат.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Коли ви покладете цей код в REPL, ви переконаєтесь, що він робить як очікувалось:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>scala<span style="color: #990000">&gt;</span> <span style="font-weight: bold"><span style="color: #000000">addThenDouble</span></span><span style="color: #990000">(</span><span style="color: #993399">1</span><span style="color: #990000">,</span> <span style="color: #993399">1</span><span style="color: #990000">)</span>
+res0<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #993399">4</span></tt></pre></div></div>
+<div class="paragraph"><p>Зауважте, що немає потреби в твердженні <code>return</code> в кінці метода. Оскільки все в Scala є виразом, що означає, що кожний рядок коду повертає (або <em>обчислюється до</em>) значення - тому потреби в <code>return</code> немає.</p></div>
+<div class="paragraph"><p>Це стає більш ясно, коли ви скорочуєте ваш метод, та записуєте його в один рядок:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">addThenDouble</span></span><span style="color: #990000">(</span>a<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">,</span> b<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #990000">(</span>a <span style="color: #990000">+</span> b<span style="color: #990000">)</span> <span style="color: #990000">*</span> <span style="color: #993399">2</span></tt></pre></div></div>
+<div class="paragraph"><p>Тіло метода може використовувати всі різноманітні можливості мови:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+<code>if/else</code> вирази
+</p>
+</li>
+<li>
+<p>
+<code>match</code> вирази
+</p>
+</li>
+<li>
+<p>
+<code>while</code> цикли
+</p>
+</li>
+<li>
+<p>
+<code>for</code> цикли і <code>for</code> вирази
+</p>
+</li>
+<li>
+<p>
+призначення змінних
+</p>
+</li>
+<li>
+<p>
+виклик інших методів
+</p>
+</li>
+<li>
+<p>
+визначення інших методів
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Як приклад метода з реального світу, розглянемо <code>getStackTraceString</code>, що конвертує параметр <code>Throwable</code> на вході в гарно-форматований <code>String</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">getStackTraceAsString</span></span><span style="color: #990000">(</span>t<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Throwable<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> sw <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">StringWriter</span></span><span style="color: #990000">()</span>
+  <span style="font-weight: bold"><span style="color: #000000">t.printStackTrace(PrintWriter</span></span><span style="color: #990000">(</span>sw<span style="color: #990000">))</span>
+  sw<span style="color: #990000">.</span>toString</tt></pre></div></div>
+<div class="paragraph"><p>В цьому методі:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Перший рядок присвоює змінній <code>sw</code> новий примірник <code>StringWriter</code>.
+</p>
+</li>
+<li>
+<p>
+Другий рядок зберігає вміст траси стеку в <code>StringWriter</code>.
+</p>
+</li>
+<li>
+<p>
+Третій видає рядкову репрезентацію стеку.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_параметри_по_замовчанню">Параметри по замовчанню</h3>
+<div class="paragraph"><p>Параметри методів можуть мати значення по замовчанню. В наступному прикладі значення по замовчанню маюють обоє параметрів, <code>timeout</code> та <code>protocol</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>timeout<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> 5<span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #993399">000</span><span style="color: #990000">,</span> protocol<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #FF0000">"http"</span><span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span>f<span style="color: #FF0000">"timeout = ${timeout}%d, protocol = ${protocol}%s"</span><span style="color: #990000">)</span>
+  <span style="font-style: italic"><span style="color: #9A1900">// інший код...</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Оскількі параметри мають значення по замовчанню, метод може викликатись наступним чином:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">()</span>                 <span style="font-style: italic"><span style="color: #9A1900">// timeout = 5000, protocol = http</span></span>
+<span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>2<span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #993399">000</span><span style="color: #990000">)</span>            <span style="font-style: italic"><span style="color: #9A1900">// timeout = 2000, protocol = http</span></span>
+<span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>3<span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #993399">000</span><span style="color: #990000">,</span> <span style="color: #FF0000">"https"</span><span style="color: #990000">)</span>   <span style="font-style: italic"><span style="color: #9A1900">// timeout = 3000, protocol = https</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Ось декілька ключових моментів щодо ціх прикладів:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+В першому прикладі аргументи не провадяться, так що метод використовує значення по замовчанню, <code>5_000</code> та <code>http</code>.
+</p>
+</li>
+<li>
+<p>
+В другому прикладі в якості <code>timeout</code> передане значення <code>2_000</code>, яке використовується разом зі значенням по замовчанню для <code>protocol</code>.
+</p>
+</li>
+<li>
+<p>
+В третьому випадку значення задані для обох параметрів.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Зауважте, що коли використовуються значення по замовчанню, для споживача це виглядає так, ніби метод має три перевантаження.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_іменовані_параметри">Іменовані параметри</h3>
+<div class="paragraph"><p>Якщо бажаєте, ви можете також використовувати імена параметрів при виклику метода. Наприклад, <code>makeConnection</code> може викликатись таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>timeout<span style="font-weight: bold"><span style="color: #0000FF">=</span></span>10<span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #993399">000</span><span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>protocol<span style="font-weight: bold"><span style="color: #0000FF">=</span></span><span style="color: #FF0000">"https"</span><span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>timeout<span style="font-weight: bold"><span style="color: #0000FF">=</span></span>10<span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #993399">000</span><span style="color: #990000">,</span> protocol<span style="font-weight: bold"><span style="color: #0000FF">=</span></span><span style="color: #FF0000">"https"</span><span style="color: #990000">)</span>
+<span style="font-weight: bold"><span style="color: #000000">makeConnection</span></span><span style="color: #990000">(</span>protocol<span style="font-weight: bold"><span style="color: #0000FF">=</span></span><span style="color: #FF0000">"https"</span><span style="color: #990000">,</span> timeout<span style="font-weight: bold"><span style="color: #0000FF">=</span></span>10<span style="font-weight: bold"><span style="color: #0000FF">_</span></span><span style="color: #993399">000</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>В деяких фреймворках іменовані параметри використовуються дуже щільно. Вони також дуже корисні, коли декілька параметрів методів мають однаковий тип:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">engage</span></span><span style="color: #990000">(</span><span style="font-weight: bold"><span style="color: #0000FF">true</span></span><span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #0000FF">true</span></span><span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #0000FF">true</span></span><span style="color: #990000">,</span> <span style="font-weight: bold"><span style="color: #0000FF">false</span></span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Без допомоги з боку IDE цей код складно зрозуміти, але наступний код значно ясніший та очевидніший:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">engage</span></span><span style="color: #990000">(</span>
+  speedIsSet <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">true</span></span><span style="color: #990000">,</span>
+  directionIsSet <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">true</span></span><span style="color: #990000">,</span>
+  picardSaidMakeItSo <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">true</span></span><span style="color: #990000">,</span>
+  turnedOffParkingBrake <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">false</span></span>
+<span style="color: #990000">)</span></tt></pre></div></div>
+</div>
+<div class="sect2">
+<h3 id="_порада_щодо_методів_що_не_мають_параметрів">Порада щодо методів, що не мають параметрів</h3>
+<div class="paragraph"><p>Коли метод не має параметрів, кажуть, що він має <em>нульову арність</em>. Аналогічно, метод з одним параметром має арність 1, тощо. Коли ви створюєте метод нульової арності:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Якщо метод виконує побічні ефекти, такі як виклик <code>println</code>, декларуйте метод з порожніми дужками.
+</p>
+</li>
+<li>
+<p>
+Якщо метод не виконує побічних дій - наприклад, отримує розмір колекції, що подібне до доступу до поля колекції, тоді порожні дужки треба опустити.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Наприклад, цей метод виконує побічний еффект, так що він визначається з порожніми дужками:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">speak</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"hi"</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Після цього викликач цього метода повинен вказувати порожні дужки при використанні метода:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>speak     <span style="font-style: italic"><span style="color: #9A1900">// error: "method speak must be called with () argument"</span></span>
+<span style="font-weight: bold"><span style="color: #000000">speak</span></span><span style="color: #990000">()</span>   <span style="font-style: italic"><span style="color: #9A1900">// prints "hi"</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Хоча це тільки домовленість, слідування їй значно покращує зрозумілість коду: стає швидко зрозумілим, чи метод виконує побічні ефекти.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_використання_if_в_якості_тіла_метода">Використання if в якості тіла метода</h3>
+<div class="paragraph"><p>Оскільки вирази <code>if/else</code> повертають значення, вони можуть використовуватись як тіло метода. Ось метод <code>isTruthy</code>, що використовує Perl визначення <code>true</code> та <code>false</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">isTruthy</span></span><span style="color: #990000">(</span>a<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Any<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">if</span></span> a <span style="font-weight: bold"><span style="color: #0000FF">==</span></span> <span style="color: #993399">0</span> <span style="color: #990000">||</span> a <span style="font-weight: bold"><span style="color: #0000FF">==</span></span> <span style="color: #FF0000">""</span> <span style="color: #990000">||</span> a <span style="font-weight: bold"><span style="color: #0000FF">==</span></span> <span style="font-weight: bold"><span style="color: #0000FF">false</span></span> then
+    <span style="font-weight: bold"><span style="color: #0000FF">false</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">else</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">true</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Ці приклади показують роботу цього метода:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">isTruthy</span></span><span style="color: #990000">(</span><span style="color: #993399">0</span><span style="color: #990000">)</span>      <span style="font-style: italic"><span style="color: #9A1900">// false</span></span>
+<span style="font-weight: bold"><span style="color: #000000">isTruthy</span></span><span style="color: #990000">(</span><span style="color: #FF0000">""</span><span style="color: #990000">)</span>     <span style="font-style: italic"><span style="color: #9A1900">// false</span></span>
+<span style="font-weight: bold"><span style="color: #000000">isTruthy</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"hi"</span><span style="color: #990000">)</span>   <span style="font-style: italic"><span style="color: #9A1900">// true</span></span>
+<span style="font-weight: bold"><span style="color: #000000">isTruthy</span></span><span style="color: #990000">(</span><span style="color: #993399">1.0</span><span style="color: #990000">)</span>    <span style="font-style: italic"><span style="color: #9A1900">// true</span></span></tt></pre></div></div>
+</div>
+<div class="sect2">
+<h3 id="_використання_match_як_тіла_метода">Використання match як тіла метода</h3>
+<div class="paragraph"><p>Вираз <code>match</code> також може бути використаний як тіло метода, і це часто відбувається. Ось інша версія <code>isTruthy</code>, написана за допомогою вираза <code>match</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">isTruthy</span></span><span style="color: #990000">(</span>a<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Matchable<span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> a <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #993399">0</span> <span style="color: #990000">|</span> <span style="color: #FF0000">""</span> <span style="color: #990000">|</span> <span style="font-weight: bold"><span style="color: #0000FF">false</span></span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="font-weight: bold"><span style="color: #0000FF">false</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">_</span></span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="font-weight: bold"><span style="color: #0000FF">true</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Цей метод робить так само, як попередній, що використовує <code>if/else</code>. Ми використовуємо <code>Matchable</code> замість <code>Any</code> як тип параметра, щоб сприймати тільки значення, що підтримують порівняння шаблонів.</p></div>
+<div class="paragraph"><p>Більше про <code>Matchable</code> дізнайтесь в референсній документації.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_контроль_видимості_в_класі">Контроль видимості в класі</h3>
+<div class="paragraph"><p>В класах, об&#8217;єктах, трейтах і енумах, методи Scala публічні по замовчанню, так що створений нижче примірник <code>Dog</code> відкриває свій метод <code>speak</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Dog</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">speak</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"Woof"</span><span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> d <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">new</span></span> Dog
+<span style="font-weight: bold"><span style="color: #000000">d.speak</span></span><span style="color: #990000">()</span>   <span style="font-style: italic"><span style="color: #9A1900">// prints "Woof"</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Методи також можуть бути марковані як <code>private</code>. Це робить іх приватними щодо поточного класу, так що вони не можуть бути викликані або перекриті в субкласах:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Animal</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">private</span></span> <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">breathe</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"I’m breathing"</span><span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Cat</span> <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> Animal<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-style: italic"><span style="color: #9A1900">// це не буде компілюватись</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">override</span></span> <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">breathe</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"Yo, I’m totally breathing"</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Якщо ви бажаєте зробити метод приватним для даного класу, але також дозволити субкласам викликати та перекривати його, позначте його як <code>protected</code>, як показано нижче в методі <code>speak</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Animal</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">private</span></span> <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">breathe</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"I’m breathing"</span><span style="color: #990000">)</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">walk</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">breathe</span></span><span style="color: #990000">()</span>
+    <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"I’m walking"</span><span style="color: #990000">)</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">protected</span></span> <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">speak</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"Hello?"</span><span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Cat</span> <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> Animal<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">override</span></span> <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">speak</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"Meow"</span><span style="color: #990000">)</span>
+
+<span style="font-weight: bold"><span style="color: #0000FF">val</span></span> cat <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #0000FF">new</span></span> Cat
+<span style="font-weight: bold"><span style="color: #000000">cat.walk</span></span><span style="color: #990000">()</span>
+<span style="font-weight: bold"><span style="color: #000000">cat.speak</span></span><span style="color: #990000">()</span>
+<span style="font-weight: bold"><span style="color: #000000">cat.breathe</span></span><span style="color: #990000">()</span>   <span style="font-style: italic"><span style="color: #9A1900">// не скомпілюється</span></span></tt></pre></div></div>
+<div class="paragraph"><p>Власне <code>protected</code> означає наступне:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+До поля або метода є доступ з інших екземплярів того самого класу.
+</p>
+</li>
+<li>
+<p>
+(Як слідоцтво) він доступний для субкласів.
+</p>
+</li>
+<li>
+<p>
+Його не видно з іншого коду в поточному пакунку.
+</p>
+</li>
+</ul></div>
+</div>
+<div class="sect2">
+<h3 id="_об_8217_єкти_можуть_містити_методи">Об&#8217;єкти можуть містити методи</h3>
+<div class="paragraph"><p>Раніше ви бачили, що трейти та класи можуть мати методи. Ключове слово <code>object</code> в Scala служить для визначення класа синглтона, і об&#8217;єкт також може містити методи. Це гарний спосіб групувати "утілітарні" методи. Наприклад, цей об&#8217;єкт містить методи, що стосуються рядків:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">object</span></span> StringUtils<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+
+  <span style="font-style: italic"><span style="color: #9A1900">/**</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">   * Returns a string that is the same as the input string, but</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">   * truncated to the specified length.</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">   */</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">truncate</span></span><span style="color: #990000">(</span>s<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span> length<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">s.take</span></span><span style="color: #990000">(</span>length<span style="color: #990000">)</span>
+
+  <span style="font-style: italic"><span style="color: #9A1900">/**</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">    * Returns true if the string contains only letters and numbers.</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">    */</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">lettersAndNumbersOnly_?</span></span><span style="color: #990000">(</span>s<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Boolean</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">s.matches</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"[a-zA-Z0-9]+"</span><span style="color: #990000">)</span>
+
+  <span style="font-style: italic"><span style="color: #9A1900">/**</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">   * Returns true if the given string contains any whitespace</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">   * at all. Assumes that `s` is not null.</span></span>
+<span style="font-style: italic"><span style="color: #9A1900">   */</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">containsWhitespace</span></span><span style="color: #990000">(</span>s<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">)</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Boolean</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #000000">s.matches</span></span><span style="color: #990000">(</span><span style="color: #FF0000">".*</span><span style="color: #CC33CC">\\</span><span style="color: #FF0000">s.*"</span><span style="color: #990000">)</span>
+
+end StringUtils</tt></pre></div></div>
+</div>
+<div class="sect2">
+<h3 id="_методи_розширення_3">Методи розширення</h3>
+<div class="paragraph"><p>Методи розширення обговорюються в главі Контекстуальні абстракції. Їх головне призначення - додзволити вам додавати нову функціональність до закритих класів. Як показане в розділі про розширення, уявімо, що ми маємо клас <code>Circle</code>, але не в змозі змінити джерельний код. Наприклад, він може бути визначений в сторонній бібліотеці таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">Circle</span><span style="color: #990000">(</span>x<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span><span style="color: #990000">,</span> y<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span><span style="color: #990000">,</span> radius<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Якщо ви бажаєте додати методи до класу, ви можете зробити це через методи розширення:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #000000">extension</span></span> <span style="color: #990000">(</span>c<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Circle<span style="color: #990000">)</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> circumference<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> c<span style="color: #990000">.</span>radius <span style="color: #990000">*</span> math<span style="color: #990000">.</span>Pi <span style="color: #990000">*</span> <span style="color: #993399">2</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> diameter<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> c<span style="color: #990000">.</span>radius <span style="color: #990000">*</span> <span style="color: #993399">2</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> area<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Double</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> math<span style="color: #990000">.</span>Pi <span style="color: #990000">*</span> c<span style="color: #990000">.</span>radius <span style="color: #990000">*</span> c<span style="color: #990000">.</span>radius</tt></pre></div></div>
+<div class="paragraph"><p>Тепер, якщо ви маєте примірник <code>Circle</code> на ім&#8217;я <code>aCircle</code>, ви можете викликати ці методи:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>aCircle<span style="color: #990000">.</span>circumference
+aCircle<span style="color: #990000">.</span>diameter
+aCircle<span style="color: #990000">.</span>area</tt></pre></div></div>
+<div class="paragraph"><p>Шукайте розділи про методи розширення в цій книзі та в референсній документації.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_та_ще_більше">Та ще більше</h3>
+<div class="paragraph"><p>Є ще багато чого, що треба знати про методи:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Виклик методів на суперкласах.
+</p>
+</li>
+<li>
+<p>
+Визначення і використання параметрів за-ім&#8217;ям.
+</p>
+</li>
+<li>
+<p>
+Методи, що приймають функціональні параметри.
+</p>
+</li>
+<li>
+<p>
+Створення інлайн методів.
+</p>
+</li>
+<li>
+<p>
+Обробка виключень.
+</p>
+</li>
+<li>
+<p>
+Використання вхідних параметрів <code>vararg</code>.
+</p>
+</li>
+<li>
+<p>
+Методи з декількома групами параметрів та частково застосовані функції.
+</p>
+</li>
+<li>
+<p>
+Методи з дженерік параметрами типів.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Все це висвітлене в референсній документації.</p></div>
+</div>
+<div class="sect2">
+<h3 id="_main_методи">Main методи</h3>
+<div class="paragraph"><p>Scala 3 пропонує новий шлях визначення програм, що можуть бути викликані з командного рядка: додавання анотації <code>@main</code> до метода перетвворює його на вхідну точку виконавчої програми:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">@</span></span>main <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">hello</span></span><span style="color: #990000">()</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"Hello, world"</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Збережіть цей рядок коду в файлі, наприклад, <em>Hello.scala</em> - ім&#8217;я файлу не повинно співпадати з назвою метода - і скомпілюйте та виконайте його (на момент компілятор та виконавець мають назви <em>scalac3</em> та <em>scala3</em> відповідно):</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>$ scalac Hello<span style="color: #990000">.</span>scala
+$ scala hello
+Hello<span style="color: #990000">,</span> world</tt></pre></div></div>
+<div class="paragraph"><p>Метод, що анотований як <code>@main</code>, може бути написаний на верхньому рівні (як показано), або в статично досяжному об&#8217;єкті. В обох випадках, ім&#8217;я програми є ім&#8217;я самого метода, без жодних префіксів об&#8217;єкта.</p></div>
+<div class="sect3">
+<h4 id="_аргументи_командного_рядка">Аргументи командного рядка</h4>
+<div class="paragraph"><p>З таким підходом ваш <code>@main</code> метод може обробляти аргументи командного рядка, і ці аргументи можуть мати різні типи. Наприклад, маємо <code>@main</code> метод, що приймає <code>Int</code>, <code>String</code>, та vararg <code>String*</code> параметри:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">@</span></span>main <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">happyBirthday</span></span><span style="color: #990000">(</span>age<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> <span style="color: #009900">Int</span><span style="color: #990000">,</span> name<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">,</span> others<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> String<span style="color: #990000">*)</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> suffix <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="color: #990000">(</span>age <span style="color: #990000">%</span> <span style="color: #993399">100</span><span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #993399">11</span> <span style="color: #990000">|</span> <span style="color: #993399">12</span> <span style="color: #990000">|</span> <span style="color: #993399">13</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #FF0000">"th"</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">_</span></span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #990000">(</span>age <span style="color: #990000">%</span> <span style="color: #993399">10</span><span style="color: #990000">)</span> <span style="font-weight: bold"><span style="color: #0000FF">match</span></span>
+      <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #993399">1</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #FF0000">"st"</span>
+      <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #993399">2</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #FF0000">"nd"</span>
+      <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="color: #993399">3</span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #FF0000">"rd"</span>
+      <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> <span style="font-weight: bold"><span style="color: #0000FF">_</span></span> <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="color: #FF0000">"th"</span>
+
+  <span style="font-weight: bold"><span style="color: #0000FF">val</span></span> sb <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">StringBuilder</span></span><span style="color: #990000">(</span>s<span style="color: #FF0000">"Happy $age$suffix birthday, $name"</span><span style="color: #990000">)</span>
+  <span style="font-weight: bold"><span style="color: #0000FF">for</span></span> other <span style="font-weight: bold"><span style="color: #0000FF">&lt;-</span></span> others <span style="font-weight: bold"><span style="color: #0000FF">do</span></span> <span style="font-weight: bold"><span style="color: #000000">sb.append</span></span><span style="color: #990000">(</span><span style="color: #FF0000">" and "</span><span style="color: #990000">).</span><span style="font-weight: bold"><span style="color: #000000">append</span></span><span style="color: #990000">(</span>other<span style="color: #990000">)</span>
+  sb<span style="color: #990000">.</span>toString</tt></pre></div></div>
+<div class="paragraph"><p>Коли ви скомпілюєте цей код, він створить програму <em>happyBirthday</em>, яка викликається таким чином:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>$ scala happyBirthday <span style="color: #993399">23</span> Lisa Peter
+Happy 23rd Birthday<span style="color: #990000">,</span> Lisa and Peter<span style="color: #990000">!</span></tt></pre></div></div>
+<div class="paragraph"><p>Як показано, метод <code>@main</code> може мати довільне число параметрів. Для кожного параметру тип має бути примірником <code>scala.util.FromString</code>, що конвертує аргумент <code>String</code> в потрібний тип параметру. Також, як показано, список параметрів <code>@main</code> метода може завершуватись "поглинаючим" параметром, як <code>String*</code>, що приймає залишок параметрів, заданих до кінця рядка.</p></div>
+<div class="paragraph"><p>Програма, реалізована через метод <code>@main</code>, перевіряє, чи достатньо аргументів в командному рядку, щоб заповнити всі параметри, і що рядки аргументів можуть бути конвертовані в потрібні типи. Якщо перевірка схибить, програма завершиться з помилкою:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>$ scala happyBirthday <span style="color: #993399">22</span>
+Illegal <span style="font-weight: bold"><span style="color: #0000FF">command</span></span> line after first argument<span style="color: #990000">:</span> more arguments expected
+
+$ scala happyBirthday sixty Fred
+Illegal <span style="font-weight: bold"><span style="color: #0000FF">command</span></span> line<span style="color: #990000">:</span> java<span style="color: #990000">.</span>lang<span style="color: #990000">.</span>NumberFormatException<span style="color: #990000">:</span> For input string<span style="color: #990000">:</span> <span style="color: #FF0000">"sixty"</span></tt></pre></div></div>
+</div>
+<div class="sect3">
+<h4 id="_деталі">Деталі</h4>
+</div>
 </div>
 </div>
 </div>
@@ -5306,7 +6461,7 @@ http://www.gnu.org/software/src-highlite -->
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2022-03-11 15:03:11 EET
+ 2022-03-15 00:47:39 EET
 </div>
 </div>
 </body>
