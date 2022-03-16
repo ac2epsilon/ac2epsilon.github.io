@@ -6344,53 +6344,6 @@ aCircle<span style="color: #990000">.</span>area</tt></pre></div></div>
 <div class="paragraph"><p>Шукайте розділи про методи розширення в цій книзі та в референсній документації.</p></div>
 </div>
 <div class="sect2">
-<h3 id="_та_ще_більше">Та ще більше</h3>
-<div class="paragraph"><p>Є ще багато чого, що треба знати про методи:</p></div>
-<div class="ulist"><ul>
-<li>
-<p>
-Виклик методів на суперкласах.
-</p>
-</li>
-<li>
-<p>
-Визначення і використання параметрів за-ім&#8217;ям.
-</p>
-</li>
-<li>
-<p>
-Методи, що приймають функціональні параметри.
-</p>
-</li>
-<li>
-<p>
-Створення інлайн методів.
-</p>
-</li>
-<li>
-<p>
-Обробка виключень.
-</p>
-</li>
-<li>
-<p>
-Використання вхідних параметрів <code>vararg</code>.
-</p>
-</li>
-<li>
-<p>
-Методи з декількома групами параметрів та частково застосовані функції.
-</p>
-</li>
-<li>
-<p>
-Методи з дженерік параметрами типів.
-</p>
-</li>
-</ul></div>
-<div class="paragraph"><p>Все це висвітлене в референсній документації.</p></div>
-</div>
-<div class="sect2">
 <h3 id="_main_методи">Main методи</h3>
 <div class="paragraph"><p>Scala 3 пропонує новий шлях визначення програм, що можуть бути викликані з командного рядка: додавання анотації <code>@main</code> до метода перетвворює його на вхідну точку виконавчої програми:</p></div>
 <div class="listingblock">
@@ -6452,7 +6405,133 @@ Illegal <span style="font-weight: bold"><span style="color: #0000FF">command</sp
 </div>
 <div class="sect3">
 <h4 id="_деталі">Деталі</h4>
+<div class="paragraph"><p>Компілятор Scala генерує програму з методу <code>@main f</code> наступним чином:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Він створює клас на ім&#8217;я <code>f</code> в пакунку, де був знайдений метод <code>@main</code>.
+</p>
+</li>
+<li>
+<p>
+Цей клас має статичний метод <code>main</code> зі звичайною сигнатурою метода <code>main</code> в Java: він приймає <code>Array[String]</code> як аргумент, та повертає <code>Unit</code>.
+</p>
+</li>
+<li>
+<p>
+Згенерований метод <code>main</code> викликає метод <code>f</code> з аргументами, зконвертованими за допомогою методів об&#8217;єкта <code>scala.util.CommandLineParser</code>.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Наприклад, метод <code>happyBirthday</code> вище генерує додатковий код, еквівалентний наступному класу:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">final</span></span> <span style="font-weight: bold"><span style="color: #0000FF">class</span></span> <span style="color: #008080">happyBirthday</span> <span style="color: #FF0000">{</span>
+  <span style="font-weight: bold"><span style="color: #000080">import</span></span> scala<span style="color: #990000">.</span>util<span style="color: #990000">.</span><span style="color: #FF0000">{</span>CommandLineParser as CLP<span style="color: #FF0000">}</span>
+  <span style="color: #990000">&lt;</span>static<span style="color: #990000">&gt;</span> <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">main</span></span><span style="color: #990000">(</span>args<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Array<span style="color: #990000">[</span>String<span style="color: #990000">])</span><span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Unit <span style="font-weight: bold"><span style="color: #0000FF">=</span></span>
+    <span style="font-weight: bold"><span style="color: #0000FF">try</span></span>
+      <span style="font-weight: bold"><span style="color: #000000">happyBirthday</span></span><span style="color: #990000">(</span>
+          <span style="font-weight: bold"><span style="color: #000000">CLP.parseArgument[Int]</span></span><span style="color: #990000">(</span>args<span style="color: #990000">,</span> <span style="color: #993399">0</span><span style="color: #990000">),</span>
+          <span style="font-weight: bold"><span style="color: #000000">CLP.parseArgument[String]</span></span><span style="color: #990000">(</span>args<span style="color: #990000">,</span> <span style="color: #993399">1</span><span style="color: #990000">),</span>
+          <span style="font-weight: bold"><span style="color: #000000">CLP.parseRemainingArguments[String]</span></span><span style="color: #990000">(</span>args<span style="color: #990000">,</span> <span style="color: #993399">2</span><span style="color: #990000">))</span>
+    <span style="font-weight: bold"><span style="color: #0000FF">catch</span></span> <span style="color: #FF0000">{</span>
+      <span style="font-weight: bold"><span style="color: #0000FF">case</span></span> error<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> CLP<span style="color: #990000">.</span>ParseError <span style="font-weight: bold"><span style="color: #0000FF">=&gt;</span></span> <span style="font-weight: bold"><span style="color: #000000">CLP.showError</span></span><span style="color: #990000">(</span>error<span style="color: #990000">)</span></tt></pre></div></div>
+<div class="literalblock">
+<div class="content">
+<pre><code>Зауваження: В згенерованому коді модифікатор `&lt;static&gt;` означає, що метод `main` генерується як статичний метод класу `happyBirthday`. Ця можливість не доступна для користувацьких програм в Scala. Звичайні "статичні" члени генеруються в Scala з використанням об'єктів.</code></pre>
+</div></div>
 </div>
+</div>
+<div class="sect2">
+<h3 id="_порівняння_scala_2_і_3">Порівняння Scala 2 і 3</h3>
+<div class="paragraph"><p>Методи <code>@main</code> є рекомендованим способом генерації програм, що запускаються з командного рядка. Це замінює попередній підхід Scala 2, що полягав в створенні <code>object</code>, що розширював клас <code>App</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-style: italic"><span style="color: #9A1900">// scala 2</span></span>
+<span style="font-weight: bold"><span style="color: #0000FF">object</span></span> happyBirthday <span style="font-weight: bold"><span style="color: #0000FF">extends</span></span> App <span style="color: #FF0000">{</span>
+  <span style="font-style: italic"><span style="color: #9A1900">// аргументи командного рядка треба розбирати власноруч ...</span></span>
+<span style="color: #FF0000">}</span></tt></pre></div></div>
+<div class="paragraph"><p>Попередня функціональність <code>App</code>, що покладалась на "магічний" трейт <code>DelayedInit</code>, більше не доступна. <code>App</code> все ще існує в обмеженій формі і дотепер, але він не підтримує аргументів командного рядка, і буде видалений в майбутньому.</p></div>
+<div class="paragraph"><p>Якщо програма потребує кросс-білду між Scala 2 і 3, рекомендовано використовувати явний метод <code>main</code> з аргументом <code>Array[String]</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt><span style="font-weight: bold"><span style="color: #0000FF">object</span></span> happyBirthday<span style="font-weight: bold"><span style="color: #0000FF">:</span></span>
+  <span style="font-weight: bold"><span style="color: #0000FF">def</span></span> <span style="font-weight: bold"><span style="color: #000000">main</span></span><span style="color: #990000">(</span>args<span style="font-weight: bold"><span style="color: #0000FF">:</span></span> Array<span style="color: #990000">[</span>String<span style="color: #990000">])</span> <span style="font-weight: bold"><span style="color: #0000FF">=</span></span> <span style="font-weight: bold"><span style="color: #000000">println</span></span><span style="color: #990000">(</span><span style="color: #FF0000">"Hello, world"</span><span style="color: #990000">)</span></tt></pre></div></div>
+<div class="paragraph"><p>Якщо ви покладете цей код в файл <em>happyBirthday.scala</em>, ви можете скомпілювати його в <code>scalac</code> і виконати в <code>scala</code>:</p></div>
+<div class="listingblock">
+<div class="content"><!-- Generator: GNU source-highlight
+by Lorenzo Bettini
+http://www.lorenzobettini.it
+http://www.gnu.org/software/src-highlite -->
+<pre><tt>$ scalac happyBirthday<span style="color: #990000">.</span>scala
+
+$ scala happyBirthday
+Hello<span style="color: #990000">,</span> world</tt></pre></div></div>
+</div>
+<div class="sect2">
+<h3 id="_підсумок_3">Підсумок</h3>
+<div class="paragraph"><p>Є ще багато чого, що треба знати про методи:</p></div>
+<div class="ulist"><ul>
+<li>
+<p>
+Виклик методів на суперкласах.
+</p>
+</li>
+<li>
+<p>
+Визначення і використання параметрів за-ім&#8217;ям.
+</p>
+</li>
+<li>
+<p>
+Методи, що приймають функціональні параметри.
+</p>
+</li>
+<li>
+<p>
+Створення інлайн методів.
+</p>
+</li>
+<li>
+<p>
+Обробка виключень.
+</p>
+</li>
+<li>
+<p>
+Використання вхідних параметрів <code>vararg</code>.
+</p>
+</li>
+<li>
+<p>
+Методи з декількома групами параметрів та частково застосовані функції.
+</p>
+</li>
+<li>
+<p>
+Методи з дженерік параметрами типів.
+</p>
+</li>
+</ul></div>
+<div class="paragraph"><p>Все це висвітлене в референсній документації.</p></div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="_функції">Функції</h2>
+<div class="sectionbody">
+<div class="paragraph"><p>Попередня глава дає вступ до Scala методів. Ця глава розглядає <em>функції</em>. Розглянуті теми включають анонімні функції, функціональні змінні, та функції вищих гатунків (HOF), включаючи їх створення.</p></div>
+<div class="sect2">
+<h3 id="_анонімні_функції">Анонімні функції</h3>
 </div>
 </div>
 </div>
@@ -6461,7 +6540,7 @@ Illegal <span style="font-weight: bold"><span style="color: #0000FF">command</sp
 <div id="footer">
 <div id="footer-text">
 Last updated
- 2022-03-15 00:47:39 EET
+ 2022-03-16 22:43:12 EET
 </div>
 </div>
 </body>
